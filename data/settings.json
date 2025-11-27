@@ -1,0 +1,15 @@
+{
+  "features": {
+    "mode": "GS_ONLY",
+    "showProfile": true,
+    "showLeaderboard": true,
+    "enableCoupons": false
+  },
+  "scoring": {
+    "startBalance": 500,
+    "useProbabilityEngine": false,
+    "K_outcome": 5,
+    "epsilon": 0.05,
+    "unknownPenaltyPct": 0.2
+  }
+}

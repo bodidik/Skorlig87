@@ -1,0 +1,292 @@
+{
+  "items": [
+    {
+      "userId": "demo1",
+      "totalPoints": 364,
+      "totalPenalty": 0,
+      "matches": 26,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "demo2",
+      "totalPoints": -2,
+      "totalPenalty": -2,
+      "matches": 1,
+      "lastAt": "2025-11-12T20:31:07.633Z"
+    },
+    {
+      "userId": "bot_yuri",
+      "totalPoints": 101,
+      "totalPenalty": 0,
+      "matches": 21,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_marco",
+      "totalPoints": 34,
+      "totalPenalty": 0,
+      "matches": 6,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_hans",
+      "totalPoints": 56,
+      "totalPenalty": 0,
+      "matches": 10,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_ramon",
+      "totalPoints": 29,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_boris",
+      "totalPoints": 29,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_dmitri",
+      "totalPoints": 29,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_emre",
+      "totalPoints": 55,
+      "totalPenalty": 0,
+      "matches": 11,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_pablo",
+      "totalPoints": 50,
+      "totalPenalty": 0,
+      "matches": 10,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_takeshi",
+      "totalPoints": 27,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_will",
+      "totalPoints": 73,
+      "totalPenalty": 0,
+      "matches": 15,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_alan",
+      "totalPoints": 25,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_leo",
+      "totalPoints": 25,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_vlad",
+      "totalPoints": 25,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_umut",
+      "totalPoints": 27,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_nikos",
+      "totalPoints": 23,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_carlos",
+      "totalPoints": 23,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_ıvan",
+      "totalPoints": 23,
+      "totalPenalty": 0,
+      "matches": 5,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_anna",
+      "totalPoints": 7,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_selim",
+      "totalPoints": 6,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_ayako",
+      "totalPoints": 6,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_ayse",
+      "totalPoints": 5,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_luis",
+      "totalPoints": 3,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_sara",
+      "totalPoints": 3,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_kai",
+      "totalPoints": 3,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_pedro",
+      "totalPoints": 3,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_diego",
+      "totalPoints": 3,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_rita",
+      "totalPoints": 3,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_ken",
+      "totalPoints": 3,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_nina",
+      "totalPoints": 2,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_sofia",
+      "totalPoints": 2,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_cem",
+      "totalPoints": 1,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_maria",
+      "totalPoints": 1,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_lee",
+      "totalPoints": 1,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_omer",
+      "totalPoints": 1,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_ines",
+      "totalPoints": 1,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_tariq",
+      "totalPoints": 1,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_ali",
+      "totalPoints": 1,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_paul",
+      "totalPoints": 1,
+      "totalPenalty": 0,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    },
+    {
+      "userId": "bot_igor",
+      "totalPoints": -2,
+      "totalPenalty": -2,
+      "matches": 1,
+      "lastAt": "2025-11-14T11:30:19.220Z"
+    }
+  ],
+  "updatedAt": "2025-11-14T11:30:19.220Z"
+}

@@ -1,0 +1,40 @@
+{
+  "fixtures": {
+    "UCL-GS-USG-20251125": {
+      "fixtureId": "UCL-GS-USG-20251125",
+      "createdAt": "2025-11-26T11:00:04.399Z",
+      "events": [
+        {
+          "at": "2025-11-26T11:00:04.399Z",
+          "minute": 0,
+          "homeGoals": null,
+          "awayGoals": null,
+          "note": "Başlama düdüğü",
+          "source": "manual"
+        },
+        {
+          "at": "2025-11-26T11:00:34.584Z",
+          "minute": 12,
+          "homeGoals": null,
+          "awayGoals": null,
+          "note": "12' GS gol! Icardi",
+          "source": "manual"
+        },
+        {
+          "at": "2025-11-26T11:00:45.761Z",
+          "minute": 34,
+          "homeGoals": null,
+          "awayGoals": null,
+          "note": "34' USG beraberlik",
+          "source": "manual"
+        }
+      ],
+      "minute": 34,
+      "phase": "1H",
+      "note": "34' USG beraberlik",
+      "source": "manual",
+      "updatedAt": "2025-11-26T11:00:45.761Z"
+    }
+  },
+  "updatedAt": "2025-11-26T11:00:45.761Z"
+}

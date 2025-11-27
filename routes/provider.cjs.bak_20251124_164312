@@ -1,0 +1,563 @@
+"use strict";
+
+const express = require("express");
+const router = express.Router();
+const fs = require("fs");
+const fsp = fs.promises;
+const path = require("path");
+
+const DATA_DIR = path.join(__dirname, "..", "data");
+const FILE_PATH = path.join(DATA_DIR, "providers.json");
+
+// ----------------- JSON HELPERS -----------------
+async function readJson(file, fb) {
+  try {
+    const txt = await fsp.readFile(file, "utf8");
+    return JSON.parse(txt);
+  } catch {
+    return fb;
+  }
+}
+
+async function writeJson(file, data) {
+  await fsp.mkdir(path.dirname(file), { recursive: true });
+  await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
+}
+
+// ----------------- MODEL -----------------
+
+function baseModel() {
+  return {
+    providers: {
+      // AF = api-football, TSDB = TheSportsDB, FDO = Football-Data.org
+      AF:   { ok: 0, fail: 0, lastMs: 0, lastAt: null, weight: 1.0 },
+      TSDB: { ok: 0, fail: 0, lastMs: 0, lastAt: null, weight: 1.0 },
+      FDO:  { ok: 0, fail: 0, lastMs: 0, lastAt: null, weight: 1.0 },
+    },
+    quotas: {
+      AF:   { daily: 100,  used: 0, warn: 90  },   // warn: 90 çağrıda uyar
+      TSDB: { daily: 1000, used: 0, warn: 900 },
+      FDO:  { daily: 1000, used: 0, warn: 900 },
+    },
+    /**
+     * takım bazlı ana sağlayıcı ataması:
+     * teamPref["GALATASARAY"] = "TSDB"
+     *
+     * live2.cjs şu alanı kullanıyor.
+     */
+    teamPref: {},
+    /**
+     * Eski dosyalarla uyum için bırakılan alanlar;
+     * yeni kod teamPref üzerinden çalışıyor.
+     */
+    primary: {},      // eski provider.cjs
+    teamPrimary: {},  // eski provider2.cjs
+
+    settings: {
+      autoPrimary: true, // ilerde otomatik öğrenme kapat/aç için
+    },
+
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Verilen modeli baseModel ile birleştir, eksikleri doldur.
+ * Eski dosyalardaki primary / teamPrimary → teamPref’e aynalanır.
+ */
+function ensureStruct(input) {
+  const base = baseModel();
+  const m = input && typeof input === "object" ? input : {};
+
+  // providers
+  m.providers = m.providers && typeof m.providers === "object"
+    ? m.providers
+    : {};
+  for (const [name, defVal] of Object.entries(base.providers)) {
+    if (!m.providers[name]) {
+      m.providers[name] = { ...defVal };
+    } else {
+      const p = m.providers[name];
+      p.ok = Number(p.ok || 0);
+      p.fail = Number(p.fail || 0);
+      p.lastMs = Number(p.lastMs || 0);
+      p.lastAt = p.lastAt || null;
+      p.weight = Number.isFinite(p.weight) ? p.weight : 1.0;
+    }
+  }
+
+  // quotas
+  m.quotas = m.quotas && typeof m.quotas === "object"
+    ? m.quotas
+    : {};
+  for (const [name, defVal] of Object.entries(base.quotas)) {
+    if (!m.quotas[name]) {
+      m.quotas[name] = { ...defVal };
+    } else {
+      const q = m.quotas[name];
+      q.daily = Number(q.daily || defVal.daily);
+      q.used = Number(q.used || 0);
+      q.warn = Number.isFinite(q.warn)
+        ? Number(q.warn)
+        : Number(defVal.warn);
+    }
+  }
+
+  // teamPref + eski alanlardan merge
+  m.teamPref = m.teamPref && typeof m.teamPref === "object"
+    ? m.teamPref
+    : {};
+
+  m.primary = m.primary && typeof m.primary === "object"
+    ? m.primary
+    : {};
+  m.teamPrimary = m.teamPrimary && typeof m.teamPrimary === "object"
+    ? m.teamPrimary
+    : {};
+
+  // eski primary alanlarını teamPref içine kopyala (varsa)
+  for (const [team, prov] of Object.entries(m.primary)) {
+    const k = String(team || "").toUpperCase().trim();
+    if (!k) continue;
+    if (!m.teamPref[k] && typeof prov === "string") {
+      m.teamPref[k] = prov.toUpperCase();
+    }
+  }
+  for (const [team, prov] of Object.entries(m.teamPrimary)) {
+    const k = String(team || "").toUpperCase().trim();
+    if (!k) continue;
+    if (!m.teamPref[k] && typeof prov === "string") {
+      m.teamPref[k] = prov.toUpperCase();
+    }
+  }
+
+  // settings
+  m.settings = m.settings && typeof m.settings === "object"
+    ? m.settings
+    : {};
+  m.settings.autoPrimary =
+    typeof m.settings.autoPrimary === "boolean"
+      ? m.settings.autoPrimary
+      : true;
+
+  m.updatedAt = new Date().toISOString();
+  return m;
+}
+
+async function loadModel() {
+  const raw = await readJson(FILE_PATH, null);
+  const m = ensureStruct(raw || {});
+  await writeJson(FILE_PATH, m);
+  return m;
+}
+
+function providerNames(m) {
+  return Object.keys(m.providers || {});
+}
+
+function teamKey(name) {
+  return String(name || "").trim().toUpperCase();
+}
+
+function quotaRatio(q) {
+  const daily = Math.max(1, Number(q.daily || 0) || 1);
+  const used = Number(q.used || 0);
+  return used / daily;
+}
+
+// ----------------- SCORE / SEÇİM ALGORİTMASI -----------------
+
+/**
+ * Bir sağlayıcı için skor hesapla:
+ * - kota %90 altındaysa +2 puan
+ * - successRate (ok / (ok+fail))
+ * - speed: 1 / ms (5000 ms’e clamp)
+ * - weight: manuel ağırlık (0.25x)
+ */
+function scoreProvider(m, name) {
+  const p = (m.providers && m.providers[name]) || {};
+  const q = (m.quotas && m.quotas[name]) || { daily: 1000, used: 0 };
+
+  const ratio = quotaRatio(q);
+  const quotaOK = ratio < 0.9 ? 1 : 0;
+  const totalCalls = (p.ok || 0) + (p.fail || 0);
+  const success = totalCalls > 0 ? p.ok / totalCalls : 0;
+  const ms = Number(p.lastMs || 0);
+  const speed = ms > 0 ? 1 / Math.min(ms, 5000) : 0;
+  const weight = Number.isFinite(p.weight) ? p.weight : 1.0;
+
+  return quotaOK * 2 + success + speed + 0.25 * weight;
+}
+
+// ----------------- ROUTES -----------------
+
+/**
+ * GET /api/provider/diag
+ * Tüm modelin ham çıktısı (admin panel için).
+ */
+router.get("/diag", async (req, res) => {
+  const m = await loadModel();
+  res.json({ ok: true, model: m });
+});
+
+/**
+ * POST /api/provider/mark
+ * Örnek:
+ *   POST /api/provider/mark?name=AF&ok=1&ms=120
+ * veya
+ *   body: { name:"AF", ok:1, ms:120 }
+ */
+router.post("/mark", express.json(), async (req, res) => {
+  try {
+    const name = String(
+      req.query.name || req.body?.name || ""
+    ).toUpperCase();
+    const okFlag =
+      String(req.query.ok ?? req.body?.ok ?? "1") === "1";
+    const ms = Number(req.query.ms ?? req.body?.ms ?? 0) || 0;
+
+    if (!name) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "NAME_REQUIRED" });
+    }
+
+    const m = await loadModel();
+    if (!m.providers[name]) {
+      // bilinmeyen provider da olsa model’e ekleyelim
+      m.providers[name] = {
+        ok: 0,
+        fail: 0,
+        lastMs: 0,
+        lastAt: null,
+        weight: 1.0,
+      };
+    }
+    if (!m.quotas[name]) {
+      m.quotas[name] = { daily: 1000, used: 0, warn: 900 };
+    }
+
+    const p = m.providers[name];
+    const q = m.quotas[name];
+
+    if (okFlag) p.ok++;
+    else p.fail++;
+
+    p.lastMs = ms;
+    p.lastAt = new Date().toISOString();
+    q.used = Math.max(0, Number(q.used || 0) + 1);
+
+    m.updatedAt = new Date().toISOString();
+    await writeJson(FILE_PATH, m);
+
+    res.json({ ok: true, provider: name, stats: p, quota: q });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: "MARK_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * POST /api/provider/reset
+ * - /reset?name=AF → sadece AF’yi sıfırlar
+ * - /reset        → tüm modeli sıfırlar (boş + defaults)
+ */
+router.post("/reset", async (req, res) => {
+  try {
+    const name = String(req.query.name || "").toUpperCase();
+    let m = await loadModel();
+
+    if (name) {
+      if (!m.providers[name] && !m.quotas[name]) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "NAME_INVALID" });
+      }
+      const base = baseModel();
+      const baseProv = base.providers[name] || {
+        ok: 0,
+        fail: 0,
+        lastMs: 0,
+        lastAt: null,
+        weight: 1.0,
+      };
+      const baseQuota = base.quotas[name] || {
+        daily: 1000,
+        used: 0,
+        warn: 900,
+      };
+
+      m.providers[name] = { ...baseProv };
+      m.quotas[name] = { ...baseQuota };
+    } else {
+      // komple reset: eski teamPref ve settings’i korumak isteyebiliriz
+      const prev = m;
+      const fresh = baseModel();
+      fresh.teamPref = prev.teamPref || {};
+      fresh.settings = prev.settings || fresh.settings;
+      m = fresh;
+    }
+
+    m.updatedAt = new Date().toISOString();
+    await writeJson(FILE_PATH, m);
+    res.json({ ok: true, model: m });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: "RESET_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * GET /api/provider/next?team=Galatasaray
+ *
+ * Seçim mantığı:
+ * 1) teamPref[TEAM] varsa ve kotası %90 altında ise → onu döner (via:"primary")
+ * 2) aksi halde mevcut tüm provider’lar için score hesaplar,
+ *    en yüksek skorlu olanı döner (via:"scored")
+ */
+router.get("/next", async (req, res) => {
+  try {
+    const teamRaw = String(req.query.team || "");
+    const team = teamKey(teamRaw);
+
+    const m = await loadModel();
+    const all = providerNames(m);
+    if (!all.length) {
+      return res.status(500).json({
+        ok: false,
+        error: "NO_PROVIDERS",
+      });
+    }
+
+    const Q90 = 0.9;
+
+    // 1) Takım için atanmış primary (teamPref) varsa
+    if (team && m.teamPref && m.teamPref[team]) {
+      const prim = String(m.teamPref[team]).toUpperCase();
+      if (m.quotas[prim]) {
+        const ratio = quotaRatio(m.quotas[prim]);
+        if (ratio < Q90) {
+          return res.json({
+            ok: true,
+            provider: prim,
+            via: "primary",
+            team,
+          });
+        }
+      }
+    }
+
+    // 2) Skorlu seçim
+    const scored = all.map((name) => ({
+      name,
+      score: scoreProvider(m, name),
+    }));
+
+    scored.sort((a, b) => b.score - a.score);
+    const chosen = scored[0]?.name || all[0];
+
+    res.json({
+      ok: true,
+      provider: chosen,
+      via: "scored",
+      team,
+      ranking: scored,
+    });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: "NEXT_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * GET /api/provider/team-primary?team=Galatasaray
+ * → { ok,true, team, provider:"TSDB" | null }
+ */
+router.get("/team-primary", async (req, res) => {
+  try {
+    const teamRaw = String(req.query.team || "");
+    const team = teamKey(teamRaw);
+    const m = await loadModel();
+    const provider =
+      (team && m.teamPref && m.teamPref[team]) || null;
+    res.json({ ok: true, team, provider });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: "TEAM_PRIMARY_GET_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * POST /api/provider/team-primary
+ * body: { team:"Galatasaray", provider:"TSDB" }
+ */
+router.post("/team-primary", express.json(), async (req, res) => {
+  try {
+    const teamRaw = String(req.body?.team || "");
+    const providerRaw = String(
+      req.body?.provider || ""
+    ).toUpperCase();
+
+    const team = teamKey(teamRaw);
+    if (!team || !providerRaw) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "REQUIRED" });
+    }
+
+    const m = await loadModel();
+    const all = providerNames(m);
+    if (!all.includes(providerRaw)) {
+      return res.status(400).json({
+        ok: false,
+        error: "PROVIDER_INVALID",
+      });
+    }
+
+    m.teamPref = m.teamPref || {};
+    m.teamPref[team] = providerRaw;
+
+    // eski alanlarla uyum için
+    m.primary = m.primary || {};
+    m.primary[team] = providerRaw;
+    m.teamPrimary = m.teamPrimary || {};
+    m.teamPrimary[team] = providerRaw;
+
+    m.updatedAt = new Date().toISOString();
+    await writeJson(FILE_PATH, m);
+
+    res.json({ ok: true, team, provider: providerRaw });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: "TEAM_PRIMARY_SET_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * GET /api/provider/warn
+ * → quotas + warn info (admin panel için)
+ */
+router.get("/warn", async (req, res) => {
+  try {
+    const m = await loadModel();
+    res.json({ ok: true, quotas: m.quotas || {} });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: "WARN_GET_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * POST /api/provider/warn
+ * body: { name:"AF", warn: 0.9 | 90 | 900 }
+ *
+ * - 0 < warn <= 1  → oran (daily * warn)
+ * - 1 < warn <=100 → yüzde (daily * warn / 100)
+ * - >100          → mutlak çağrı sayısı
+ */
+router.post("/warn", express.json(), async (req, res) => {
+  try {
+    const name = String(
+      req.body?.name || ""
+    ).toUpperCase();
+    let warn = Number(req.body?.warn);
+
+    if (!name || !Number.isFinite(warn)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "REQUIRED" });
+    }
+
+    const m = await loadModel();
+    if (!m.quotas[name]) {
+      m.quotas[name] = { daily: 1000, used: 0, warn: 900 };
+    }
+
+    const q = m.quotas[name];
+    const daily = Math.max(1, Number(q.daily || 0) || 1);
+
+    if (warn > 0 && warn <= 1) {
+      // oran
+      q.warn = Math.round(daily * warn);
+    } else if (warn > 1 && warn <= 100) {
+      // yüzde
+      q.warn = Math.round((daily * warn) / 100);
+    } else {
+      // mutlak sayı
+      q.warn = Math.round(warn);
+    }
+
+    m.updatedAt = new Date().toISOString();
+    await writeJson(FILE_PATH, m);
+    res.json({ ok: true, quota: q });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: "WARN_SET_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * GET /api/provider/auto-primary
+ * → { ok,true, settings:{ autoPrimary:true/false } }
+ */
+router.get("/auto-primary", async (req, res) => {
+  try {
+    const m = await loadModel();
+    res.json({ ok: true, settings: m.settings || {} });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: "AUTO_PRIMARY_GET_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * POST /api/provider/auto-primary
+ * body: { enabled: boolean }
+ */
+router.post(
+  "/auto-primary",
+  express.json(),
+  async (req, res) => {
+    try {
+      const enabled = !!req.body?.enabled;
+      const m = await loadModel();
+      m.settings = m.settings || {};
+      m.settings.autoPrimary = enabled;
+      m.updatedAt = new Date().toISOString();
+      await writeJson(FILE_PATH, m);
+      res.json({ ok: true, settings: m.settings });
+    } catch (e) {
+      res.status(500).json({
+        ok: false,
+        error: "AUTO_PRIMARY_SET_FAILED",
+        detail: String(e && (e.message || e)),
+      });
+    }
+  }
+);
+
+module.exports = router;

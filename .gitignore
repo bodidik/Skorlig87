@@ -1,0 +1,7 @@
+logs/
+*.log
+node_modules/
+data/*.bak
+data/tmp/
+mobile/.expo/
+mobile/.cache/

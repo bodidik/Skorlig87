@@ -1,0 +1,1140 @@
+{
+  "fixtureId": "1905-GS-TS",
+  "items": [
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 11,
+      "detail": {
+        "outcome": 3,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 1,
+        "synergy": 4,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 7,
+        "rawTotal": 11,
+        "weighted": 11
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 11,
+      "detail": {
+        "outcome": 3,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 1,
+        "synergy": 4,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 7,
+        "rawTotal": 11,
+        "weighted": 11
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_anna",
+      "points": 11,
+      "detail": {
+        "outcome": 3,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 1,
+        "synergy": 4,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 7,
+        "rawTotal": 11,
+        "weighted": 11
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_selim",
+      "points": 9,
+      "detail": {
+        "outcome": 3,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 3,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 6,
+        "rawTotal": 9,
+        "weighted": 9
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_ayako",
+      "points": 9,
+      "detail": {
+        "outcome": 3,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 3,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 6,
+        "rawTotal": 9,
+        "weighted": 9
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_ayse",
+      "points": 8,
+      "detail": {
+        "outcome": 3,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 0,
+        "redAway": 0,
+        "synergy": 3,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 5,
+        "rawTotal": 8,
+        "weighted": 8
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_takeshi",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_will",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_nikos",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_carlos",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_umut",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_yuri",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_hans",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_ıvan",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_yuri",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_luis",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_sara",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_kai",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_pedro",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_diego",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_rita",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_ken",
+      "points": 5,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 2,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 2,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 3,
+        "rawTotal": 5,
+        "weighted": 5
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_nina",
+      "points": 3,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 1,
+        "synergy": 1,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 2,
+        "rawTotal": 3,
+        "weighted": 3
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_sofia",
+      "points": 3,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 1,
+        "synergy": 1,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 2,
+        "rawTotal": 3,
+        "weighted": 3
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 3,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 1,
+        "synergy": 1,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 2,
+        "rawTotal": 3,
+        "weighted": 3
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 3,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 1,
+        "synergy": 1,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 2,
+        "rawTotal": 3,
+        "weighted": 3
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_yuri",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_yuri",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_hans",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_ramon",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_boris",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_yuri",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_will",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_will",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_alan",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_leo",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_vlad",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_dmitri",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_emre",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_pablo",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_pablo",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_emre",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_marco",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_marco",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_emre",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_cem",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_maria",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_lee",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_omer",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_ines",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_tariq",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 0,
+        "redAway": 1,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_ali",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_paul",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "demo1",
+      "points": 1,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 1,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": 0,
+        "raw": 1,
+        "rawTotal": 1,
+        "weighted": 1
+      }
+    },
+    {
+      "fixtureId": "1905-GS-TS",
+      "userId": "bot_igor",
+      "points": -2,
+      "detail": {
+        "outcome": 0,
+        "exact": 0,
+        "firstGoal": 0,
+        "firstHalf": 0,
+        "redHome": 0,
+        "redAway": 0,
+        "synergy": 0,
+        "weight": 1,
+        "penalty": -2,
+        "raw": 0,
+        "rawTotal": 0,
+        "weighted": 0
+      }
+    }
+  ],
+  "updatedAt": "2025-11-17T22:45:50.1069100+03:00"
+}

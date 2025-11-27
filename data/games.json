@@ -1,0 +1,52 @@
+[
+  {
+    "id": "game-XJLND4YH",
+    "owner": "uA",
+    "name": "Derbi Serisi",
+    "participants": [
+      "uDev",
+      "uA",
+      "uB"
+    ],
+    "window": {
+      "fromISO": "2025-11-01T00:00:00+03:00",
+      "toISO": "2025-11-30T23:59:59+03:00"
+    },
+    "inviteCode": "912QL9",
+    "createdAt": "2025-10-24T15:34:37.154Z",
+    "expiresAt": null,
+    "locked": false
+  },
+  {
+    "id": "game-NC809WZ5",
+    "owner": "uDev",
+    "name": "Test Oyun",
+    "participants": [
+      "uDev",
+      "uA"
+    ],
+    "window": {
+      "last": 5
+    },
+    "inviteCode": "16TIHE",
+    "createdAt": "2025-10-24T15:58:09.109Z",
+    "expiresAt": null
+  },
+  {
+    "id": "game-F9ICHXRU",
+    "owner": "uDev",
+    "name": "Dev Test",
+    "participants": [
+      "uDev",
+      "uA",
+      "uZ"
+    ],
+    "window": {
+      "last": 5
+    },
+    "inviteCode": "X7DERL",
+    "createdAt": "2025-10-24T18:32:01.834Z",
+    "expiresAt": null,
+    "locked": false
+  }
+]

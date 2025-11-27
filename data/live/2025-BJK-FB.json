@@ -1,0 +1,23 @@
+{
+  "fixtureId": "2025-BJK-FB",
+  "pollCount": 0,
+  "lastPolledAt": "2025-11-02T15:24:40.222Z",
+  "kickoffISO": "2025-11-02T20:00:00+03:00",
+  "status": "FT",
+  "score": {
+    "home": 0,
+    "away": 0
+  },
+  "minute": 90,
+  "firstGoal": null,
+  "disabled": {},
+  "home": "Beşiktaş",
+  "away": "Fenerbahçe",
+  "redHome": 1,
+  "redAway": 10,
+  "htScore": {
+    "home": 0,
+    "away": 0
+  },
+  "htOutcome": "D"
+}

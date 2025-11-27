@@ -1,0 +1,6002 @@
+[
+  {
+    "id": "TanjuColak",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "GSAslan",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "Hagi72",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "Florya26",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "MetinOktay40",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "PrekaziUzaktan99",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "UltrAslan21",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "Simovic",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "Icardi21",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "Cimbom198733",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "Prekazi",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "GS198759",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "elite"
+  },
+  {
+    "id": "CimbomLegend62",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "AliSamiYen24",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "GS198724",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "CimbomLegend31",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "SariKirmizi96",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Gala190566",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Icardi15",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Gala190555",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Icardi60",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Icardi83",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "GSAslan85",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Florya14",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Cimbom198732",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "SariKirmizi32",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "UltrAslan76",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "SariKirmizi30",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "PrekaziUzaktan36",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "UltrAslan",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Aslan198776",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Hagi47",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "TanjuColak88",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Aslan198744",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "BremenRuzgari43",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "BremenRuzgari98",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Icardi44",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "AliSamiYen21",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Cimbom198748",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "CimBom20",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Hagi88",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Icardi87",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Simovic50",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "BremenRuzgari63",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "TanjuColak77",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Aslan198782",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Simovic65",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Simovic75",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "AliSamiYen28",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Icardi79",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Prekazi48",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "GSAslan98",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "solid"
+  },
+  {
+    "id": "Florya12",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Simovic28",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Icardi24",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "SariKirmizi81",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Florya10",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "BremenRuzgari36",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "CimBom89",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Prekazi67",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "CimBom68",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Gala190537",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Cimbom1987",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "AliSamiYen95",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Gala190587",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Gala190527",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Simovic39",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "UltrAslan73",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Florya",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Florya49",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "GS198758",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "GSAslan67",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Florya25",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Icardi78",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "AliSamiYen92",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Aslan198738",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "SariKirmizi",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Aslan198792",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "GSAslan86",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "Florya27",
+    "club": "Galatasaray",
+    "segment": "GS",
+    "tier": "wild"
+  },
+  {
+    "id": "FBSpirit67",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "FBCiker25",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "Kadikoy57",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "FBSpirit78",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "FBSpirit25",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "Kanarya54",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "Kanarya59",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "Kanarya78",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "FBCiker63",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "FBCiker18",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "ModaSahili",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBCiker62",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "ModaSahili54",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FenerLegend64",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SariLacivert",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBSpirit",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBCiker21",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBCiker",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FenerLegend12",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Kanarya",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBSpirit10",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FenerLegend51",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SariLacivertli93",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBCiker93",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FenerLegend60",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SariLacivert67",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SariLacivert33",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Kanarya85",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Kadikoy28",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBCiker97",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Kanarya84",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Kanarya30",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SariLacivertli24",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Kanarya23",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBCiker19",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Kanarya75",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SariLacivert78",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBSpirit30",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SariLacivertli96",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "FBSpirit29",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Kadikoy12",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "SariLacivert88",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "SariLacivert66",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "SariLacivertli69",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Kadikoy",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "SariLacivertli49",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "SariLacivertli44",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "FBCiker91",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Kanarya15",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "FBSpirit32",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "FBSpirit33",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "SariLacivert35",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Kanarya11",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "FenerLegend35",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Kadikoy97",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "ModaSahili82",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "FBCiker69",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "SariLacivertli91",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "FBCiker76",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Kanarya74",
+    "club": "Fenerbahçe",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "KartalPencesi49",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "Inonu33",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "KaraKartal",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "KartalPencesi13",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "Dolmabahce",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "SiyahBeyaz",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "KartalPencesi12",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "BJK56",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SiyahBeyaz24",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "KartalPencesi69",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Inonu63",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "BJK38",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Inonu31",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Dolmabahce21",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Dolmabahce43",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Inonu39",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "KartalPencesi34",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SiyahBeyaz30",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "KaraKartal48",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "KartalPencesi85",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Inonu29",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Dolmabahce48",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "BJK43",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "SiyahBeyaz27",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Carsi54",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Carsi32",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "KartalPencesi62",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "KartalPencesi17",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "BJK99",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Dolmabahce96",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "KaraKartal57",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Inonu59",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "BJK29",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Carsi67",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Carsi47",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Inonu57",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "SiyahBeyaz75",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Dolmabahce27",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Dolmabahce44",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Dolmabahce37",
+    "club": "Beşiktaş",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Firtina14",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "BordoMavi63",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "AvniAker12",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "elite"
+  },
+  {
+    "id": "BordoMavi66",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "TS6145",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "AvniAker15",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "TS61",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "Firtina25",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "KaradenizFirtinasi42",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "HamsiPower31",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "HamsiPower98",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "HamsiPower55",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "HamsiPower56",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "solid"
+  },
+  {
+    "id": "AvniAker42",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Firtina32",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "HamsiPower28",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Firtina60",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "BordoMavi83",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "TS6171",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "TS6172",
+    "club": "Trabzonspor",
+    "segment": "TR",
+    "tier": "wild"
+  },
+  {
+    "id": "Cannon1193",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "NorthLondonRed57",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "EmiratesRed37",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "HighburySoul15",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "AFC12",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "EmiratesRed90",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "HighburySoul91",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "EmiratesRed93",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Cannon1142",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "AFC91",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cannon1155",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "HighburySoul85",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "EmiratesRed49",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cannon1143",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "HighburySoul24",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Gunner21",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "HighburySoul60",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cannon1119",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "EmiratesRed80",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "HighburySoul78",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Gunner25",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "EmiratesRed86",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "AFC",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "NorthLondonRed36",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cannon1173",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Gunner86",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "NorthLondonRed68",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Gunner",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Gunner14",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "EmiratesRed40",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cannon1113",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "NorthLondonRed77",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cannon1183",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "NorthLondonRed84",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "EmiratesRed",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Gunner78",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "HighburySoul97",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Gunner65",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "HighburySoul98",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "EmiratesRed66",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "AFC88",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "AFC85",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "HighburySoul29",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Cannon1185",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Gunner88",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "EmiratesRed95",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "AFC99",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "HighburySoul51",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "NorthLondonRed56",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "HighburySoul35",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "EmiratesRed28",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Cannon1150",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "NorthLondonRed34",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "AFC47",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Gunner76",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "NorthLondonRed32",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "HighburySoul77",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "AFC97",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "NorthLondonRed25",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "EmiratesRed13",
+    "club": "Arsenal",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "YNWA53",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Reds24",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Anfield22",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Anfield49",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Anfield51",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "YNWA18",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Scouser28",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Reds62",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "KopEnd79",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "LFC26",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Salah1183",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Salah1185",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "LFC",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "LFC55",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Scouser63",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "KopEnd16",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "KopEnd44",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "YNWA78",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "KopEnd97",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Scouser54",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Scouser24",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Scouser67",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Anfield23",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "KopEnd11",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Salah1150",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Anfield96",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "YNWA99",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Anfield18",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "LFC48",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "YNWA57",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "YNWA21",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Scouser40",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "KopEnd65",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Reds60",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Salah1111",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "LFC10",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Anfield25",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "YNWA",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Reds56",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "YNWA87",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "YNWA71",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Salah1151",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "KopEnd76",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Anfield43",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Salah1125",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Anfield48",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "LFC76",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Salah1179",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Salah1199",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "KopEnd",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Anfield24",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Scouser37",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Salah1112",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Anfield67",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "KopEnd69",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Salah1124",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Anfield35",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Reds16",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "KopEnd83",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Anfield65",
+    "club": "Liverpool",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "UnitedSpirit61",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "TheatreOfDreams",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "TheatreOfDreams99",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "MUFC22",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "TheatreOfDreams30",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "MUFC26",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "RedDevil66",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "TheatreOfDreams52",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "RedDevil78",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "TheatreOfDreams42",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "UnitedSpirit30",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MUFC",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "RedDevil75",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "RedDevil68",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "UnitedSpirit95",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "UnitedSpirit76",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "TheatreOfDreams18",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "UnitedSpirit65",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "UnitedSpirit75",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "OldTrafford",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "RedDevil",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "OldTrafford79",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "TheatreOfDreams17",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "RedDevil89",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "OldTrafford33",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MUFC59",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "OldTrafford45",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "OldTrafford54",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "OldTrafford22",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "OldTrafford16",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "UnitedSpirit82",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MUFC51",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MUFC14",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MUFC91",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "RedDevil99",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MUFC25",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MUFC17",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "RedDevil15",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "RedDevil26",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "TheatreOfDreams83",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "RedDevil38",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "TheatreOfDreams13",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "OldTrafford99",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "MUFC64",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "OldTrafford93",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "MUFC53",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "OldTrafford70",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "OldTrafford64",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "UnitedSpirit26",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "OldTrafford19",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "TheatreOfDreams69",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "UnitedSpirit51",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "MUFC55",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "RedDevil33",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "RedDevil49",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "OldTrafford30",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "OldTrafford52",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "UnitedSpirit68",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "TheatreOfDreams91",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "OldTrafford62",
+    "club": "Manchester United",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "BlueMoon88",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "MCFC10",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Cityzens",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Cityzens43",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "SkyBlue90",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "SkyBlue80",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Cityzens64",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Cityzens56",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "SkyBlue98",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "elite"
+  },
+  {
+    "id": "Etihad35",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens94",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "SkyBlue",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Etihad51",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens52",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens86",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Etihad75",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "BlueMoon65",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Etihad74",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens78",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "SkyBlue19",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "BlueMoon24",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens51",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "BlueMoon82",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "SkyBlue20",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "SkyBlue89",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens45",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MCFC90",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens87",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens55",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MCFC28",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Etihad81",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MCFC33",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens14",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "MCFC30",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens65",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "BlueMoon25",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Cityzens20",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "SkyBlue71",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "Etihad",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "solid"
+  },
+  {
+    "id": "BlueMoon20",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Cityzens21",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "BlueMoon98",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "MCFC21",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Cityzens89",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "SkyBlue40",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "SkyBlue60",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Etihad29",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Cityzens10",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "MCFC",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "MCFC31",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Cityzens98",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "SkyBlue51",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "BlueMoon16",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "SkyBlue37",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "BlueMoon",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "MCFC64",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "Cityzens35",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "SkyBlue22",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "SkyBlue55",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "BlueMoon29",
+    "club": "Manchester City",
+    "segment": "ENG",
+    "tier": "wild"
+  },
+  {
+    "id": "CatalanPower92",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "Barca10",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "CampNou14",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "MesQueUnClub96",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "CampNou87",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "Blaugrana25",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "MesQueUnClub45",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "CatalanPower62",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "Blaugrana87",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "Blaugrana14",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Blaugrana78",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Blaugrana16",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CatalanPower31",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Blaugrana18",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CatalanPower56",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "MesQueUnClub82",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Blaugrana",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "MesQueUnClub73",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CatalanPower77",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CampNou49",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Barca79",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Barca93",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CampNou63",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "MesQueUnClub11",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "MesQueUnClub74",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Blaugrana57",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Blaugrana61",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CatalanPower57",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CampNou",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Barca19",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Blaugrana45",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CampNou41",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CampNou76",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Barca46",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Barca14",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "MesQueUnClub12",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Blaugrana94",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CatalanPower51",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "MesQueUnClub",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "CatalanPower79",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "MesQueUnClub40",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Barca45",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Barca96",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CatalanPower55",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "MesQueUnClub36",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CampNou60",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CatalanPower80",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Blaugrana53",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Barca52",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Blaugrana50",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CatalanPower37",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CampNou51",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CatalanPower84",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Blaugrana99",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Blaugrana46",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CampNou29",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CampNou71",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CampNou23",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "CatalanPower41",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Barca48",
+    "club": "Barcelona",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LosBlancos12",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "LosBlancos18",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "Bernabeu42",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "LaCasaBlanca45",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "LosBlancos58",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "RMadrid51",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "LosBlancos96",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "LaCasaBlanca98",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "LaCasaBlanca11",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "HalaMadrid",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "RMadrid",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LosBlancos55",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LosBlancos27",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "RMadrid38",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "HalaMadrid73",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "HalaMadrid52",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "RMadrid89",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LosBlancos41",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "HalaMadrid67",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "RMadrid56",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LosBlancos89",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LosBlancos76",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LaCasaBlanca",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LaCasaBlanca40",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LosBlancos70",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LaCasaBlanca23",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "RMadrid79",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "HalaMadrid23",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Bernabeu86",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LaCasaBlanca81",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Bernabeu",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Bernabeu14",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LosBlancos94",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LosBlancos14",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "HalaMadrid12",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Bernabeu62",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "HalaMadrid43",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "RMadrid20",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LosBlancos56",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "LaCasaBlanca22",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Bernabeu68",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LosBlancos68",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LaCasaBlanca84",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LaCasaBlanca27",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LosBlancos",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "HalaMadrid39",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LosBlancos59",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Bernabeu36",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "RMadrid33",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LosBlancos32",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LaCasaBlanca94",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "RMadrid12",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "RMadrid90",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LosBlancos17",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "LaCasaBlanca13",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "RMadrid50",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "RMadrid92",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "HalaMadrid98",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "HalaMadrid94",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "HalaMadrid90",
+    "club": "Real Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "ATMadrid93",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "ATMadrid31",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "Colchonero85",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "WandaMet56",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "ATMadrid76",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "WandaMet41",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "elite"
+  },
+  {
+    "id": "WandaMet48",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "ATMadrid41",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "ATMadrid90",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "ATMadrid52",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Colchonero",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "WandaMet77",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Atleti60",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "ATMadrid49",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Atleti70",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "WandaMet36",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Colchonero13",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "WandaMet83",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Atleti12",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Atleti89",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Atleti29",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "WandaMet14",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Atleti17",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "WandaMet",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "ATMadrid61",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "Atleti71",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "solid"
+  },
+  {
+    "id": "ATMadrid",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Colchonero32",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "ATMadrid24",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "ATMadrid65",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Colchonero59",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "WandaMet79",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "ATMadrid37",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Atleti55",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Colchonero49",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "Atleti83",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "ATMadrid94",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "WandaMet70",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "ATMadrid88",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "WandaMet95",
+    "club": "Atletico Madrid",
+    "segment": "ESP",
+    "tier": "wild"
+  },
+  {
+    "id": "MeazzaInter63",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "Interista87",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "Interista48",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "MeazzaInter79",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "InterMilano86",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "Interista94",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "Interista58",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "InterMilano60",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "MeazzaInter",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "InterMilano17",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "InterMilano11",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "MeazzaInter42",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Nerazzurri75",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Interista41",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Nerazzurri83",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "InterMilano72",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "InterMilano61",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Interista",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "MeazzaInter17",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "MeazzaInter64",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Interista27",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "MeazzaInter83",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "MeazzaInter71",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Nerazzurri54",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Nerazzurri59",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "InterMilano82",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Nerazzurri18",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Interista75",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Interista51",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Nerazzurri95",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "MeazzaInter22",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Nerazzurri90",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "InterMilano12",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Nerazzurri29",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Nerazzurri73",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "MeazzaInter77",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Interista61",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Nerazzurri52",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "MeazzaInter93",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "MeazzaInter37",
+    "club": "Inter",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "SanSiro66",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "Rossoneri31",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "ACMilan73",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "ACMilan86",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "Rossoneri10",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "Diavolo12",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "elite"
+  },
+  {
+    "id": "ACMilan44",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Rossoneri57",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "SanSiro11",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Diavolo43",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Diavolo89",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "SanSiro98",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "ACMilan",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "ACMilan16",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Rossoneri79",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "ACMilan47",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Diavolo37",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Diavolo10",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "SanSiro77",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "ACMilan43",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Rossoneri45",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Diavolo70",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Rossoneri50",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Rossoneri16",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Rossoneri76",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "ACMilan40",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "solid"
+  },
+  {
+    "id": "Diavolo",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "ACMilan58",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Diavolo44",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "ACMilan68",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "ACMilan75",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "SanSiro70",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "SanSiro84",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "SanSiro27",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "ACMilan83",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "SanSiro48",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Diavolo34",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Diavolo42",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "SanSiro90",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "Diavolo60",
+    "club": "Milan",
+    "segment": "ITA",
+    "tier": "wild"
+  },
+  {
+    "id": "AllianzRed29",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "elite"
+  },
+  {
+    "id": "FCBayern",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "elite"
+  },
+  {
+    "id": "Bayern83",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "elite"
+  },
+  {
+    "id": "MiaSanMia",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "elite"
+  },
+  {
+    "id": "BavarianPower99",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "elite"
+  },
+  {
+    "id": "BavarianPower58",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "elite"
+  },
+  {
+    "id": "MiaSanMia25",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "elite"
+  },
+  {
+    "id": "Bayern89",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "elite"
+  },
+  {
+    "id": "BavarianPower42",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "elite"
+  },
+  {
+    "id": "BavarianPower22",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "MiaSanMia98",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "BavarianPower53",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "AllianzRed52",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "FCBayern53",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "Bayern94",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "Bayern96",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "FCBayern84",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "BavarianPower62",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "BavarianPower23",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "BavarianPower82",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "FCBayern96",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "BavarianPower44",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "MiaSanMia14",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "AllianzRed34",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "AllianzRed83",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "Bayern21",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "AllianzRed60",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "Bayern44",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "AllianzRed78",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "FCBayern16",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "FCBayern17",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "BavarianPower",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "BavarianPower93",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "AllianzRed36",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "AllianzRed58",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "MiaSanMia53",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "AllianzRed",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "Bayern91",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "FCBayern68",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "solid"
+  },
+  {
+    "id": "MiaSanMia51",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "MiaSanMia34",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "MiaSanMia48",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "Bayern74",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "MiaSanMia32",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "AllianzRed93",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "MiaSanMia22",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "Bayern87",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "AllianzRed20",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "AllianzRed85",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "FCBayern31",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "AllianzRed55",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "Bayern17",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "FCBayern71",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "Bayern48",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "MiaSanMia65",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "MiaSanMia45",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "BavarianPower79",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "BavarianPower47",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "AllianzRed15",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "Bayern68",
+    "club": "Bayern Munich",
+    "segment": "GER",
+    "tier": "wild"
+  },
+  {
+    "id": "Parisien19",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "elite"
+  },
+  {
+    "id": "ParcDesPrinces",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "elite"
+  },
+  {
+    "id": "LesParisiens10",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Parisien83",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Parisien28",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "elite"
+  },
+  {
+    "id": "PSG23",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Parisien61",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "ParcDesPrinces93",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "PSG55",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "ParcDesPrinces26",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "LesParisiens60",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "LesParisiens56",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "ParcDesPrinces48",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Parisien84",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "LesParisiens80",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "PSG60",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Parisien",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Parisien97",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Parisien62",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "LesParisiens19",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Parisien52",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Parisien22",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "PSG62",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "LesParisiens52",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "LesParisiens29",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "PSG85",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "solid"
+  },
+  {
+    "id": "PSG91",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "ParcDesPrinces67",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "ParcDesPrinces69",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "PSG59",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "PSG28",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "ParcDesPrinces16",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "ParcDesPrinces99",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Parisien95",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "PSG63",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "PSG14",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "LesParisiens65",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "ParcDesPrinces34",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "PSG16",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "LesParisiens96",
+    "club": "PSG",
+    "segment": "FRA",
+    "tier": "wild"
+  },
+  {
+    "id": "AzulOro26",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "Boca88",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "Boca",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "AzulOro57",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "Boca74",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "AzulOro98",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "Bombonera",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Boca28",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Boca93",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Xeneize81",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "AzulOro",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Bombonera30",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Boca68",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Bombonera78",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Xeneize94",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Bombonera94",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Boca10",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Boca98",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Bombonera34",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Xeneize",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Xeneize20",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "AzulOro55",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "AzulOro93",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "AzulOro34",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Boca86",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Bombonera17",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Boca34",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "AzulOro50",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Bombonera70",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Boca73",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "AzulOro81",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Boca82",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Boca46",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Bombonera58",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Xeneize97",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Boca61",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "AzulOro17",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "AzulOro13",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Bombonera85",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Xeneize98",
+    "club": "Boca Juniors",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "LaBanda42",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "River51",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "Millonario50",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "LaBanda36",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "Monumental",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "River59",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "elite"
+  },
+  {
+    "id": "Millonario28",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Millonario48",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "River88",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "River98",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "LaBanda27",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Monumental43",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Monumental58",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Monumental74",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "River95",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Millonario49",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Millonario",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "LaBanda",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "River40",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Millonario37",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "LaBanda65",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "River50",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "River29",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Monumental75",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "River28",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Millonario72",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "solid"
+  },
+  {
+    "id": "Monumental25",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Monumental33",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "LaBanda52",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "LaBanda64",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Millonario24",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Millonario78",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Monumental29",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "LaBanda47",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Millonario63",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Monumental65",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "River37",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "LaBanda87",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "LaBanda30",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "River93",
+    "club": "River Plate",
+    "segment": "ARG",
+    "tier": "wild"
+  },
+  {
+    "id": "Godenzonen46",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "elite"
+  },
+  {
+    "id": "Godenzonen53",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "elite"
+  },
+  {
+    "id": "Godenzonen42",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "elite"
+  },
+  {
+    "id": "JohanCruyff40",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Godenzonen",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "JohanCruyff37",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "AmsterdamRedWhite33",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "AmsterdamRedWhite",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "JohanCruyff77",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Ajax",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Godenzonen45",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "AmsterdamRedWhite84",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Ajax97",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "JohanCruyff18",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "AmsterdamRedWhite74",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "AmsterdamRedWhite72",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "JohanCruyff48",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "Godenzonen60",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "Ajax22",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "JohanCruyff47",
+    "club": "Ajax",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "Anderlecht31",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "elite"
+  },
+  {
+    "id": "Anderlecht68",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "elite"
+  },
+  {
+    "id": "Anderlecht73",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "elite"
+  },
+  {
+    "id": "RSCA35",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "ConstantVandenStock41",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Anderlecht54",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Mauves51",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "RSCA14",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "RSCA70",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Mauves74",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Anderlecht21",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "RSCA99",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Mauves12",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "ConstantVandenStock48",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "RSCA54",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "Anderlecht22",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "ConstantVandenStock85",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "RSCA84",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "RSCA53",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "ConstantVandenStock40",
+    "club": "Anderlecht",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "Dragao88",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "elite"
+  },
+  {
+    "id": "FCPorto12",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "elite"
+  },
+  {
+    "id": "AzuisBrancos34",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "elite"
+  },
+  {
+    "id": "AzuisBrancos84",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "AzuisBrancos76",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Porto15",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "FCPorto22",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "AzuisBrancos65",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Dragao",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "AzuisBrancos88",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Dragao79",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "AzuisBrancos48",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "AzuisBrancos41",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "FCPorto64",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "AzuisBrancos43",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "Porto29",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "Dragao21",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "FCPorto68",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "FCPorto40",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "Dragao20",
+    "club": "Porto",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "AllStar17",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "AllStar91",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "WorldStar47",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "Universal1071",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "ClutchPlayer",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "Universal1053",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "FantasyXI63",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "FantasyXI37",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "GlobalHero12",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "FantasyXI24",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "GlobalHero93",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "WorldStar96",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "elite"
+  },
+  {
+    "id": "FantasyXI14",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "GlobalHero",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "WorldStar94",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "GlobalHero49",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "GlobalHero88",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "ClutchPlayer37",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "Universal1089",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "FantasyXI38",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "WorldStar12",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "WorldStar16",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "GlobalHero35",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "Universal1066",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "Universal1035",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "Universal1031",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "WorldStar33",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "AllStar92",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "WorldStar87",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "GlobalHero15",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "FantasyXI75",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "ClutchPlayer38",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "FantasyXI59",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "FantasyXI21",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "AllStar69",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "FantasyXI69",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "FantasyXI88",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "ClutchPlayer81",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "Universal10",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "GlobalHero22",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "WorldStar74",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "AllStar68",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "WorldStar",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "ClutchPlayer66",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "WorldStar13",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "FantasyXI16",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "AllStar",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "ClutchPlayer19",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "ClutchPlayer53",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "Universal1042",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "FantasyXI48",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "GlobalHero41",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "solid"
+  },
+  {
+    "id": "Universal1048",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "FantasyXI95",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "WorldStar40",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "Universal1098",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "GlobalHero82",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "ClutchPlayer13",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "FantasyXI20",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "AllStar22",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "FantasyXI15",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "ClutchPlayer99",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "WorldStar29",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "GlobalHero68",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "GlobalHero70",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "ClutchPlayer48",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "FantasyXI89",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "WorldStar80",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "AllStar40",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "GlobalHero47",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "ClutchPlayer74",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "WorldStar67",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "ClutchPlayer21",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "FantasyXI85",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "FantasyXI",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "Universal1087",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "Universal1021",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "FantasyXI46",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "Universal1091",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  },
+  {
+    "id": "FantasyXI67",
+    "club": "Global XI",
+    "segment": "GLB",
+    "tier": "wild"
+  }
+]

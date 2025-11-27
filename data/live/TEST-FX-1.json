@@ -1,0 +1,14 @@
+{
+  "fixtureId": "TEST-FX-1",
+  "home": "Galatasaray",
+  "away": "Fenerbahçe",
+  "country": "Türkiye",
+  "score": { "home": 2, "away": 1 },
+  "htScore": { "home": 1, "away": 0 },
+  "firstGoal": "H",
+  "redHome": false,
+  "redAway": true,
+  "penaltyAny": true,
+  "penaltySide": "H",
+  "status": "FT"
+}

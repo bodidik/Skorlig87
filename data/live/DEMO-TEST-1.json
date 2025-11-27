@@ -1,0 +1,17 @@
+{
+  "redAway": false,
+  "redHome": false,
+  "status": "FT",
+  "htScore": {
+    "home": 1,
+    "away": 0
+  },
+  "firstGoal": "H",
+  "country": "Türkiye",
+  "minute": 90,
+  "fixtureId": "DEMO-TEST-1",
+  "score": {
+    "home": 2,
+    "away": 1
+  }
+}

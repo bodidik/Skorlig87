@@ -1,0 +1,19 @@
+{
+  "redAway": false,
+  "redHome": false,
+  "status": "FT",
+  "htScore": {
+    "home": 1,
+    "away": 0
+  },
+  "firstGoal": "H",
+  "country": "Türkiye",
+  "away": null,
+  "home": null,
+  "minute": 90,
+  "fixtureId": null,
+  "score": {
+    "home": 2,
+    "away": 1
+  }
+}

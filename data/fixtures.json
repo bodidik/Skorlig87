@@ -1,0 +1,12 @@
+{
+  "fixtures": [
+    {
+      "fixtureId": "1905-GS-TS",
+      "home": "Göztepe",
+      "away": "Galatasaray",
+      "kickoffISO": "2025-10-26T17:00:00+03:00",
+      "league": "Süper Lig",
+      "seriesId": "SERIE-TRIAL-5"
+    }
+  ]
+}

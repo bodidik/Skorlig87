@@ -1,0 +1,15 @@
+{
+  "fixtureId": "TEST-FB-GS-001",
+  "home": "Fenerbahçe",
+  "away": "Galatasaray",
+  "country": "Turkey",
+  "kickoffISO": "2025-02-10T20:00:00+03:00",
+  "score":   { "home": 1, "away": 2 },
+  "htScore": { "home": 0, "away": 1 },
+  "firstGoal": "A",
+  "redHome": false,
+  "redAway": false,
+  "penaltyAny": false,
+  "penaltySide": null,
+  "status": "FT"
+}

@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "id": "grp_hi2aj9q3",
+      "ownerId": "demo1",
+      "name": "1987GS Demo Grup",
+      "members": [
+        "demo1"
+      ],
+      "createdAt": "2025-11-14T08:58:22.364Z"
+    },
+    {
+      "id": "grp_0kqmqbjg",
+      "ownerId": "demo1",
+      "name": "Grubum bw1e",
+      "members": [
+        "demo1"
+      ],
+      "createdAt": "2025-11-14T09:15:09.434Z"
+    },
+    {
+      "id": "grp_t0thlpc9",
+      "ownerId": "demo1",
+      "name": "Grubum 9ojz",
+      "members": [
+        "demo1"
+      ],
+      "createdAt": "2025-11-19T11:58:41.220Z"
+    }
+  ]
+}

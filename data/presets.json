@@ -1,0 +1,19 @@
+{
+  "id": "demo123",
+  "data": {
+    "leagues": [
+      "Süper Lig"
+    ],
+    "pinnedOnly": false,
+    "name": "Demo Preset",
+    "label": "Demo"
+  },
+  "oneTime": false,
+  "expiresAt": null,
+  "pinHash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+  "stats": {
+    "views": 0,
+    "uniqueIps": [],
+    "lastAccessAt": null
+  }
+}
