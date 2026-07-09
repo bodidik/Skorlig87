@@ -31,7 +31,7 @@ router.get("/fav", async (req,res)=>{
       try{
         const st = await readJson(path.join(liveDir, `${fx.fixtureId||fx.id}.json`), null);
         if(st){ status=st.status||status; score={ home:Number(st?.score?.home||0), away:Number(st?.score?.away||0) }; }
-      }catch{}
+      }catch(e){ console.warn(`[live-fav] live state read failed for fixtureId=${fx.fixtureId||fx.id}:`, e && e.message ? e.message : e); }
 
       rows.push({
         fixtureId: String(fx.fixtureId||fx.id||""),

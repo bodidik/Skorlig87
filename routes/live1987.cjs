@@ -197,11 +197,15 @@ async function fixturesByDate(isoDate) {
   try {
     const ts = await tsdbByDate(isoDate);
     res.push(...ts);
-  } catch {}
+  } catch (e) {
+    console.warn(`[live1987] tsdbByDate(${isoDate}) failed:`, e && e.message ? e.message : e);
+  }
   try {
     const af = await afByDate(isoDate);
     res.push(...af);
-  } catch {}
+  } catch (e) {
+    console.warn(`[live1987] afByDate(${isoDate}) failed:`, e && e.message ? e.message : e);
+  }
   return dedupe(res);
 }
 
@@ -255,9 +259,9 @@ router.get("/open", async (req, res) => {
     const d2  = toYMD(new Date(nowMs + 48 * 3600 * 1000)); // buffer
 
     let base = [];
-    try { base = base.concat(await fixturesByDate(d0)); } catch {}
-    try { base = base.concat(await fixturesByDate(d1)); } catch {}
-    try { base = base.concat(await fixturesByDate(d2)); } catch {}
+    try { base = base.concat(await fixturesByDate(d0)); } catch (e) { console.warn(`[live1987/open] fixturesByDate(${d0}) failed:`, e && e.message ? e.message : e); }
+    try { base = base.concat(await fixturesByDate(d1)); } catch (e) { console.warn(`[live1987/open] fixturesByDate(${d1}) failed:`, e && e.message ? e.message : e); }
+    try { base = base.concat(await fixturesByDate(d2)); } catch (e) { console.warn(`[live1987/open] fixturesByDate(${d2}) failed:`, e && e.message ? e.message : e); }
 
     const windowed = base
       .filter((it) => !!it.kickoffISO)
@@ -295,9 +299,9 @@ router.get("/schedule", async (req, res) => {
     const d2 = toYMD(new Date(nowMs + 48 * 3600 * 1000));
 
     let base = [];
-    try { base = base.concat(await fixturesByDate(d0)); } catch {}
-    try { base = base.concat(await fixturesByDate(d1)); } catch {}
-    try { base = base.concat(await fixturesByDate(d2)); } catch {}
+    try { base = base.concat(await fixturesByDate(d0)); } catch (e) { console.warn(`[live1987/schedule] fixturesByDate(${d0}) failed:`, e && e.message ? e.message : e); }
+    try { base = base.concat(await fixturesByDate(d1)); } catch (e) { console.warn(`[live1987/schedule] fixturesByDate(${d1}) failed:`, e && e.message ? e.message : e); }
+    try { base = base.concat(await fixturesByDate(d2)); } catch (e) { console.warn(`[live1987/schedule] fixturesByDate(${d2}) failed:`, e && e.message ? e.message : e); }
 
     const list = base
       .filter((it) => !!it.kickoffISO)

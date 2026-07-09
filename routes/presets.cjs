@@ -56,7 +56,7 @@ function makeCaptcha() {
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 dk
   _captchaMap.set(token, { answer, expiresAt });
   setTimeout(() => {
-    try { const it = _captchaMap.get(token); if (it && it.expiresAt <= Date.now()) _captchaMap.delete(token); } catch (e) {}
+    try { const it = _captchaMap.get(token); if (it && it.expiresAt <= Date.now()) _captchaMap.delete(token); } catch (e) { console.warn("[presets] captcha cleanup failed:", e && e.message ? e.message : e); }
   }, 5 * 60 * 1000 + 5000);
   return { token, question };
 }
@@ -248,7 +248,9 @@ router.get("/p/:id", (req, res) => {
     it.stats.lastAccessAt = new Date().toISOString();
     const nx = all.map(x => (x && x.id === it.id ? it : x));
     writePresets(nx);
-  } catch (e) {}
+  } catch (e) {
+    console.warn(`[presets] analytics write failed for preset ${it && it.id}:`, e && e.message ? e.message : e);
+  }
 
   if (it.oneTime && !it.usedAt) {
     it.usedAt = new Date().toISOString();

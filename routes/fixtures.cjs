@@ -450,8 +450,8 @@ async function tsdbByDate(isoDate) {
 
 async function fixturesByDate(isoDate) {
   const res = [];
-  try { res.push(...(await tsdbByDate(isoDate))); } catch {}
-  try { res.push(...(await afByDate(isoDate))); } catch {}
+  try { res.push(...(await tsdbByDate(isoDate))); } catch (e) { console.warn(`[fixtures] tsdbByDate(${isoDate}) failed:`, e && e.message ? e.message : e); }
+  try { res.push(...(await afByDate(isoDate))); } catch (e) { console.warn(`[fixtures] afByDate(${isoDate}) failed:`, e && e.message ? e.message : e); }
   return dedupeFixtures(res);
 }
 
@@ -785,9 +785,9 @@ router.get("/schedule", async (req, res) => {
     const yesterday = `${t_1.getFullYear()}-${pad(t_1.getMonth() + 1)}-${pad(t_1.getDate())}`;
 
     let list = [];
-    try { list = list.concat(await fixturesByDate(yesterday)); } catch {}
-    try { list = list.concat(await fixturesByDate(today)); } catch {}
-    try { list = list.concat(await fixturesByDate(tomorrow)); } catch {}
+    try { list = list.concat(await fixturesByDate(yesterday)); } catch (e) { console.warn(`[fixtures/schedule] fixturesByDate(${yesterday}) failed:`, e && e.message ? e.message : e); }
+    try { list = list.concat(await fixturesByDate(today)); } catch (e) { console.warn(`[fixtures/schedule] fixturesByDate(${today}) failed:`, e && e.message ? e.message : e); }
+    try { list = list.concat(await fixturesByDate(tomorrow)); } catch (e) { console.warn(`[fixtures/schedule] fixturesByDate(${tomorrow}) failed:`, e && e.message ? e.message : e); }
 
     const filtered = applyRuntimeFilter(list, runtimeMode);
 
@@ -842,7 +842,7 @@ router.get("/open", async (req, res) => {
 
     let base = [];
     for (const day of days) {
-      try { base = base.concat(await fixturesByDate(day)); } catch {}
+      try { base = base.concat(await fixturesByDate(day)); } catch (e) { console.warn(`[fixtures/open] fixturesByDate(${day}) failed:`, e && e.message ? e.message : e); }
     }
 
     const baseFiltered = applyRuntimeFilter(base, runtimeMode);

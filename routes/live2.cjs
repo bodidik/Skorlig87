@@ -542,10 +542,14 @@ async function fixturesByDate(isoDate) {
   const res = [];
   try {
     res.push(...(await tsdbByDate(isoDate)));
-  } catch {}
+  } catch (e) {
+    console.warn(`[live2] tsdbByDate(${isoDate}) failed:`, e && e.message ? e.message : e);
+  }
   try {
     res.push(...(await afByDate(isoDate)));
-  } catch {}
+  } catch (e) {
+    console.warn(`[live2] afByDate(${isoDate}) failed:`, e && e.message ? e.message : e);
+  }
   return dedupeFixtures(res);
 }
 
@@ -1005,9 +1009,9 @@ router.get("/schedule", async (req, res) => {
     const yesterday = ymdInTZ(nowMsTZ - 24 * 3600 * 1000, TZ);
 
     let list = [];
-    try { list = list.concat(await fixturesByDate(yesterday)); } catch {}
-    try { list = list.concat(await fixturesByDate(today)); } catch {}
-    try { list = list.concat(await fixturesByDate(tomorrow)); } catch {}
+    try { list = list.concat(await fixturesByDate(yesterday)); } catch (e) { console.warn(`[live2/schedule] fixturesByDate(${yesterday}) failed:`, e && e.message ? e.message : e); }
+    try { list = list.concat(await fixturesByDate(today)); } catch (e) { console.warn(`[live2/schedule] fixturesByDate(${today}) failed:`, e && e.message ? e.message : e); }
+    try { list = list.concat(await fixturesByDate(tomorrow)); } catch (e) { console.warn(`[live2/schedule] fixturesByDate(${tomorrow}) failed:`, e && e.message ? e.message : e); }
 
     const filtered = applyRuntimeFilter(list, runtimeMode);
 
@@ -1097,9 +1101,9 @@ router.get("/open", async (req, res) => {
     const yesterday = ymdInTZ(nowMs - 24 * 3600 * 1000, TZ);
 
     let base = [];
-    try { base = base.concat(await fixturesByDate(yesterday)); } catch {}
-    try { base = base.concat(await fixturesByDate(today)); } catch {}
-    try { base = base.concat(await fixturesByDate(tomorrow)); } catch {}
+    try { base = base.concat(await fixturesByDate(yesterday)); } catch (e) { console.warn(`[live2/open] fixturesByDate(${yesterday}) failed:`, e && e.message ? e.message : e); }
+    try { base = base.concat(await fixturesByDate(today)); } catch (e) { console.warn(`[live2/open] fixturesByDate(${today}) failed:`, e && e.message ? e.message : e); }
+    try { base = base.concat(await fixturesByDate(tomorrow)); } catch (e) { console.warn(`[live2/open] fixturesByDate(${tomorrow}) failed:`, e && e.message ? e.message : e); }
 
     const baseFiltered = applyRuntimeFilter(base, runtimeMode);
 

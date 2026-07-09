@@ -14,7 +14,9 @@ try {
   if (typeof getDb === "function") {
     getDbSafe = getDb;
   }
-} catch {}
+} catch (e) {
+  console.warn("[realtime] ../lib/db.cjs yüklenemedi, DB devre dışı kalacak:", e && e.message ? e.message : e);
+}
 
 /* === FLAGS / WEIGHTS === */
 function flagOf(country){
@@ -76,7 +78,7 @@ const cget = k => {
   if (Date.now() > e.t) { __cache.delete(k); return null; }
   return e.v;
 };
-const cset = (k,v,ttl=1000) => { try{ __cache.set(k,{t:Date.now()+ttl,v}); }catch{} };
+const cset = (k,v,ttl=1000) => { try{ __cache.set(k,{t:Date.now()+ttl,v}); }catch(e){ console.warn("[realtime] cache set failed:", e && e.message ? e.message : e); } };
 
 /* === DOSYA YOLLARI === */
 const DATA_DIR         = path.join(__dirname,"..","data");
@@ -189,7 +191,9 @@ if (!isFT) {
     let preds = [];
     try {
       preds = await getPredsForFixture(fixtureId);
-    } catch {}
+    } catch (e) {
+      console.warn(`[realtime] getPredsForFixture(${fixtureId}) failed, dosyaya düşülüyor:`, e && e.message ? e.message : e);
+    }
     if (!preds.length) {
       const raw = await readJson(PREDS_FILE, []);
       preds = Array.isArray(raw)
@@ -415,7 +419,7 @@ router.get("/score", async (req,res)=>{
   const finished  = isFinishedState(st);
 
   let preds = [];
-  try { preds = await getPredsForFixture(fixtureId); } catch {}
+  try { preds = await getPredsForFixture(fixtureId); } catch (e) { console.warn(`[realtime] getPredsForFixture(${fixtureId}) failed, dosyaya düşülüyor:`, e && e.message ? e.message : e); }
   if (!preds.length){
     const raw = await readJson(PREDS_FILE, []);
     preds = Array.isArray(raw)? raw : (Array.isArray(raw?.items)? raw.items : []);
@@ -486,7 +490,7 @@ router.get("/my", async (req,res)=>{
   const status    = statusRaw;
 
   let mine = null;
-  try { mine = await getMyLatestPred(fixtureId, userId); } catch {}
+  try { mine = await getMyLatestPred(fixtureId, userId); } catch (e) { console.warn(`[realtime] getMyLatestPred(${fixtureId}, ${userId}) failed, dosyaya düşülüyor:`, e && e.message ? e.message : e); }
   if(!mine){
     const raw  = await readJson(PREDS_FILE, []);
     const list = Array.isArray(raw)? raw : (Array.isArray(raw?.items)? raw.items : []);
