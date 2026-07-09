@@ -685,10 +685,19 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null } = {}) 
     let redSidePts = 0;
     let redSidePenalty = 0;
 
-    const predRedAny = typeof p.redAny === "boolean" ? p.redAny : null;
+    let predRedAny = typeof p.redAny === "boolean" ? p.redAny : null;
 
     let predRedSide = p.redSide != null ? String(p.redSide).toUpperCase() : null;
     if (predRedSide !== "H" && predRedSide !== "A") predRedSide = null;
+
+    // Eski şema fallback: redAny/redSide hiç yazılmamışsa (dual-write öncesi
+    // kayıtlar), redHome/redAway booleanlarından türet.
+    if (predRedAny === null && (typeof p.redHome === "boolean" || typeof p.redAway === "boolean")) {
+      const legacyRedHome = !!p.redHome;
+      const legacyRedAway = !!p.redAway;
+      predRedAny = legacyRedHome || legacyRedAway;
+      predRedSide = legacyRedHome ? "H" : legacyRedAway ? "A" : null;
+    }
 
     if (predRedAny === true || predRedAny === false) {
       if (predRedAny === redAnyActual) redAnyPts = 1.5;
