@@ -6,5 +6,12 @@
       "createdAt": "2025-11-16T20:49:36.435Z"
     }
   ],
-  "requests": []
+  "requests": [],
+  "blocks": [
+    {
+      "by": "demo1",
+      "target": "demo2",
+      "createdAt": "2026-01-01T16:22:16.187Z"
+    }
+  ]
 }

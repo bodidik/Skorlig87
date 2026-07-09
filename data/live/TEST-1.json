@@ -1,0 +1,16 @@
+{
+  "fixtureId": "TEST-1",
+  "pollCount": 0,
+  "lastPolledAt": null,
+  "kickoffISO": "2026-01-09T21:25:02.4208993+03:00",
+  "status": "FT",
+  "score": {
+    "home": 1,
+    "away": 0
+  },
+  "minute": 90,
+  "firstGoal": "H",
+  "redHome": 0,
+  "redAway": 0,
+  "htScore": null
+}

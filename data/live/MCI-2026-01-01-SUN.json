@@ -1,0 +1,20 @@
+{
+  "fixtureId": "MCI-2026-01-01-SUN",
+  "status": "FT",
+  "minute": 0,
+  "isLive": false,
+  "country": "Türkiye",
+  "league": "Süper Lig",
+  "teamHome": "Galatasaray",
+  "teamAway": "Fenerbahçe",
+  "kickoffISO": null,
+  "score": {
+    "home": 0,
+    "away": 0
+  },
+  "redEventAtISO": null,
+  "redEventMinute": null,
+  "penEventAtISO": null,
+  "penEventMinute": null,
+  "updatedAt": "2026-01-06T11:46:16.994Z"
+}

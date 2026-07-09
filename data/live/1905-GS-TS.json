@@ -7,14 +7,14 @@
   "status": "FT",
   "minute": 90,
   "score": {
-    "away": 0,
-    "home": 0
+    "away": 4,
+    "home": 1
   },
   "htScore": {
-    "away": 0,
+    "away": 2,
     "home": 0
   },
-  "firstGoal": null,
+  "firstGoal": home,
   "redHome": false,
-  "redAway": true
+  "redAway": false
 }

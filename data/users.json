@@ -2,8 +2,5873 @@
   "items": [
     {
       "userId": "demo1",
+      "mainTeam": "Galatasaray",
+      "createdAt": "2025-11-24T10:37:13.635Z",
+      "lc": 57,
+      "lcLastDaily": null,
+      "lcUpdatedAt": "2026-01-08T08:25:03.853Z",
+      "lcLastReason": "match_reward",
+      "lcLastAmount": 5,
+      "updatedAt": "2026-01-10T20:32:07.744Z"
+    },
+    {
+      "userId": "FBSpirit60",
       "mainTeam": null,
-      "createdAt": "2025-11-24T10:37:13.635Z"
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AslanPencesi67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1050",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AslanPencesi81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AvniAker73",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1161",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford46",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LesParisiens48",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "dz-test",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 36,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "YNWA95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ATMadrid29",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti31",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Monumental23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ConstantVandenStock72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AslanPencesi59",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FBSpirit93",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ACMilan60",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ACMilan37",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Rossoneri54",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1045",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "YNWA31",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford50",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford98",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ATMadrid28",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SanSiro64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzulOro73",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCPorto89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1040",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AslanPencesi64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FBSpirit75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1146",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid16",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti44",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AmsterdamRedWhite67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllStar24",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1099",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AslanPencesi37",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FBSpirit35",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivertli38",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FBSpirit72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Firtina65",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1189",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1159",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1188",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford47",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero86",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Rossoneri93",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SanSiro63",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Rossoneri67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzulOro42",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzulOro40",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ConstantVandenStock90",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1032",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AliSamiYen",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TS6131",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti21",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ACMilan65",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SanSiro83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzulOro23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ConstantVandenStock86",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1026",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1022",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1011",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FBSpirit55",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1197",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AmsterdamRedWhite12",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivertli22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivertli43",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AvniAker18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AvniAker43",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Firtina98",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "YNWA64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "YNWA72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero82",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero80",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Rossoneri39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Rossoneri88",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SanSiro41",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ACMilan77",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Monumental63",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AmsterdamRedWhite89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1024",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FBSpirit26",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1158",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "YNWA88",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ACMilan54",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SanSiro68",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AmsterdamRedWhite76",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1058",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllStar12",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1051",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FBSpirit81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1184",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "YNWA69",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford48",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford74",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CampNou13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ATMadrid40",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Rossoneri91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SanSiro96",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SanSiro89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzulOro37",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Monumental18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AmsterdamRedWhite23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1055",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllStar26",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1081",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1070",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 35,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AslanPencesi14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AslanPencesi40",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FBSpirit66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Firtina61",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1194",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "YNWA48",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Barca",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CampNou10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ACMilan39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Rossoneri84",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ACMilan15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzulOro58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzulOro83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Monumental36",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1073",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Universal1095",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 34,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid74",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MiaSanMia21",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_09",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Dolmabahce40",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TS6185",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LFC62",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid34",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllianzRed86",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MiaSanMia10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllianzRed79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_24",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower32",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllStar90",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_06",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_21",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_25",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Florya66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UltrAslan67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KartalPencesi51",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KartalPencesi86",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Dolmabahce35",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KartalPencesi40",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Salah1130",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Etihad19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon94",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Barca78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MesQueUnClub66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MesQueUnClub18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu65",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaCasaBlanca73",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Interista49",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Interista96",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter82",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bayern25",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Boca48",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Monumental70",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anderlecht93",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anderlecht81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FantasyXI18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_12",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzuisBrancos",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 33,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_05",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_16",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MesQueUnClub64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_17",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid41",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_06",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GSAslan68",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivertli",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ModaSahili79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit32",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit59",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MCFC11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Etihad12",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CampNou79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LosBlancos22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Nerazzurri28",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllianzRed32",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bayern51",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllianzRed91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien33",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Boca66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Monumental73",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCPorto52",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GlobalHero58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GlobalHero97",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WorldStar72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_07",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_03",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_27",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Kanarya16",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "NorthLondonRed",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "EmiratesRed21",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens54",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid84",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti52",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Nerazzurri14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower57",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MiaSanMia85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bayern58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LesParisiens84",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Boca51",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anderlecht77",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Porto47",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllStar78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivert62",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCPorto46",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit40",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_02",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_16",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UltrAslan48",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Florya34",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ModaSahili75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KartalPencesi89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HamsiPower23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anfield41",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower52",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti74",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WandaMet39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllianzRed13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower34",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien77",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GlobalHero77",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WorldStar79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Florya47",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BJK83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HighburySoul95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KopEnd85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TheatreOfDreams41",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford17",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TheatreOfDreams87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon76",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens46",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Barca85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LosBlancos21",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LosBlancos75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LesParisiens95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien94",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Boca92",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "JohanCruyff",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Mauves67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCPorto51",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_03",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_17",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimBom50",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gala190546",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Florya65",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Icardi58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Florya57",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GSAslan83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Florya81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Kanarya29",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BJK39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BJK64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KopEnd26",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TheatreOfDreams57",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit63",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Etihad41",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens57",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Etihad42",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MCFC89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MCFC29",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MesQueUnClub91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CampNou74",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MesQueUnClub55",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LosBlancos64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid42",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu77",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu12",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ATMadrid73",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WandaMet61",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WandaMet23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Nerazzurri53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter97",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ACMilan96",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern69",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bayern69",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MiaSanMia46",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower56",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "River14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "JohanCruyff80",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "JohanCruyff51",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FantasyXI19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FantasyXI29",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WorldStar78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllStar64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WorldStar54",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LosBlancos83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MCFC13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Nerazzurri20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Boca90",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_07",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UltrAslan44",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gala190513",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimBom38",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gala190523",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UltrAslan58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivertli71",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivertli92",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KartalPencesi92",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HamsiPower37",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AFC75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TheatreOfDreams37",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RedDevil21",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MCFC24",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Etihad11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LosBlancos91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Diavolo52",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SanSiro10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Diavolo82",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllianzRed53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LesParisiens78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LesParisiens67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "River58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ConstantVandenStock11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllStar95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_08",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_26",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Icardi67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ModaSahili85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivertli87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BJK20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KaraKartal20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BJK77",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TS6160",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TS6177",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1126",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Salah1116",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LosBlancos66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ATMadrid64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ACMilan87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MiaSanMia69",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern46",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Boca38",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Millonario21",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anderlecht80",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllStar80",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_09",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_21",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gala190512",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariKirmizi91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Icardi77",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UltrAslan35",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KartalPencesi54",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Dolmabahce17",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Firtina34",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1120",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anfield11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Salah1118",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser57",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TheatreOfDreams15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit60",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TheatreOfDreams26",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MCFC86",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens49",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CampNou45",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MesQueUnClub22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu33",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu34",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero17",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "InterMilano",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern52",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bayern28",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower86",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MiaSanMia42",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Boca41",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "River22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FantasyXI23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FantasyXI12",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariKirmizi71",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Dolmabahce87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AvniAker",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ClutchPlayer60",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Inonu38",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AliSamiYen98",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivert69",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Kadikoy72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AFC72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AFC32",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RedDevil96",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ParcDesPrinces78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bombonera16",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_01",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Icardi50",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Florya60",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KartalPencesi93",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BordoMavi23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Firtina",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit43",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TheatreOfDreams53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon62",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Blaugrana88",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid96",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid86",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti57",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Interista68",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower98",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllianzRed81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MiaSanMia18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MiaSanMia76",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GlobalHero61",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WorldStar59",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WorldStar60",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_02",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_04",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_gs_19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_01",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_04",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_12",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Icardi68",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Icardi22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AslanPencesi97",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Florya67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GSAslan96",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gala190542",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KartalPencesi63",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KaraKartal16",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BordoMavi65",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "EmiratesRed18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "EmiratesRed29",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1123",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KopEnd98",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LFC63",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anfield37",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anfield26",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser92",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TheatreOfDreams96",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "OldTrafford10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MCFC19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens31",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CampNou38",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Barca94",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MesQueUnClub50",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CampNou64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MesQueUnClub99",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu99",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid57",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaCasaBlanca75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LosBlancos19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bernabeu88",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid49",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaCasaBlanca90",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid44",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HalaMadrid47",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero34",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Atleti99",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero37",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Nerazzurri97",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower30",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bayern20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MiaSanMia63",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LesParisiens59",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien49",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Monumental91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "River31",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "JohanCruyff75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anderlecht91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Mauves65",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCPorto32",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FantasyXI43",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WorldStar15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WorldStar77",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 32,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KopEnd19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzuisBrancos93",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend16",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gunner44",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariKirmizi43",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KaraKartal78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HighburySoul40",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AFC66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Salah1178",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anfield53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MUFC78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MUFC66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RedDevil39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue30",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue46",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens82",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Blaugrana37",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid28",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Interista25",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Interista39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Diavolo15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Diavolo75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Diavolo65",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ParcDesPrinces10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bombonera59",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Xeneize57",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Xeneize69",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Boca13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Porto60",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ClutchPlayer11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FantasyXI80",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FBCiker61",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KaraKartal62",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SiyahBeyaz66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AFC11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LFC30",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon30",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue88",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_05",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "bot_mix_08",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AslanPencesi",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Florya75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FenerLegend68",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ModaSahili93",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Dolmabahce10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Dolmabahce62",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SiyahBeyaz89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Firtina46",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "EmiratesRed67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon1130",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cannon11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AFC84",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AFC28",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AFC94",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Reds29",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Salah1110",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Salah1159",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Scouser56",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LFC25",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anfield29",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anfield97",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "TheatreOfDreams31",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RedDevil67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UnitedSpirit79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RedDevil17",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MUFC31",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Etihad25",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Barca43",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CatalanPower47",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MesQueUnClub95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CampNou46",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Barca97",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaCasaBlanca68",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid93",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero66",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WandaMet30",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "WandaMet54",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero69",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Colchonero20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Nerazzurri58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "InterMilano92",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Nerazzurri55",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Diavolo83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bayern",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BavarianPower91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern50",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllianzRed42",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AllianzRed45",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien45",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien96",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien93",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Parisien60",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Xeneize95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Boca32",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Millonario44",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Godenzonen49",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anderlecht70",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Mauves72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anderlecht",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCPorto75",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GlobalHero96",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ClutchPlayer23",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GlobalHero56",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ClutchPlayer69",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bombonera97",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Porto79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AliSamiYen61",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Icardi89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Kadikoy22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Kadikoy59",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FenerLegend87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Kadikoy58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Kadikoy54",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Carsi83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "NorthLondonRed81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "EmiratesRed48",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Reds74",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens99",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Diavolo36",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bayern99",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG54",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Xeneize64",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bombonera76",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Xeneize73",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Ajax36",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Porto53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzuisBrancos69",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GlobalHero33",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ClutchPlayer79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend89",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AliSamiYen71",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimBom39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivert65",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivert27",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Dolmabahce88",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HighburySoul41",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "EmiratesRed33",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Reds17",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KopEnd50",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KopEnd28",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LFC12",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RedDevil79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MUFC79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon12",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Etihad70",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaCasaBlanca14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid25",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "InterMilano67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "InterMilano88",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Diavolo41",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SanSiro",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bombonera33",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Xeneize47",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Xeneize22",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Millonario31",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda21",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Godenzonen87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCPorto",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend68",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivert58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FenerLegend65",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KaraKartal76",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gunner24",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "NorthLondonRed19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Anfield79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Blaugrana10",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Barca40",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Blaugrana71",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Blaugrana85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Interista28",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "InterMilano44",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter51",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "UltrAslan81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gala190599",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Icardi",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ModaSahili18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FenerLegend78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivert63",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KaraKartal61",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SiyahBeyaz15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gunner33",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "NorthLondonRed58",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "NorthLondonRed70",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gunner72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "HighburySoul14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "NorthLondonRed61",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KopEnd61",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue38",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Etihad86",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue63",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter31",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bombonera39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bombonera26",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda97",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RSCA45",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Mauves81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzuisBrancos17",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gala190560",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend60",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend52",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariKirmizi35",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Gala190553",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariKirmizi24",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "CimbomLegend35",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AliSamiYen67",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GSAslan25",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariKirmizi33",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AliSamiYen91",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FenerLegend44",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SariLacivert81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FenerLegend81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Dolmabahce85",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KartalPencesi14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Carsi27",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AFC37",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "NorthLondonRed87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "EmiratesRed43",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "NorthLondonRed13",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "EmiratesRed42",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Reds78",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Reds81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "KopEnd38",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RedDevil81",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RedDevil27",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Cityzens90",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue68",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "SkyBlue31",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "BlueMoon61",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Barca32",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RMadrid30",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter59",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter47",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "InterMilano90",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "MeazzaInter50",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "InterMilano53",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Diavolo28",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FCBayern19",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ParcDesPrinces11",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG48",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG84",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG24",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG27",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG52",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG39",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "PSG87",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Xeneize46",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Bombonera32",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Millonario90",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "River",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Millonario79",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda82",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda33",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Millonario33",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "LaBanda20",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Millonario88",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Godenzonen73",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Godenzonen14",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Godenzonen15",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Ajax56",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "Ajax27",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "RSCA95",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "AzuisBrancos60",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ClutchPlayer72",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "GlobalHero18",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ClutchPlayer83",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FantasyXI76",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ClutchPlayer59",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "ClutchPlayer56",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "FantasyXI90",
+      "mainTeam": null,
+      "createdAt": "2025-12-12T08:14:26.879Z",
+      "lc": 31,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "u1",
+      "mainTeam": null,
+      "createdAt": "2025-12-31T14:12:03.549Z",
+      "lc": 30,
+      "lcLastDaily": null
+    },
+    {
+      "userId": "demo2",
+      "mainTeam": null,
+      "createdAt": "2026-01-01T08:49:08.717Z",
+      "lc": 30,
+      "lcLastDaily": null
     }
   ]
 }

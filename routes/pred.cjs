@@ -13,6 +13,14 @@ const LIVE_DIR = path.join(DATA_DIR, "live"); // fixture state için
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const BOT_PROFILES_PATH = path.join(DATA_DIR, "bot-profiles.json");
+const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
+
+// 🔹 LigCoin / cüzdan parametreleri
+// lc-wallet.cjs ile SENKRON tutulmalı
+const DAILY_LC = 5;
+const INITIAL_DEFAULT = 30;
+const INITIAL_1987 = 60;
+const LC_MATCH_COST = 3; // matchEntryCost – hem backend hem frontend bu rakamla uyumlu
 
 // ----------------- JSON HELPER'LAR -----------------
 async function readJson(file, fb) {
@@ -42,11 +50,374 @@ function stateFile(fid) {
   return path.join(LIVE_DIR, `${String(fid)}.json`);
 }
 
+/* ======================
+ *  WALLET HELPER'LARI – DOSYA MODU
+ *  (lc-wallet.cjs ile uyumlu, fallback)
+ * ====================== */
+
+async function loadWalletState() {
+  const fb = { users: [], ledger: [], updatedAt: null };
+  const state = (await readJson(WALLET_FILE, fb)) || fb;
+  if (!Array.isArray(state.users)) state.users = [];
+  if (!Array.isArray(state.ledger)) state.ledger = [];
+  return state;
+}
+
+async function saveWalletState(state) {
+  state.updatedAt = new Date().toISOString();
+  await writeJson(WALLET_FILE, state);
+}
+
+function addLedgerEntryFile(state, { userId, kind, amount, reason, fixtureId, meta }) {
+  const nowISO = new Date().toISOString();
+  state.ledger.push({
+    id:
+      "tx_" +
+      Date.now().toString(36) +
+      "_" +
+      Math.random().toString(36).slice(2, 8),
+    userId,
+    kind,
+    amount,
+    reason: reason || null,
+    fixtureId: fixtureId || null,
+    meta: meta || null,
+    createdAt: nowISO,
+  });
+}
+
+async function isUser1987Member(userId) {
+  const uid = String(userId || "").trim();
+  if (!uid) return false;
+
+  const raw = (await readJson(USERS_FILE, { users: [], items: [] })) || {};
+
+  const list = [];
+  const pushUser = (u) => {
+    if (!u) return;
+    const id = String(u.userId || u.id || "").trim();
+    if (!id) return;
+    list.push({ ...u, userId: id });
+  };
+
+  if (Array.isArray(raw.users)) raw.users.forEach(pushUser);
+  if (Array.isArray(raw.items)) raw.items.forEach(pushUser);
+
+  const u = list.find(
+    (u) =>
+      String(u.userId || "")
+        .trim()
+        .toLowerCase() === uid.toLowerCase()
+  );
+  if (!u) return false;
+
+  const seg = String(u.segment || "").toLowerCase();
+  return u.is1987 === true || seg === "1987";
+}
+
+async function ensureWalletUserFile(userId) {
+  const uid = String(userId || "").trim();
+  if (!uid) throw new Error("USER_REQUIRED");
+
+  const state = await loadWalletState();
+
+  let u = state.users.find(
+    (x) =>
+      String(x.userId || "")
+        .trim()
+        .toLowerCase() === uid.toLowerCase()
+  );
+
+  if (!u) {
+    const is1987 = await isUser1987Member(uid);
+    const initialBalance = is1987 ? INITIAL_1987 : INITIAL_DEFAULT;
+    const nowISO = new Date().toISOString();
+    u = {
+      userId: uid,
+      balance: initialBalance,
+      createdAt: nowISO,
+      updatedAt: nowISO,
+      lastDailyAt: null,
+      totalEarned: initialBalance,
+      totalSpent: 0,
+    };
+    state.users.push(u);
+
+    addLedgerEntryFile(state, {
+      userId: uid,
+      kind: "init",
+      amount: initialBalance,
+      reason: is1987 ? "initial_1987" : "initial_default",
+    });
+
+    await saveWalletState(state);
+  }
+
+  return { state, user: u };
+}
+
+/**
+ * Maç başı LC harcama – DOSYA MODU:
+ *  - alreadyPredicted = true ise kesinti yapmaz.
+ *  - cost <= 0 ise kesinti yok.
+ *  - Yetersiz LC varsa ok:false döner, preds yazılmaz.
+ *  - Tüm hareketler lc-wallet.json / ledger üzerinden takip edilir.
+ */
+async function spendLcMatchIfNeededFile(userId, fixtureId, cost, alreadyPredicted) {
+  const uid = String(userId || "").trim();
+  if (!uid) throw new Error("USER_REQUIRED");
+
+  const { state, user } = await ensureWalletUserFile(uid);
+
+  // İlk tahmin dışındakilerde veya cost <= 0 ise kesinti yok, sadece bakiye döner
+  if (alreadyPredicted || cost <= 0) {
+    return {
+      ok: true,
+      lc: Number(user.balance || 0),
+      charged: false,
+      matchCost: 0,
+    };
+  }
+
+  const current = Number(user.balance || 0);
+  if (current < cost) {
+    return {
+      ok: false,
+      error: "LC_NOT_ENOUGH",
+      lc: current,
+      needed: cost,
+    };
+  }
+
+  const nowISO = new Date().toISOString();
+  user.balance = current - cost;
+  user.totalSpent = (user.totalSpent || 0) + cost;
+  user.updatedAt = nowISO;
+
+  addLedgerEntryFile(state, {
+    userId: uid,
+    kind: "spend",
+    amount: -cost,
+    reason: "match_pred", // <─ ledger ekranıyla uyumlu
+    fixtureId,
+    meta: { type: "pred_submit" },
+  });
+
+  await saveWalletState(state);
+
+  return {
+    ok: true,
+    lc: Number(user.balance || 0),
+    charged: true,
+    matchCost: cost,
+  };
+}
+
+/* ======================
+ *  Mongo helper’lar
+ * ====================== */
+
+function getDb(req) {
+  return req?.app?.locals?.db || null;
+}
+
+async function addLedgerEntryMongo(db, { userId, kind, amount, reason, fixtureId, meta }) {
+  const uid = String(userId || "").trim();
+  if (!db || !uid) return;
+
+  const ledgerCol = db.collection("lc_wallet_ledger");
+  const nowISO = new Date().toISOString();
+
+  await ledgerCol.insertOne({
+    id:
+      "tx_" +
+      Date.now().toString(36) +
+      "_" +
+      Math.random().toString(36).slice(2, 8),
+    userId: uid,
+    userIdLower: uid.toLowerCase(),
+    kind,
+    amount,
+    reason: reason || null,
+    fixtureId: fixtureId || null,
+    meta: meta || null,
+    createdAt: nowISO,
+  });
+}
+
+async function ensureWalletUserMongo(db, userId) {
+  const uid = String(userId || "").trim();
+  if (!db || !uid) throw new Error("USER_REQUIRED");
+
+  const col = db.collection("lc_wallet_users");
+  const uidLower = uid.toLowerCase();
+   
+  let user = await col.findOne({ userIdLower: uidLower });
+  if (!user) {
+    // 1987 üyeliğini şimdilik USERS_FILE üzerinden okuyoruz (lc-wallet.cjs’yle uyumlu).
+    const is1987 = await isUser1987Member(uid);
+    const initialBalance = is1987 ? INITIAL_1987 : INITIAL_DEFAULT;
+    const nowISO = new Date().toISOString();
+
+    const doc = {
+      userId: uid,
+      userIdLower: uidLower,
+      balance: initialBalance,
+      createdAt: nowISO,
+      updatedAt: nowISO,
+      lastDailyAt: null,
+      totalEarned: initialBalance,
+      totalSpent: 0,
+      is1987: !!is1987,
+    };
+
+    await col.insertOne(doc);
+
+    await addLedgerEntryMongo(db, {
+      userId: uid,
+      kind: "init",
+      amount: initialBalance,
+      reason: is1987 ? "initial_1987" : "initial_default",
+    });
+
+    user = doc;
+  }
+
+  return user;
+}
+
+/**
+ * Maç başı LC harcama – MONGO MODU:
+ *  - alreadyPredicted = true → kesinti yok, sadece bakiye döner.
+ *  - cost <= 0 → kesinti yok.
+ *  - Yetersiz LC → ok:false, preds yazılmaz.
+ *  - updateOne ile yarış koşullarına dayanıklı, atomic update.
+ */
+async function spendLcMatchIfNeededMongo(db, userId, fixtureId, cost, alreadyPredicted) {
+  if (!db) {
+    // Güvenlik için; normalde buraya gelmemeli.
+    return spendLcMatchIfNeededFile(userId, fixtureId, cost, alreadyPredicted);
+  }
+
+  const uid = String(userId || "").trim();
+  if (!uid) throw new Error("USER_REQUIRED");
+
+  const col = db.collection("lc_wallet_users");
+  const uidLower = uid.toLowerCase();
+
+  // Kullanıcı dokümanı garanti olsun
+  let user = await ensureWalletUserMongo(db, uid);
+
+  // İkinci / üçüncü düzeltmelerde veya cost <= 0’da hiç kesme
+  if (alreadyPredicted || cost <= 0) {
+    return {
+      ok: true,
+      lc: Number(user.balance || 0),
+      charged: false,
+      matchCost: 0,
+    };
+  }
+
+  const current = Number(user.balance || 0);
+  if (current < cost) {
+    return {
+      ok: false,
+      error: "LC_NOT_ENOUGH",
+      lc: current,
+      needed: cost,
+    };
+  }
+
+  const nowISO = new Date().toISOString();
+
+  // Optimistic concurrency: mevcut balance'a göre kes
+  const result = await col.updateOne(
+    { userIdLower: uidLower, balance: current },
+    {
+      $inc: {
+        balance: -cost,
+        totalSpent: cost,
+      },
+      $set: {
+        updatedAt: nowISO,
+      },
+    }
+  );
+
+  if (!result.matchedCount) {
+    // Yarış durumu: bakiyeyi taze oku, tekrar değerlendirmeyi dene
+    const fresh = await col.findOne({ userIdLower: uidLower });
+    const freshBalance = Number(fresh?.balance || 0);
+
+    if (freshBalance < cost) {
+      return {
+        ok: false,
+        error: "LC_NOT_ENOUGH",
+        lc: freshBalance,
+        needed: cost,
+      };
+    }
+
+    const now2 = new Date().toISOString();
+    await col.updateOne(
+      { userIdLower: uidLower },
+      {
+        $inc: {
+          balance: -cost,
+          totalSpent: cost,
+        },
+        $set: {
+          updatedAt: now2,
+        },
+      }
+    );
+
+    const finalUser = await col.findOne({ userIdLower: uidLower });
+    const finalBalance = Number(finalUser?.balance || 0);
+
+    await addLedgerEntryMongo(db, {
+      userId: uid,
+      kind: "spend",
+      amount: -cost,
+      reason: "match_pred",
+      fixtureId,
+      meta: { type: "pred_submit" },
+    });
+
+    return {
+      ok: true,
+      lc: finalBalance,
+      charged: true,
+      matchCost: cost,
+    };
+  }
+
+  // İlk deneme başarılı
+  const finalUser = await col.findOne({ userIdLower: uidLower });
+  const finalBalance = Number(finalUser?.balance || current - cost);
+
+  await addLedgerEntryMongo(db, {
+    userId: uid,
+    kind: "spend",
+    amount: -cost,
+    reason: "match_pred",
+    fixtureId,
+    meta: { type: "pred_submit" },
+  });
+
+  return {
+    ok: true,
+    lc: finalBalance,
+    charged: true,
+    matchCost: cost,
+  };
+}
+
 // ----------------- BOT PROFİLLERİ + RNG -----------------
 
 /**
  * Yeni sistem:
- * - data/bot-profiles.json içinden 1000 bot profili okunur.
+ * - data/bot-profiles.json içinden bot profilleri okunur.
  *   Şema: [{ id, club, segment, tier }, ...]
  * - Buradan BOT_PROFILES, BOT_USER_ID_SET ve BOT_PROFILE_MAP üretilir.
  */
@@ -152,17 +523,261 @@ function botScoreGuess(rng, favOnHome, favOnAway) {
   return { home: last.h, away: last.a };
 }
 
+// =====================
+// Mongo helper – predictions mirror
+// =====================
+
+async function upsertPredictionMongo(db, rec, opts = {}) {
+  if (!db || !rec) return;
+  const col = db.collection("predictions");
+  const uid = String(rec.userId || "").trim();
+  if (!uid) return;
+  const uidLower = uid.toLowerCase();
+
+  const doc = {
+    fixtureId: rec.fixtureId,
+    userId: uid,
+    userIdLower: uidLower,
+    isBot: !!rec.isBot,
+    outcome: rec.outcome ?? null,
+    home:
+      typeof rec.home === "number"
+        ? rec.home
+        : rec.home == null
+        ? null
+        : Number(rec.home),
+    away:
+      typeof rec.away === "number"
+        ? rec.away
+        : rec.away == null
+        ? null
+        : Number(rec.away),
+    firstGoal: rec.firstGoal || null,
+    firstHalf: rec.firstHalf || null,
+    redAny: typeof rec.redAny === "boolean" ? rec.redAny : null,
+    redSide: rec.redSide || null,
+    redHome:
+      typeof rec.redHome === "boolean" ? rec.redHome : null,
+    redAway:
+      typeof rec.redAway === "boolean" ? rec.redAway : null,
+    penaltyAny:
+      typeof rec.penaltyAny === "boolean" ? rec.penaltyAny : null,
+    penaltySide: rec.penaltySide || null,
+    at: rec.at || new Date().toISOString(),
+    tag: rec.tag || null,
+    source: opts.source || (rec.isBot ? "bot" : "user"),
+  };
+
+  await col.updateOne(
+    { fixtureId: doc.fixtureId, userIdLower: uidLower },
+    { $set: doc },
+    { upsert: true }
+  );
+}
+
+async function upsertManyPredictionsMongo(db, recs, opts = {}) {
+  if (!db || !Array.isArray(recs) || !recs.length) return;
+  const col = db.collection("predictions");
+  const ops = [];
+
+  for (const rec of recs) {
+    if (!rec) continue;
+    const uid = String(rec.userId || "").trim();
+    if (!uid) continue;
+    const uidLower = uid.toLowerCase();
+
+    const doc = {
+      fixtureId: rec.fixtureId,
+      userId: uid,
+      userIdLower: uidLower,
+      isBot: !!rec.isBot,
+      outcome: rec.outcome ?? null,
+      home:
+        typeof rec.home === "number"
+          ? rec.home
+          : rec.home == null
+          ? null
+          : Number(rec.home),
+      away:
+        typeof rec.away === "number"
+          ? rec.away
+          : rec.away == null
+          ? null
+          : Number(rec.away),
+      firstGoal: rec.firstGoal || null,
+      firstHalf: rec.firstHalf || null,
+      redAny: typeof rec.redAny === "boolean" ? rec.redAny : null,
+      redSide: rec.redSide || null,
+      redHome:
+        typeof rec.redHome === "boolean" ? rec.redHome : null,
+      redAway:
+        typeof rec.redAway === "boolean" ? rec.redAway : null,
+      penaltyAny:
+        typeof rec.penaltyAny === "boolean"
+          ? rec.penaltyAny
+          : null,
+      penaltySide: rec.penaltySide || null,
+      at: rec.at || new Date().toISOString(),
+      tag: rec.tag || null,
+      source: opts.source || (rec.isBot ? "bot" : "user"),
+    };
+
+    ops.push({
+      updateOne: {
+        filter: { fixtureId: doc.fixtureId, userIdLower: uidLower },
+        update: { $set: doc },
+        upsert: true,
+      },
+    });
+  }
+
+  if (!ops.length) return;
+  await col.bulkWrite(ops, { ordered: false });
+}
+
+// =====================
+//  PRED FLAGS HELPER'LARI
+// =====================
+
+/**
+ * Belirli bir kullanıcı için, tahmin yaptığı fixtureId listesini
+ * DOSYA MODU üzerinden çıkarır.
+ *
+ * fixtureIdsFilter: null ise tüm fixture'lar,
+ * Set(...) ise sadece o set içinde olanlar.
+ */
+async function getPredFlagsFromFile(userId, fixtureIdsFilter) {
+  const uid = String(userId || "").trim();
+  if (!uid) return { fixtures: [], count: 0 };
+
+  const { list } = await loadPredList();
+  const uidLower = uid.toLowerCase();
+  const set = new Set();
+
+  for (const p of list) {
+    const pid = String(p.userId || p.user || "").trim().toLowerCase();
+    if (pid !== uidLower) continue;
+
+    const fx = String(p.fixtureId || "").trim();
+    if (!fx) continue;
+
+    if (fixtureIdsFilter && !fixtureIdsFilter.has(fx)) continue;
+
+    set.add(fx);
+  }
+
+  const fixtures = Array.from(set);
+  return { fixtures, count: fixtures.length };
+}
+
+/**
+ * Belirli bir kullanıcı için, tahmin yaptığı fixtureId listesini
+ * MONGO MODU (predictions koleksiyonu) üzerinden çıkarır.
+ *
+ * fixtureIdsFilter: null ise tüm fixture'lar,
+ * Set(...) ise sadece o set içinde olanlar.
+ */
+async function getPredFlagsFromMongo(db, userId, fixtureIdsFilter) {
+  const uid = String(userId || "").trim();
+  if (!db || !uid) return { fixtures: [], count: 0 };
+
+  const col = db.collection("predictions");
+  const uidLower = uid.toLowerCase();
+
+  const query = { userIdLower: uidLower };
+  if (fixtureIdsFilter && fixtureIdsFilter.size > 0) {
+    query.fixtureId = { $in: Array.from(fixtureIdsFilter) };
+  }
+
+  const docs = await col
+    .find(query, { projection: { fixtureId: 1, _id: 0 } })
+    .toArray();
+
+  const set = new Set();
+  for (const d of docs) {
+    const fx = String(d.fixtureId || "").trim();
+    if (!fx) continue;
+    if (fixtureIdsFilter && !fixtureIdsFilter.has(fx)) continue;
+    set.add(fx);
+  }
+
+  const fixtures = Array.from(set);
+  return { fixtures, count: fixtures.length };
+}
+// =====================
+// PRED LOCK (server-side)
+// =====================
+
+// kickoff'tan kaç dakika önce kilitleyelim?
+const PRED_LOCK_BEFORE_MIN = 10;
+
+async function computePredLock(fixtureId) {
+  const fx = String(fixtureId || "").trim();
+  if (!fx) return { locked: false, reason: "FIXTURE_ID_REQUIRED", lock: null };
+
+  // state dosyası varsa oradan oku
+  const st = await readJson(stateFile(fx), null);
+  if (!st || typeof st !== "object") {
+    // state yoksa kilitleme yapma (yanlış bloklamayalım)
+    return { locked: false, reason: "NO_STATE", lock: null };
+  }
+
+  const status = String(st.status || "").toUpperCase();
+  const kickoffISO = st.kickoffISO || st.kickoff || null;
+
+  // status FT vb ise zaten kilit say
+  if (status && status !== "NS") {
+    return {
+      locked: true,
+      reason: "MATCH_ALREADY_STARTED",
+      lock: { status, kickoffISO: kickoffISO || null, lockAtISO: null },
+    };
+  }
+
+  if (!kickoffISO) {
+    // kickoff yoksa kilitleme yapma
+    return { locked: false, reason: "NO_KICKOFF", lock: { status, kickoffISO: null, lockAtISO: null } };
+  }
+
+  const koMs = new Date(String(kickoffISO)).getTime();
+  if (!Number.isFinite(koMs)) {
+    return { locked: false, reason: "BAD_KICKOFF", lock: { status, kickoffISO: String(kickoffISO), lockAtISO: null } };
+  }
+
+  const lockAt = koMs - PRED_LOCK_BEFORE_MIN * 60 * 1000;
+  const nowMs = Date.now();
+  const locked = nowMs >= lockAt;
+
+  return {
+    locked,
+    reason: locked ? "PRED_LOCKED_BEFORE_KICKOFF" : null,
+    lock: {
+      status: status || "NS",
+      kickoffISO: String(kickoffISO),
+      lockAtISO: new Date(lockAt).toISOString(),
+    },
+  };
+}
+
+async function assertPredNotLocked(fixtureId) {
+  return computePredLock(fixtureId);
+}
+
 // ----------------- ANA ROUTE: HUMAN SUBMIT -----------------
 
 /**
  * POST /api/pred/submit
  *
- * Artık skor isteğe bağlı:
- * - Eğer body.home/body.away yoksa → home/away null olarak kaydedilir.
- * - outcome (H/D/A) ve yan tahminler (firstGoal, firstHalf, red/pen) normal gider.
+ * - Skor isteğe bağlı:
+ *   home/away gelmezse null kaydedilir.
+ * - Aynı fixture + user için İLK tahminde LC_MATCH_COST kadar LC keser.
+ *   Sonraki düzeltmelerde LC kesmez.
+ * - LC, Mongo varsa Mongo cüzdandan; yoksa lc-wallet.json üzerinden takip edilir.
  */
 router.post("/pred/submit", async (req, res) => {
   try {
+    const db = getDb(req);
+
     const {
       fixtureId,
       userId,
@@ -185,13 +800,138 @@ router.post("/pred/submit", async (req, res) => {
         .status(400)
         .json({ ok: false, error: "FIXTURE_AND_USER_REQUIRED" });
     }
+    // Mevcut tahmin listesini oku (hem LC için, hem yazmak için)
+    const { list, wrap } = await loadPredList();
+
+    // Aynı fixture + user için daha önce tahmin var mı?
+    const uidLower_forCheck = uid.toLowerCase();
+    const alreadyPredicted = list.some((p) => {
+    const fxId = String(p.fixtureId || "").trim();
+    const puid = String(p.userId || p.user || "").trim().toLowerCase();
+    return fxId === fx && puid === uidLower_forCheck;
+  });
+
+        // --- HİLE ENGELİ: event sonrası mikro tahmin lock (minute bazlı + ISO fallback) ---
+    const st = await readJson(stateFile(fx), null);
+
+    // sadece kullanıcı bu alanları *gönderiyorsa* kontrol et
+    const hasRedAny  = Object.prototype.hasOwnProperty.call(req.body, "redAny");
+    const hasRedSide = Object.prototype.hasOwnProperty.call(req.body, "redSide");
+    const hasPenAny  = Object.prototype.hasOwnProperty.call(req.body, "penaltyAny");
+    const hasPenSide = Object.prototype.hasOwnProperty.call(req.body, "penaltySide");
+
+    // Kullanıcının "tahmin anı" dakikası: request body minute gönderirse onu kullan,
+    // yoksa live-state dakika (st.minute) varsa onu kullan.
+    // (Expo tarafı minute göndermiyorsa bile, st.minute genelde mevcut olur.)
+    const predMinuteRaw =
+      Object.prototype.hasOwnProperty.call(req.body, "minute")
+        ? req.body.minute
+        : st?.minute;
+
+    const predMinute =
+      predMinuteRaw == null ? null : Number(predMinuteRaw);
+
+    const nowMs = Date.now();
+
+    // Kırmızı event sisteme girdiyse, artık redAny/redSide güncellenemez
+    if (hasRedAny || hasRedSide) {
+      const evMin =
+        st?.redEventMinute == null ? null : Number(st.redEventMinute);
+
+      // 1) Dakika bazlı kilit (daha güvenli)
+      if (Number.isFinite(evMin) && Number.isFinite(predMinute) && predMinute >= evMin) {
+        return res.status(409).json({
+          ok: false,
+          error: "MICRO_LOCKED_RED",
+          fixtureId: fx,
+          redEventAtISO: st?.redEventAtISO || null,
+          redEventMinute: evMin,
+          predMinute,
+        });
+      }
+
+      // 2) Dakika yoksa ISO fallback
+      if (!Number.isFinite(evMin) && st?.redEventAtISO) {
+        const evMs = new Date(st.redEventAtISO).getTime();
+        if (Number.isFinite(evMs) && nowMs > evMs) {
+          return res.status(409).json({
+            ok: false,
+            error: "MICRO_LOCKED_RED",
+            fixtureId: fx,
+            redEventAtISO: st.redEventAtISO,
+            redEventMinute: st?.redEventMinute ?? null,
+            predMinute: Number.isFinite(predMinute) ? predMinute : null,
+          });
+        }
+      }
+    }
+
+    // Penaltı event sisteme girdiyse, artık penaltyAny/penaltySide güncellenemez
+    if (hasPenAny || hasPenSide) {
+      const evMin =
+        st?.penEventMinute == null ? null : Number(st.penEventMinute);
+
+      // 1) Dakika bazlı kilit
+      if (Number.isFinite(evMin) && Number.isFinite(predMinute) && predMinute >= evMin) {
+        return res.status(409).json({
+          ok: false,
+          error: "MICRO_LOCKED_PENALTY",
+          fixtureId: fx,
+          penEventAtISO: st?.penEventAtISO || null,
+          penEventMinute: evMin,
+          predMinute,
+        });
+      }
+
+      // 2) ISO fallback
+      if (!Number.isFinite(evMin) && st?.penEventAtISO) {
+        const evMs = new Date(st.penEventAtISO).getTime();
+        if (Number.isFinite(evMs) && nowMs > evMs) {
+          return res.status(409).json({
+            ok: false,
+            error: "MICRO_LOCKED_PENALTY",
+            fixtureId: fx,
+            penEventAtISO: st.penEventAtISO,
+            penEventMinute: st?.penEventMinute ?? null,
+            predMinute: Number.isFinite(predMinute) ? predMinute : null,
+          });
+        }
+      }
+    }
+
+
+
+    // 🔹 LC harcaması (maç başı cost, ikinci/üçüncü düzeltmede kesilmez)
+    const spendRes = db
+      ? await spendLcMatchIfNeededMongo(
+          db,
+          uid,
+          fx,
+          LC_MATCH_COST,
+          alreadyPredicted
+        )
+      : await spendLcMatchIfNeededFile(
+          uid,
+          fx,
+          LC_MATCH_COST,
+          alreadyPredicted
+        );
+
+    if (!spendRes.ok) {
+      return res.status(400).json({
+        ok: false,
+        error: spendRes.error || "LC_SPEND_FAILED",
+        lc: spendRes.lc,
+        needed: spendRes.needed,
+      });
+    }
 
     // Skor isteğe bağlı:
     let h = null;
     let a = null;
 
-    const hasHome = req.body.hasOwnProperty("home");
-    const hasAway = req.body.hasOwnProperty("away");
+    const hasHome = Object.prototype.hasOwnProperty.call(req.body, "home");
+    const hasAway = Object.prototype.hasOwnProperty.call(req.body, "away");
 
     if (hasHome || hasAway) {
       const hh = Number(home);
@@ -228,17 +968,14 @@ router.post("/pred/submit", async (req, res) => {
     const penaltySideNorm =
       penaltySide === "H" || penaltySide === "A" ? penaltySide : null;
 
-    // Mevcut listeyi oku
-    const { list, wrap } = await loadPredList();
-
     // Aynı kullanıcı + fixture için son tahmini yazsın (eski kaydı temizle)
-    const filtered = list.filter(
-      (p) =>
-        !(
-          String(p.fixtureId || "") === fx &&
-          String(p.userId || p.user || "") === uid
-        )
-    );
+    const uidLower = uid.toLowerCase();
+
+    const filtered = list.filter((p) => {
+      const sameFx = String(p.fixtureId || "").trim() === fx;
+      const pidLower = String(p.userId || p.user || "").trim().toLowerCase();
+      return !(sameFx && pidLower === uidLower);
+    });
 
     const nowISO = new Date().toISOString();
 
@@ -274,7 +1011,22 @@ router.post("/pred/submit", async (req, res) => {
       await writeJson(PREDS_FILE, filtered);
     }
 
-    return res.json({ ok: true, pred: rec });
+    // 🔵 Mongo mirror (varsa)
+    if (db) {
+      try {
+        await upsertPredictionMongo(db, rec, { source: "user" });
+      } catch (e) {
+        console.error("[pred] Mongo mirror failed for submit:", e);
+      }
+    }
+
+    return res.json({
+      ok: true,
+      pred: rec,
+      lc: spendRes.lc,
+      lcCharged: spendRes.charged,
+      matchCost: spendRes.matchCost || 0,
+    });
   } catch (e) {
     console.error("PRED_SUBMIT_FAILED", e);
     return res.status(500).json({
@@ -293,113 +1045,26 @@ async function readFixtureMeta(fixtureId) {
     const st = await readJson(stateFile(fixtureId), null);
     if (!st) return { homeTeam: null, awayTeam: null, country: null };
 
-    const homeTeam = st.homeTeam || st.home || (st.teams && st.teams.home) || null;
-    const awayTeam = st.awayTeam || st.away || (st.teams && st.teams.away) || null;
+    const homeTeam =
+      st.teamHome ||
+      st.homeTeam ||
+      st.home ||
+      (st.teams && (st.teams.home || st.teams.Home)) ||
+      null;
+
+    const awayTeam =
+      st.teamAway ||
+      st.awayTeam ||
+      st.away ||
+      (st.teams && (st.teams.away || st.teams.Away)) ||
+      null;
+
     const country = st.country || null;
 
     return { homeTeam, awayTeam, country };
   } catch {
     return { homeTeam: null, awayTeam: null, country: null };
   }
-}
-
-// ---- 1987GS Nostalji Bot Davranış Motoru ----
-function apply1987Logic(botId, rng, homeTeam, awayTeam, country) {
-  const id = String(botId || "").toLowerCase();
-
-  const is1987 =
-    id.includes("87") ||
-    id.includes("1987") ||
-    id.includes("prekazi") ||
-    id.includes("hagi") ||
-    id.includes("cimbom") ||
-    id.includes("aslan") ||
-    id.includes("sami") ||
-    id.includes("metin");
-
-  if (!is1987) return null;  // normal bot döner
-
-  const lowerHome = String(homeTeam || "").toLowerCase();
-  const lowerAway = String(awayTeam || "").toLowerCase();
-
-  const gsHome = lowerHome.includes("galatasaray");
-  const gsAway = lowerAway.includes("galatasaray");
-
-  // ---- SCORE ----
-  // romantik GS skor ağırlıkları
-  const base = [
-    { h: 1, a: 0, w: gsHome ? 4 : 2 },
-    { h: 2, a: 1, w: gsHome ? 4 : 2 },
-    { h: 2, a: 0, w: gsHome ? 3 : 1.5 },
-    { h: 1, a: 1, w: 2 },
-    { h: 0, a: 0, w: 1 },
-    { h: 1, a: 2, w: gsAway ? 2 : 0.5 },
-    { h: 0, a: 1, w: gsAway ? 2 : 0.5 },
-    { h: 3, a: 1, w: gsHome ? 1 : 0.3 },
-  ];
-
-  // ekstra Avrupa güçlendirmesi
-  if (country && String(country).toLowerCase().includes("europe")) {
-    base.forEach(s => { if (s.h > s.a && gsHome) s.w *= 1.4 });
-  }
-
-  const total = base.reduce((a, x) => a + x.w, 0);
-  let r = rng() * total;
-  let score = base[0];
-  for (const s of base) {
-    r -= s.w;
-    if (r <= 0) { score = s; break; }
-  }
-
-  // ---- OUTCOME ----
-  let outcome = "D";
-  if (score.h > score.a) outcome = "H";
-  if (score.a > score.h) outcome = "A";
-
-  // ---- FIRST GOAL ----
-  const fg = rng() < (gsHome ? 0.65 : 0.57) ? "H" : "A";
-
-  // ---- FIRST HALF ----
-  const fhTable = gsHome
-    ? [ {v:"H",w:3}, {v:"D",w:2}, {v:"A",w:1} ]
-    : [ {v:"H",w:1}, {v:"D",w:2}, {v:"A",w:2} ];
-
-  let fh = "D";
-  let rt = rng() * (fhTable[0].w + fhTable[1].w + fhTable[2].w);
-  for (const x of fhTable) {
-    rt -= x.w;
-    if (rt <= 0) { fh = x.v; break; }
-  }
-
-  // ---- RED CARD ----
-  let redAny = null;
-  const rc = rng();
-  if (rc < 0.28) redAny = true;
-  else if (rc < 0.68) redAny = false;
-
-  let redSide = null;
-  if (redAny === true) redSide = rng() < 0.5 ? "H" : "A";
-
-  // ---- PENALTY ----
-  let penaltyAny = null;
-  const pc = rng();
-  if (pc < 0.32) penaltyAny = true;
-  else if (pc < 0.65) penaltyAny = false;
-
-  let penaltySide = null;
-  if (penaltyAny === true) penaltySide = rng() < 0.5 ? "H" : "A";
-
-  return {
-    score,
-    outcome,
-    firstGoal: fg,
-    firstHalf: fh,
-    redAny,
-    redSide,
-    penaltyAny,
-    penaltySide,
-    is1987: true,
-  };
 }
 
 // ---- 1987GS Nostalji Bot Davranış Motoru ----
@@ -517,6 +1182,7 @@ function apply1987Logic(botId, rng, homeTeam, awayTeam, country) {
     is1987: true,
   };
 }
+
 // Tek bir bot için tahmin kaydı üret
 function buildBotPrediction({
   fixtureId,
@@ -706,9 +1372,30 @@ router.post("/pred/bots-generate", async (req, res) => {
         error: "NO_BOT_PROFILES",
       });
     }
+        // ✅ Botlar da aynı kilide tabi (oyun oturana kadar aynı kural)
+    const lockRes = await assertPredNotLocked(fx);
+    if (lockRes.locked) {
+      return res.status(409).json({
+        ok: false,
+        error: lockRes.reason || "PRED_LOCKED",
+        fixtureId: fx,
+        status: lockRes.lock?.status || null,
+        kickoffISO: lockRes.lock?.kickoffISO || null,
+        lockAtISO: lockRes.lock?.lockAtISO || null,
+      });
+    }
+
+    const db = getDb(req);
 
     // Mevcut tahminler
     const { list, wrap } = await loadPredList();
+    // Aynı fixture + user için daha önce tahmin var mı?
+    const uidLower_forCheck = uid.toLowerCase();
+    const alreadyPredicted = list.some((p) => {
+      const fxId = String(p.fixtureId || "").trim();
+      const puid = String(p.userId || p.user || "").trim().toLowerCase();
+      return fxId === fx && puid === uidLower_forCheck;
+    });
 
     // Bu fixture + bot-profiles.json'dan gelen tüm bot userId'lerini temizle
     const filtered = list.filter((p) => {
@@ -741,6 +1428,18 @@ router.post("/pred/bots-generate", async (req, res) => {
       await writeJson(PREDS_FILE, wrap);
     } else {
       await writeJson(PREDS_FILE, finalList);
+    }
+
+    // 🔵 Mongo mirror (varsa) – bot tahminleri
+    if (db) {
+      try {
+        await upsertManyPredictionsMongo(db, newRecs, { source: "bot" });
+      } catch (e) {
+        console.error(
+          "[pred] Mongo mirror failed for bots-generate:",
+          e
+        );
+      }
     }
 
     return res.json({
@@ -777,6 +1476,67 @@ router.get("/pred/list", async (req, res) => {
   }
 });
 
+// ----------------- FLAGS: BU KULLANICI HANGİ MAÇLARDA TAHMİN YAPMIŞ? -----------------
+/**
+ * GET /api/pred/flags?userId=demo1[&fixtureIds=FX1,FX2...]
+ *
+ * Amaç:
+ *  - Belirli bir kullanıcı için, tahmin yaptığı fixtureId listesini verir.
+ *  - Mongo varsa predictions koleksiyonundan, yoksa preds.json'dan okur.
+ *  - fixtureIds query param'ı verilirse sadece o maçlar için filtreler.
+ *
+ * Response:
+ *  {
+ *    ok: true,
+ *    userId: "demo1",
+ *    fixtures: ["FX-1","FX-2"],
+ *    count: 2
+ *  }
+ */
+router.get("/pred/flags", async (req, res) => {
+  try {
+    const db = getDb(req);
+    const uid = String(req.query.userId || "").trim();
+
+    if (!uid) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "USER_ID_REQUIRED" });
+    }
+
+    // İsteğe bağlı: fixtureIds=FX1,FX2,FX3
+    let fixtureIdsFilter = null;
+    const rawFixtureIds = String(req.query.fixtureIds || "").trim();
+    if (rawFixtureIds) {
+      const parts = rawFixtureIds
+        .split(",")
+        .map((s) => String(s || "").trim())
+        .filter(Boolean);
+      if (parts.length) {
+        fixtureIdsFilter = new Set(parts);
+      }
+    }
+
+    const result = db
+      ? await getPredFlagsFromMongo(db, uid, fixtureIdsFilter)
+      : await getPredFlagsFromFile(uid, fixtureIdsFilter);
+
+    return res.json({
+      ok: true,
+      userId: uid,
+      fixtures: result.fixtures,
+      count: result.count,
+    });
+  } catch (e) {
+    console.error("PRED_FLAGS_FAILED", e);
+    return res.status(500).json({
+      ok: false,
+      error: "PRED_FLAGS_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
 // ----------------- MAÇ BAZLI MİKRO TABLO -----------------
 /**
  * GET /api/pred/match-board?fixtureId=...&segment=1987|all
@@ -807,10 +1567,9 @@ router.get("/pred/match-board", async (req, res) => {
 
     // Kullanıcı bilgileri (1987 üyeleri)
     const usersData =
-      (await readJson(USERS_FILE, { users: [], updatedAt: null })) || {};
-    const users = Array.isArray(usersData.users)
-      ? usersData.users
-      : [];
+      (await readJson(USERS_FILE, { users: [], updatedAt: null })) ||
+      {};
+    const users = Array.isArray(usersData.users) ? usersData.users : [];
 
     const is1987User = (uid) => {
       const u = users.find(
@@ -901,5 +1660,3 @@ router.get("/pred/debug-ping", (req, res) => {
 });
 
 module.exports = router;
-
-

@@ -1,12 +1,540 @@
 {
   "fixtures": [
     {
-      "fixtureId": "1905-GS-TS",
-      "home": "Göztepe",
+      "fixtureId": "GS-2026-01-05-TS",
+      "home": "Galatasaray",
+      "away": "Trabzonspor",
+      "league": "Türkiye Süper Kupası",
+      "country": "Turkey",
+      "kickoffISO": "2026-01-05T16:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "FB-2026-01-06-SAM",
+      "home": "Fenerbahçe",
+      "away": "Samsunspor",
+      "league": "Türkiye Süper Kupası",
+      "country": "Turkey",
+      "kickoffISO": "2026-01-06T16:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "FETHIYE-2026-01-13-GS",
+      "home": "Fethiyespor",
       "away": "Galatasaray",
-      "kickoffISO": "2025-10-26T17:00:00+03:00",
-      "league": "Süper Lig",
-      "seriesId": "SERIE-TRIAL-5"
+      "league": "Ziraat Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-01-13",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BEYOGLU-2026-01-13-FB",
+      "home": "Beyoğlu Yeni Çarşı",
+      "away": "Fenerbahçe",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-01-13",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BJK-2026-01-13-KECIO",
+      "home": "Beşiktaş",
+      "away": "Keçiörengücü",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-01-13",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "GS-2026-01-18-GAZ",
+      "home": "Galatasaray",
+      "away": "Gaziantep FK",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-01-18",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "ALANYA-2026-01-18-FB",
+      "home": "Alanyaspor",
+      "away": "Fenerbahçe",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-01-18",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BJK-2026-01-18-KAYSERI",
+      "home": "Beşiktaş",
+      "away": "Kayserispor",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-01-18",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "GS-2026-01-21-ATM",
+      "home": "Galatasaray",
+      "away": "Atletico Madrid",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-21T20:45:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "FB-2026-01-22-AVL",
+      "home": "Fenerbahçe",
+      "away": "Aston Villa",
+      "league": "UEFA Conference League",
+      "country": "World",
+      "kickoffISO": "2026-01-22T20:45:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "KARAGUMRUK-2026-01-25-GS",
+      "home": "Karagümrük",
+      "away": "Galatasaray",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-01-25",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "FB-2026-01-25-GOZ",
+      "home": "Fenerbahçe",
+      "away": "Göztepe",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-01-25",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "TS-2026-01-25-KAS",
+      "home": "Trabzonspor",
+      "away": "Kasımpaşa",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-01-25",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "MCI-2026-01-28-GS",
+      "home": "Manchester City",
+      "away": "Galatasaray",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-28T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "FCSB-2026-01-29-FB",
+      "home": "FCSB",
+      "away": "Fenerbahçe",
+      "league": "UEFA Conference League",
+      "country": "World",
+      "kickoffISO": "2026-01-29T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "GS-2026-02-01-KAYSERI",
+      "home": "Galatasaray",
+      "away": "Kayserispor",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-02-01",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BJK-2026-02-01-KONYA",
+      "home": "Beşiktaş",
+      "away": "Konyaspor",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-02-01",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "GS-2026-02-02-IST",
+      "home": "Galatasaray",
+      "away": "İstanbulspor",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-02-02",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "KOCAELI-2026-02-02-FB",
+      "home": "Kocaelispor",
+      "away": "Fenerbahçe",
+      "league": "Türkiye Kupası",
+      "country": "Turkey",
+      "kickoffDate": "2026-02-02",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "LIV-2025-12-27-WOL",
+      "home": "Liverpool",
+      "away": "Wolverhampton",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2025-12-27T18:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "MCI-2025-12-27-NFO",
+      "home": "Nottingham Forest",
+      "away": "Manchester City",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2025-12-27T15:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAR-2026-01-03-ESP",
+      "home": "Espanyol",
+      "away": "Barcelona",
+      "league": "Spain Cup / TBD",
+      "country": "Spain",
+      "kickoffISO": "2026-01-03T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "RM-2026-01-04-BET",
+      "home": "Real Madrid",
+      "away": "Real Betis",
+      "league": "La Liga",
+      "country": "Spain",
+      "kickoffISO": "2026-01-04T18:15:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "LIV-2026-01-01-LEE",
+      "home": "Liverpool",
+      "away": "Leeds United",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2026-01-01T20:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "MCI-2026-01-01-SUN",
+      "home": "Sunderland",
+      "away": "Manchester City",
+      "league": "England / TBD",
+      "country": "England",
+      "kickoffISO": "2026-01-01T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC",
+      "status": "FT",
+      "minute": null,
+      "score": {
+        "home": 2,
+        "away": 1
+      },
+      "homeGoals": 2,
+      "awayGoals": 1,
+      "updatedAt": "2026-01-02T08:46:11.146Z",
+      "updatedBy": "admin-mobile",
+      "adminMeta": {
+        "penaltyAny": false,
+        "redAny": false
+      }
+    },
+    {
+      "fixtureId": "LIV-2026-01-04-FUL",
+      "home": "Fulham",
+      "away": "Liverpool",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2026-01-04T18:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "MCI-2026-01-04-CHE",
+      "home": "Manchester City",
+      "away": "Chelsea",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2026-01-04T20:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAR-2026-01-07-ATHB",
+      "home": "Barcelona",
+      "away": "Athletic Bilbao",
+      "league": "İspanya Süper Kupası - Yarı Final",
+      "country": "Spain",
+      "kickoffDate": "2026-01-07",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "LIV-2026-01-08-ARS",
+      "home": "Arsenal",
+      "away": "Liverpool",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2026-01-08T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "RM-2026-01-08-ATM",
+      "home": "Atletico Madrid",
+      "away": "Real Madrid",
+      "league": "La Liga",
+      "country": "Spain",
+      "kickoffDate": "2026-01-08",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "MCI-2026-01-07-BRI",
+      "home": "Manchester City",
+      "away": "Brighton",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2026-01-07T22:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "MCI-2026-01-10-EXE",
+      "home": "Manchester City",
+      "away": "Exeter",
+      "league": "FA Cup - Üçüncü Tur",
+      "country": "England",
+      "kickoffISO": "2026-01-10T18:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAY-2026-01-11-WOB",
+      "home": "Bayern Münih",
+      "away": "Wolfsburg",
+      "league": "Bundesliga",
+      "country": "Germany",
+      "kickoffISO": "2026-01-11T19:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "LIV-2026-01-12-BARNS",
+      "home": "Liverpool",
+      "away": "Barnsley",
+      "league": "FA Cup - Üçüncü Tur",
+      "country": "England",
+      "kickoffISO": "2026-01-12T22:45:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "MCI-2026-01-13-NEW",
+      "home": "Newcastle United",
+      "away": "Manchester City",
+      "league": "Lig Kupası - Yarı Final (Maç 1/2)",
+      "country": "England",
+      "kickoffISO": "2026-01-13T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAY-2026-01-14-KOL",
+      "home": "Köln",
+      "away": "Bayern Münih",
+      "league": "Bundesliga",
+      "country": "Germany",
+      "kickoffISO": "2026-01-14T22:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "LIV-2026-01-17-BUR",
+      "home": "Liverpool",
+      "away": "Burnley",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2026-01-17T18:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "RM-2026-01-17-LEV",
+      "home": "Real Madrid",
+      "away": "Levante",
+      "league": "La Liga",
+      "country": "Spain",
+      "kickoffISO": "2026-01-17T16:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "MCI-2026-01-17-MUN",
+      "home": "Manchester United",
+      "away": "Manchester City",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2026-01-17T15:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAY-2026-01-17-RBL",
+      "home": "RB Leipzig",
+      "away": "Bayern Münih",
+      "league": "Bundesliga",
+      "country": "Germany",
+      "kickoffISO": "2026-01-17T20:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAR-2026-01-18-RSOC",
+      "home": "Real Sociedad",
+      "away": "Barcelona",
+      "league": "La Liga",
+      "country": "Spain",
+      "kickoffISO": "2026-01-18T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "RM-2026-01-20-MON",
+      "home": "Real Madrid",
+      "away": "Monaco",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-20T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAR-2026-01-21-SLA",
+      "home": "Slavia Prag",
+      "away": "Barcelona",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-21T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "LIV-2026-01-21-MAR",
+      "home": "Marsilya",
+      "away": "Liverpool",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-21T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAY-2026-01-21-USG",
+      "home": "Bayern Münih",
+      "away": "Union Saint-Gilloise",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-21T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAR-2026-01-25-OVI",
+      "home": "Barcelona",
+      "away": "Oviedo",
+      "league": "Spain / TBD",
+      "country": "Spain",
+      "kickoffDate": "2026-01-25",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "RM-2026-01-25-VIL",
+      "home": "Villarreal",
+      "away": "Real Madrid",
+      "league": "La Liga",
+      "country": "Spain",
+      "kickoffDate": "2026-01-25",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "LIV-2026-01-24-BOU",
+      "home": "Bournemouth",
+      "away": "Liverpool",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2026-01-24T20:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAY-2026-01-24-AUG",
+      "home": "Bayern Münih",
+      "away": "Augsburg",
+      "league": "Bundesliga",
+      "country": "Germany",
+      "kickoffISO": "2026-01-24T17:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAR-2026-01-28-KOP",
+      "home": "Barcelona",
+      "away": "Kopenhag",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-28T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "RM-2026-01-28-BEN",
+      "home": "Benfica",
+      "away": "Real Madrid",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-28T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "LIV-2026-01-28-KAR",
+      "home": "Liverpool",
+      "away": "Karabağ",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-28T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAY-2026-01-28-PSV",
+      "home": "PSV",
+      "away": "Bayern Münih",
+      "league": "UEFA Champions League",
+      "country": "World",
+      "kickoffISO": "2026-01-28T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "LIV-2026-01-31-NEW",
+      "home": "Liverpool",
+      "away": "Newcastle United",
+      "league": "Premier League",
+      "country": "England",
+      "kickoffISO": "2026-01-31T23:00:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAY-2026-01-31-HAM",
+      "home": "Hamburg",
+      "away": "Bayern Münih",
+      "league": "Bundesliga",
+      "country": "Germany",
+      "kickoffISO": "2026-01-31T20:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAR-2026-02-01-ELC",
+      "home": "Elche",
+      "away": "Barcelona",
+      "league": "La Liga",
+      "country": "Spain",
+      "kickoffDate": "2026-02-01",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAY-2026-02-08-HOF",
+      "home": "Bayern Münih",
+      "away": "Hoffenheim",
+      "league": "Bundesliga",
+      "country": "Germany",
+      "kickoffISO": "2026-02-08T19:30:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "BAY-2026-02-11-RBL-CUP",
+      "home": "Bayern Münih",
+      "away": "RB Leipzig",
+      "league": "Almanya Kupası - Çeyrek Final",
+      "country": "Germany",
+      "kickoffISO": "2026-02-11T22:45:00+03:00",
+      "seriesId": "SERIE-TRIAL-DEC"
     }
   ]
 }

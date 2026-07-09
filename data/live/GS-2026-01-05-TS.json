@@ -1,0 +1,19 @@
+{
+  "kickoffISO": "2026-01-05T16:00:00+03:00",
+  "firstGoal": "H",
+  "redAway": false,
+  "fixtureId": "GS-2026-01-05-TS",
+  "updatedAt": "2026-01-07T15:29:04.7708621+03:00",
+  "penaltyAny": false,
+  "status": "FT",
+  "penaltySide": null,
+  "country": "Turkey",
+  "minute": null,
+  "source": "manual_state",
+  "league": "Türkiye Süper Kupası",
+  "redHome": false,
+  "score": {
+    "away": 1,
+    "home": 2
+  }
+}

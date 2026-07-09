@@ -393,12 +393,12 @@ router.get("/board", async (req,res)=>{
 });
 
 /* =======================
- *   SCORE (skor bazlı alive)
+ *   SCORE (skor bazlı alive)  ✅ TEK ELEME KRİTERİ: SKOR TAHMİNİ
  * =======================*/
 
 // ---- GET /api/rt/score
 router.get("/score", async (req,res)=>{
-  const fixtureId = String(req.query.fixtureId||"");
+  const fixtureId = String(req.query.fixtureId||"").trim();
   if(!fixtureId) return res.status(400).json({ ok:false, error:"FIXTURE_REQUIRED" });
 
   const ck = `score:${fixtureId}`;
@@ -406,10 +406,12 @@ router.get("/score", async (req,res)=>{
   if (hit) return res.json(hit);
 
   const st = await readJson(stateFile(fixtureId), null);
+  if (!st) return res.status(404).json({ ok:false, error:"STATE_NOT_FOUND" });
+
   const ch = Number(st?.score?.home||0);
   const ca = Number(st?.score?.away||0);
 
-  const statusRaw = String(st?.status||"NS");
+  const statusRaw = String(st?.status||"NS").trim();
   const finished  = isFinishedState(st);
 
   let preds = [];
@@ -420,31 +422,29 @@ router.get("/score", async (req,res)=>{
     preds = preds.filter(p=> String(p.fixtureId)===fixtureId);
   }
 
+  // ✅ SADECE SKOR TAHMİNİ OLANLAR (home/away sayısal) bu oyunda yer alır
   const rows = preds
     .filter(p=> Number.isFinite(Number(p.home)) && Number.isFinite(Number(p.away)))
     .map(p=>{
       const ph = Number(p.home);
       const pa = Number(p.away);
 
-      let alive;
-      if (finished) {
-        // Maç bittiyse: sadece tam skoru bilen alive
-        alive = (ph === ch && pa === ca);
-      } else {
-        // Maç oynanıyorsa: skor geri sarmaz → tahmin skoru mevcut skordan büyük/eşit olmalı
-        alive = (ph >= ch) && (pa >= ca);
-      }
+      // ✅ ELEME: yalnız skor tahmininin mevcut skordan geri kalmaması (maç sürerken),
+      // maç bitince sadece tam skor.
+      const alive = finished
+        ? (ph === ch && pa === ca)
+        : (ph >= ch) && (pa >= ca);
 
-      const win = finished && ph === ch && pa === ca;
+      const win = finished && (ph === ch && pa === ca);
 
       return {
-        userId:    p.userId||p.user||"anon",
-        home:      ph,
-        away:      pa,
+        userId:     p.userId||p.user||"anon",
+        home:       ph,
+        away:       pa,
         alive,
         eliminated: !alive,
         win,
-        at:        p.at
+        at:         p.at
       };
     })
     .sort((a,b)=>{
@@ -457,107 +457,92 @@ router.get("/score", async (req,res)=>{
   const out = {
     ok:true,
     status: statusRaw,
+    finished,
     score:{home:ch,away:ca},
+    count: rows.length,
     items: rows
   };
+
   cset(ck, out, 2000);
-  res.json(out);
+  return res.json(out);
 });
+
 // ---- GET /api/rt/my
 router.get("/my", async (req,res)=>{
-  const fixtureId = String(req.query.fixtureId||"");
-  const userId    = String(req.query.userId||"");
+  const fixtureId = String(req.query.fixtureId||"").trim();
+  const userId    = String(req.query.userId||"").trim();
   if(!fixtureId || !userId) {
     return res.status(400).json({ ok:false, error:"REQUIRED" });
   }
 
   const st = await readJson(stateFile(fixtureId), null);
+  if (!st) return res.status(404).json({ ok:false, error:"STATE_NOT_FOUND" });
+
   const ch = Number(st?.score?.home || 0);
   const ca = Number(st?.score?.away || 0);
 
-  const statusRaw = String(st?.status || "NS").trim().toUpperCase();
-  const isFT = (
-    statusRaw === "FT" ||
-    statusRaw === "FINISHED" ||
-    statusRaw === "MATCH_FINISHED" ||
-    statusRaw === "FULLTIME"
-  );
-  const status = statusRaw;
-
-
-  const htH     = Number(st?.htScore?.home ?? NaN);
-  const htA     = Number(st?.htScore?.away ?? NaN);
-  const hasHT   = Number.isFinite(htH) && Number.isFinite(htA);
-
-  const penaltyActual = st?.penaltySide ?? null;
+  const statusRaw = String(st?.status || "NS").trim();
+  const finished  = isFinishedState(st);
+  const status    = statusRaw;
 
   let mine = null;
   try { mine = await getMyLatestPred(fixtureId, userId); } catch {}
   if(!mine){
     const raw  = await readJson(PREDS_FILE, []);
-    const list = Array.isArray(raw)? raw
-      : (Array.isArray(raw?.items)? raw.items : []);
+    const list = Array.isArray(raw)? raw : (Array.isArray(raw?.items)? raw.items : []);
     mine = list
       .filter(p=> String(p.fixtureId)===fixtureId &&
-                  String(p.userId||p.user||"anon")===userId)
+                  String(p.userId||p.user||"anon").trim().toLowerCase()===userId.toLowerCase())
       .slice(-1)[0] || null;
 
     if(!mine) return res.json({ ok:true, has:false });
   }
 
-  const mh = Number(mine.home);
-  const ma = Number(mine.away);
+  const mhNum = Number(mine.home);
+  const maNum = Number(mine.away);
+  const hasScore = Number.isFinite(mhNum) && Number.isFinite(maNum);
 
-  // Skor bazlı alive:
-  // Maç bitince sadece tam bilen alive,
-  // maç sürerken 7-5 gibi mucize skorlar hâlâ mümkünse alive.
-  const aliveScore = isFT
-    ? (mh === ch && ma === ca)
-    : (mh >= ch && ma >= ca);
+  // ✅ ELEME / ALIVE: SADECE SKOR (exact)
+  // skor tahmini yoksa bu oyuna dahil değil -> exact: null
+  const aliveExact = !hasScore
+    ? null
+    : finished
+      ? (mhNum === ch && maNum === ca)
+      : (mhNum >= ch && maNum >= ca);
 
-  // Diğer mikrolar: sadece "henüz kesinleşmedi mi?" mantığı
-  const aliveFG  = (st?.firstGoal == null);
-  const aliveHT  = hasHT ? false : !!mine.firstHalf;
-  const aliveRH  = (typeof mine.redHome  === "boolean")
-    ? (typeof st?.redHome  === "undefined")
-    : false;
-  const aliveRA  = (typeof mine.redAway === "boolean")
-    ? (typeof st?.redAway === "undefined")
-    : false;
-
-  // Penaltı alive: kullanıcı penaltySide seçmişse ve henüz gerçek taraf belli değilse
-  const alivePenalty = mine.penaltySide
-    ? (penaltyActual == null)
-    : false;
-
-  res.json({
+  return res.json({
     ok:true,
     has:true,
     status,
+    finished,
     score:{home:ch,away:ca},
     mine:{
       outcome:     mine.outcome   ?? null,
-      home:        mh,
-      away:        ma,
+      home:        hasScore ? mhNum : null,
+      away:        hasScore ? maNum : null,
       firstGoal:   mine.firstGoal ?? null,
       firstHalf:   mine.firstHalf ?? null,
-      redHome:     !!mine.redHome,
-      redAway:     !!mine.redAway,
+      redHome:     (typeof mine.redHome === "boolean") ? mine.redHome : null,
+      redAway:     (typeof mine.redAway === "boolean") ? mine.redAway : null,
       penaltySide: mine.penaltySide ?? null,
       at:          mine.at
     },
     alive:{
-      // Ana skor alive durumunu "exact" altında raporluyoruz
-      exact:      aliveScore,
-      firstGoal:  aliveFG,
-      firstHalf:  aliveHT,
-      redHome:    aliveRH,
-      redAway:    aliveRA,
-      penalty:    alivePenalty
+      // ✅ Tek eleme kriteri
+      exact: aliveExact,
+
+      // ⚠️ Geriye uyum: bu alanları "elemez" mantığında asla false yapmıyoruz.
+      // (settle sonunda puana yansıyacak; eliminasyon değil)
+      firstGoal: true,
+      firstHalf: true,
+      redHome:   true,
+      redAway:   true,
+      penalty:   true
     },
-    finalScore: (isFT ? { home:ch, away:ca } : null)
+    finalScore: (finished ? { home:ch, away:ca } : null)
   });
 });
 
 module.exports = router;
+
 

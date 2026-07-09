@@ -1,0 +1,25 @@
+{
+  "fixtureId": "SL-FB-GS-20251130",
+  "status": "FT",
+  "minute": 90,
+  "isLive": false,
+  "country": "Türkiye",
+  "league": "Süper Lig",
+  "teamHome": "Fenerbahçe",
+  "teamAway": "Galatasaray",
+  "kickoffISO": null,
+  "score": {
+    "home": 1,
+    "away": 2
+  },
+  "updatedAt": "2025-11-29T14:26:35.314Z",
+  "htScore": {
+    "home": 0,
+    "away": 0
+  },
+  "firstGoal": "A",
+  "redHome": true,
+  "redAway": false,
+  "penaltyAny": true,
+  "penaltySide": "A"
+}

@@ -22,11 +22,11 @@ function code6(){
   return crypto.randomBytes(4).toString("base64url").slice(0,6).toUpperCase();
 }
 
-/**
- * POST /api/groups/groups/create
- * body: { name, ownerId }
- */
-router.post("/groups/create", express.json(), async (req,res)=>{
+/* =========================
+   HANDLERS (tek gerçek)
+   ========================= */
+
+async function handleCreate(req,res){
   try{
     const { name, ownerId } = req.body || {};
     if (!name || !ownerId) {
@@ -35,9 +35,7 @@ router.post("/groups/create", express.json(), async (req,res)=>{
 
     const store = await readJson(GROUPS, {});
     let code;
-    do {
-      code = code6();
-    } while (store[code]);
+    do { code = code6(); } while (store[code]);
 
     store[code] = {
       name:   String(name),
@@ -51,13 +49,9 @@ router.post("/groups/create", express.json(), async (req,res)=>{
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_CREATE_FAILED", detail:String(e && (e.message||e)) });
   }
-});
+}
 
-/**
- * POST /api/groups/groups/join
- * body: { code, userId }
- */
-router.post("/groups/join", express.json(), async (req,res)=>{
+async function handleJoin(req,res){
   try{
     const { code, userId } = req.body || {};
     const store = await readJson(GROUPS, {});
@@ -71,17 +65,13 @@ router.post("/groups/join", express.json(), async (req,res)=>{
     if (!g.members.includes(uid)) g.members.push(uid);
 
     await writeJson(GROUPS, store);
-    res.json({ ok:true, group:{ code:code.toUpperCase(), name:g.name, size:g.members.length } });
+    res.json({ ok:true, group:{ code:String(code||"").toUpperCase(), name:g.name, size:g.members.length } });
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_JOIN_FAILED", detail:String(e && (e.message||e)) });
   }
-});
+}
 
-/**
- * GET /api/groups/groups/:code/board
- * Grup içi leaderboard
- */
-router.get("/groups/:code/board", async (req,res)=>{
+async function handleBoard(req,res){
   try{
     const code = String(req.params.code || "").toUpperCase();
     const store  = await readJson(GROUPS, {});
@@ -115,13 +105,9 @@ router.get("/groups/:code/board", async (req,res)=>{
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_BOARD_FAILED", detail:String(e && (e.message||e)) });
   }
-});
+}
 
-/**
- * POST /api/groups/groups/:code/opt
- * body: { userId, includeInTotal:boolean }
- */
-router.post("/groups/:code/opt", express.json(), async (req,res)=>{
+async function handleOpt(req,res){
   try{
     const code = String(req.params.code || "").toUpperCase();
     const { userId, includeInTotal } = req.body || {};
@@ -141,12 +127,29 @@ router.post("/groups/:code/opt", express.json(), async (req,res)=>{
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_OPT_FAILED", detail:String(e && (e.message||e)) });
   }
-});
+}
 
-/**
- * Küçük diag: mevcut grupları listele
- * GET /api/groups/diag
- */
+/* =========================
+   ROUTES (legacy + alias)
+   ========================= */
+
+// CREATE
+router.post("/groups/create", express.json(), handleCreate); // legacy
+router.post("/create",        express.json(), handleCreate); // alias
+
+// JOIN
+router.post("/groups/join", express.json(), handleJoin); // legacy
+router.post("/join",        express.json(), handleJoin); // alias
+
+// BOARD
+router.get("/groups/:code/board", handleBoard); // legacy
+router.get("/:code/board",        handleBoard); // alias
+
+// OPT
+router.post("/groups/:code/opt", express.json(), handleOpt); // legacy
+router.post("/:code/opt",        express.json(), handleOpt); // alias
+
+// DIAG (aynı)
 router.get("/diag", async (req,res)=>{
   try{
     const store = await readJson(GROUPS, {});

@@ -34,7 +34,134 @@
       "note": "34' USG beraberlik",
       "source": "manual",
       "updatedAt": "2025-11-26T11:00:45.761Z"
+    },
+    "SL-FB-GS-20251130": {
+      "fixtureId": "SL-FB-GS-20251130",
+      "createdAt": "2025-11-27T19:37:19.462Z",
+      "events": [],
+      "minute": 90,
+      "status": "FT",
+      "source": "manual",
+      "updatedAt": "2025-11-29T14:26:35.305Z",
+      "homeGoals": 1,
+      "awayGoals": 2,
+      "note": "Fenerbahçe bastırıyor",
+      "teamHome": "Fenerbahçe",
+      "teamAway": "Galatasaray",
+      "resetEvents": true,
+      "country": "Türkiye",
+      "league": "Süper Lig",
+      "firstGoal": "A",
+      "redHome": true,
+      "redAway": false,
+      "penaltyAny": true,
+      "penaltySide": "A",
+      "htHome": 0,
+      "htAway": 0
+    },
+    "MNL-20251231-GS-FB": {
+      "fixtureId": "MNL-20251231-GS-FB",
+      "createdAt": "2025-12-21T12:27:52.647Z",
+      "events": [
+        {
+          "at": "2025-12-21T12:27:52.647Z",
+          "minute": 1,
+          "homeGoals": 0,
+          "awayGoals": 0,
+          "note": "1' Başladı",
+          "source": "manual"
+        }
+      ],
+      "teamHome": "Galatasaray",
+      "teamAway": "Göztepe",
+      "kickoffISO": "2025-12-22T20:00:00+03:00",
+      "minute": 1,
+      "status": "NS",
+      "homeGoals": 0,
+      "awayGoals": 0,
+      "source": "provider",
+      "updatedAt": "2025-12-21T12:28:03.532Z",
+      "providerName": "MANUAL",
+      "providerRaw": {
+        "fixtureId": "MNL-20251222-GS-GOZ",
+        "kickoffISO": "2025-12-22T20:00:00+03:00",
+        "league": "Süper Lig",
+        "home": "Galatasaray",
+        "away": "Göztepe",
+        "country": "Turkey",
+        "status": "NS",
+        "source": "MANUAL",
+        "seriesId": "SERIE-TRIAL-5"
+      },
+      "lastProviderPullAt": "2025-12-21T12:28:03.531Z"
+    },
+    "TEST-FX-1": {
+      "fixtureId": "TEST-FX-1",
+      "createdAt": "2025-12-25T11:24:51.715Z",
+      "events": [],
+      "minute": 65,
+      "redAway": true,
+      "source": "manual",
+      "updatedAt": "2025-12-25T11:24:51.715Z",
+      "redEventAtISO": "2025-12-25T11:24:51.715Z",
+      "redEventMinute": 65
+    },
+    "MCI-2026-01-01-SUN": {
+      "fixtureId": "MCI-2026-01-01-SUN",
+      "createdAt": "2026-01-06T11:46:16.991Z",
+      "events": [],
+      "teamHome": "Galatasaray",
+      "teamAway": "Fenerbahçe",
+      "country": "Türkiye",
+      "league": "Süper Lig",
+      "minute": 0,
+      "status": "NS",
+      "homeGoals": 0,
+      "awayGoals": 0,
+      "source": "manual",
+      "updatedAt": "2026-01-06T11:46:16.992Z"
+    },
+    "BAR-2026-01-07-ATHB": {
+      "fixtureId": "BAR-2026-01-07-ATHB",
+      "createdAt": "2026-01-08T09:26:17.896Z",
+      "events": [
+        {
+          "at": "2026-01-08T10:29:25.962Z",
+          "minute": 35,
+          "homeGoals": 1,
+          "awayGoals": 0,
+          "note": "reset",
+          "source": "manual"
+        },
+        {
+          "at": "2026-01-08T10:32:32.094Z",
+          "minute": 35,
+          "homeGoals": 2,
+          "awayGoals": 1,
+          "note": "FT 2-1",
+          "source": "manual"
+        }
+      ],
+      "kickoffISO": "2026-01-07",
+      "country": "Spain",
+      "league": "İspanya Süper Kupası - Yarı Final",
+      "status": "FT",
+      "homeGoals": 2,
+      "awayGoals": 1,
+      "firstGoal": "H",
+      "redHome": false,
+      "redAway": false,
+      "penaltyAny": false,
+      "source": "manual",
+      "updatedAt": "2026-01-08T10:32:32.094Z",
+      "minute": 35,
+      "teamHome": "Barcelona",
+      "teamAway": "Athletic Bilbao",
+      "redEventAtISO": null,
+      "redEventMinute": null,
+      "penEventAtISO": null,
+      "penEventMinute": null
     }
   },
-  "updatedAt": "2025-11-26T11:00:45.761Z"
+  "updatedAt": "2026-01-08T10:32:32.094Z"
 }

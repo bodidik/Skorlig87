@@ -1,14 +1,21 @@
 {
   "fixtureId": "TEST-FX-1",
-  "home": "Galatasaray",
-  "away": "Fenerbahçe",
+  "status": "NS",
+  "minute": 65,
+  "isLive": false,
   "country": "Türkiye",
-  "score": { "home": 2, "away": 1 },
-  "htScore": { "home": 1, "away": 0 },
-  "firstGoal": "H",
-  "redHome": false,
-  "redAway": true,
-  "penaltyAny": true,
-  "penaltySide": "H",
-  "status": "FT"
+  "league": "Süper Lig",
+  "teamHome": null,
+  "teamAway": null,
+  "kickoffISO": null,
+  "score": {
+    "home": 0,
+    "away": 0
+  },
+  "redEventAtISO": "2025-12-25T11:24:51.715Z",
+  "redEventMinute": 65,
+  "penEventAtISO": null,
+  "penEventMinute": null,
+  "updatedAt": "2025-12-25T11:24:51.716Z",
+  "redAway": true
 }

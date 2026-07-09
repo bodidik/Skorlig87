@@ -1,0 +1,16 @@
+{
+  "fixtureId": "MNL-20251231-GS-FB",
+  "status": "NS",
+  "minute": 1,
+  "isLive": false,
+  "country": "Türkiye",
+  "league": "Süper Lig",
+  "teamHome": "Galatasaray",
+  "teamAway": "Göztepe",
+  "kickoffISO": "2025-12-22T20:00:00+03:00",
+  "score": {
+    "home": 0,
+    "away": 0
+  },
+  "updatedAt": "2025-12-21T12:28:03.532Z"
+}

@@ -1,0 +1,115 @@
+{
+  "items": [
+    {
+      "fixtureId": "BAR-2026-01-07-ATHB",
+      "computedAt": "2026-01-08T10:59:24.749Z",
+      "finalScore": {
+        "home": 2,
+        "away": 1
+      },
+      "meta": {
+        "fixtureId": "BAR-2026-01-07-ATHB",
+        "home": "Barcelona",
+        "away": "Athletic Bilbao",
+        "kickoffISO": "2026-01-07",
+        "league": "İspanya Süper Kupası - Yarı Final",
+        "country": "Spain",
+        "status": "FT"
+      },
+      "rows": []
+    },
+    {
+      "fixtureId": "GS-2026-01-05-TS",
+      "computedAt": "2026-01-08T08:25:04.502Z",
+      "finalScore": {
+        "home": 2,
+        "away": 1
+      },
+      "meta": {
+        "fixtureId": "GS-2026-01-05-TS",
+        "home": "Galatasaray",
+        "away": "Trabzonspor",
+        "kickoffISO": "2026-01-05T16:00:00+03:00",
+        "league": "Türkiye Süper Kupası",
+        "country": "Turkey",
+        "status": "FT"
+      },
+      "rows": [
+        {
+          "fixtureId": "GS-2026-01-05-TS",
+          "userId": "demo1",
+          "points": 16,
+          "detail": {
+            "outcome": 3,
+            "exact": 12,
+            "firstGoal": 1,
+            "redAny": 0,
+            "redSide": 0,
+            "redSidePenalty": 0,
+            "penaltyAny": 0,
+            "penaltySide": 0,
+            "penaltySidePenalty": 0,
+            "zeroPenalty": 0,
+            "base": 16
+          }
+        }
+      ]
+    },
+    {
+      "fixtureId": "FB-2026-01-06-SAM",
+      "computedAt": "2026-01-07T12:29:58.319Z",
+      "finalScore": {
+        "home": 1,
+        "away": 1
+      },
+      "meta": {
+        "fixtureId": "FB-2026-01-06-SAM",
+        "home": "Fenerbahçe",
+        "away": "Samsunspor",
+        "kickoffISO": "2026-01-06T16:00:00+03:00",
+        "league": "Türkiye Süper Kupası",
+        "country": "Turkey",
+        "status": "FT"
+      },
+      "rows": []
+    },
+    {
+      "fixtureId": "MCI-2026-01-01-SUN",
+      "computedAt": "2026-01-07T11:48:06.101Z",
+      "finalScore": {
+        "home": 0,
+        "away": 0
+      },
+      "meta": {
+        "fixtureId": "MCI-2026-01-01-SUN",
+        "home": "Sunderland",
+        "away": "Manchester City",
+        "kickoffISO": "2026-01-01T23:00:00+03:00",
+        "league": "England / TBD",
+        "country": "England",
+        "status": "FT"
+      },
+      "rows": [
+        {
+          "fixtureId": "MCI-2026-01-01-SUN",
+          "userId": "demo1",
+          "points": 3,
+          "detail": {
+            "outcome": 0,
+            "exact": 0,
+            "firstGoal": 0,
+            "redAny": 1.5,
+            "redSide": 0,
+            "redSidePenalty": 0,
+            "penaltyAny": 1.5,
+            "penaltySide": 0,
+            "penaltySidePenalty": 0,
+            "zeroPenalty": 0,
+            "base": 3
+          }
+        }
+      ]
+    }
+  ],
+  "updatedAt": "2026-01-08T10:59:24.750Z"
+}

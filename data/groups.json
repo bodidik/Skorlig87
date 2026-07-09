@@ -1,31 +1,120 @@
 {
-  "items": [
-    {
-      "id": "grp_hi2aj9q3",
-      "ownerId": "demo1",
-      "name": "1987GS Demo Grup",
-      "members": [
-        "demo1"
-      ],
-      "createdAt": "2025-11-14T08:58:22.364Z"
-    },
-    {
-      "id": "grp_0kqmqbjg",
-      "ownerId": "demo1",
-      "name": "Grubum bw1e",
-      "members": [
-        "demo1"
-      ],
-      "createdAt": "2025-11-14T09:15:09.434Z"
-    },
-    {
-      "id": "grp_t0thlpc9",
-      "ownerId": "demo1",
-      "name": "Grubum 9ojz",
-      "members": [
-        "demo1"
-      ],
-      "createdAt": "2025-11-19T11:58:41.220Z"
+  "0N47OQ": {
+    "name": "1987GS Demo Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {},
+    "createdAt": "2025-11-14T08:58:22.364Z",
+    "legacyId": "grp_hi2aj9q3"
+  },
+  "DATUUA": {
+    "name": "Grubum bw1e",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {},
+    "createdAt": "2025-11-14T09:15:09.434Z",
+    "legacyId": "grp_0kqmqbjg"
+  },
+  "JIVCEA": {
+    "name": "Grubum 9ojz",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {},
+    "createdAt": "2025-11-19T11:58:41.220Z",
+    "legacyId": "grp_t0thlpc9"
+  },
+  "XDLCPA": {
+    "name": "Deneme Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {},
+    "createdAt": "2025-12-31T13:52:07.830Z"
+  },
+  "F-EOIQ": {
+    "name": "Deneme Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {},
+    "createdAt": "2025-12-31T13:52:13.350Z"
+  },
+  "KFIOZW": {
+    "name": "Deneme",
+    "ownerId": "u1",
+    "members": [
+      "u1"
+    ],
+    "opts": {},
+    "createdAt": "2025-12-31T14:12:03.551Z"
+  },
+  "MSEXDW": {
+    "name": "Test Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {}
+  },
+  "PY9SQA": {
+    "name": "Test Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {}
+  },
+  "_4YO9A": {
+    "name": "Test Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {}
+  },
+  "8OE52W": {
+    "name": "Test Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {}
+  },
+  "WN5JMG": {
+    "name": "Test Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {}
+  },
+  "_ZOVRW": {
+    "name": "Test Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1"
+    ],
+    "opts": {}
+  },
+  "I7LIXQ": {
+    "name": "Test Grup",
+    "ownerId": "demo1",
+    "members": [
+      "demo1",
+      "demo2"
+    ],
+    "opts": {
+      "demo2": {
+        "includeInTotal": false
+      }
     }
-  ]
+  }
 }

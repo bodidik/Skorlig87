@@ -3,11 +3,11 @@
 /**
  * routes/live1987.cjs
  *
- * 1987 modu:
- * - Sadece Galatasaray, Fenerbahçe, Türkiye Milli Takımı maçları
+ * 1987 modu (TEST DÖNEMİ):
+ * - Sadece Galatasaray ve Fenerbahçe maçları
  * - AF + TSDB'den çekip filtreler
- * - /api/live1987/open   → şimdi .. +30 saat
- * - /api/live1987/schedule → bugün, yarın, +1 gün
+ * - /api/live1987/open      → şimdi .. +30 saat
+ * - /api/live1987/schedule  → bugün, yarın, +1 gün
  */
 
 const express = require("express");
@@ -39,13 +39,14 @@ async function writeJson(file, data) {
   await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
 }
 
-// ---- 1987 için takip edilen takımlar ----
+// ---- 1987 için takip edilen takımlar (TEST: sadece GS & FB) ----
 const TEAMS_1987 = [
   "Galatasaray",
   "Fenerbahce",
   "Fenerbahçe",
-  "Türkiye",
-  "Turkey"
+  // Test dönemi sonrası için tekrar açılabilir:
+  // "Türkiye",
+  // "Turkey",
 ];
 
 // 1987 filtresi: sadece ilgili takımların maçları

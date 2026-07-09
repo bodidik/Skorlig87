@@ -1,0 +1,47 @@
+{
+  "items": [
+    {
+      "fixtureId": "GS-2026-01-05-TS",
+      "home": Galatasaray,
+      "away": Trabzonspor,
+      "meta": {
+        "penaltyAny": false,
+        "redAny": false
+      },
+      "updatedAt": "2026-01-06T08:46:11.146Z",
+      "updatedBy": "admin-mobile"
+    }
+  ]
+}
+
+{
+  "items": [
+    {
+      "fixtureId": "MCI-2026-01-01-SUN",
+      "home": 2,
+      "away": 1,
+      "meta": {
+        "penaltyAny": false,
+        "redAny": false
+      },
+      "updatedAt": "2026-01-02T08:46:11.146Z",
+      "updatedBy": "admin-mobile"
+    }
+  ]
+}
+
+{
+  "items": [
+    {
+      "fixtureId": "MCI-2026-01-01-SUN",
+      "home": 2,
+      "away": 1,
+      "meta": {
+        "penaltyAny": false,
+        "redAny": false
+      },
+      "updatedAt": "2026-01-02T08:46:11.146Z",
+      "updatedBy": "admin-mobile"
+    }
+  ]
+}
