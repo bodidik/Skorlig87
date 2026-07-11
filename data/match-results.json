@@ -1,6 +1,24 @@
 {
   "items": [
     {
+      "fixtureId": "1581821",
+      "computedAt": "2026-07-11T04:41:38.100Z",
+      "finalScore": {
+        "home": 2,
+        "away": 1
+      },
+      "meta": {
+        "fixtureId": "1581821",
+        "home": null,
+        "away": null,
+        "kickoffISO": "2026-07-10T19:00:00+00:00",
+        "league": "World Cup",
+        "country": "World",
+        "status": "FT"
+      },
+      "rows": []
+    },
+    {
       "fixtureId": "BAR-2026-01-07-ATHB",
       "computedAt": "2026-01-08T10:59:24.749Z",
       "finalScore": {
@@ -111,5 +129,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-01-08T10:59:24.750Z"
+  "updatedAt": "2026-07-11T04:41:38.104Z"
 }

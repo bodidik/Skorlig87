@@ -1418,3 +1418,6 @@ router.get("/debug-manual", async (req, res) => {
 
 module.exports = router;
 
+// af-sync servisi aynı filtre + cache + kota yolundan fixture listesi alabilsin
+module.exports.fixturesByDate = fixturesByDate;
+

@@ -209,4 +209,10 @@ app.get("/", (req, res) => res.redirect("/health"));
 /* ===== Start ===== */
 app.listen(PORT, HOST, () => {
   console.log(`[SkorLig API] listening on http://${HOST}:${PORT}`);
+
+  /* 🔄 API-Football senkron servisi: canlı skor + otomatik sonuç/settle
+     Kapatmak için: SKORLIG_AF_SYNC=0 */
+  if (process.env.SKORLIG_AF_SYNC !== "0") {
+    safeMount("af-sync", () => require("./services/af-sync.cjs").start(PORT));
+  }
 });
