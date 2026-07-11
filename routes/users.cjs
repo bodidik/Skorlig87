@@ -197,6 +197,7 @@ router.get("/profile", async (req, res) => {
     const profile = {
       userId,
       mainTeam: u.mainTeam || null,
+      country: u.country || null, // kullanıcının "yereli": maç listesi buna göre kişiselleşir
       // totals: gerçek toplam puan için /api/rt/totals kullanıyoruz;
       totals: Number(u.totals || 0),
       // LigCoin
@@ -243,6 +244,44 @@ router.post("/set-main-team", express.json(), async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: "SET_MAIN_TEAM_ERR",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+// POST /api/users/set-country { userId, country }
+// Kullanıcının "yereli": maç listesi bu ülkenin üst ligi + global kupalar olur.
+router.post("/set-country", express.json(), async (req, res) => {
+  try {
+    const userId  = String(req.body?.userId || "").trim();
+    const rawCountry = String(req.body?.country || "").trim();
+    if (!userId || !rawCountry) return res.status(400).json({ ok: false, error: "USER_OR_COUNTRY_MISSING" });
+
+    // Kanonik ada çevir (aksan/encoding farkları eşleşmeyi bozmasın)
+    const { canonicalCountry } = require("./live2.cjs");
+    const country = canonicalCountry(rawCountry);
+    if (!country) return res.status(400).json({ ok: false, error: "COUNTRY_NOT_SUPPORTED", detail: rawCountry });
+
+    const data  = await readJson(USERS_FILE, { items: [] });
+    const items = Array.isArray(data.items) ? data.items : [];
+    const nowISO = new Date().toISOString();
+
+    let u = items.find(x => String(x.userId) === userId);
+    if (!u) {
+      u = { userId, mainTeam: null, country, createdAt: nowISO, lc: LC_START, lcLastDaily: null };
+      items.push(u);
+    } else {
+      u.country = country;
+      u.updatedAt = nowISO;
+    }
+
+    await writeJson(USERS_FILE, { items });
+    return res.json({ ok: true, userId, country });
+  } catch (e) {
+    console.error("SET_COUNTRY_ERR", e);
+    return res.status(500).json({
+      ok: false,
+      error: "SET_COUNTRY_ERR",
       detail: String(e && (e.message || e)),
     });
   }

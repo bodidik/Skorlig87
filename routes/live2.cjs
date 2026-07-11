@@ -270,6 +270,57 @@ function isTRModeFixture(it) {
   return isTopLeague(c, it.league);
 }
 
+// ---- Kullanıcı bazlı yerelleştirme ----
+// Herkes kendi ülkesinin üst ligini + global yarışları (DK, Şampiyonlar Ligi...) görür.
+// Türkiye'deki kullanıcı Galatasaray'ı, İtalya'daki Napoli'yi görür.
+const COUNTRY_ALIASES = {
+  "Türkiye": ["Türkiye", "Turkey"],
+  "Turkey": ["Türkiye", "Turkey"],
+};
+
+const COUNTRY_FLAGS = {
+  "Türkiye": "🇹🇷", Turkey: "🇹🇷", England: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", Spain: "🇪🇸", Germany: "🇩🇪",
+  Italy: "🇮🇹", France: "🇫🇷", Netherlands: "🇳🇱", Belgium: "🇧🇪", Greece: "🇬🇷",
+  Portugal: "🇵🇹", Brazil: "🇧🇷", Argentina: "🇦🇷", Japan: "🇯🇵", Russia: "🇷🇺",
+  Ukraine: "🇺🇦", USA: "🇺🇸", "Saudi Arabia": "🇸🇦",
+};
+
+// UI'da gösterilecek seçilebilir ülkeler (World/Europe/International meta anahtarları hariç,
+// Turkey/Türkiye tekilleştirilmiş)
+const SELECTABLE_COUNTRIES = Object.keys(ALLOWED)
+  .filter((c) => !["World", "Europe", "International", "Turkey"].includes(c));
+
+// Aksan/büyük-küçük/bozuk-bayt farklarına dayanıklı kanonik ülke adı.
+// "turkiye", "Turkey", "TÜRKİYE", hatta bozuk kodlanmış "T?rkiye" -> "Türkiye"
+function canonicalCountry(input) {
+  const norm = (s) =>
+    String(s || "")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "") // aksanları at
+      .replace(/[�?]/g, "")        // bozuk kodlama kalıntılarını at
+      .toLowerCase()
+      .trim();
+
+  const n = norm(input);
+  if (!n) return null;
+  if (n === "turkiye" || n === "turkey" || n === "trkiye") return "Türkiye";
+  for (const c of Object.keys(ALLOWED)) {
+    if (["World", "Europe", "International"].includes(c)) continue;
+    if (norm(c) === n) return c === "Turkey" ? "Türkiye" : c;
+  }
+  return null;
+}
+
+function localizeForCountry(list, country) {
+  const canon = canonicalCountry(country);
+  if (!canon) return list; // ülke yok/bilinmiyor: dokunma
+  const accepted = new Set(COUNTRY_ALIASES[canon] || [canon]);
+  return list.filter((it) => {
+    if (isGlobalLeagueName(it.league)) return true; // global yarışlar herkese
+    return accepted.has(String(it.country || ""));
+  });
+}
+
 function runtimeCountryCap(mode) {
   const p = String(mode?.profile || "").toUpperCase();
   if (p === "DEV_4_TEAMS") return 50; // 2 aylık big-4 listesi kırpılmasın
@@ -1060,6 +1111,17 @@ function pickOpenWindowHours(runtimeMode, req) {
 // - schedule: listeleme için (manuel +60 gün gösterir; query ile override)
 // - open: tahmine açık pencere için (ileri maksimum 96 saat)
 
+// GET /api/live2/countries : mobil ülke seçici için desteklenen ülkeler
+router.get("/countries", (req, res) => {
+  res.json({
+    ok: true,
+    countries: SELECTABLE_COUNTRIES.map((c) => ({
+      country: c,
+      flag: COUNTRY_FLAGS[c] || "",
+    })),
+  });
+});
+
 router.get("/schedule", async (req, res) => {
   try {
     const runtimeMode = await getRuntimeSafe();
@@ -1102,7 +1164,10 @@ router.get("/schedule", async (req, res) => {
 
     const manual = await manualFixturesWithinWindow(fromMs, toMs);
     const manualFiltered = applyRuntimeFilter(manual, runtimeMode);
-    const merged = mergeWithManualFixtures(filtered, manualFiltered);
+    let merged = mergeWithManualFixtures(filtered, manualFiltered);
+
+    // Kullanıcının yereli: ?country= verildiyse o ülkenin ligi + global yarışlar
+    merged = localizeForCountry(merged, req.query.country);
 
     // Admin uyarısı: manuel olup provider’da olmayanlar
     for (const mf of manualFiltered) {
@@ -1185,7 +1250,10 @@ router.get("/open", async (req, res) => {
     const manual = await manualFixturesWithinWindow(fromMs, toMs);
     const manualFiltered = applyRuntimeFilter(manual, runtimeMode);
 
-    const merged = mergeWithManualFixtures(baseFiltered, manualFiltered);
+    let merged = mergeWithManualFixtures(baseFiltered, manualFiltered);
+
+    // Kullanıcının yereli: ?country= verildiyse o ülkenin ligi + global yarışlar
+    merged = localizeForCountry(merged, req.query.country);
 
     // lock + pencere + (kilitli olmayan)
     const windowed = [];
@@ -1420,4 +1488,6 @@ module.exports = router;
 
 // af-sync servisi aynı filtre + cache + kota yolundan fixture listesi alabilsin
 module.exports.fixturesByDate = fixturesByDate;
+// users.cjs set-country kanonik ad saklayabilsin
+module.exports.canonicalCountry = canonicalCountry;
 
