@@ -1,8 +1,8 @@
 {
-  "profile": "DEV_4_TEAMS",
-  "maxTeams": 30,
-  "maxLeagues": 1,
-  "notes": "Big-4 test",
-  "updatedAt": "2025-12-21T12:15:07.798Z",
-  "updatedBy": "ps"
+  "profile": "GLOBAL_100_TEAMS",
+  "maxTeams": 100,
+  "maxLeagues": 5,
+  "notes": "Gerçek veri modu: AF + TSDB, Dünya Kupası dahil",
+  "updatedAt": "2026-07-11T04:27:39.835Z",
+  "updatedBy": "claude"
 }

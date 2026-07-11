@@ -87,8 +87,12 @@ const ALLOWED = {
   "Saudi Arabia": [/pro\s*league/i],
 
   // Avrupa / Dünya kupaları
-  World: [/champions\s*league/i, /europa\s*league/i, /conference\s*league/i, /uefa/i],
-  Europe: [/champions\s*league/i, /europa\s*league/i, /conference\s*league/i, /uefa/i],
+  World: [
+    /champions\s*league/i, /europa\s*league/i, /conference\s*league/i, /uefa/i,
+    /world\s*cup/i, /euro\s*20\d{2}/i, /european\s*championship/i,
+    /copa\s*america/i, /nations\s*league/i, /africa\s*cup/i,
+  ],
+  Europe: [/champions\s*league/i, /europa\s*league/i, /conference\s*league/i, /uefa/i, /euro\s*20\d{2}/i, /european\s*championship/i],
   International: [
     /champions\s*league/i,
     /europa\s*league/i,
@@ -105,10 +109,36 @@ const GLOBAL_LEAGUES = [
   /uefa\s*champions/i,
   /europa\s*league/i,
   /conference\s*league/i,
+  // Uluslararası turnuvalar (AF bunları country:"World" ile gönderir)
+  /world\s*cup/i,
+  /euro\s*20\d{2}/i,
+  /european\s*championship/i,
+  /copa\s*america/i,
+  /nations\s*league/i,
+  /africa\s*cup/i,
 ];
+
+// Gençlik / kadın / yedek / alt ligler: ana oyuna girmesin
+// (örn. "UEFA U19 Championship", "World Cup - Women U20", "MLS Next Pro")
+const EXCLUDED_LEAGUES = [
+  /\bU-?1\d\b/i,          // U15..U19
+  /\bU-?2[0-3]\b/i,       // U20..U23
+  /youth/i,
+  /\bwomen\b/i,
+  /\bw\.?league\b/i,
+  /next\s*pro/i,
+  /\breserve/i,
+  /\bacademy\b/i,
+];
+
+function isExcludedLeague(league) {
+  const n = String(league || "");
+  return EXCLUDED_LEAGUES.some((rx) => rx.test(n));
+}
 
 function isGlobalLeagueName(league) {
   const n = String(league || "");
+  if (isExcludedLeague(n)) return false;
   return GLOBAL_LEAGUES.some((rx) => rx.test(n));
 }
 
@@ -120,6 +150,7 @@ function isTopLeague(country, league) {
   const pats = ALLOWED[country];
   if (!pats) return false;
   const n = String(league || "");
+  if (isExcludedLeague(n)) return false;
   return pats.some((rx) => rx.test(n));
 }
 
@@ -339,6 +370,17 @@ function ensureProvStruct(input) {
 async function loadProv() {
   const raw = await readJson(PROV_FILE, null);
   const m = ensureProvStruct(raw || {});
+
+  // Günlük kota sıfırlama: gün değiştiyse tüm used sayaçlarını sıfırla.
+  // (Sayaç hiç sıfırlanmayınca AF kalıcı olarak "kota dolu" sanılıp atlanıyordu.)
+  const today = new Date().toISOString().slice(0, 10);
+  if (m.quotaDay !== today) {
+    m.quotaDay = today;
+    for (const k of Object.keys(m.quotas || {})) {
+      if (m.quotas[k]) m.quotas[k].used = 0;
+    }
+  }
+
   await writeJson(PROV_FILE, m);
   return m;
 }
@@ -537,8 +579,36 @@ async function tsdbByDate(isoDate) {
   }
 }
 
+// ==== Tarih bazlı disk cache (AF günlük 100 istek kotasını korumak için) ====
+// TTL: bugünün listesi 30 dk (skor durumu değişebilir), diğer günler 6 saat.
+const FX_CACHE_DIR = path.join(DATA_DIR, "cache");
+const FX_CACHE_TTL_TODAY_MS = 30 * 60 * 1000;
+const FX_CACHE_TTL_OTHER_MS = 6 * 60 * 60 * 1000;
+
+async function readFxCache(isoDate) {
+  const f = path.join(FX_CACHE_DIR, `fx-${isoDate}.json`);
+  const c = await readJson(f, null);
+  if (!c || !Array.isArray(c.items) || !Number.isFinite(c.at)) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const ttl = isoDate === today ? FX_CACHE_TTL_TODAY_MS : FX_CACHE_TTL_OTHER_MS;
+  if (Date.now() - c.at > ttl) return null;
+  return c.items;
+}
+
+async function writeFxCache(isoDate, items) {
+  const f = path.join(FX_CACHE_DIR, `fx-${isoDate}.json`);
+  try {
+    await writeJson(f, { at: Date.now(), date: isoDate, items });
+  } catch (e) {
+    console.warn(`[live2] fx cache yazılamadı (${isoDate}):`, e && e.message ? e.message : e);
+  }
+}
+
 // TSDB → AF kompozit
 async function fixturesByDate(isoDate) {
+  const cached = await readFxCache(isoDate);
+  if (cached) return cached;
+
   const res = [];
   try {
     res.push(...(await tsdbByDate(isoDate)));
@@ -550,7 +620,11 @@ async function fixturesByDate(isoDate) {
   } catch (e) {
     console.warn(`[live2] afByDate(${isoDate}) failed:`, e && e.message ? e.message : e);
   }
-  return dedupeFixtures(res);
+  const out = dedupeFixtures(res);
+
+  // Boş sonucu da kısa süreliğine cache'le ki arka arkaya gelen istekler kota yakmasın
+  await writeFxCache(isoDate, out);
+  return out;
 }
 
 function dedupeFixtures(arr) {

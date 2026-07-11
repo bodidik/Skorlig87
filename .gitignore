@@ -3,5 +3,6 @@ logs/
 node_modules/
 data/*.bak
 data/tmp/
+data/cache/
 mobile/.expo/
 mobile/.cache/
