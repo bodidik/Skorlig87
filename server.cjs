@@ -148,6 +148,7 @@ safeMount("users-groups-compat", () => app.use("/api/users/groups", require("./r
 );
 
 safeMount("totals",           () => app.use("/api/rt",         require("./routes/totals.cjs")));
+safeMount("mini",             () => app.use("/api/mini",       require("./routes/mini.cjs")));
 safeMount("auth-1987gs",      () => app.use("/api/auth1987gs", require("./routes/auth-1987gs.cjs")));
 
 /* 🔹 Yeni: runtime mode admin paneli */

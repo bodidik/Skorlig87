@@ -1,0 +1,32 @@
+{
+  "items": [
+    {
+      "id": "MINI-b99209a237ee",
+      "code": "WJDGAK",
+      "name": "DK Yari Final Kupasi",
+      "ownerId": "demo1",
+      "fixtures": [
+        {
+          "fixtureId": "1581037",
+          "home": "Norway",
+          "away": "England",
+          "kickoffISO": "2026-07-12T00:00:00+03:00",
+          "league": "World Cup"
+        },
+        {
+          "fixtureId": "1582681",
+          "home": "Argentina",
+          "away": "Switzerland",
+          "kickoffISO": "2026-07-12T04:00:00+03:00",
+          "league": "World Cup"
+        }
+      ],
+      "members": [
+        "demo1",
+        "FBSpirit60"
+      ],
+      "createdAt": "2026-07-11T06:40:38.986Z"
+    }
+  ],
+  "updatedAt": "2026-07-11T06:40:55.023Z"
+}
