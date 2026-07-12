@@ -158,6 +158,70 @@ router.post("/join", express.json(), async (req, res) => {
   }
 });
 
+// ---- POST /api/mini/invite ----
+// Üye olan bir kullanıcı, ARKADAŞI olan birini turnuvaya doğrudan ekler.
+// Arkadaşlık zaten karşılıklı onayla kurulduğu için ayrıca kabul adımı yok;
+// davet edilen, turnuvayı "Turnuvalarım" listesinde görür.
+const FRIENDS_FILE = path.join(DATA_DIR, "friends.json");
+
+async function areFriends(u1, u2) {
+  const m = await readJson(FRIENDS_FILE, { links: [], blocks: [] });
+  const a = String(u1).toLowerCase();
+  const b = String(u2).toLowerCase();
+
+  const blocked = (m.blocks || []).some((x) => {
+    const by = String(x.by || "").toLowerCase();
+    const tg = String(x.target || "").toLowerCase();
+    return (by === a && tg === b) || (by === b && tg === a);
+  });
+  if (blocked) return false;
+
+  return (m.links || []).some((l) => {
+    const la = String(l.a || "").toLowerCase();
+    const lb = String(l.b || "").toLowerCase();
+    return (la === a && lb === b) || (la === b && lb === a);
+  });
+}
+
+router.post("/invite", express.json(), async (req, res) => {
+  try {
+    const userId = String(req.body?.userId || "").trim();
+    const id = String(req.body?.id || "").trim();
+    const friendUserId = String(req.body?.friendUserId || "").trim();
+    if (!userId || !id || !friendUserId) {
+      return res.status(400).json({ ok: false, error: "USER_ID_OR_FRIEND_MISSING" });
+    }
+    if (userId.toLowerCase() === friendUserId.toLowerCase()) {
+      return res.status(400).json({ ok: false, error: "CANNOT_INVITE_SELF" });
+    }
+
+    const items = await loadAll();
+    const t = items.find((x) => x.id === id);
+    if (!t) return res.status(404).json({ ok: false, error: "TOURNAMENT_NOT_FOUND" });
+
+    t.members = Array.isArray(t.members) ? t.members : [];
+    if (!t.members.includes(userId)) {
+      return res.status(403).json({ ok: false, error: "NOT_A_MEMBER" });
+    }
+    if (t.members.includes(friendUserId)) {
+      return res.json({ ok: true, tournament: publicView(t), already: true });
+    }
+    if (!(await areFriends(userId, friendUserId))) {
+      return res.status(403).json({ ok: false, error: "NOT_FRIENDS" });
+    }
+    if (t.members.length >= MAX_MEMBERS) {
+      return res.status(400).json({ ok: false, error: "TOURNAMENT_FULL" });
+    }
+
+    t.members.push(friendUserId);
+    await saveAll(items);
+    return res.json({ ok: true, tournament: publicView(t), invited: friendUserId });
+  } catch (e) {
+    console.error("[mini] invite error:", e);
+    return res.status(500).json({ ok: false, error: "MINI_INVITE_FAILED", detail: String(e?.message || e) });
+  }
+});
+
 // ---- GET /api/mini/mine?userId= ----
 router.get("/mine", async (req, res) => {
   try {
