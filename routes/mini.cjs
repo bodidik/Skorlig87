@@ -30,6 +30,12 @@ const MIN_FIXTURES = 2;
 const MAX_FIXTURES = 10;
 const MAX_MEMBERS = 50;
 
+// Turnuva birincisine LC (LigCoin) ödülü — settle2'nin match_reward
+// mekanizmasıyla aynı dosyalara yazar (users.json + lc-wallet.json ledger).
+const MINI_WIN_LC = Math.max(0, Number(process.env.SKORLIG_MINI_WIN_LC || 20));
+const USERS_FILE = path.join(DATA_DIR, "users.json");
+const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
+
 async function readJson(file, fb) {
   try {
     return JSON.parse(await fsp.readFile(file, "utf8"));
@@ -71,7 +77,120 @@ function publicView(t) {
     members: t.members || [],
     memberCount: (t.members || []).length,
     createdAt: t.createdAt,
+    finishedAt: t.finishedAt || null,
+    winners: t.winners || null,
+    rewardLc: t.rewardLc ?? null,
   };
+}
+
+// ---- LC ödülü (settle2 awardLcForRows ile aynı dosya deseninde) ----
+function isBotUser(uid) {
+  return String(uid || "").toLowerCase().startsWith("bot_");
+}
+
+async function awardMiniWinLc(userIds, tournament) {
+  const winners = (userIds || []).filter((u) => u && !isBotUser(u));
+  if (!winners.length || MINI_WIN_LC <= 0) return 0;
+
+  const nowISO = new Date().toISOString();
+
+  // users.json ({items:[]} formatı)
+  const usersRaw = await readJson(USERS_FILE, { items: [] });
+  const usersItems = Array.isArray(usersRaw) ? usersRaw : usersRaw.items || usersRaw.users || [];
+
+  // lc-wallet.json ({users:[], ledger:[]})
+  const wallet = (await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })) || {};
+  if (!Array.isArray(wallet.users)) wallet.users = [];
+  if (!Array.isArray(wallet.ledger)) wallet.ledger = [];
+
+  for (const uid of winners) {
+    let u = usersItems.find((x) => String(x.userId) === uid);
+    if (!u) {
+      u = { userId: uid, mainTeam: null, createdAt: nowISO, lc: MINI_WIN_LC, lcLastDaily: null };
+      usersItems.push(u);
+    } else {
+      u.lc = Number(u.lc || 0) + MINI_WIN_LC;
+    }
+    u.lcUpdatedAt = nowISO;
+    u.lcLastReason = "mini_tournament_win";
+    u.lcLastAmount = MINI_WIN_LC;
+
+    let wu = wallet.users.find(
+      (x) => String(x.userId || "").toLowerCase() === uid.toLowerCase()
+    );
+    if (!wu) {
+      wu = {
+        userId: uid,
+        balance: 0,
+        createdAt: nowISO,
+        updatedAt: nowISO,
+        lastDailyAt: null,
+        totalEarned: 0,
+        totalSpent: 0,
+      };
+      wallet.users.push(wu);
+    }
+    wu.balance = Number(wu.balance || 0) + MINI_WIN_LC;
+    wu.totalEarned = Number(wu.totalEarned || 0) + MINI_WIN_LC;
+    wu.updatedAt = nowISO;
+
+    wallet.ledger.push({
+      id: "tx_" + Date.now().toString(36) + "_" + crypto.randomBytes(3).toString("hex"),
+      userId: uid,
+      kind: "reward",
+      amount: MINI_WIN_LC,
+      reason: "mini_tournament_win",
+      fixtureId: null,
+      meta: { tournamentId: tournament.id, tournamentName: tournament.name },
+      createdAt: nowISO,
+    });
+  }
+
+  const usersOut = Array.isArray(usersRaw) ? usersItems : { ...usersRaw, items: usersItems };
+  await writeJson(USERS_FILE, usersOut);
+  wallet.updatedAt = nowISO;
+  await writeJson(WALLET_FILE, wallet);
+
+  return winners.length;
+}
+
+// Aynı turnuvanın eşzamanlı iki board isteğinde çifte ödülü engelle
+const _finalizing = new Set();
+
+/** Tüm maçlar settle olduysa turnuvayı bitir: kazananları yaz, LC ödülünü ver. */
+async function finalizeIfDone(t, board, settledCount, fixtureCount) {
+  if (t.finishedAt) return t;
+  if (!fixtureCount || settledCount < fixtureCount) return t;
+  if (_finalizing.has(t.id)) return t;
+  _finalizing.add(t.id);
+
+  try {
+    // Dosyadan taze oku (yarış koşullarına karşı) ve tekrar kontrol et
+    const items = await loadAll();
+    const cur = items.find((x) => x.id === t.id);
+    if (!cur || cur.finishedAt) return cur || t;
+
+    const top = board.length ? board[0].points : 0;
+    // Kimse puan alamadıysa kazanan yok (hükümsüz biter, ödül dağıtılmaz)
+    const winners = top > 0 ? board.filter((r) => r.points === top).map((r) => r.userId) : [];
+
+    cur.finishedAt = new Date().toISOString();
+    cur.winners = winners;
+    cur.rewardLc = winners.length ? MINI_WIN_LC : 0;
+    await saveAll(items);
+
+    if (winners.length) {
+      const awarded = await awardMiniWinLc(winners, cur);
+      console.log(
+        `[mini] turnuva bitti: "${cur.name}" (${cur.id}) | kazanan: ${winners.join(", ")} | LC ödülü: ${MINI_WIN_LC} x ${awarded}`
+      );
+    } else {
+      console.log(`[mini] turnuva hükümsüz bitti (puan yok): "${cur.name}" (${cur.id})`);
+    }
+    return cur;
+  } finally {
+    _finalizing.delete(t.id);
+  }
 }
 
 // ---- POST /api/mini/create ----
@@ -240,6 +359,37 @@ router.get("/mine", async (req, res) => {
   }
 });
 
+// ---- GET /api/mini/wins?userId= : kazanılan turnuvalar (profil vitrini) ----
+router.get("/wins", async (req, res) => {
+  try {
+    const userId = String(req.query.userId || "").trim();
+    if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
+
+    const items = await loadAll();
+    const wins = items
+      .filter(
+        (t) =>
+          t.finishedAt &&
+          Array.isArray(t.winners) &&
+          t.winners.some((w) => String(w).toLowerCase() === userId.toLowerCase())
+      )
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        finishedAt: t.finishedAt,
+        rewardLc: t.rewardLc ?? 0,
+        memberCount: (t.members || []).length,
+        fixtureCount: (t.fixtures || []).length,
+        shared: (t.winners || []).length > 1, // beraberlikte ortak şampiyonluk
+      }))
+      .sort((a, b) => String(b.finishedAt).localeCompare(String(a.finishedAt)));
+
+    return res.json({ ok: true, count: wins.length, items: wins });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "MINI_WINS_FAILED", detail: String(e?.message || e) });
+  }
+});
+
 // ---- GET /api/mini/board?id= (veya ?code=) ----
 router.get("/board", async (req, res) => {
   try {
@@ -297,9 +447,12 @@ router.get("/board", async (req, res) => {
       .map((x) => ({ ...x, points: Math.round(x.points * 100) / 100 }))
       .sort((a, b) => b.points - a.points || a.userId.localeCompare(b.userId));
 
+    // Tüm maçlar bittiyse turnuvayı sonlandır (kazanan + LC ödülü, bir kez)
+    const finalT = await finalizeIfDone(t, board, settledCount, fixtureIds.length);
+
     return res.json({
       ok: true,
-      tournament: publicView(t),
+      tournament: publicView(finalT),
       fixtures: fixtureViews,
       board,
       settledCount,
