@@ -548,6 +548,8 @@ function normalizeAF(x) {
     fixtureId: x?.fixture?.id,
     kickoffISO: x?.fixture?.date,
     league: x?.league?.name || null,
+    leagueId: x?.league?.id ?? null,   // TR ligi filtresi id ile (203 = Süper Lig)
+    round: x?.league?.round || null,   // "Regular Season - 3" -> hafta etiketi
     country: x?.league?.country || null,
     home: x?.teams?.home?.name || null,
     away: x?.teams?.away?.name || null,
