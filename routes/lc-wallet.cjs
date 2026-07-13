@@ -19,6 +19,9 @@ const MATCH_ENTRY_COST = 3; // Maç girişi LC bedeli (bilgi amaçlı)
 // Otomatik birikim (token bitince bekle): lib/lc-regen.cjs
 const { applyRegen, regenInfo } = require("../lib/lc-regen.cjs");
 
+// Premium ayrıcalıkları (tek kaynak)
+const premium = require("../lib/premium.cjs");
+
 /* =========================
  *  LC MAĞAZASI (ücret karşılığı token)
  *  SKORLIG_STORE_MODE=mock  -> test modu: anında yüklenir (varsayılan)
@@ -297,13 +300,17 @@ router.get("/lc-wallet/summary", async (req, res) => {
     // 🟢 Dosya modu (mevcut davranış)
     const { state, user } = await ensureWalletUserFile(userId);
 
-    // Otomatik birikim: bakiye düşükse zamanla token toplanır
-    const regenEarned = applyRegen(user);
+    const isPrem = await premium.isPremium(userId);
+    const regenOpts = premium.regenParams(isPrem);
+
+    // Otomatik birikim: bakiye düşükse zamanla token toplanır (premium daha hızlı/yüksek)
+    const regenEarned = applyRegen(user, Date.now(), regenOpts);
     if (regenEarned > 0) await saveWalletState(state);
 
     const today = todayKey();
     const last  = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
     const canClaim = !last || last !== today;
+    const dailyAmount = premium.dailyLc(isPrem);
 
     return res.json({
       ok: true,
@@ -313,19 +320,21 @@ router.get("/lc-wallet/summary", async (req, res) => {
         lastDailyAt: user.lastDailyAt,
         totalEarned: user.totalEarned || 0,
         totalSpent: user.totalSpent || 0,
+        premium: isPrem,
       },
       daily: {
         today,
         canClaim,
-        amount: DAILY_LC,
+        amount: dailyAmount,
       },
       pricing: {
-        daily: DAILY_LC,
-        matchEntryCost: MATCH_ENTRY_COST,
+        daily: dailyAmount,
+        matchEntryCost: premium.matchCost(isPrem, MATCH_ENTRY_COST),
         initialDefault: INITIAL_DEFAULT,
         initial1987: INITIAL_1987,
       },
-      regen: regenInfo(user),
+      premium: isPrem,
+      regen: regenInfo(user, Date.now(), regenOpts),
       updatedAt: state.updatedAt || null,
     });
   } catch (e) {
@@ -489,16 +498,19 @@ router.post("/lc-wallet/daily-claim", express.json(), async (req, res) => {
       });
     }
 
-    u.balance += DAILY_LC;
-    u.totalEarned = (u.totalEarned || 0) + DAILY_LC;
+    const isPrem = await premium.isPremium(userId);
+    const dailyAmount = premium.dailyLc(isPrem);
+
+    u.balance += dailyAmount;
+    u.totalEarned = (u.totalEarned || 0) + dailyAmount;
     u.lastDailyAt = new Date().toISOString();
     u.updatedAt   = u.lastDailyAt;
 
     addLedgerEntryFile(state, {
       userId,
       kind: "reward",
-      amount: DAILY_LC,
-      reason: "daily",
+      amount: dailyAmount,
+      reason: isPrem ? "daily_premium" : "daily",
     });
 
     await saveWalletState(state);
@@ -511,10 +523,11 @@ router.post("/lc-wallet/daily-claim", express.json(), async (req, res) => {
         lastDailyAt: u.lastDailyAt,
         totalEarned: u.totalEarned || 0,
         totalSpent: u.totalSpent || 0,
+        premium: isPrem,
       },
       daily: {
         today,
-        amount: DAILY_LC,
+        amount: dailyAmount,
         claimed: true,
       },
     });
@@ -648,17 +661,22 @@ router.post("/lc-wallet/purchase", express.json(), async (req, res) => {
     const { state, user } = await ensureWalletUserFile(userId);
     const nowISO = new Date().toISOString();
 
-    user.balance = Number(user.balance || 0) + pkg.lc;
-    user.totalEarned = Number(user.totalEarned || 0) + pkg.lc;
+    // Premium ayrıcalığı: satın alımda bonus LC
+    const isPrem = await premium.isPremium(userId);
+    const bonus = isPrem ? Math.round(pkg.lc * premium.PERKS.storeBonusPct) : 0;
+    const totalLc = pkg.lc + bonus;
+
+    user.balance = Number(user.balance || 0) + totalLc;
+    user.totalEarned = Number(user.totalEarned || 0) + totalLc;
     user.updatedAt = nowISO;
 
     addLedgerEntryFile(state, {
       userId,
       kind: "purchase",
-      amount: pkg.lc,
+      amount: totalLc,
       reason: "store_purchase_mock",
       fixtureId: null,
-      meta: { packageId: pkg.id, priceTRY: pkg.priceTRY, mode: "mock" },
+      meta: { packageId: pkg.id, priceTRY: pkg.priceTRY, mode: "mock", baseLc: pkg.lc, premiumBonus: bonus },
     });
 
     await saveWalletState(state);
@@ -672,10 +690,10 @@ router.post("/lc-wallet/purchase", express.json(), async (req, res) => {
         u = { userId, mainTeam: null, createdAt: nowISO, lc: 0, lcLastDaily: null };
         items.push(u);
       }
-      u.lc = Number(u.lc || 0) + pkg.lc;
+      u.lc = Number(u.lc || 0) + totalLc;
       u.lcUpdatedAt = nowISO;
       u.lcLastReason = "store_purchase_mock";
-      u.lcLastAmount = pkg.lc;
+      u.lcLastAmount = totalLc;
       await writeJson(USERS_FILE, Array.isArray(usersRaw) ? items : { ...usersRaw, items });
     } catch (e) {
       console.warn("[lc-store] users.json senkron yazılamadı:", e && e.message ? e.message : e);
@@ -685,6 +703,8 @@ router.post("/lc-wallet/purchase", express.json(), async (req, res) => {
       ok: true,
       mode: "mock",
       package: pkg,
+      premiumBonus: bonus,
+      lcLoaded: totalLc,
       newBalance: user.balance,
     });
   } catch (e) {
@@ -694,6 +714,70 @@ router.post("/lc-wallet/purchase", express.json(), async (req, res) => {
       error: "LC_STORE_PURCHASE_ERR",
       detail: String(e && (e.message || e)),
     });
+  }
+});
+
+/**
+ * GET /api/rt/lc-wallet/premium/status?userId=
+ * Premium durumu + ayrıcalıklar + abonelik paketleri.
+ */
+router.get("/lc-wallet/premium/status", async (req, res) => {
+  try {
+    const userId = String(req.query.userId || "").trim();
+    if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
+    const status = await premium.premiumStatus(userId);
+    res.json({ ok: true, mode: STORE_MODE, ...status });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: "PREMIUM_STATUS_ERR", detail: String(e?.message || e) });
+  }
+});
+
+/**
+ * POST /api/rt/lc-wallet/premium/subscribe { userId, planId }
+ * mock modunda aboneliği anında açar (test). Gerçek yayında Google Play/
+ * App Store abonelik makbuzu doğrulaması buraya eklenecek.
+ */
+router.post("/lc-wallet/premium/subscribe", express.json(), async (req, res) => {
+  try {
+    const userId = String(req.body?.userId || "").trim();
+    const planId = String(req.body?.planId || "").trim();
+    if (!userId || !planId) return res.status(400).json({ ok: false, error: "USER_OR_PLAN_MISSING" });
+
+    const plan = premium.PLANS.find((p) => p.id === planId);
+    if (!plan) return res.status(404).json({ ok: false, error: "PLAN_NOT_FOUND" });
+
+    if (STORE_MODE === "disabled") {
+      return res.status(403).json({ ok: false, error: "STORE_DISABLED" });
+    }
+    if (STORE_MODE !== "mock") {
+      return res.status(501).json({ ok: false, error: "STORE_PROVIDER_NOT_IMPLEMENTED", mode: STORE_MODE });
+    }
+
+    const nowISO = new Date().toISOString();
+    const usersRaw = await readJson(USERS_FILE, { items: [] });
+    const items = Array.isArray(usersRaw) ? usersRaw : usersRaw.items || [];
+    let u = items.find((x) => String(x.userId) === userId);
+    if (!u) {
+      u = { userId, mainTeam: null, createdAt: nowISO, lc: 0, lcLastDaily: null };
+      items.push(u);
+    }
+
+    // Mevcut premium süresi varsa üstüne ekle (uzatma), yoksa şimdiden başlat
+    const base = u.premium && u.premiumUntil && new Date(u.premiumUntil).getTime() > Date.now()
+      ? new Date(u.premiumUntil).getTime()
+      : Date.now();
+    const until = new Date(base + plan.days * 86400000).toISOString();
+    u.premium = true;
+    u.premiumUntil = until;
+    u.premiumPlan = plan.id;
+    u.updatedAt = nowISO;
+
+    await writeJson(USERS_FILE, Array.isArray(usersRaw) ? items : { ...usersRaw, items });
+
+    res.json({ ok: true, mode: "mock", plan, premiumUntil: until });
+  } catch (e) {
+    console.error("PREMIUM_SUBSCRIBE_ERR", e);
+    res.status(500).json({ ok: false, error: "PREMIUM_SUBSCRIBE_ERR", detail: String(e?.message || e) });
   }
 });
 

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-13T13:57:09.906Z",
+  "updatedAt": "2026-07-13T18:01:48.086Z",
   "quotas": {
     "FDO": {
       "used": 0,
@@ -7,12 +7,12 @@
       "warn": 900
     },
     "AF": {
-      "used": 19,
+      "used": 69,
       "daily": 100,
       "warn": 90
     },
     "TSDB": {
-      "used": 19,
+      "used": 69,
       "daily": 1000,
       "warn": 900
     }
@@ -26,17 +26,17 @@
       "weight": 1
     },
     "AF": {
-      "fail": 13,
-      "lastAt": "2026-07-13T13:57:09.906Z",
-      "ok": 124,
-      "lastMs": 616,
+      "fail": 17,
+      "lastAt": "2026-07-13T18:01:48.086Z",
+      "ok": 170,
+      "lastMs": 23,
       "weight": 1
     },
     "TSDB": {
-      "fail": 0,
-      "lastAt": "2026-07-13T13:57:09.277Z",
-      "ok": 1,
-      "lastMs": 544,
+      "fail": 4,
+      "lastAt": "2026-07-13T18:01:48.058Z",
+      "ok": 47,
+      "lastMs": 4,
       "weight": 1
     }
   },

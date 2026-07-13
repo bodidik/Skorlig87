@@ -17,6 +17,8 @@ const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 
 // 🔹 Otomatik LC birikimi (token bitince bekle)
 const { applyRegen } = require("../lib/lc-regen.cjs");
+// 🔹 Premium ayrıcalıkları
+const premium = require("../lib/premium.cjs");
 
 // 🔹 LigCoin / cüzdan parametreleri
 // lc-wallet.cjs ile SENKRON tutulmalı
@@ -174,7 +176,9 @@ async function spendLcMatchIfNeededFile(userId, fixtureId, cost, alreadyPredicte
 
   // Otomatik birikim: bakiye düşükse bekleyen tokenler burada işlenir,
   // böylece "tokeni biten" kullanıcı süre dolunca tekrar tahmin girebilir.
-  const regenEarned = applyRegen(user);
+  // Premium daha hızlı/yüksek birikir.
+  const isPrem = await premium.isPremium(uid);
+  const regenEarned = applyRegen(user, Date.now(), premium.regenParams(isPrem));
 
   // İlk tahmin dışındakilerde veya cost <= 0 ise kesinti yok, sadece bakiye döner
   if (alreadyPredicted || cost <= 0) {
@@ -911,18 +915,21 @@ router.post("/pred/submit", async (req, res) => {
 
 
     // 🔹 LC harcaması (maç başı cost, ikinci/üçüncü düzeltmede kesilmez)
+    // Premium ayrıcalığı: maç girişi bedava (matchCost 0)
+    const isPrem = await premium.isPremium(uid);
+    const effMatchCost = premium.matchCost(isPrem, LC_MATCH_COST);
     const spendRes = db
       ? await spendLcMatchIfNeededMongo(
           db,
           uid,
           fx,
-          LC_MATCH_COST,
+          effMatchCost,
           alreadyPredicted
         )
       : await spendLcMatchIfNeededFile(
           uid,
           fx,
-          LC_MATCH_COST,
+          effMatchCost,
           alreadyPredicted
         );
 
