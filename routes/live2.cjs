@@ -603,7 +603,7 @@ async function tsdbByDate(isoDate) {
   const t0 = Date.now();
   try {
     const j = await safeFetchJsonOrNull(
-      `https://www.thesportsdb.com/api/v1/json/3/eventsonday.php?d=${encodeURIComponent(
+      `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${encodeURIComponent(
         isoDate
       )}&s=Soccer`,
       {},
