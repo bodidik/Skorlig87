@@ -32,6 +32,8 @@ const premium = require("../lib/premium.cjs");
 const STORE_MODE = String(process.env.SKORLIG_STORE_MODE || "mock").toLowerCase();
 
 const LC_PACKAGES = [
+  // Tokeni tükenen kullanıcı için ucuz, hızlı "acil giriş" paketi (en az 3 maç girişi eder)
+  { id: "lc_10",  lc: 10,  priceTRY: 7.99,  label: "Acil Token", emergency: true },
   { id: "lc_30",  lc: 30,  priceTRY: 19.99, label: "Başlangıç Paketi" },
   { id: "lc_80",  lc: 80,  priceTRY: 44.99, label: "Taraftar Paketi",  popular: true },
   { id: "lc_200", lc: 200, priceTRY: 99.99, label: "Şampiyon Paketi" },
