@@ -16,6 +16,24 @@ const INITIAL_DEFAULT  = 30;
 const INITIAL_1987     = 60;
 const MATCH_ENTRY_COST = 3; // Maç girişi LC bedeli (bilgi amaçlı)
 
+// Otomatik birikim (token bitince bekle): lib/lc-regen.cjs
+const { applyRegen, regenInfo } = require("../lib/lc-regen.cjs");
+
+/* =========================
+ *  LC MAĞAZASI (ücret karşılığı token)
+ *  SKORLIG_STORE_MODE=mock  -> test modu: anında yüklenir (varsayılan)
+ *  SKORLIG_STORE_MODE=disabled -> satın alma kapalı
+ *  Gerçek yayında: Google Play Billing / App Store IAP makbuz doğrulaması
+ *  purchase endpoint'ine eklenmeli (provider:"google"|"apple" dalı).
+ * ========================= */
+const STORE_MODE = String(process.env.SKORLIG_STORE_MODE || "mock").toLowerCase();
+
+const LC_PACKAGES = [
+  { id: "lc_30",  lc: 30,  priceTRY: 19.99, label: "Başlangıç Paketi" },
+  { id: "lc_80",  lc: 80,  priceTRY: 44.99, label: "Taraftar Paketi",  popular: true },
+  { id: "lc_200", lc: 200, priceTRY: 99.99, label: "Şampiyon Paketi" },
+];
+
 /* =========================
  *  Ortak dosya yardımcıları
  * ========================= */
@@ -279,6 +297,10 @@ router.get("/lc-wallet/summary", async (req, res) => {
     // 🟢 Dosya modu (mevcut davranış)
     const { state, user } = await ensureWalletUserFile(userId);
 
+    // Otomatik birikim: bakiye düşükse zamanla token toplanır
+    const regenEarned = applyRegen(user);
+    if (regenEarned > 0) await saveWalletState(state);
+
     const today = todayKey();
     const last  = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
     const canClaim = !last || last !== today;
@@ -303,6 +325,7 @@ router.get("/lc-wallet/summary", async (req, res) => {
         initialDefault: INITIAL_DEFAULT,
         initial1987: INITIAL_1987,
       },
+      regen: regenInfo(user),
       updatedAt: state.updatedAt || null,
     });
   } catch (e) {
@@ -568,6 +591,107 @@ router.get("/lc-wallet/ledger", async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: "LC_WALLET_LEDGER_ERR",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * GET /api/rt/lc-wallet/store
+ * LC paketlerini ve mağaza modunu döner.
+ */
+router.get("/lc-wallet/store", (req, res) => {
+  res.json({
+    ok: true,
+    mode: STORE_MODE, // "mock" | "disabled"
+    packages: LC_PACKAGES,
+    note:
+      STORE_MODE === "mock"
+        ? "Test modu: satın alma anında yüklenir, gerçek ödeme alınmaz."
+        : "Satın alma şu anda kapalı.",
+  });
+});
+
+/**
+ * POST /api/rt/lc-wallet/purchase
+ * body: { userId, packageId }
+ *
+ * mock modunda anında yükler (test). Gerçek yayında bu endpoint'e
+ * Google Play / App Store makbuz doğrulaması eklenmeli:
+ *   body: { userId, packageId, provider: "google"|"apple", receipt }
+ */
+router.post("/lc-wallet/purchase", express.json(), async (req, res) => {
+  try {
+    const userId = String(req.body?.userId || "").trim();
+    const packageId = String(req.body?.packageId || "").trim();
+    if (!userId || !packageId) {
+      return res.status(400).json({ ok: false, error: "USER_OR_PACKAGE_MISSING" });
+    }
+
+    const pkg = LC_PACKAGES.find((p) => p.id === packageId);
+    if (!pkg) return res.status(404).json({ ok: false, error: "PACKAGE_NOT_FOUND" });
+
+    if (STORE_MODE === "disabled") {
+      return res.status(403).json({
+        ok: false,
+        error: "STORE_DISABLED",
+        detail: "Satın alma şu anda kapalı. Günlük LC hakkını kullanabilir veya token birikmesini bekleyebilirsin.",
+      });
+    }
+
+    if (STORE_MODE !== "mock") {
+      // Gerçek sağlayıcı entegrasyonu buraya (makbuz doğrulama).
+      return res.status(501).json({ ok: false, error: "STORE_PROVIDER_NOT_IMPLEMENTED", mode: STORE_MODE });
+    }
+
+    // --- mock: anında yükle ---
+    const { state, user } = await ensureWalletUserFile(userId);
+    const nowISO = new Date().toISOString();
+
+    user.balance = Number(user.balance || 0) + pkg.lc;
+    user.totalEarned = Number(user.totalEarned || 0) + pkg.lc;
+    user.updatedAt = nowISO;
+
+    addLedgerEntryFile(state, {
+      userId,
+      kind: "purchase",
+      amount: pkg.lc,
+      reason: "store_purchase_mock",
+      fixtureId: null,
+      meta: { packageId: pkg.id, priceTRY: pkg.priceTRY, mode: "mock" },
+    });
+
+    await saveWalletState(state);
+
+    // users.json lc alanını da senkron tut (settle2/pred ile aynı çift-yazım)
+    try {
+      const usersRaw = await readJson(USERS_FILE, { items: [] });
+      const items = Array.isArray(usersRaw) ? usersRaw : usersRaw.items || [];
+      let u = items.find((x) => String(x.userId) === userId);
+      if (!u) {
+        u = { userId, mainTeam: null, createdAt: nowISO, lc: 0, lcLastDaily: null };
+        items.push(u);
+      }
+      u.lc = Number(u.lc || 0) + pkg.lc;
+      u.lcUpdatedAt = nowISO;
+      u.lcLastReason = "store_purchase_mock";
+      u.lcLastAmount = pkg.lc;
+      await writeJson(USERS_FILE, Array.isArray(usersRaw) ? items : { ...usersRaw, items });
+    } catch (e) {
+      console.warn("[lc-store] users.json senkron yazılamadı:", e && e.message ? e.message : e);
+    }
+
+    return res.json({
+      ok: true,
+      mode: "mock",
+      package: pkg,
+      newBalance: user.balance,
+    });
+  } catch (e) {
+    console.error("LC_STORE_PURCHASE_ERR", e);
+    return res.status(500).json({
+      ok: false,
+      error: "LC_STORE_PURCHASE_ERR",
       detail: String(e && (e.message || e)),
     });
   }

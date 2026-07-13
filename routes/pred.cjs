@@ -15,6 +15,9 @@ const USERS_FILE = path.join(DATA_DIR, "users.json");
 const BOT_PROFILES_PATH = path.join(DATA_DIR, "bot-profiles.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 
+// 🔹 Otomatik LC birikimi (token bitince bekle)
+const { applyRegen } = require("../lib/lc-regen.cjs");
+
 // 🔹 LigCoin / cüzdan parametreleri
 // lc-wallet.cjs ile SENKRON tutulmalı
 const DAILY_LC = 5;
@@ -169,8 +172,13 @@ async function spendLcMatchIfNeededFile(userId, fixtureId, cost, alreadyPredicte
 
   const { state, user } = await ensureWalletUserFile(uid);
 
+  // Otomatik birikim: bakiye düşükse bekleyen tokenler burada işlenir,
+  // böylece "tokeni biten" kullanıcı süre dolunca tekrar tahmin girebilir.
+  const regenEarned = applyRegen(user);
+
   // İlk tahmin dışındakilerde veya cost <= 0 ise kesinti yok, sadece bakiye döner
   if (alreadyPredicted || cost <= 0) {
+    if (regenEarned > 0) await saveWalletState(state);
     return {
       ok: true,
       lc: Number(user.balance || 0),
@@ -181,6 +189,7 @@ async function spendLcMatchIfNeededFile(userId, fixtureId, cost, alreadyPredicte
 
   const current = Number(user.balance || 0);
   if (current < cost) {
+    if (regenEarned > 0) await saveWalletState(state);
     return {
       ok: false,
       error: "LC_NOT_ENOUGH",

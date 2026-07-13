@@ -1,0 +1,26 @@
+{
+  "fixtureId": 1582681,
+  "kickoffISO": "2026-07-12T01:00:00+00:00",
+  "status": "FT",
+  "minute": 120,
+  "score": {
+    "home": 3,
+    "away": 1
+  },
+  "league": "World Cup",
+  "country": "World",
+  "home": "Argentina",
+  "away": "Switzerland",
+  "source": "af-sync",
+  "updatedAt": "2026-07-12T16:13:31.160Z",
+  "htScore": {
+    "home": 1,
+    "away": 0
+  },
+  "firstGoal": "H",
+  "redHome": false,
+  "redAway": true,
+  "penaltyAny": false,
+  "penaltySide": null,
+  "settledAt": "2026-07-12T16:13:31.235Z"
+}

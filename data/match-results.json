@@ -1,6 +1,42 @@
 {
   "items": [
     {
+      "fixtureId": "1582681",
+      "computedAt": "2026-07-12T16:13:31.208Z",
+      "finalScore": {
+        "home": 3,
+        "away": 1
+      },
+      "meta": {
+        "fixtureId": "1582681",
+        "home": null,
+        "away": null,
+        "kickoffISO": "2026-07-12T01:00:00+00:00",
+        "league": "World Cup",
+        "country": "World",
+        "status": "FT"
+      },
+      "rows": []
+    },
+    {
+      "fixtureId": "1581037",
+      "computedAt": "2026-07-12T16:13:30.966Z",
+      "finalScore": {
+        "home": 1,
+        "away": 2
+      },
+      "meta": {
+        "fixtureId": "1581037",
+        "home": null,
+        "away": null,
+        "kickoffISO": "2026-07-11T21:00:00+00:00",
+        "league": "World Cup",
+        "country": "World",
+        "status": "FT"
+      },
+      "rows": []
+    },
+    {
       "fixtureId": "1581821",
       "computedAt": "2026-07-11T04:41:38.100Z",
       "finalScore": {
@@ -129,5 +165,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-07-11T04:41:38.104Z"
+  "updatedAt": "2026-07-12T16:13:31.210Z"
 }

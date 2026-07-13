@@ -1,0 +1,26 @@
+{
+  "fixtureId": 1581037,
+  "kickoffISO": "2026-07-11T21:00:00+00:00",
+  "status": "FT",
+  "minute": 120,
+  "score": {
+    "home": 1,
+    "away": 2
+  },
+  "league": "World Cup",
+  "country": "World",
+  "home": "Norway",
+  "away": "England",
+  "source": "af-sync",
+  "updatedAt": "2026-07-12T16:13:30.906Z",
+  "htScore": {
+    "home": 1,
+    "away": 1
+  },
+  "firstGoal": "H",
+  "redHome": false,
+  "redAway": false,
+  "penaltyAny": false,
+  "penaltySide": null,
+  "settledAt": "2026-07-12T16:13:30.983Z"
+}
