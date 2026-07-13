@@ -303,9 +303,21 @@ router.get("/lc-wallet/summary", async (req, res) => {
     const isPrem = await premium.isPremium(userId);
     const regenOpts = premium.regenParams(isPrem);
 
+    // Premium aylık kasa: bu takvim ayı henüz verilmediyse otomatik yatır
+    const monthlyGranted = premium.grantMonthlyIfDue(user, isPrem);
+    if (monthlyGranted > 0) {
+      addLedgerEntryFile(state, {
+        userId,
+        kind: "reward",
+        amount: monthlyGranted,
+        reason: "premium_monthly",
+        meta: { month: premium.monthKey() },
+      });
+    }
+
     // Otomatik birikim: bakiye düşükse zamanla token toplanır (premium daha hızlı/yüksek)
     const regenEarned = applyRegen(user, Date.now(), regenOpts);
-    if (regenEarned > 0) await saveWalletState(state);
+    if (monthlyGranted > 0 || regenEarned > 0) await saveWalletState(state);
 
     const today = todayKey();
     const last  = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
@@ -334,6 +346,7 @@ router.get("/lc-wallet/summary", async (req, res) => {
         initial1987: INITIAL_1987,
       },
       premium: isPrem,
+      premiumMonthly: premium.monthlyInfo(user, isPrem),
       regen: regenInfo(user, Date.now(), regenOpts),
       updatedAt: state.updatedAt || null,
     });
@@ -774,7 +787,26 @@ router.post("/lc-wallet/premium/subscribe", express.json(), async (req, res) => 
 
     await writeJson(USERS_FILE, Array.isArray(usersRaw) ? items : { ...usersRaw, items });
 
-    res.json({ ok: true, mode: "mock", plan, premiumUntil: until });
+    // Bu ayın kasasını hemen yatır (abone olur olmaz değer görsün)
+    let monthlyGranted = 0;
+    try {
+      const { state, user } = await ensureWalletUserFile(userId);
+      monthlyGranted = premium.grantMonthlyIfDue(user, true);
+      if (monthlyGranted > 0) {
+        addLedgerEntryFile(state, {
+          userId,
+          kind: "reward",
+          amount: monthlyGranted,
+          reason: "premium_monthly",
+          meta: { month: premium.monthKey() },
+        });
+        await saveWalletState(state);
+      }
+    } catch (e) {
+      console.warn("[premium] abonelik aylık kasa yatırılamadı:", e && e.message ? e.message : e);
+    }
+
+    res.json({ ok: true, mode: "mock", plan, premiumUntil: until, monthlyGranted });
   } catch (e) {
     console.error("PREMIUM_SUBSCRIBE_ERR", e);
     res.status(500).json({ ok: false, error: "PREMIUM_SUBSCRIBE_ERR", detail: String(e?.message || e) });

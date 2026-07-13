@@ -7,9 +7,9 @@ const fsp = fs.promises;
 const path = require("path");
 
 const BUILD = "settle2-2026-01-07-final"; // ✅ NIHai
-
-// Premium ayrıcalıkları (doğru tahmin ödül çarpanı)
-const premium = require("../lib/premium.cjs");
+// NOT: Puanlama/ödül herkes için eşittir — premium'un maç başı avantajı YOK
+// (rekabet adaleti). Premium avantajları LC ekonomisinde: bedava giriş +
+// aylık kasa (bkz. lib/premium.cjs).
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const LIVE_DIR = path.join(DATA_DIR, "live");
@@ -473,14 +473,10 @@ async function awardLcForRows(rows, db) {
     const uidLower = uid.toLowerCase();
     if (BOT_USER_ID_SET.has(uidLower)) continue;
 
-    const baseReward = computeLcRewardFromDetail(r.detail);
-    if (baseReward <= 0) continue;
+    const reward = computeLcRewardFromDetail(r.detail);
+    if (reward <= 0) continue;
 
     let u = usersItems.find((x) => String(x.userId) === uid);
-    // Premium ayrıcalığı: doğru tahmin ödülü çarpanlı (kullanıcı kaydından okunur)
-    const isPrem = premium.isActivePremiumRecord(u);
-    const reward = Math.round(baseReward * premium.rewardMultiplier(isPrem));
-
     if (!u) {
       u = { userId: uid, mainTeam: null, createdAt: nowISO, lc: LC_START + reward, lcLastDaily: null };
       usersItems.push(u);
@@ -488,7 +484,7 @@ async function awardLcForRows(rows, db) {
       if (typeof u.lc !== "number") u.lc = LC_START;
       u.lc = Number(u.lc || 0) + reward;
       u.lcUpdatedAt = nowISO;
-      u.lcLastReason = isPrem ? "match_reward_premium" : "match_reward";
+      u.lcLastReason = "match_reward";
       u.lcLastAmount = reward;
     }
 
