@@ -535,6 +535,15 @@
       "country": "Germany",
       "kickoffISO": "2026-02-11T22:45:00+03:00",
       "seriesId": "SERIE-TRIAL-DEC"
+    },
+    {
+      "fixtureId": "1586077",
+      "home": "İngiltere",
+      "away": "Arjantin",
+      "league": "World Cup",
+      "country": "World",
+      "kickoffISO": "2026-07-15T22:00:00+03:00",
+      "seriesId": "DK-2026-FINAL"
     }
   ]
 }
