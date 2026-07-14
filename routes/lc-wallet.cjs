@@ -16,6 +16,11 @@ const INITIAL_DEFAULT  = 30;
 const INITIAL_1987     = 60;
 const MATCH_ENTRY_COST = 3; // Maç girişi LC bedeli (bilgi amaçlı)
 
+// 🚀 Tanıtım dönemi: ilk N üyeye başlangıç LC bonusu (erken kuş ödülü).
+// Kapatmak için SKORLIG_EARLY_LIMIT=0. Cüzdanı ilk oluşan üyeler faydalanır.
+const EARLY_LIMIT = Number(process.env.SKORLIG_EARLY_LIMIT || 1000);
+const EARLY_BONUS = Number(process.env.SKORLIG_EARLY_BONUS || 200);
+
 // Otomatik birikim (token bitince bekle): lib/lc-regen.cjs
 const { applyRegen, regenInfo } = require("../lib/lc-regen.cjs");
 
@@ -140,8 +145,16 @@ async function ensureWalletUserFile(userId) {
 
   if (!u) {
     const is1987 = await isUser1987MemberFromFile(uid);
-    const initialBalance = is1987 ? INITIAL_1987 : INITIAL_DEFAULT;
+    const baseBalance = is1987 ? INITIAL_1987 : INITIAL_DEFAULT;
     const nowISO = new Date().toISOString();
+
+    // 🚀 Erken kuş bonusu: bu cüzdan oluşurken toplam üye sayısı sınırın
+    // altındaysa ekstra LC. (state.users bu kullanıcı henüz eklenmeden sayılır.)
+    const memberIndex = state.users.length; // 0-tabanlı sıra
+    const earlyEligible = EARLY_LIMIT > 0 && EARLY_BONUS > 0 && memberIndex < EARLY_LIMIT;
+    const earlyBonus = earlyEligible ? EARLY_BONUS : 0;
+    const initialBalance = baseBalance + earlyBonus;
+
     u = {
       userId: uid,
       balance: initialBalance,
@@ -150,15 +163,26 @@ async function ensureWalletUserFile(userId) {
       lastDailyAt: null,
       totalEarned: initialBalance,
       totalSpent: 0,
+      memberNo: memberIndex + 1, // 1-tabanlı kayıt sırası (rozet/istatistik için)
+      early: earlyEligible || undefined,
     };
     state.users.push(u);
 
     addLedgerEntryFile(state, {
       userId: uid,
       kind: "init",
-      amount: initialBalance,
+      amount: baseBalance,
       reason: is1987 ? "initial_1987" : "initial_default",
     });
+    if (earlyBonus > 0) {
+      addLedgerEntryFile(state, {
+        userId: uid,
+        kind: "reward",
+        amount: earlyBonus,
+        reason: "early_adopter_bonus",
+        meta: { memberNo: memberIndex + 1, limit: EARLY_LIMIT },
+      });
+    }
 
     await saveWalletState(state);
   }
