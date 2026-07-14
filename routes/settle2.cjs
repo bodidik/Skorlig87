@@ -548,7 +548,7 @@ async function awardLcForRows(rows, db) {
   }
 }
 
-async function scoreFixture(fixtureId, { updateTotals = true, db = null } = {}) {
+async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLive = false } = {}) {
   const fid = String(fixtureId || "");
   if (!fid) {
     const err = new Error("FIXTURE_REQUIRED");
@@ -595,7 +595,9 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null } = {}) 
     throw err;
   }
 
-  if (String(st.status) !== "FT") {
+  // allowLive: canlı eleme panosu (match-race) maç sürerken de anlık
+  // puanlama ister; settle akışı (updateTotals:true) FT şartını korur.
+  if (String(st.status) !== "FT" && !(allowLive && !updateTotals)) {
     const err = new Error("NOT_FINISHED");
     err.code = "NOT_FINISHED";
     err.httpStatus = 400;
@@ -915,6 +917,95 @@ router.get("/pred/preview-match-board", async (req, res) => {
     }
 
     return res.status(status).json(payload);
+  }
+});
+
+/**
+ * GET /api/rt/match-race?fixtureId=...&userId=...&top=50
+ *
+ * 🔥 Canlı eleme panosu: admin/af-sync maç durumunu her güncellediğinde
+ * (dk 16, 0-1, kırmızı kart, penaltı...) TÜM tahminler anlık state'e göre
+ * yeniden puanlanır. Dönen veri:
+ *  - top: ilk N (herkese görünür liste)
+ *  - me: isteği yapan kullanıcının ANLIK sırası (örn. 351.), puanı,
+ *        tahmini hâlâ "tutuyor" mu (outcome == anlık outcome)
+ *  - totalPlayers: maça tahmin giren toplam kişi
+ *  - inRaceCount: tahmini şu anki skorla hâlâ tutan kişi (3000 -> 1200 -> 400)
+ *  - state: dakika/skor/durum özeti
+ * Yan etkisizdir (totals'a yazmaz). Az-sorgu modeliyle uyumlu: veri
+ * data/live state dosyasından gelir; sağlayıcıya istek atmaz.
+ */
+router.get("/match-race", async (req, res) => {
+  try {
+    const fixtureId = String(req.query.fixtureId || "").trim();
+    const userId = String(req.query.userId || "").trim();
+    const topN = Math.max(1, Math.min(100, Number(req.query.top || 50)));
+    if (!fixtureId) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
+
+    const result = await scoreFixture(fixtureId, { updateTotals: false, db: null, allowLive: true });
+    const st = await readJson(stateFile(fixtureId), null);
+
+    const rows = (result.leaderboard || [])
+      .slice()
+      .sort((a, b) => (b.points || 0) - (a.points || 0) || String(a.userId).localeCompare(String(b.userId)));
+
+    // "Tutuyor" = kullanıcının 1X2 tahmini şu anki outcome ile aynı
+    const currentOutcome = result.outcome || null;
+    const predsRaw = await readJson(PREDS_FILE, []);
+    const predsAll = Array.isArray(predsRaw) ? predsRaw : predsRaw.items || [];
+    const outcomeByUser = new Map();
+    for (const p of predsAll) {
+      if (String(p.fixtureId) !== fixtureId) continue;
+      const uid = String(p.userId || p.user || "").trim().toLowerCase();
+      if (uid) outcomeByUser.set(uid, String(p.outcome || "").toUpperCase() || null);
+    }
+
+    let inRaceCount = 0;
+    const decorated = rows.map((r, ix) => {
+      const uidLower = String(r.userId || "").toLowerCase();
+      const pick = outcomeByUser.get(uidLower) || null;
+      const inRace = !!(pick && currentOutcome && pick === currentOutcome);
+      if (inRace) inRaceCount++;
+      return {
+        rank: ix + 1,
+        userId: r.userId,
+        points: Math.round((r.points || 0) * 100) / 100,
+        inRace,
+      };
+    });
+
+    let me = null;
+    if (userId) {
+      const mine = decorated.find((r) => String(r.userId).toLowerCase() === userId.toLowerCase());
+      if (mine) me = mine;
+    }
+
+    return res.json({
+      ok: true,
+      fixtureId,
+      state: {
+        status: st?.status || "NS",
+        minute: st?.minute ?? null,
+        score: st?.score || result.finalScore || null,
+        home: st?.home || null,
+        away: st?.away || null,
+        firstGoal: result.firstGoal || null,
+        redAny: result.redAny || false,
+        penaltyAny: result.penaltyAny || false,
+        updatedAt: st?.updatedAt || null,
+      },
+      totalPlayers: decorated.length,
+      inRaceCount,
+      top: decorated.slice(0, topN),
+      me,
+    });
+  } catch (e) {
+    const status = e && e.httpStatus ? e.httpStatus : 500;
+    return res.status(status).json({
+      ok: false,
+      error: (e && e.code) || "MATCH_RACE_FAILED",
+      detail: String(e && (e.message || e)),
+    });
   }
 });
 
