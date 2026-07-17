@@ -6,6 +6,15 @@ const fs      = require("fs");
 const fsp     = fs.promises;
 const path    = require("path");
 const crypto  = require("crypto");
+const { verifyToken } = require("../middleware/verifyToken.cjs");
+
+function requireAdminToken(req, res, next) {
+  const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
+  if (!token) return res.status(503).json({ ok: false, error: "ADMIN_TOKEN_NOT_CONFIGURED" });
+  const got = String(req.headers["x-admin-token"] || "").trim() || String(req.query.token || "").trim();
+  if (got && got === token) return next();
+  return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
+}
 
 const DATA_DIR     = path.join(__dirname, "..", "data");
 const USERS_FILE   = path.join(DATA_DIR, "users.json");
@@ -215,10 +224,10 @@ router.get("/profile", async (req, res) => {
   }
 });
 
-// POST /api/users/set-main-team { userId, team }
-router.post("/set-main-team", express.json(), async (req, res) => {
+// POST /api/users/set-main-team { team }
+router.post("/set-main-team", verifyToken, express.json(), async (req, res) => {
   try {
-    const userId = String(req.body?.userId || "").trim();
+    const userId = req.uid;
     const team   = String(req.body?.team || "").trim();
     if (!userId || !team) return res.status(400).json({ ok: false, error: "USER_OR_TEAM_MISSING" });
 
@@ -249,11 +258,11 @@ router.post("/set-main-team", express.json(), async (req, res) => {
   }
 });
 
-// POST /api/users/set-country { userId, country }
+// POST /api/users/set-country { country }
 // Kullanıcının "yereli": maç listesi bu ülkenin üst ligi + global kupalar olur.
-router.post("/set-country", express.json(), async (req, res) => {
+router.post("/set-country", verifyToken, express.json(), async (req, res) => {
   try {
-    const userId  = String(req.body?.userId || "").trim();
+    const userId  = req.uid;
     const rawCountry = String(req.body?.country || "").trim();
     if (!userId || !rawCountry) return res.status(400).json({ ok: false, error: "USER_OR_COUNTRY_MISSING" });
 
@@ -346,10 +355,10 @@ router.get("/groups/list", async (req, res) => {
  * body: { name, ownerId }
  * → /api/groups/create ile aynı davranış: { ok:true, code, group }
  */
-router.post("/groups/create", express.json(), async (req, res) => {
+router.post("/groups/create", verifyToken, express.json(), async (req, res) => {
   try {
     const name = String(req.body?.name || "").trim();
-    const ownerId = normUserId(req.body?.ownerId);
+    const ownerId = req.uid;
     if (!name || !ownerId) return res.status(400).json({ ok: false, error: "NAME_OWNER_REQUIRED" });
 
     await ensureUser(ownerId);
@@ -374,10 +383,10 @@ router.post("/groups/create", express.json(), async (req, res) => {
  * body: { code, userId }
  * → /api/groups/join ile aynı davranış hedeflenir
  */
-router.post("/groups/join", express.json(), async (req, res) => {
+router.post("/groups/join", verifyToken, express.json(), async (req, res) => {
   try {
     const code = normCode(req.body?.code);
-    const userId = normUserId(req.body?.userId);
+    const userId = req.uid;
     if (!code) return res.status(400).json({ ok: false, error: "CODE_REQUIRED" });
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
 
@@ -473,7 +482,7 @@ router.post("/groups/:code/opt", express.json(), async (req, res) => {
  * GET /api/users/groups/diag
  * küçük diag (groups.cjs ile benzer)
  */
-router.get("/groups/diag", async (req, res) => {
+router.get("/groups/diag", requireAdminToken, async (req, res) => {
   try {
     const store = await loadGroupsStoreCompat();
     const codes = Object.keys(store || {});

@@ -29,9 +29,11 @@ const FEATURES_MODE = process.env.FEATURES_MODE || "LOCAL_4_TEAMS";
 app.use(cors({
   origin: true,
   credentials: true,
-  methods: ["GET","POST","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"]
+  methods: ["GET","POST","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization","x-auth-token","x-user-id","x-admin-token"]
 }));
+
+app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(rateLimit);
 
@@ -151,6 +153,8 @@ safeMount("totals",           () => app.use("/api/rt",         require("./routes
 safeMount("mini",             () => app.use("/api/mini",       require("./routes/mini.cjs")));
 safeMount("tr-league",        () => app.use("/api/tr-league",  require("./routes/tr-league.cjs")));
 safeMount("auth-1987gs",      () => app.use("/api/auth1987gs", require("./routes/auth-1987gs.cjs")));
+safeMount("livescore",        () => app.use("/api/livescore",  require("./routes/livescore.cjs")));
+safeMount("auth-firebase",     () => app.use("/api",            require("./routes/auth-firebase.cjs")));
 
 /* 🔹 Yeni: runtime mode admin paneli */
 safeMount("admin-runtime", () =>
@@ -216,5 +220,13 @@ app.listen(PORT, HOST, () => {
      Kapatmak için: SKORLIG_AF_SYNC=0 */
   if (process.env.SKORLIG_AF_SYNC !== "0") {
     safeMount("af-sync", () => require("./services/af-sync.cjs").start(PORT));
+  }
+
+  if (process.env.SKORLIG_LIVESCORE !== "0") {
+    safeMount("livescore-scraper", () => require("./services/livescore-scraper.cjs").start(2 * 60 * 1000));
+  }
+
+  if (process.env.SKORLIG_SYNC !== "0") {
+    safeMount("livescore-sync", () => require("./services/livescore-sync.cjs").start(30 * 1000, PORT));
   }
 });

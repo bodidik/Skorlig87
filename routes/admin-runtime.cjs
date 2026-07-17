@@ -10,14 +10,16 @@ const path = require("path");
 const { getRuntimeMode, setRuntimeMode } = require("../lib/runtime-mode.cjs");
 
 /* =========================================================
-   Admin token (testte basit koruma)
-   - SKORLIG_ADMIN_TOKEN set ise:
-     header: x-admin-token: <token> zorunlu
-   - Token boşsa (unset) -> koruma devre dışı
+   Admin token (fail-closed koruma)
+   - SKORLIG_ADMIN_TOKEN set DEĞİLSE: endpoint tamamen kapalı (503).
+     Token unutulursa açıkta kalmasın diye güvenlik adına reddedilir.
+   - Set ise: header x-admin-token / ?token eşleşmeli, yoksa 401.
    ========================================================= */
 function requireAdminToken(req, res, next) {
   const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
-  if (!token) return next();
+  if (!token) {
+    return res.status(503).json({ ok: false, error: "ADMIN_TOKEN_NOT_CONFIGURED" });
+  }
 
   const got =
     String(req.headers["x-admin-token"] || "").trim() ||
@@ -192,6 +194,16 @@ router.post(
           maxLeagues: 1,
           notes: "4 takımlı geliştirme modu",
         },
+        // Pilot: provider sıfır, tüm maçlar admin tarafından fixtures.json'a elle girilir.
+        // Maksimum 10 aktif maç. Gerçek oyuncular, gerçek tahminler.
+        PILOT_MANUAL: {
+          profile: "PILOT_MANUAL",
+          maxTeams: 0,        // provider çağrısı yok
+          maxLeagues: 0,
+          maxFixtures: 10,    // tek seferde en fazla 10 açık maç
+          providerDisabled: true,
+          notes: "Pilot: provider yok, maçlar elle girilir (max 10)",
+        },
         TR_30_TEAMS: {
           profile: "TR_30_TEAMS",
           maxTeams: 30,
@@ -318,7 +330,21 @@ router.get("/results/pending", requireAdminToken, async (req, res) => {
 
 /* =========================================================
    3.2) POST /api/admin/results/set
+   Body: { fixtureId, home, away,
+           htHome?, htAway?, firstGoal?,           // mikro sonuçlar
+           redHome?, redAway?, penaltyAny?, penaltySide?,
+           meta?, updatedBy? }
+   - fixtures.json + results.json günceller
+   - data/live/<fid>.json state dosyasını RESMİ sonuçla ezer
+     (settle2 bu dosyayı okur; canlı panelde kalan eski skor
+      settle'ı bozmasın diye)
    ========================================================= */
+const LIVE_DIR = path.join(DATA_DIR, "live");
+function liveSafePart(s) {
+  return String(s || "").trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_").slice(0, 180);
+}
+const LIVE_STATE_FILE = (fid) => path.join(LIVE_DIR, `${liveSafePart(fid)}.json`);
+
 router.post("/results/set", requireAdminToken, express.json(), async (req, res) => {
   try {
     const body = req.body || {};
@@ -332,6 +358,16 @@ router.post("/results/set", requireAdminToken, express.json(), async (req, res) 
     if (!Number.isFinite(home) || !Number.isFinite(away)) {
       return res.status(400).json({ ok: false, error: "SCORE_REQUIRED" });
     }
+
+    // Mikro sonuçlar (opsiyonel)
+    const htHome = Number.isFinite(Number(body.htHome)) && body.htHome !== "" && body.htHome != null ? Number(body.htHome) : null;
+    const htAway = Number.isFinite(Number(body.htAway)) && body.htAway !== "" && body.htAway != null ? Number(body.htAway) : null;
+    const hasHT = htHome != null && htAway != null;
+    const firstGoal = body.firstGoal === "H" || body.firstGoal === "A" ? body.firstGoal : null;
+    const redHome = typeof body.redHome === "boolean" ? body.redHome : null;
+    const redAway = typeof body.redAway === "boolean" ? body.redAway : null;
+    const penaltyAny = typeof body.penaltyAny === "boolean" ? body.penaltyAny : null;
+    const penaltySide = body.penaltySide === "H" || body.penaltySide === "A" ? body.penaltySide : null;
 
     const meta = body.meta && typeof body.meta === "object" ? body.meta : {};
     const updatedBy = normId(body.updatedBy) || "admin";
@@ -372,12 +408,71 @@ router.post("/results/set", requireAdminToken, express.json(), async (req, res) 
       updatedAt: nowISO,
       updatedBy,
     };
+    if (hasHT) rec.htScore = { home: htHome, away: htAway };
+    if (firstGoal) rec.firstGoal = firstGoal;
+    if (redHome != null) rec.redHome = redHome;
+    if (redAway != null) rec.redAway = redAway;
+    if (penaltyAny != null) rec.penaltyAny = penaltyAny;
+    if (penaltySide) rec.penaltySide = penaltySide;
 
     if (j >= 0) items[j] = { ...items[j], ...rec };
     else items.push(rec);
 
     results.items = items;
     await saveResultsStore(results);
+
+    // 3) data/live/<fid>.json state dosyasını RESMİ sonuçla güncelle.
+    //    settle2 bu dosyayı okur — canlı panelde kalan eski/yanlış skor
+    //    settle'ı bozmasın. Mevcut dosyadaki event-stamp vb. alanlar korunur,
+    //    skor/HT/mikro alanlar resmi değerlerle ezilir.
+    try {
+      const prev = await readJson(LIVE_STATE_FILE(fixtureId), null);
+      const st = {
+        ...(prev && typeof prev === "object" ? prev : {}),
+        fixtureId,
+        status: "FT",
+        isLive: false,
+        kickoffISO: (prev && prev.kickoffISO) || fx.kickoffISO || null,
+        country: (prev && prev.country) || fx.country || null,
+        league: (prev && prev.league) || fx.league || null,
+        teamHome: (prev && prev.teamHome) || fx.home || null,
+        teamAway: (prev && prev.teamAway) || fx.away || null,
+        score: { home, away },
+        updatedAt: nowISO,
+        source: "admin-results-set",
+      };
+      if (hasHT) st.htScore = { home: htHome, away: htAway };
+      if (firstGoal) st.firstGoal = firstGoal;
+      if (redHome != null) st.redHome = redHome;
+      if (redAway != null) st.redAway = redAway;
+      if (penaltyAny != null) st.penaltyAny = penaltyAny;
+      if (penaltySide) st.penaltySide = penaltySide;
+      await writeJsonAtomic(LIVE_STATE_FILE(fixtureId), st);
+    } catch (e) {
+      console.error("RESULTS_SET_LIVE_STATE_SYNC_FAILED", e);
+    }
+
+    // 4) rt-live-gs.json (canlı admin panelin okuduğu model) da senkron olsun
+    try {
+      const RT_LIVE_GS_FILE = path.join(DATA_DIR, "rt-live-gs.json");
+      const liveModel = await readJson(RT_LIVE_GS_FILE, null);
+      if (liveModel && liveModel.fixtures && liveModel.fixtures[fixtureId]) {
+        const g = liveModel.fixtures[fixtureId];
+        g.status = "FT";
+        g.homeGoals = home;
+        g.awayGoals = away;
+        if (hasHT) { g.htHome = htHome; g.htAway = htAway; }
+        if (firstGoal) g.firstGoal = firstGoal;
+        if (redHome != null) g.redHome = redHome;
+        if (redAway != null) g.redAway = redAway;
+        if (penaltyAny != null) g.penaltyAny = penaltyAny;
+        if (penaltySide) g.penaltySide = penaltySide;
+        g.updatedAt = nowISO;
+        await writeJsonAtomic(RT_LIVE_GS_FILE, liveModel);
+      }
+    } catch (e) {
+      console.error("RESULTS_SET_RT_LIVE_GS_SYNC_FAILED", e);
+    }
 
     return res.json({ ok: true, fixtureId, saved: rec });
   } catch (e) {
@@ -422,6 +517,26 @@ router.get("/results/recent", requireAdminToken, async (req, res) => {
       error: "ADMIN_RESULTS_RECENT_FAILED",
       detail: String(e && (e.message || e)),
     });
+  }
+});
+
+/* =========================================================
+   GET /api/admin/fixtures
+   fixtures.json'daki tüm maçları döner (zaman filtresi yok)
+   Admin live panel için kullanılır.
+   ========================================================= */
+router.get("/fixtures", async (req, res) => {
+  try {
+    const raw = await readJson(FIXTURES_FILE, { fixtures: [] });
+    const list = Array.isArray(raw?.fixtures) ? raw.fixtures : [];
+    const sorted = [...list].sort((a, b) => {
+      const ta = new Date(a.kickoffISO || a.kickoffDate || 0).getTime();
+      const tb = new Date(b.kickoffISO || b.kickoffDate || 0).getTime();
+      return tb - ta; // en yeni önce
+    });
+    return res.json({ ok: true, count: sorted.length, fixtures: sorted });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 

@@ -34,9 +34,14 @@ async function writeJson(file, data) {
 }
 
 // ---- Basic Auth (sadece POST /update için) ----
+// Fail-closed: ADMIN_USER/ADMIN_PASS env ayarlı değilse endpoint kapalı.
+// Sabit varsayılan ("admin"/"skorlig") kaldırıldı — prod'da tahmin edilemesin.
 function _adminAuth(req, res, next) {
-  const ADMIN_USER = process.env.ADMIN_USER || "admin";
-  const ADMIN_PASS = process.env.ADMIN_PASS || "skorlig";
+  const ADMIN_USER = String(process.env.ADMIN_USER || "").trim();
+  const ADMIN_PASS = String(process.env.ADMIN_PASS || "").trim();
+  if (!ADMIN_USER || !ADMIN_PASS) {
+    return res.status(503).send("Admin credentials not configured");
+  }
   const h = req.headers.authorization || "";
   if (!h.startsWith("Basic ")) {
     res.set("WWW-Authenticate", 'Basic realm="SkorLig Admin"');
@@ -135,15 +140,16 @@ router.post("/update", _adminAuth, express.json(), async (req, res) => {
  */
 router.post("/admin/runtime-mode", express.json(), async (req, res) => {
   try {
-    const ADMIN_TOKEN = process.env.SKORLIG_ADMIN_TOKEN || "";
-    const headerToken = String(req.headers["x-admin-token"] || "");
+    const ADMIN_TOKEN = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
+    const headerToken = String(req.headers["x-admin-token"] || "").trim();
 
-    // Token tanımlıysa ve eşleşmiyorsa 403 ver.
-    if (ADMIN_TOKEN && headerToken !== ADMIN_TOKEN) {
-      return res.status(403).json({
-        ok: false,
-        error: "ADMIN_AUTH_FAILED",
-      });
+    // Fail-closed: token yapılandırılmamışsa endpoint kapalı.
+    if (!ADMIN_TOKEN) {
+      return res.status(503).json({ ok: false, error: "ADMIN_TOKEN_NOT_CONFIGURED" });
+    }
+    // Token tanımlı ama eşleşmiyorsa reddet.
+    if (headerToken !== ADMIN_TOKEN) {
+      return res.status(403).json({ ok: false, error: "ADMIN_AUTH_FAILED" });
     }
 
     const patch = req.body || {};

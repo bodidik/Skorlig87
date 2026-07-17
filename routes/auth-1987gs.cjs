@@ -8,6 +8,14 @@ const path    = require("path");
 
 const DATA_DIR    = path.join(__dirname, "..", "data");
 const CODES_FILE  = path.join(DATA_DIR, "gs1987-codes.json");
+
+function requireAdminToken(req, res, next) {
+  const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
+  if (!token) return res.status(503).json({ ok: false, error: "ADMIN_TOKEN_NOT_CONFIGURED" });
+  const got = String(req.headers["x-admin-token"] || "").trim() || String(req.query.token || "").trim();
+  if (got && got === token) return next();
+  return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
+}
 const USERS_FILE  = path.join(DATA_DIR, "users.json");  // 1987 üyeleri burada tutulacak
 
 async function readJson(file, fb = null) {
@@ -155,7 +163,7 @@ router.post("/verify", express.json(), async (req, res) => {
  * GET /api/auth1987gs/diag
  *  - Kodların kullanım durumunu gösterir (eski diag aynen dursun)
  */
-router.get("/diag", async (req, res) => {
+router.get("/diag", requireAdminToken, async (req, res) => {
   const data  = (await readJson(CODES_FILE, { codes: [], updatedAt: null })) || {};
   const codes = Array.isArray(data.codes) ? data.codes : [];
 
@@ -215,7 +223,7 @@ router.get("/diag", async (req, res) => {
  *     ]
  *   }
  */
-router.get("/members", async (req, res) => {
+router.get("/members", requireAdminToken, async (req, res) => {
   const data =
     (await readJson(USERS_FILE, { users: [], updatedAt: null })) || {};
   const users = Array.isArray(data.users) ? data.users : [];

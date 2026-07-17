@@ -19,6 +19,9 @@ const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const { applyRegen } = require("../lib/lc-regen.cjs");
 // 🔹 Premium ayrıcalıkları
 const premium = require("../lib/premium.cjs");
+// 🔹 Atomik yazma + dosya kilidi (race önleme)
+const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
+const { verifyToken } = require("../middleware/verifyToken.cjs");
 
 // 🔹 LigCoin / cüzdan parametreleri
 // lc-wallet.cjs ile SENKRON tutulmalı
@@ -38,8 +41,8 @@ async function readJson(file, fb) {
 }
 
 async function writeJson(file, data) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
+  // Atomik yazma (tmp + rename) — yarım/bozuk dosya oluşmaz.
+  await writeJsonAtomic(file, data);
 }
 
 // preds.json içindeki listeyi al (dizi veya {items:[]} ikisini de destekle)
@@ -172,58 +175,61 @@ async function spendLcMatchIfNeededFile(userId, fixtureId, cost, alreadyPredicte
   const uid = String(userId || "").trim();
   if (!uid) throw new Error("USER_REQUIRED");
 
-  const { state, user } = await ensureWalletUserFile(uid);
-
-  // Otomatik birikim: bakiye düşükse bekleyen tokenler burada işlenir,
-  // böylece "tokeni biten" kullanıcı süre dolunca tekrar tahmin girebilir.
-  // Premium daha hızlı/yüksek birikir.
   const isPrem = await premium.isPremium(uid);
-  const regenEarned = applyRegen(user, Date.now(), premium.regenParams(isPrem));
 
-  // İlk tahmin dışındakilerde veya cost <= 0 ise kesinti yok, sadece bakiye döner
-  if (alreadyPredicted || cost <= 0) {
-    if (regenEarned > 0) await saveWalletState(state);
+  // Cüzdan read-modify-write — kilitli (lost update / çift-harcama önlenir)
+  return withFileLock(WALLET_FILE, async () => {
+    const { state, user } = await ensureWalletUserFile(uid);
+
+    // Otomatik birikim: bakiye düşükse bekleyen tokenler burada işlenir,
+    // böylece "tokeni biten" kullanıcı süre dolunca tekrar tahmin girebilir.
+    const regenEarned = applyRegen(user, Date.now(), premium.regenParams(isPrem));
+
+    // İlk tahmin dışındakilerde veya cost <= 0 ise kesinti yok, sadece bakiye döner
+    if (alreadyPredicted || cost <= 0) {
+      if (regenEarned > 0) await saveWalletState(state);
+      return {
+        ok: true,
+        lc: Number(user.balance || 0),
+        charged: false,
+        matchCost: 0,
+      };
+    }
+
+    const current = Number(user.balance || 0);
+    if (current < cost) {
+      if (regenEarned > 0) await saveWalletState(state);
+      return {
+        ok: false,
+        error: "LC_NOT_ENOUGH",
+        lc: current,
+        needed: cost,
+      };
+    }
+
+    const nowISO = new Date().toISOString();
+    user.balance = current - cost;
+    user.totalSpent = (user.totalSpent || 0) + cost;
+    user.updatedAt = nowISO;
+
+    addLedgerEntryFile(state, {
+      userId: uid,
+      kind: "spend",
+      amount: -cost,
+      reason: "match_pred", // <─ ledger ekranıyla uyumlu
+      fixtureId,
+      meta: { type: "pred_submit" },
+    });
+
+    await saveWalletState(state);
+
     return {
       ok: true,
       lc: Number(user.balance || 0),
-      charged: false,
-      matchCost: 0,
+      charged: true,
+      matchCost: cost,
     };
-  }
-
-  const current = Number(user.balance || 0);
-  if (current < cost) {
-    if (regenEarned > 0) await saveWalletState(state);
-    return {
-      ok: false,
-      error: "LC_NOT_ENOUGH",
-      lc: current,
-      needed: cost,
-    };
-  }
-
-  const nowISO = new Date().toISOString();
-  user.balance = current - cost;
-  user.totalSpent = (user.totalSpent || 0) + cost;
-  user.updatedAt = nowISO;
-
-  addLedgerEntryFile(state, {
-    userId: uid,
-    kind: "spend",
-    amount: -cost,
-    reason: "match_pred", // <─ ledger ekranıyla uyumlu
-    fixtureId,
-    meta: { type: "pred_submit" },
   });
-
-  await saveWalletState(state);
-
-  return {
-    ok: true,
-    lc: Number(user.balance || 0),
-    charged: true,
-    matchCost: cost,
-  };
 }
 
 /* ======================
@@ -787,13 +793,17 @@ async function assertPredNotLocked(fixtureId) {
  *   Sonraki düzeltmelerde LC kesmez.
  * - LC, Mongo varsa Mongo cüzdandan; yoksa lc-wallet.json üzerinden takip edilir.
  */
-router.post("/pred/submit", async (req, res) => {
+router.post("/pred/submit", verifyToken, async (req, res) => {
   try {
+    // Tüm check→spend→write bütününü PREDS_FILE kilidine al:
+    // eşzamanlı gönderimlerde tahmin kaybı / çift-harcama olmaz.
+    // (Not: içeride cüzdan WALLET_FILE kilidi alınır — farklı anahtar,
+    //  hep aynı sırada (PREDS→WALLET) alındığından deadlock olmaz.)
+    await withFileLock(PREDS_FILE, async () => {
     const db = getDb(req);
 
     const {
       fixtureId,
-      userId,
       outcome,
       home,
       away,
@@ -807,7 +817,7 @@ router.post("/pred/submit", async (req, res) => {
     } = req.body || {};
 
     const fx = String(fixtureId || "").trim();
-    const uid = String(userId || "").trim();
+    const uid = req.uid;
     if (!fx || !uid) {
       return res
         .status(400)
@@ -1043,6 +1053,7 @@ router.post("/pred/submit", async (req, res) => {
       lcCharged: spendRes.charged,
       matchCost: spendRes.matchCost || 0,
     });
+    }); // withFileLock(PREDS_FILE)
   } catch (e) {
     console.error("PRED_SUBMIT_FAILED", e);
     return res.status(500).json({
@@ -1374,6 +1385,9 @@ function buildBotPrediction({
  */
 router.post("/pred/bots-generate", async (req, res) => {
   try {
+    // PREDS_FILE kilidi: /pred/submit ile aynı dosyaya yazdığından
+    // eşzamanlı çalışırlarsa tahmin kaybı olmasın.
+    await withFileLock(PREDS_FILE, async () => {
     const fx = String(req.body?.fixtureId || "").trim();
     if (!fx) {
       return res.status(400).json({
@@ -1405,13 +1419,6 @@ router.post("/pred/bots-generate", async (req, res) => {
 
     // Mevcut tahminler
     const { list, wrap } = await loadPredList();
-    // Aynı fixture + user için daha önce tahmin var mı?
-    const uidLower_forCheck = uid.toLowerCase();
-    const alreadyPredicted = list.some((p) => {
-      const fxId = String(p.fixtureId || "").trim();
-      const puid = String(p.userId || p.user || "").trim().toLowerCase();
-      return fxId === fx && puid === uidLower_forCheck;
-    });
 
     // Bu fixture + bot-profiles.json'dan gelen tüm bot userId'lerini temizle
     const filtered = list.filter((p) => {
@@ -1463,6 +1470,7 @@ router.post("/pred/bots-generate", async (req, res) => {
       fixtureId: fx,
       botCount: BOT_PROFILES.length,
     });
+    }); // withFileLock(PREDS_FILE)
   } catch (e) {
     console.error("BOT_GENERATE_FAILED", e);
     return res.status(500).json({
@@ -1489,6 +1497,29 @@ router.get("/pred/list", async (req, res) => {
       error: "PRED_LIST_FAILED",
       detail: String(e && (e.message || e)),
     });
+  }
+});
+
+// DELETE /api/pred/cancel — kullanıcının belirli bir maç tahmini sil
+router.delete("/pred/cancel", verifyToken, express.json(), async (req, res) => {
+  try {
+    const { fixtureId } = req.body || {};
+    const fx = String(fixtureId || "").trim();
+    const uid = req.uid;
+    if (!fx || !uid) return res.status(400).json({ ok: false, error: "FIXTURE_AND_USER_REQUIRED" });
+
+    const { list, wrap } = await loadPredList();
+    const before = list.length;
+    const filtered = list.filter((p) =>
+      !(String(p.fixtureId || "") === fx && String(p.userId || p.user || "").toLowerCase() === uid.toLowerCase())
+    );
+    if (filtered.length === before) return res.json({ ok: true, deleted: 0, message: "Tahmin bulunamadı" });
+
+    const toWrite = wrap ? { ...wrap, items: filtered } : filtered;
+    await fsp.writeFile(PREDS_FILE, JSON.stringify(toWrite, null, 2), "utf8");
+    res.json({ ok: true, deleted: before - filtered.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
@@ -1550,6 +1581,93 @@ router.get("/pred/flags", async (req, res) => {
       error: "PRED_FLAGS_FAILED",
       detail: String(e && (e.message || e)),
     });
+  }
+});
+
+// ----------------- KULLANICININ TAHMİNLERİ -----------------
+/**
+ * GET /api/pred/my?userId=xxx
+ * Kullanıcının tahmin yaptığı tüm maçları döndürür.
+ * Her item: { fixtureId, home, away, kickoffISO, league, country, status, score, pred }
+ */
+router.get("/pred/my", async (req, res) => {
+  try {
+    const db = getDb(req);
+    const uid = String(req.query.userId || "").trim();
+    if (!uid) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
+
+    // 1) kullanıcının tüm fixtureId'leri
+    const result = db
+      ? await getPredFlagsFromMongo(db, uid, null)
+      : await getPredFlagsFromFile(uid, null);
+
+    const fidSet = new Set(result.fixtures);
+    if (!fidSet.size) return res.json({ ok: true, count: 0, items: [] });
+
+    // 2) fixtures.json'dan maç meta verisi
+    const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
+    let fixturesRaw = { fixtures: [] };
+    try { fixturesRaw = JSON.parse(await fsp.readFile(FIXTURES_FILE, "utf8")); } catch { /* */ }
+    const fxList = Array.isArray(fixturesRaw.fixtures) ? fixturesRaw.fixtures : [];
+    const fxMap = new Map(fxList.map((f) => [String(f.fixtureId || ""), f]));
+
+    // 3) live state'den skor/status (data/live/<fixtureId>.json)
+    async function getLiveState(fid) {
+      try {
+        const p = path.join(LIVE_DIR, `${String(fid).replace(/[<>:"/\\|?*]/g, "_")}.json`);
+        return JSON.parse(await fsp.readFile(p, "utf8"));
+      } catch { return null; }
+    }
+
+    // 4) pred detayı (ilk tahmin)
+    const { list: predList } = await loadPredList();
+    const uidLower = uid.toLowerCase();
+
+    const items = [];
+    for (const fid of fidSet) {
+      const fx = fxMap.get(fid) || {};
+      const live = await getLiveState(fid);
+      const pred = predList.find((p) =>
+        String(p.fixtureId || "") === fid && String(p.userId || p.user || "").toLowerCase() === uidLower
+      ) || null;
+
+      items.push({
+        fixtureId: fid,
+        home: fx.home || live?.teamHome || null,
+        away: fx.away || live?.teamAway || null,
+        kickoffISO: fx.kickoffISO || live?.kickoffISO || null,
+        league: fx.league || live?.league || null,
+        country: fx.country || live?.country || null,
+        status: live?.status || fx.status || "NS",
+        score: live?.homeGoals != null ? { home: live.homeGoals, away: live.awayGoals } : (fx.score || null),
+        pred: pred ? {
+          outcome: pred.outcome ?? null,
+          home: pred.home ?? null,
+          away: pred.away ?? null,
+          firstGoal: pred.firstGoal ?? null,
+          firstHalf: pred.firstHalf ?? null,
+          redAny: typeof pred.redAny === "boolean" ? pred.redAny : null,
+          redSide: pred.redSide ?? null,
+          penaltyAny: typeof pred.penaltyAny === "boolean" ? pred.penaltyAny : null,
+          penaltySide: pred.penaltySide ?? null,
+        } : null,
+      });
+    }
+
+    // güncel / eski ayrımı: kickoff'tan 26 saat sonrasına kadar "güncel"
+    const CURRENT_WINDOW_MS = 12 * 3600 * 1000;
+    const nowMs = Date.now();
+    const current = items
+      .filter((it) => it.kickoffISO && (nowMs - new Date(it.kickoffISO).getTime()) < CURRENT_WINDOW_MS)
+      .sort((a, b) => new Date(a.kickoffISO).getTime() - new Date(b.kickoffISO).getTime());
+    const old = items
+      .filter((it) => !it.kickoffISO || (nowMs - new Date(it.kickoffISO).getTime()) >= CURRENT_WINDOW_MS)
+      .sort((a, b) => new Date(b.kickoffISO || 0).getTime() - new Date(a.kickoffISO || 0).getTime());
+
+    return res.json({ ok: true, count: items.length, current, old });
+  } catch (e) {
+    console.error("PRED_MY_FAILED", e);
+    return res.status(500).json({ ok: false, error: "PRED_MY_FAILED", detail: String(e?.message || e) });
   }
 });
 

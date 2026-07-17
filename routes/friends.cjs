@@ -9,7 +9,8 @@ const path    = require("path");
 const DATA    = path.join(__dirname,"..","data");
 const USERS   = path.join(DATA,"users.json");
 const TOTALS  = path.join(DATA,"totals.json");
-const FRIENDS = path.join(DATA,"friends.json"); 
+const FRIENDS = path.join(DATA,"friends.json");
+const { verifyToken } = require("../middleware/verifyToken.cjs");
 // {
 //   links:    [ { a:"user1", b:"user2", createdAt:"..." } ],
 //   requests: [ { from:"user1", to:"user2", createdAt:"..." } ],
@@ -116,10 +117,10 @@ function clampInt(x, def, min, max){
  * POST /api/friends/request
  * body: { fromUserId, toUserId }  veya  { fromId, toId }
  */
-router.post("/request", express.json(), async (req,res)=>{
+router.post("/request", verifyToken, express.json(), async (req,res)=>{
   try{
     const body = req.body || {};
-    const from = String(body.fromUserId ?? body.fromId ?? "").trim();
+    const from = req.uid;
     const to   = String(body.toUserId   ?? body.toId   ?? "").trim();
 
     if (!from || !to)   return res.status(400).json({ ok:false, error:"USERS_REQUIRED" });
@@ -174,10 +175,10 @@ router.post("/request", express.json(), async (req,res)=>{
  * POST /api/friends/accept
  * body: { userId, fromUserId }
  */
-router.post("/accept", express.json(), async (req,res)=>{
+router.post("/accept", verifyToken, express.json(), async (req,res)=>{
   try{
-    const { userId, fromUserId } = req.body || {};
-    const me   = String(userId     || "").trim();
+    const { fromUserId } = req.body || {};
+    const me   = req.uid;
     const from = String(fromUserId || "").trim();
     if (!me || !from) return res.status(400).json({ ok:false, error:"REQ" });
 
@@ -223,10 +224,10 @@ router.post("/accept", express.json(), async (req,res)=>{
  * POST /api/friends/reject
  * body: { userId, fromUserId }
  */
-router.post("/reject", express.json(), async (req,res)=>{
+router.post("/reject", verifyToken, express.json(), async (req,res)=>{
   try{
-    const { userId, fromUserId } = req.body || {};
-    const me   = String(userId     || "").trim();
+    const { fromUserId } = req.body || {};
+    const me   = req.uid;
     const from = String(fromUserId || "").trim();
     if (!me || !from) return res.status(400).json({ ok:false, error:"REQ" });
 
@@ -247,10 +248,10 @@ router.post("/reject", express.json(), async (req,res)=>{
  * - link'i kaldırır (idempotent)
  * - block gerektirmez; temizlik endpoint'i
  */
-router.post("/unfriend", express.json(), async (req, res) => {
+router.post("/unfriend", verifyToken, express.json(), async (req, res) => {
   try {
     const body = req.body || {};
-    const a = String(body.userId ?? body.a ?? "").trim();
+    const a = req.uid;
     const b = String(body.targetUserId ?? body.b ?? "").trim();
     if (!a || !b) return res.status(400).json({ ok: false, error: "REQ" });
     if (a === b)  return res.status(400).json({ ok: false, error: "SELF_NOT_ALLOWED" });
@@ -274,10 +275,10 @@ router.post("/unfriend", express.json(), async (req, res) => {
  * body: { fromUserId, toUserId }  veya { from, to }
  * - outgoing pending isteği iptal eder (idempotent)
  */
-router.post("/cancel", express.json(), async (req, res) => {
+router.post("/cancel", verifyToken, express.json(), async (req, res) => {
   try {
     const body = req.body || {};
-    const from = String(body.fromUserId ?? body.from ?? "").trim();
+    const from = req.uid;
     const to   = String(body.toUserId   ?? body.to   ?? "").trim();
     if (!from || !to) return res.status(400).json({ ok: false, error: "REQ" });
     if (from === to)  return res.status(400).json({ ok: false, error: "SELF_NOT_ALLOWED" });
@@ -546,10 +547,10 @@ router.get("/search", async (req, res) => {
  * - target kayıtlı olmak zorunda değil (any name)
  * - block atınca: requests (iki yön) ve link kaldırılır
  */
-router.post("/block", express.json(), async (req,res)=>{
+router.post("/block", verifyToken, express.json(), async (req,res)=>{
   try{
     const body = req.body || {};
-    const by = String(body.userId ?? body.by ?? "").trim();
+    const by = req.uid;
     const target = String(body.targetUserId ?? body.target ?? "").trim();
 
     if (!by || !target) return res.status(400).json({ ok:false, error:"REQ" });
@@ -621,6 +622,134 @@ router.get("/blocks/:userId", async (req,res)=>{
 
   }catch(e){
     return res.status(500).json({ ok:false, error:"FRIEND_BLOCKS_FAILED", detail:String(e && (e.message||e)) });
+  }
+});
+
+// ─── DAVET SİSTEMİ ───────────────────────────────────────────────────────────
+const crypto = require("crypto");
+const WALLET_FILE = path.join(DATA, "lc-wallet.json");
+const INVITE_REWARD = 10; // her ikisine de verilecek LC
+
+async function loadWallet() {
+  const w = await readJson(WALLET_FILE, { users: [], ledger: [] });
+  if (!Array.isArray(w.users)) w.users = [];
+  if (!Array.isArray(w.ledger)) w.ledger = [];
+  return w;
+}
+
+async function addLc(wallet, userId, amount, reason, meta = {}) {
+  let u = wallet.users.find((x) => String(x.userId).toLowerCase() === userId.toLowerCase());
+  if (!u) {
+    u = { userId, balance: 0, totalEarned: 0, totalSpent: 0, createdAt: new Date().toISOString() };
+    wallet.users.push(u);
+  }
+  u.balance = Number(u.balance || 0) + amount;
+  u.totalEarned = Number(u.totalEarned || 0) + amount;
+  u.updatedAt = new Date().toISOString();
+  wallet.ledger.push({
+    id: "tx_" + Date.now().toString(36) + "_" + crypto.randomBytes(2).toString("hex"),
+    userId, kind: "reward", amount, reason, meta, createdAt: new Date().toISOString(),
+  });
+}
+
+async function getUsersData() {
+  const raw = await readJson(USERS, { items: [] });
+  const items = Array.isArray(raw) ? raw : (raw.items || raw.users || []);
+  return { raw, items };
+}
+
+function saveUsersData(raw, items) {
+  const out = Array.isArray(raw) ? items : { ...raw, items };
+  return writeJson(USERS, out);
+}
+
+/**
+ * GET /api/friends/invite-code?userId=
+ * Kullanıcının davet kodunu döner (yoksa oluşturur).
+ */
+router.get("/invite-code", async (req, res) => {
+  try {
+    const userId = normId(req.query.userId);
+    if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
+
+    const { raw, items } = await getUsersData();
+    let user = items.find((u) => normLower(u.userId) === normLower(userId));
+    if (!user) {
+      user = { userId, createdAt: new Date().toISOString() };
+      items.push(user);
+    }
+    if (!user.inviteCode) {
+      const alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const existing = new Set(items.map((u) => u.inviteCode).filter(Boolean));
+      let code = "";
+      for (let t = 0; t < 50; t++) {
+        code = Array.from({ length: 6 }, () => alpha[crypto.randomInt(alpha.length)]).join("");
+        if (!existing.has(code)) break;
+      }
+      user.inviteCode = code;
+      await saveUsersData(raw, items);
+    }
+
+    return res.json({ ok: true, userId, inviteCode: user.inviteCode, reward: INVITE_REWARD });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "INVITE_CODE_FAILED", detail: String(e?.message || e) });
+  }
+});
+
+/**
+ * POST /api/friends/use-invite  { userId, code }
+ * Kodu kullanan kişi + kodu veren kişi arkadaş olur, ikisi de LC kazanır.
+ */
+router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
+  try {
+    const userId = req.uid;
+    const code = String(req.body?.code || "").trim().toUpperCase();
+    if (!userId || !code) return res.status(400).json({ ok: false, error: "USER_AND_CODE_REQUIRED" });
+
+    const { raw, items } = await getUsersData();
+    const owner = items.find((u) => String(u.inviteCode || "").toUpperCase() === code);
+    if (!owner) return res.status(404).json({ ok: false, error: "INVALID_CODE" });
+
+    const ownerId = String(owner.userId);
+    if (normLower(ownerId) === normLower(userId)) {
+      return res.status(400).json({ ok: false, error: "CANNOT_USE_OWN_CODE" });
+    }
+
+    // Zaten arkadaş mı?
+    const m = await loadFriends();
+    if (m.links.some((l) =>
+      (normLower(l.a) === normLower(userId) && normLower(l.b) === normLower(ownerId)) ||
+      (normLower(l.a) === normLower(ownerId) && normLower(l.b) === normLower(userId))
+    )) {
+      return res.json({ ok: true, already: true, ownerId, message: "Zaten arkadaşsınız." });
+    }
+
+    // Arkadaşlık kur
+    m.links.push({ a: ownerId, b: userId, createdAt: new Date().toISOString(), via: "invite_code" });
+    // Bekleyen istek varsa temizle
+    m.requests = (m.requests || []).filter((r) =>
+      !(normLower(r.from) === normLower(userId) && normLower(r.to) === normLower(ownerId)) &&
+      !(normLower(r.from) === normLower(ownerId) && normLower(r.to) === normLower(userId))
+    );
+    await writeJson(FRIENDS, m);
+
+    // LC ödülü — ikisine de
+    if (INVITE_REWARD > 0) {
+      const wallet = await loadWallet();
+      await addLc(wallet, ownerId, INVITE_REWARD, "invite_referral", { invitedUserId: userId });
+      await addLc(wallet, userId, INVITE_REWARD, "invite_welcome", { referrerId: ownerId });
+      wallet.updatedAt = new Date().toISOString();
+      await writeJson(WALLET_FILE, wallet);
+    }
+
+    return res.json({
+      ok: true,
+      ownerId,
+      message: `${ownerId} ile arkadaş oldunuz! İkiniz de +${INVITE_REWARD} LC kazandı. 🎉`,
+      reward: INVITE_REWARD,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "USE_INVITE_FAILED", detail: String(e?.message || e) });
   }
 });
 

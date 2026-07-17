@@ -8,6 +8,14 @@ const path    = require("path");
 const crypto  = require("crypto");
 
 const DATA   = path.join(__dirname,"..","data");
+
+function requireAdminToken(req, res, next) {
+  const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
+  if (!token) return res.status(503).json({ ok: false, error: "ADMIN_TOKEN_NOT_CONFIGURED" });
+  const got = String(req.headers["x-admin-token"] || "").trim() || String(req.query.token || "").trim();
+  if (got && got === token) return next();
+  return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
+}
 const GROUPS = path.join(DATA,"groups.json");  // { CODE: { name, ownerId, members:[userId], opts:{ userId:{ includeInTotal } } } }
 const USERS  = path.join(DATA,"users.json");   // { userId: { name, flag, ... } }  (map)
 const TOTALS = path.join(DATA,"totals.json");  // { items: [ { userId, totalPoints, ...}, ... ], updatedAt }
@@ -150,7 +158,7 @@ router.post("/groups/:code/opt", express.json(), handleOpt); // legacy
 router.post("/:code/opt",        express.json(), handleOpt); // alias
 
 // DIAG (aynı)
-router.get("/diag", async (req,res)=>{
+router.get("/diag", requireAdminToken, async (req,res)=>{
   try{
     const store = await readJson(GROUPS, {});
     const codes = Object.keys(store);
