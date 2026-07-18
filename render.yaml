@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: skorlig-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.cjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0

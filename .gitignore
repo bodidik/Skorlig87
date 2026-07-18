@@ -6,8 +6,10 @@ node_modules/
 firebase-service-account.json
 .env
 .env.local
-data/*.bak
-data/tmp/
-data/cache/
+
+# Kullanici verileri — repo'ya gitmesin
+data/
+public/privacy-page/
+
 mobile/.expo/
 mobile/.cache/
