@@ -21,9 +21,14 @@ function getFirebaseAuth() {
     if (!getApps().length) {
       const filePath = path.join(__dirname, "..", "firebase-service-account.json");
       const envJson  = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+      const envB64   = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
 
       if (fs.existsSync(filePath)) {
         initializeApp({ credential: cert(require(filePath)) });
+      } else if (envB64) {
+        // Base64-encoded JSON (Render env variable için stabil)
+        const decoded = Buffer.from(envB64, 'base64').toString('utf-8');
+        initializeApp({ credential: cert(JSON.parse(decoded)) });
       } else if (envJson) {
         initializeApp({ credential: cert(JSON.parse(envJson)) });
       } else {
