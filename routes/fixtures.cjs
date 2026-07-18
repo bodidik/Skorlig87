@@ -984,9 +984,106 @@ router.get("/fav-debug", async (req, res) => {
   }
 });
 
+// GET /api/live/daily-menu?country=Türkiye
+// Kullanicinin ulkesinden 4 maç döndürür; eksik slot global elit takimlardan dolar.
+router.get("/daily-menu", async (req, res) => {
+  const country = String(req.query.country || "").trim();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const SLOTS = 4;
+
+  async function fetchPlayable(leagueId) {
+    if (!AF_KEY) return [];
+    try {
+      const qs = new URLSearchParams({ league: leagueId, date: todayStr, timezone: "Europe/Istanbul" }).toString();
+      const r = await fetch(`${AF_BASE}/fixtures?${qs}`, {
+        headers: { [AF_HDR]: AF_KEY, Accept: "application/json" },
+      });
+      const json = await r.json();
+      return (json.response || [])
+        .filter(f => ["NS","1H","2H","HT","LIVE"].includes(f.fixture?.status?.short))
+        .map(f => ({
+          fixtureId: String(f.fixture?.id),
+          home: f.teams?.home?.name || "?",
+          away: f.teams?.away?.name || "?",
+          kickoffISO: f.fixture?.date || null,
+          status: f.fixture?.status?.short || "NS",
+          league: f.league?.name || null,
+          country: f.league?.country || null,
+          leagueId,
+          _score: matchScore(f.teams?.home?.name, f.teams?.away?.name),
+        }));
+    } catch { return []; }
+  }
+
+  try {
+    const seen = new Set();
+    const results = [];
+
+    function addFixtures(fixtures) {
+      const sorted = [...fixtures].sort((a, b) => b._score - a._score);
+      for (const f of sorted) {
+        if (results.length >= SLOTS) break;
+        if (!seen.has(f.fixtureId)) {
+          seen.add(f.fixtureId);
+          results.push(f);
+        }
+      }
+    }
+
+    // 1. Kullanıcının ülke ligleri
+    const localLeagues = (country && COUNTRY_LEAGUES[country]) || [];
+    for (const lid of localLeagues) {
+      if (results.length >= SLOTS) break;
+      addFixtures(await fetchPlayable(lid));
+    }
+
+    // 2. Eksik slotları global elit liglerden doldur
+    if (results.length < SLOTS) {
+      for (const lid of GLOBAL_FALLBACK_LEAGUES) {
+        if (results.length >= SLOTS) break;
+        if (localLeagues.includes(lid)) continue; // zaten çekildiyse atla
+        addFixtures(await fetchPlayable(lid));
+      }
+    }
+
+    return res.json({ ok: true, date: todayStr, country: country || null, fixtures: results });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: "DAILY_MENU_ERR", detail: String(e.message || e) });
+  }
+});
+
 // DEBUG key durumları
 router.get("/debug-af-key", (req, res) => res.json({ ok: true, AF_KEY: AF_KEY ? "SET" : "EMPTY", AF_BASE, AF_HDR }));
 router.get("/debug-fdo-key", (req, res) => res.json({ ok: true, FDO_KEY: FDO_KEY ? "SET" : "EMPTY", FDO_BASE, FDO_HDR }));
+
+// Takım rating tablosu — maç çekicilik skorlaması için
+const TEAM_RATINGS = {
+  // Global elit
+  "Real Madrid": 97, "Barcelona": 95, "Bayern Münih": 94, "Manchester City": 93,
+  "Liverpool": 92, "PSG": 90, "Arsenal": 89, "Chelsea": 88,
+  "Atletico Madrid": 88, "Inter Milan": 88, "Juventus": 86,
+  "Borussia Dortmund": 85, "Bayer Leverkusen": 85, "Napoli": 84,
+  "AC Milan": 84, "Tottenham": 83, "Manchester United": 82,
+  "Real Sociedad": 80, "Villarreal": 79, "Athletic Bilbao": 79,
+  "Roma": 82, "Lazio": 80, "Fiorentina": 79, "Atalanta": 83,
+  "RB Leipzig": 83, "Eintracht Frankfurt": 80,
+  "Olympique Lyon": 79, "Olympique Marseille": 80,
+  "Benfica": 82, "Porto": 81, "Sporting CP": 80,
+  "Ajax": 79, "PSV": 80, "Feyenoord": 79,
+  "Celtic": 76, "Rangers": 75,
+  "Shakhtar Donetsk": 77, "Dynamo Kyiv": 74,
+  "Fenerbahçe": 78, "Galatasaray": 78, "Beşiktaş": 76, "Trabzonspor": 73,
+  "Boca Juniors": 80, "River Plate": 81, "Flamengo": 80, "Palmeiras": 79,
+  "Club América": 78, "Chivas": 74,
+  "Al-Hilal": 82, "Al-Nassr": 80, "Al-Ahly": 78,
+  "Urawa Red Diamonds": 74, "Jeonbuk": 73,
+};
+
+function matchScore(home, away) {
+  const hr = TEAM_RATINGS[home] || 65;
+  const ar = TEAM_RATINGS[away] || 65;
+  return Math.max(hr, ar) + Math.min(hr, ar) * 0.4;
+}
 
 // Ülke adı (Türkçe) → API-Sports lig ID'leri (öncelik sıralı)
 const COUNTRY_LEAGUES = {
