@@ -193,10 +193,15 @@ function runtimeCountryCap(mode) {
   return COUNTRY_CAP_DEFAULT;
 }
 
+function isPilotMode(mode) {
+  return String(mode?.profile || "").toUpperCase() === "PILOT_MANUAL";
+}
+
 function applyRuntimeFilter(list, mode) {
   const p = String(mode?.profile || "").toUpperCase();
   if (p === "DEV_4_TEAMS") return list.filter(isBig4Fixture);
   if (p === "TR_30_TEAMS") return list.filter(isTRModeFixture);
+  if (p === "PILOT_MANUAL") return list; // MANUAL kaynak zaten saf; provider listesi buraya gelmez
   return list;
 }
 
@@ -765,61 +770,62 @@ function listDaysUTC(fromMs, toMs, maxDays) {
 // ========= ROUTES =========
 
 // GET /api/live2/schedule  (dün + bugün + yarın)
+// Upcoming+past ayrı sırala: upcoming ASC (yakın önce), past DESC (en yakın geçmiş önce)
+function sortUpcomingFirst(fixtures, nowMs) {
+  const upcoming = fixtures.filter((f) => new Date(f.kickoffISO || 0).getTime() >= nowMs)
+    .sort((a, b) => new Date(a.kickoffISO).getTime() - new Date(b.kickoffISO).getTime());
+  const past = fixtures.filter((f) => new Date(f.kickoffISO || 0).getTime() < nowMs)
+    .sort((a, b) => new Date(b.kickoffISO).getTime() - new Date(a.kickoffISO).getTime());
+  return [...upcoming, ...past];
+}
+
 router.get("/schedule", async (req, res) => {
   try {
     const runtimeMode = await getRuntimeSafe();
     const cap = runtimeCountryCap(runtimeMode);
+    const nowMs = Date.now();
 
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, "0");
+    // backH: kaç saat geriye bak (default 8), fwdDays: kaç gün ileriye (default 60)
+    const backH = Math.max(0, Math.min(168, Number(req.query.backH || 8)));
+    const fwdDays = Math.max(1, Math.min(120, Number(req.query.fwdDays || 60)));
 
-    const y = now.getFullYear();
-    const m = pad(now.getMonth() + 1);
-    const d = pad(now.getDate());
-    const today = `${y}-${m}-${d}`;
+    const fromMs = nowMs - backH * 3600 * 1000;
+    const toMs = nowMs + fwdDays * 24 * 3600 * 1000;
 
-    const t1 = new Date(now.getTime() + 24 * 3600 * 1000);
-    const tomorrow = `${t1.getFullYear()}-${pad(t1.getMonth() + 1)}-${pad(t1.getDate())}`;
+    // PILOT_MANUAL: provider atla
+    if (isPilotMode(runtimeMode)) {
+      const manual = await manualFixturesWithinWindow(fromMs, toMs);
+      const maxFx = Number(runtimeMode.maxFixtures || 10);
+      const sorted = sortUpcomingFirst(manual, nowMs).slice(0, maxFx);
+      return res.json({ ok: true, count: sorted.length, fixtures: sorted, runtimeMode, cap: maxFx, pilotMode: true, backH, fwdDays });
+    }
 
-    const t_1 = new Date(now.getTime() - 24 * 3600 * 1000);
-    const yesterday = `${t_1.getFullYear()}-${pad(t_1.getMonth() + 1)}-${pad(t_1.getDate())}`;
-
+    const days = listDaysUTC(fromMs, toMs, MAX_PROVIDER_DAYS);
     let list = [];
-    try { list = list.concat(await fixturesByDate(yesterday)); } catch (e) { console.warn(`[fixtures/schedule] fixturesByDate(${yesterday}) failed:`, e && e.message ? e.message : e); }
-    try { list = list.concat(await fixturesByDate(today)); } catch (e) { console.warn(`[fixtures/schedule] fixturesByDate(${today}) failed:`, e && e.message ? e.message : e); }
-    try { list = list.concat(await fixturesByDate(tomorrow)); } catch (e) { console.warn(`[fixtures/schedule] fixturesByDate(${tomorrow}) failed:`, e && e.message ? e.message : e); }
+    for (const day of days) {
+      try { list = list.concat(await fixturesByDate(day)); } catch (e) { console.warn(`[fixtures/schedule] fixturesByDate(${day}) failed:`, e?.message || e); }
+    }
 
     const filtered = applyRuntimeFilter(list, runtimeMode);
-
-    const fromMs = new Date(yesterday + "T00:00:00Z").getTime();
-    const toMs = new Date(tomorrow + "T23:59:59Z").getTime();
     const manual = await manualFixturesWithinWindow(fromMs, toMs);
     const manualFiltered = applyRuntimeFilter(manual, runtimeMode);
-
     let merged = mergeWithManualFixtures(filtered, manualFiltered);
 
-    for (const mf of manualFiltered) {
-      const key = sameFixtureKey(mf);
-      const providerHas = filtered.some((p) => sameFixtureKey(p) === key);
-      if (!providerHas) {
-        await appendAdminAlert(
-          "provider_missing_schedule",
-          "schedule",
-          `Maç schedule penceresinde provider'dan gelmedi; manuel listeden alındı. (fixtureId=${mf.fixtureId}, ${mf.home} - ${mf.away})`,
-          { fixtureId: mf.fixtureId, home: mf.home, away: mf.away, kickoffISO: mf.kickoffISO, profile: runtimeMode.profile }
-        );
-      }
-    }
+    // Pencere filtresi
+    merged = merged.filter((it) => {
+      const t = new Date(it.kickoffISO || it.kickoffDate || 0).getTime();
+      return Number.isFinite(t) && t >= fromMs && t <= toMs;
+    });
 
     const per = new Map();
     const capped = [];
-    for (const it of merged.sort((a, b) => new Date(a.kickoffISO).getTime() - new Date(b.kickoffISO).getTime())) {
+    for (const it of sortUpcomingFirst(merged, nowMs)) {
       const key = it.country || "Other";
       const c = per.get(key) || 0;
       if (c < cap) { capped.push(it); per.set(key, c + 1); }
     }
 
-    res.json({ ok: true, count: capped.length, fixtures: capped, runtimeMode, cap });
+    res.json({ ok: true, count: capped.length, fixtures: capped, runtimeMode, cap, backH, fwdDays });
   } catch (e) {
     res.status(500).json({ ok: false, error: "SCHEDULE_FAILED", detail: String((e && e.message) || e) });
   }
@@ -836,6 +842,18 @@ router.get("/open", async (req, res) => {
     const nowMs = Date.now();
     const fromMs = nowMs - backH * 3600 * 1000;
     const toMs = nowMs + fwdH * 3600 * 1000;
+
+    // PILOT_MANUAL: provider çağrısı sıfır — sadece fixtures.json'dan oku
+    if (isPilotMode(runtimeMode)) {
+      const manual = await manualFixturesWithinWindow(fromMs, toMs);
+      const maxFx = Number(runtimeMode.maxFixtures || 10);
+      const windowed = manual
+        .map((it) => withLockFlag(it, nowMs))
+        .filter((it) => it.kickoffISO && within(it.kickoffISO, fromMs, toMs) && !it.lock)
+        .sort((a, b) => new Date(a.kickoffISO).getTime() - new Date(b.kickoffISO).getTime())
+        .slice(0, maxFx);
+      return res.json({ ok: true, count: windowed.length, fixtures: windowed, runtimeMode, cap: maxFx, pilotMode: true });
+    }
 
     // ✅ Kritik düzeltme: pencere genişledikçe gün gün çek
     const days = listDaysUTC(fromMs, toMs, MAX_PROVIDER_DAYS);
@@ -969,5 +987,133 @@ router.get("/fav-debug", async (req, res) => {
 // DEBUG key durumları
 router.get("/debug-af-key", (req, res) => res.json({ ok: true, AF_KEY: AF_KEY ? "SET" : "EMPTY", AF_BASE, AF_HDR }));
 router.get("/debug-fdo-key", (req, res) => res.json({ ok: true, FDO_KEY: FDO_KEY ? "SET" : "EMPTY", FDO_BASE, FDO_HDR }));
+
+// Ülke adı (Türkçe) → API-Sports lig ID'leri (öncelik sıralı)
+const COUNTRY_LEAGUES = {
+  "Türkiye":         [203, 204],          // Süper Lig, 1. Lig
+  "İngiltere":       [39, 40],            // Premier League, Championship
+  "İspanya":         [140, 141],          // La Liga, Segunda
+  "Almanya":         [78, 79],            // Bundesliga, 2. Bundesliga
+  "Fransa":          [61, 62],            // Ligue 1, Ligue 2
+  "İtalya":          [135, 136],          // Serie A, Serie B
+  "Portekiz":        [94, 95],
+  "Hollanda":        [88, 89],
+  "Belçika":         [144],
+  "Avusturya":       [218],
+  "İsviçre":         [207],
+  "İsveç":           [113],
+  "Norveç":          [103],
+  "Danimarka":       [119],
+  "Finlandiya":      [244],
+  "İrlanda":         [357],
+  "Yunanistan":      [197],
+  "Polonya":         [106],
+  "Çekya":           [345],
+  "Slovakya":        [332],
+  "Macaristan":      [271],
+  "Romanya":         [283],
+  "Hırvatistan":     [210],
+  "Sırbistan":       [286],
+  "Ukrayna":         [333],
+  "Rusya":           [235],
+  "Arjantin":        [128],
+  "Brezilya":        [71],
+  "Bolivya":         [439],
+  "Şili":            [265],
+  "Kolombiya":       [239],
+  "Peru":            [281],
+  "Uruguay":         [268],
+  "Ekvador":         [253],
+  "Paraguay":        [278],
+  "Venezuela":       [253],
+  "Meksika":         [262],
+  "ABD":             [253],
+  "Kanada":          [253],
+  "Nijerya":         [332],
+  "Gana":            [307],
+  "Mısır":           [233],
+  "Güney Afrika":    [288],
+  "Fas":             [200],
+  "Japonya":         [98],
+  "Güney Kore":      [292],
+  "Avustralya":      [188],
+  "Hindistan":       [323],
+  "Suudi Arabistan": [307],
+  "BAE":             [435],
+  "Katar":           [253],
+};
+
+// Fallback: büyük Avrupa ligleri
+const GLOBAL_FALLBACK_LEAGUES = [39, 140, 135, 78, 61, 88, 94, 203];
+
+// GET /api/live/daily-featured?country=Türkiye
+router.get("/daily-featured", async (req, res) => {
+  const country = String(req.query.country || "").trim();
+  const leagueIds = (country && COUNTRY_LEAGUES[country])
+    ? COUNTRY_LEAGUES[country]
+    : GLOBAL_FALLBACK_LEAGUES;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  async function fetchFixturesForLeague(leagueId) {
+    if (!AF_KEY) return [];
+    try {
+      const qs = new URLSearchParams({ league: leagueId, date: todayStr, timezone: "Europe/Istanbul" }).toString();
+      const r = await fetch(`${AF_BASE}/fixtures?${qs}`, {
+        headers: { [AF_HDR]: AF_KEY, Accept: "application/json" },
+      });
+      const json = await r.json();
+      return (json.response || []).map(f => ({
+        fixtureId: String(f.fixture?.id),
+        home: f.teams?.home?.name || "?",
+        away: f.teams?.away?.name || "?",
+        homeLogo: f.teams?.home?.logo || null,
+        awayLogo: f.teams?.away?.logo || null,
+        kickoffISO: f.fixture?.date || null,
+        status: f.fixture?.status?.short || "NS",
+        league: f.league?.name || null,
+        country: f.league?.country || null,
+        leagueId,
+      }));
+    } catch { return []; }
+  }
+
+  try {
+    let featured = null;
+    const now = Date.now();
+
+    for (const lid of leagueIds) {
+      const fixtures = await fetchFixturesForLeague(lid);
+      // Sadece NS (başlamamış) veya LIVE maçlar
+      const playable = fixtures.filter(f => ["NS", "1H", "2H", "HT", "LIVE"].includes(f.status));
+      if (!playable.length) continue;
+      // En yakın saatteki maçı seç
+      playable.sort((a, b) => {
+        const ta = a.kickoffISO ? new Date(a.kickoffISO).getTime() : Infinity;
+        const tb = b.kickoffISO ? new Date(b.kickoffISO).getTime() : Infinity;
+        return ta - tb;
+      });
+      featured = playable[0];
+      break;
+    }
+
+    // Ülkeye özel bulunamazsa global fallback
+    if (!featured && country && COUNTRY_LEAGUES[country]) {
+      for (const lid of GLOBAL_FALLBACK_LEAGUES) {
+        const fixtures = await fetchFixturesForLeague(lid);
+        const playable = fixtures.filter(f => ["NS", "1H", "2H", "HT", "LIVE"].includes(f.status));
+        if (!playable.length) continue;
+        playable.sort((a, b) => new Date(a.kickoffISO).getTime() - new Date(b.kickoffISO).getTime());
+        featured = playable[0];
+        break;
+      }
+    }
+
+    if (!featured) return res.json({ ok: true, fixture: null });
+    return res.json({ ok: true, fixture: featured });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: "DAILY_FEATURED_ERR", detail: String(e.message || e) });
+  }
+});
 
 module.exports = router;

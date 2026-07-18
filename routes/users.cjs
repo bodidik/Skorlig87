@@ -729,4 +729,116 @@ router.get("/1987/season", async (req, res) => {
 });
 
 
+// DELETE /api/users/delete-account
+// Kullanıcının tüm verilerini ve Firebase Auth kaydını siler.
+router.delete("/delete-account", verifyToken, async (req, res) => {
+  const uid = req.uid;
+  if (!uid) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
+
+  const DATA_FILES = {
+    users:       path.join(DATA_DIR, "users.json"),
+    preds:       path.join(DATA_DIR, "preds.json"),
+    leaderboard: path.join(DATA_DIR, "leaderboard.json"),
+    wallet:      path.join(DATA_DIR, "lc-wallet.json"),
+    friends:     path.join(DATA_DIR, "friends.json"),
+    groups:      path.join(DATA_DIR, "groups.json"),
+    totals:      path.join(DATA_DIR, "totals.json"),
+  };
+
+  async function readJson(file) {
+    try { return JSON.parse(await fsp.readFile(file, "utf8")); } catch { return null; }
+  }
+  async function writeJson(file, data) {
+    await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
+  }
+
+  try {
+    // 1. users.json — kaydı sil
+    const users = await readJson(DATA_FILES.users);
+    if (Array.isArray(users)) {
+      await writeJson(DATA_FILES.users, users.filter(u => String(u.userId || u.id) !== uid));
+    } else if (users && typeof users === "object") {
+      delete users[uid];
+      await writeJson(DATA_FILES.users, users);
+    }
+
+    // 2. preds.json — tahminleri sil
+    const preds = await readJson(DATA_FILES.preds);
+    if (preds && typeof preds === "object") {
+      for (const fid of Object.keys(preds)) {
+        if (Array.isArray(preds[fid])) {
+          preds[fid] = preds[fid].filter(p => String(p.userId || p.uid) !== uid);
+        }
+      }
+      await writeJson(DATA_FILES.preds, preds);
+    }
+
+    // 3. leaderboard.json
+    const lb = await readJson(DATA_FILES.leaderboard);
+    if (Array.isArray(lb)) {
+      await writeJson(DATA_FILES.leaderboard, lb.filter(r => String(r.userId || r.uid) !== uid));
+    } else if (lb && typeof lb === "object") {
+      delete lb[uid];
+      await writeJson(DATA_FILES.leaderboard, lb);
+    }
+
+    // 4. lc-wallet.json
+    const wallet = await readJson(DATA_FILES.wallet);
+    if (wallet && typeof wallet === "object") {
+      delete wallet[uid];
+      await writeJson(DATA_FILES.wallet, wallet);
+    }
+
+    // 5. friends.json — tüm arkadaşlık kayıtlarından çıkar
+    const friends = await readJson(DATA_FILES.friends);
+    if (friends && typeof friends === "object") {
+      delete friends[uid];
+      for (const k of Object.keys(friends)) {
+        const f = friends[k];
+        if (f && Array.isArray(f.friends)) f.friends = f.friends.filter(x => x !== uid);
+        if (f && Array.isArray(f.pending)) f.pending = f.pending.filter(x => x !== uid);
+        if (f && Array.isArray(f.blocked)) f.blocked = f.blocked.filter(x => x !== uid);
+      }
+      await writeJson(DATA_FILES.friends, friends);
+    }
+
+    // 6. groups.json — sahip olduğu grupları sil, üyelikten çıkar
+    const groups = await readJson(DATA_FILES.groups);
+    if (groups && typeof groups === "object") {
+      for (const gid of Object.keys(groups)) {
+        const g = groups[gid];
+        if (String(g.ownerId) === uid) {
+          delete groups[gid];
+        } else if (Array.isArray(g.members)) {
+          g.members = g.members.filter(m => m !== uid);
+        }
+      }
+      await writeJson(DATA_FILES.groups, groups);
+    }
+
+    // 7. totals.json
+    const totals = await readJson(DATA_FILES.totals);
+    if (Array.isArray(totals)) {
+      await writeJson(DATA_FILES.totals, totals.filter(r => String(r.userId || r.uid) !== uid));
+    } else if (totals && typeof totals === "object") {
+      delete totals[uid];
+      await writeJson(DATA_FILES.totals, totals);
+    }
+
+    // 8. Firebase Auth'tan sil
+    try {
+      const { getAuth } = require("firebase-admin/auth");
+      await getAuth().deleteUser(uid);
+    } catch (authErr) {
+      console.warn("Firebase delete user warn:", authErr.message);
+      // Firebase silme başarısız olsa bile yerel veri silindi, devam et
+    }
+
+    return res.json({ ok: true, deleted: uid });
+  } catch (e) {
+    console.error("DELETE_ACCOUNT_ERR", e);
+    return res.status(500).json({ ok: false, error: "DELETE_ACCOUNT_ERR", detail: String(e.message || e) });
+  }
+});
+
 module.exports = router;
