@@ -6,7 +6,7 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 
-const BUILD = "settle2-2026-01-07-final"; // ✅ NIHai
+const BUILD = "settle2-2026-07-16-penalty20pct"; // ✅ ceza %20 orantılı
 // NOT: Puanlama/ödül herkes için eşittir — premium'un maç başı avantajı YOK
 // (rekabet adaleti). Premium avantajları LC ekonomisinde: bedava giriş +
 // aylık kasa (bkz. lib/premium.cjs).
@@ -653,12 +653,14 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     let pts = 0;
     const detail = {};
 
+    // 1) Sonuç (1X2): doğru +3, yanlış -1
     if (p.outcome && typeof p.outcome === "string") {
       const ok = p.outcome.toUpperCase() === outcome;
-      detail.outcome = ok ? 3 : 0;
+      detail.outcome = ok ? 3 : -1;
       pts += detail.outcome;
     }
 
+    // 2) Skor: doğru +12, yanlış -0.1
     const hasScorePred =
       p.home !== null &&
       p.home !== undefined &&
@@ -669,34 +671,34 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
 
     if (hasScorePred) {
       const ok = Number(p.home) === h && Number(p.away) === a;
-      detail.exact = ok ? 12 : 0;
+      detail.exact = ok ? 12 : -0.1;
       pts += detail.exact;
     }
 
+    // 3) İlk gol: doğru +1, yanlış -0.2
     if (p.firstGoal) {
       const ok = String(p.firstGoal).toUpperCase() === String(fg || "");
-      detail.firstGoal = ok ? 1 : 0;
+      detail.firstGoal = ok ? 1 : -0.2;
       pts += detail.firstGoal;
     }
 
+    // 4) İlk yarı: doğru +2, yanlış -0.4
     if (hasHT && p.firstHalf) {
       const ok = String(p.firstHalf).toUpperCase() === htOutcome;
-      detail.firstHalf = ok ? 2 : 0;
+      detail.firstHalf = ok ? 2 : -0.4;
       pts += detail.firstHalf;
     }
 
-    // 5) Kırmızı
+    // 5) Kırmızı kart
     let redAnyPts = 0;
     let redSidePts = 0;
     let redSidePenalty = 0;
 
     let predRedAny = typeof p.redAny === "boolean" ? p.redAny : null;
-
     let predRedSide = p.redSide != null ? String(p.redSide).toUpperCase() : null;
     if (predRedSide !== "H" && predRedSide !== "A") predRedSide = null;
 
-    // Eski şema fallback: redAny/redSide hiç yazılmamışsa (dual-write öncesi
-    // kayıtlar), redHome/redAway booleanlarından türet.
+    // Eski şema fallback
     if (predRedAny === null && (typeof p.redHome === "boolean" || typeof p.redAway === "boolean")) {
       const legacyRedHome = !!p.redHome;
       const legacyRedAway = !!p.redAway;
@@ -705,13 +707,13 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     }
 
     if (predRedAny === true || predRedAny === false) {
-      if (predRedAny === redAnyActual) redAnyPts = 1.5;
+      redAnyPts = predRedAny === redAnyActual ? 1.5 : -0.3;
     }
 
     if (predRedAny === true && predRedSide && redAnyActual === true) {
       const act = redSideActual ? String(redSideActual).toUpperCase() : null;
       if (act && predRedSide === act) redSidePts = 1;
-      else redSidePenalty = -0.05;
+      else redSidePenalty = -0.2;
     }
 
     detail.redAny = redAnyPts;
@@ -725,18 +727,17 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     let penaltySidePenalty = 0;
 
     const predPenaltyAny = typeof p.penaltyAny === "boolean" ? p.penaltyAny : null;
-
     let predPenaltySide = p.penaltySide != null ? String(p.penaltySide).toUpperCase() : null;
     if (predPenaltySide !== "H" && predPenaltySide !== "A") predPenaltySide = null;
 
     if (predPenaltyAny === true || predPenaltyAny === false) {
-      if (predPenaltyAny === penaltyAnyActual) penaltyAnyPts = 1.5;
+      penaltyAnyPts = predPenaltyAny === penaltyAnyActual ? 1.5 : -0.3;
     }
 
     if (predPenaltyAny === true && predPenaltySide && penaltyAnyActual === true) {
       const act = penaltySideActual ? String(penaltySideActual).toUpperCase() : null;
       if (act && predPenaltySide === act) penaltySidePts = 1;
-      else penaltySidePenalty = -0.05;
+      else penaltySidePenalty = -0.2;
     }
 
     detail.penaltyAny = penaltyAnyPts;
@@ -746,15 +747,16 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
 
     detail.zeroPenalty = 0;
 
+    // base: sadece pozitif puanlardan hesaplanır (LC ödülü için), cezalar ayrı
     const base =
-      Number(detail.outcome || 0) +
-      Number(detail.exact || 0) +
-      Number(detail.firstGoal || 0) +
-      Number(detail.firstHalf || 0) +
-      Number(detail.redAny || 0) +
-      Number(detail.redSide || 0) +
-      Number(detail.penaltyAny || 0) +
-      Number(detail.penaltySide || 0);
+      Math.max(0, Number(detail.outcome || 0)) +
+      Math.max(0, Number(detail.exact || 0)) +
+      Math.max(0, Number(detail.firstGoal || 0)) +
+      Math.max(0, Number(detail.firstHalf || 0)) +
+      Math.max(0, Number(detail.redAny || 0)) +
+      Math.max(0, Number(detail.redSide || 0)) +
+      Math.max(0, Number(detail.penaltyAny || 0)) +
+      Math.max(0, Number(detail.penaltySide || 0));
 
     detail.base = Math.max(0, Math.min(MAX_BASE, Number(base || 0)));
 
@@ -864,6 +866,133 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
   };
 }
 
+/* ======================
+ * TOURNAMENT AUTO-SETTLE
+ * ====================== */
+
+const TOURNAMENTS_FILE = path.join(DATA_DIR, "tournaments.json");
+
+async function loadTournaments() {
+  const raw = await readJson(TOURNAMENTS_FILE, { tournaments: [] });
+  return Array.isArray(raw?.tournaments) ? raw.tournaments : [];
+}
+
+async function saveTournaments(list) {
+  await writeJson(TOURNAMENTS_FILE, { tournaments: list });
+}
+
+async function getFixtureOutcome(fid) {
+  const st = await readJson(stateFile(fid), null);
+  if (!st || String(st.status) !== "FT") return null;
+  const h = Number(st.score?.home ?? 0);
+  const a = Number(st.score?.away ?? 0);
+  return h > a ? "H" : a > h ? "A" : "D";
+}
+
+async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
+  try {
+    const all = await loadTournaments();
+    const open = all.filter(
+      (t) => t.status === "open" && Array.isArray(t.fixtureIds) && t.fixtureIds.includes(settledFixtureId)
+    );
+    if (!open.length) return;
+
+    const { calcOdds } = require("../services/odds-engine.cjs");
+    const PAYOUT_TABLE = { 2: [0.70, 0.30], 3: [0.70, 0.30], 4: [0.60, 0.25, 0.15], 5: [0.60, 0.25, 0.15], 6: [0.60, 0.25, 0.15], 7: [0.60, 0.25, 0.15] };
+    const PAYOUT_8PLUS = [0.50, 0.25, 0.15, 0.10];
+    const nowISO = new Date().toISOString();
+
+    for (const t of open) {
+      // Check all fixtures have FT results
+      const results = {};
+      let allDone = true;
+      for (const fid of t.fixtureIds) {
+        const outcome = fid === settledFixtureId ? settledOutcome : await getFixtureOutcome(fid);
+        if (!outcome) { allDone = false; break; }
+        results[fid] = { outcome };
+      }
+      if (!allDone) continue;
+
+      // Score participants
+      for (const p of t.participants) {
+        let score = 0;
+        for (const fid of t.fixtureIds) {
+          const pred = p.predictions[fid];
+          if (!pred || !results[fid]) continue;
+          const fx = (t.fixtures || []).find(f => f.fixtureId === fid);
+          const odds = fx ? calcOdds(fx.home, fx.away) : { home: 2, draw: 3, away: 2 };
+          const outcomeOdd = pred.outcome === "H" ? odds.home : pred.outcome === "D" ? odds.draw : odds.away;
+          if (pred.outcome === results[fid].outcome) {
+            score += Math.round(10 * outcomeOdd);
+          }
+        }
+        p.totalScore = score;
+      }
+
+      const sorted = [...t.participants].sort((a, b) => b.totalScore - a.totalScore);
+      const n = sorted.length;
+      const table = n >= 8 ? PAYOUT_8PLUS : (PAYOUT_TABLE[n] || PAYOUT_TABLE[2]);
+
+      t.payouts = table.map((pct, i) => {
+        const user = sorted[i];
+        if (!user) return null;
+        return { rank: i + 1, userId: user.userId, score: user.totalScore, lcWon: Math.round(t.pool * pct), pct: Math.round(pct * 100) };
+      }).filter(Boolean);
+
+      t.status = "settled";
+      t.settledAt = nowISO;
+
+      // Credit winners' wallets
+      const walletState = (await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })) || {};
+      if (!Array.isArray(walletState.users)) walletState.users = [];
+      if (!Array.isArray(walletState.ledger)) walletState.ledger = [];
+
+      for (const payout of t.payouts) {
+        if (!payout.lcWon || payout.lcWon <= 0) continue;
+        const uid = payout.userId;
+        const uidLower = uid.toLowerCase();
+        let wu = walletState.users.find(x => String(x.userId || "").toLowerCase() === uidLower);
+        if (!wu) {
+          wu = { userId: uid, balance: 0, createdAt: nowISO, updatedAt: nowISO, lastDailyAt: null, totalEarned: 0, totalSpent: 0 };
+          walletState.users.push(wu);
+        }
+        wu.balance = (wu.balance || 0) + payout.lcWon;
+        wu.totalEarned = (wu.totalEarned || 0) + payout.lcWon;
+        wu.updatedAt = nowISO;
+        walletState.ledger.push({
+          id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
+          userId: uid, kind: "reward", amount: payout.lcWon,
+          reason: "tournament_payout", meta: { tournamentCode: t.code, rank: payout.rank },
+          createdAt: nowISO,
+        });
+
+        if (db) {
+          try {
+            const col = db.collection("lc_wallet_users");
+            await col.updateOne(
+              { userIdLower: uidLower },
+              { $inc: { balance: payout.lcWon, totalEarned: payout.lcWon }, $set: { updatedAt: nowISO }, $setOnInsert: { userId: uid, userIdLower: uidLower, createdAt: nowISO, lastDailyAt: null, totalSpent: 0 } },
+              { upsert: true }
+            );
+            const ledgerCol = db.collection("lc_wallet_ledger");
+            await ledgerCol.insertOne({ id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8), userId: uid, userIdLower: uidLower, kind: "reward", amount: payout.lcWon, reason: "tournament_payout", meta: { tournamentCode: t.code, rank: payout.rank }, createdAt: nowISO });
+          } catch (e) {
+            console.error("[settle2] tournament payout mongo failed:", e);
+          }
+        }
+      }
+
+      walletState.updatedAt = nowISO;
+      await writeJson(WALLET_FILE, walletState);
+      console.log(`[settle2] auto-settled tournament ${t.code}: ${t.payouts.length} payouts`);
+    }
+
+    await saveTournaments(all);
+  } catch (e) {
+    console.error("[settle2] tryAutoSettleTournaments failed:", e);
+  }
+}
+
 /**
  * POST /api/rt/settle2
  */
@@ -873,6 +1002,10 @@ router.post("/settle2", async (req, res) => {
     const db = req.app?.locals?.db || null;
 
     const result = await scoreFixture(fixtureId, { updateTotals: true, db });
+
+    // Fire-and-forget: tournaments that include this fixture
+    tryAutoSettleTournaments(fixtureId, result.outcome, db).catch(() => {});
+
     return res.json({ ok: true, ...result });
   } catch (e) {
     console.error("SAFE_SETTLE2_FAILED", e);

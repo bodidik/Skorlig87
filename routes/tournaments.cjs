@@ -60,6 +60,21 @@ router.get("/:code", async (req, res) => {
   }
 });
 
+// POST /api/tournaments/settle/:code  (admin)
+router.post("/settle/:code", verifyToken, async (req, res) => {
+  try {
+    const { results } = req.body; // { [fixtureId]: { outcome: "H"|"D"|"A" } }
+    if (!results || typeof results !== "object") {
+      return res.status(400).json({ ok: false, error: "RESULTS_REQUIRED" });
+    }
+    const tournament = await t.settle(req.params.code, results);
+    res.json({ ok: true, tournament });
+  } catch (e) {
+    const status = e.message === "NOT_FOUND" ? 404 : 400;
+    res.status(status).json({ ok: false, error: e.message });
+  }
+});
+
 // GET /api/tournaments/user/my
 router.get("/user/my", verifyToken, async (req, res) => {
   try {
