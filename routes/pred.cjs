@@ -925,9 +925,10 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
 
 
     // 🔹 LC harcaması (maç başı cost, ikinci/üçüncü düzeltmede kesilmez)
-    // Premium ayrıcalığı: maç girişi bedava (matchCost 0)
-    const isPrem = await premium.isPremium(uid);
-    const effMatchCost = premium.matchCost(isPrem, LC_MATCH_COST);
+    // Premium ayrıcalığı: maç girişi bedava. 1987 üyeleri de bedava.
+    const isPrem  = await premium.isPremium(uid);
+    const is1987  = await isUser1987Member(uid);
+    const effMatchCost = (isPrem || is1987) ? 0 : LC_MATCH_COST;
     const spendRes = db
       ? await spendLcMatchIfNeededMongo(
           db,

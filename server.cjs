@@ -155,8 +155,9 @@ safeMount("tr-league",        () => app.use("/api/tr-league",  require("./routes
 safeMount("auth-1987gs",      () => app.use("/api/auth1987gs", require("./routes/auth-1987gs.cjs")));
 safeMount("livescore",        () => app.use("/api/livescore",  require("./routes/livescore.cjs")));
 safeMount("daily-picks",      () => app.use("/api/daily-picks", require("./routes/daily-picks.cjs")));
-safeMount("tournaments",      () => app.use("/api/tournaments", require("./routes/tournaments.cjs")));
-safeMount("auth-firebase",     () => app.use("/api",            require("./routes/auth-firebase.cjs")));
+safeMount("tournaments",      () => app.use("/api/tournaments",   require("./routes/tournaments.cjs")));
+safeMount("weekly-picks",     () => app.use("/api/weekly-picks", require("./routes/weekly-picks.cjs")));
+safeMount("auth-firebase",    () => app.use("/api",              require("./routes/auth-firebase.cjs")));
 
 /* 🔹 Yeni: runtime mode admin paneli */
 safeMount("admin-runtime", () =>
