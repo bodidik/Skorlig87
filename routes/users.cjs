@@ -206,11 +206,10 @@ router.get("/profile", async (req, res) => {
     const profile = {
       userId,
       mainTeam: u.mainTeam || null,
-      country: u.country || null, // kullanıcının "yereli": maç listesi buna göre kişiselleşir
-      // totals: gerçek toplam puan için /api/rt/totals kullanıyoruz;
+      country: u.country || null,
       totals: Number(u.totals || 0),
-      // LigCoin
       lc: typeof u.lc === "number" ? u.lc : null,
+      is1987: !!(u.is1987 || String(u.segment || "").toLowerCase() === "1987"),
     };
 
     return res.json({ ok: true, profile });

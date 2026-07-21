@@ -38,9 +38,9 @@ async function getLiveState(fixtureId) {
 }
 
 async function is1987User(userId) {
-  const uid = String(userId || "").trim().toLowerCase();
-  const raw  = await readJson(USERS_FILE, { users: [] });
-  const list = raw?.users ?? raw?.items ?? (Array.isArray(raw) ? raw : []);
+  const uid  = String(userId || "").trim().toLowerCase();
+  const raw  = await readJson(USERS_FILE, { items: [] });
+  const list = Array.isArray(raw.items) ? raw.items : [];
   const u    = list.find(x => String(x.userId || x.id || "").toLowerCase() === uid);
   return !!(u && (u.is1987 || String(u.segment || "").toLowerCase() === "1987"));
 }
@@ -233,8 +233,8 @@ router.get("/leaderboard", async (req, res) => {
     const weekAgo = now - WEEK_MS;
 
     // 1987 kullanıcıları
-    const usersRaw = await readJson(USERS_FILE, { users: [] });
-    const userList = usersRaw?.users ?? usersRaw?.items ?? (Array.isArray(usersRaw) ? usersRaw : []);
+    const usersRaw = await readJson(USERS_FILE, { items: [] });
+    const userList = Array.isArray(usersRaw.items) ? usersRaw.items : [];
     const is1987Set = new Set(
       userList
         .filter(u => u.is1987 || String(u.segment || "").toLowerCase() === "1987")
@@ -330,6 +330,41 @@ router.get("/my", verifyToken, async (req, res) => {
     }
 
     res.json({ ok: true, count: result.length, items: result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/**
+ * POST /api/weekly-picks/verify-code
+ * 1987GS Facebook grup kodunu doğrular; doğruysa kullanıcıya is1987 bayrağı verir.
+ */
+router.post("/verify-code", verifyToken, async (req, res) => {
+  try {
+    const uid  = req.uid;
+    const code = String(req.body?.code || "").trim();
+    const expected = String(process.env.GS1987_CODE || "1987GS").trim();
+
+    if (!code || code.toUpperCase() !== expected.toUpperCase()) {
+      return res.status(400).json({ ok: false, error: "WRONG_CODE" });
+    }
+
+    await withFileLock(USERS_FILE, async () => {
+      const raw   = await readJson(USERS_FILE, { items: [] });
+      const items = Array.isArray(raw.items) ? raw.items : [];
+      const uidL  = uid.toLowerCase();
+      let u = items.find(x => String(x.userId || x.id || "").toLowerCase() === uidL);
+      if (!u) {
+        u = { userId: uid, is1987: true, createdAt: new Date().toISOString() };
+        items.push(u);
+      } else {
+        u.is1987   = true;
+        u.is1987At = new Date().toISOString();
+      }
+      await writeJsonAtomic(USERS_FILE, { ...raw, items });
+    });
+
+    res.json({ ok: true, is1987: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
