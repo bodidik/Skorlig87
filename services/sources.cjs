@@ -35,22 +35,22 @@ const SOURCES = [
     name: "Bilyoner",
     tier: 1,
     kind: "scraper",
-    status: "planned",
+    status: "active",
     url: "https://www.bilyoner.com/iddaa",
     module: "./scrapers/bilyoner.cjs",
-    provides: ["fixtures", "odds"],  // gelecek maçlar + oran
-    notes: "Program/fikstür için iyi. Oran verisi de var. Henüz yazılmadı.",
+    provides: ["fixtures", "odds"],
+    notes: "Bilyoner API üzerinden iddaa programı + 1X2 oranları. Fetch tabanlı (Puppeteer yok).",
   },
   {
     id: "skorx",
     name: "SkorX",
     tier: 1,
     kind: "scraper",
-    status: "planned",
+    status: "active",
     url: "https://www.skorx.com",
     module: "./scrapers/skorx.cjs",
     provides: ["live", "results"],
-    notes: "Maçkolik'e yedek canlı skor kaynağı. Henüz yazılmadı.",
+    notes: "Maçkolik'e yedek canlı skor kaynağı. HTML fetch + regex parse.",
   },
 
   // ─── TIER 2: Ücretsiz API ────────────────────────────────────
