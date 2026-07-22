@@ -219,7 +219,7 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db) {
 router.post("/duels/create", verifyToken, async (req, res) => {
   try {
     const db = getDb(req);
-    const { fixtureId, stake, challengedId, home, away, league, kickoffISO } = req.body || {};
+    const { fixtureId, stake, challengedId, creatorName, home, away, league, kickoffISO } = req.body || {};
     const creatorId = req.uid;
     const fx = String(fixtureId || "").trim();
     if (!fx) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
@@ -244,7 +244,8 @@ router.post("/duels/create", verifyToken, async (req, res) => {
     const id = genId();
     const duel = {
       id, fixtureId: fx, stake: s,
-      creatorId, challengedId: targetId, acceptorId: null,
+      creatorId, creatorName: String(creatorName || "").trim() || null,
+      challengedId: targetId, acceptorId: null, acceptorName: null,
       status: "open",
       home: String(home || "").trim() || null,
       away: String(away || "").trim() || null,
@@ -278,6 +279,7 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
     const db = getDb(req);
     const acceptorId = req.uid;
     const did = String(req.body?.duelId || "").trim();
+    const acceptorName = String(req.body?.acceptorName || "").trim() || null;
     if (!did) return res.status(400).json({ ok: false, error: "DUEL_ID_REQUIRED" });
 
     let result = null;
@@ -298,6 +300,7 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
       if (!spend.ok) { result = { err: spend.error || "LC_NOT_ENOUGH", lc: spend.lc, needed: duel.stake }; return; }
 
       duel.acceptorId = acceptorId;
+      duel.acceptorName = acceptorName;
       duel.status = "active";
       duel.acceptedAt = new Date().toISOString();
       await saveDuels(list);
