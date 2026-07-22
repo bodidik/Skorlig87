@@ -521,6 +521,169 @@ router.get("/results/recent", requireAdminToken, async (req, res) => {
 });
 
 /* =========================================================
+   MATCH NOTES (kullanıcıya görünür admin notu)
+   data/match-notes.json: { notes: { "<fixtureId>": {note, home, away, updatedAt, updatedBy} } }
+   ========================================================= */
+const MATCH_NOTES_FILE = path.join(DATA_DIR, "match-notes.json");
+
+async function loadNotesStore() {
+  const raw = await readJson(MATCH_NOTES_FILE, null);
+  if (!raw || typeof raw !== "object" || typeof raw.notes !== "object" || !raw.notes) {
+    return { notes: {} };
+  }
+  return raw;
+}
+async function saveNotesStore(store) {
+  await writeJsonAtomic(MATCH_NOTES_FILE, store || { notes: {} });
+}
+
+/* POST /api/admin/match-note
+   Body: { fixtureId, note, home?, away? }
+   - note boş/whitespace ise notu siler.
+   - Notu hem match-notes.json'a hem de (varsa) fixtures.json kaydına yazar. */
+router.post("/match-note", requireAdminToken, express.json(), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const fixtureId = normId(body.fixtureId);
+    if (!fixtureId) return res.status(400).json({ ok: false, error: "FIXTURE_REQUIRED" });
+
+    const note = String(body.note == null ? "" : body.note).trim().slice(0, 500);
+    const updatedBy = normId(body.updatedBy) || "admin";
+    const nowISO = new Date().toISOString();
+
+    const store = await loadNotesStore();
+    if (!note) {
+      delete store.notes[fixtureId];
+    } else {
+      store.notes[fixtureId] = {
+        note,
+        home: normId(body.home) || store.notes[fixtureId]?.home || null,
+        away: normId(body.away) || store.notes[fixtureId]?.away || null,
+        updatedAt: nowISO,
+        updatedBy,
+      };
+    }
+    await saveNotesStore(store);
+
+    // fixtures.json içinde varsa ayrıca patchle (manuel maçlar not'u taşısın)
+    try {
+      const fxStore = await loadFixturesStore();
+      const idx = fxStore.list.findIndex((x) => normId(x?.fixtureId) === fixtureId);
+      if (idx >= 0) {
+        if (!note) delete fxStore.list[idx].note;
+        else fxStore.list[idx].note = note;
+        fxStore.list[idx].noteUpdatedAt = nowISO;
+        await saveFixturesStore(fxStore.raw, fxStore.list);
+      }
+    } catch (e) {
+      console.error("MATCH_NOTE_FIXTURE_SYNC_FAILED", e);
+    }
+
+    return res.json({ ok: true, fixtureId, note: note || null });
+  } catch (e) {
+    console.error("ADMIN_MATCH_NOTE_FAILED", e);
+    return res.status(500).json({ ok: false, error: "ADMIN_MATCH_NOTE_FAILED", detail: String(e && (e.message || e)) });
+  }
+});
+
+/* GET /api/admin/match-note?fixtureId=  (admin düzenleme için tekil not) */
+router.get("/match-note", requireAdminToken, async (req, res) => {
+  try {
+    const fixtureId = normId(req.query.fixtureId);
+    if (!fixtureId) return res.status(400).json({ ok: false, error: "FIXTURE_REQUIRED" });
+    const store = await loadNotesStore();
+    return res.json({ ok: true, fixtureId, entry: store.notes[fixtureId] || null });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e && (e.message || e)) });
+  }
+});
+
+/* =========================================================
+   POST /api/admin/fixtures/add   (token)
+   Body: { home, away, kickoffISO, league?, country?, fixtureId?, note? }
+   - fixtures.json listesine yeni maç ekler. fixtureId verilmezse üretir.
+   ========================================================= */
+function slugPart(s) {
+  return String(s || "").toLocaleUpperCase("tr-TR")
+    .replace(/[İIı]/g, "I").replace(/Ş/g, "S").replace(/Ğ/g, "G")
+    .replace(/Ü/g, "U").replace(/Ö/g, "O").replace(/Ç/g, "C")
+    .replace(/[^A-Z0-9]+/g, "").slice(0, 6);
+}
+router.post("/fixtures/add", requireAdminToken, express.json(), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const home = normId(b.home);
+    const away = normId(b.away);
+    const kickoffISO = normId(b.kickoffISO);
+    if (!home || !away) return res.status(400).json({ ok: false, error: "HOME_AWAY_REQUIRED" });
+    if (!kickoffISO) return res.status(400).json({ ok: false, error: "KICKOFF_REQUIRED" });
+
+    const ko = parseKickoffMs(kickoffISO);
+    if (ko == null) return res.status(400).json({ ok: false, error: "KICKOFF_INVALID" });
+
+    const league = normId(b.league) || null;
+    const country = normId(b.country) || "Turkey";
+    const note = String(b.note == null ? "" : b.note).trim().slice(0, 500);
+
+    let fixtureId = normId(b.fixtureId);
+    if (!fixtureId) {
+      const day = new Date(ko).toISOString().slice(0, 10);
+      fixtureId = `${slugPart(home)}-${day}-${slugPart(away)}`;
+    }
+
+    const fxStore = await loadFixturesStore();
+    if (fxStore.list.some((x) => normId(x?.fixtureId) === fixtureId)) {
+      return res.status(409).json({ ok: false, error: "FIXTURE_EXISTS", fixtureId });
+    }
+
+    const nowISO = new Date().toISOString();
+    const fx = {
+      fixtureId, home, away, league, country,
+      kickoffISO,
+      status: "NS",
+      source: "MANUAL",
+      createdAt: nowISO,
+      updatedBy: normId(b.updatedBy) || "admin",
+    };
+    if (note) fx.note = note;
+    fxStore.list.push(fx);
+    await saveFixturesStore(fxStore.raw, fxStore.list);
+
+    if (note) {
+      const store = await loadNotesStore();
+      store.notes[fixtureId] = { note, home, away, updatedAt: nowISO, updatedBy: fx.updatedBy };
+      await saveNotesStore(store);
+    }
+
+    return res.json({ ok: true, fixture: fx });
+  } catch (e) {
+    console.error("ADMIN_FIXTURE_ADD_FAILED", e);
+    return res.status(500).json({ ok: false, error: "ADMIN_FIXTURE_ADD_FAILED", detail: String(e && (e.message || e)) });
+  }
+});
+
+/* POST /api/admin/fixtures/delete  (token)  Body: { fixtureId } */
+router.post("/fixtures/delete", requireAdminToken, express.json(), async (req, res) => {
+  try {
+    const fixtureId = normId((req.body || {}).fixtureId);
+    if (!fixtureId) return res.status(400).json({ ok: false, error: "FIXTURE_REQUIRED" });
+    const fxStore = await loadFixturesStore();
+    const before = fxStore.list.length;
+    fxStore.list = fxStore.list.filter((x) => normId(x?.fixtureId) !== fixtureId);
+    if (fxStore.list.length === before) return res.status(404).json({ ok: false, error: "FIXTURE_NOT_FOUND" });
+    await saveFixturesStore(fxStore.raw, fxStore.list);
+    // notu da temizle
+    try {
+      const store = await loadNotesStore();
+      if (store.notes[fixtureId]) { delete store.notes[fixtureId]; await saveNotesStore(store); }
+    } catch {}
+    return res.json({ ok: true, fixtureId, removed: before - fxStore.list.length });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e && (e.message || e)) });
+  }
+});
+
+/* =========================================================
    GET /api/admin/fixtures
    fixtures.json'daki tüm maçları döner (zaman filtresi yok)
    Admin live panel için kullanılır.

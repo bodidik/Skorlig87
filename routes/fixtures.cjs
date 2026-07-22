@@ -29,6 +29,7 @@ const DATA_DIR = path.join(__dirname, "..", "data");
 const PROV_FILE = path.join(DATA_DIR, "providers.json");
 const MANUAL_FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 const ADMIN_ALERTS_FILE = path.join(DATA_DIR, "admin-alerts.json");
+const MATCH_NOTES_FILE = path.join(DATA_DIR, "match-notes.json");
 
 // Ülke başına maksimum maç
 const COUNTRY_CAP_DEFAULT = 4;
@@ -656,6 +657,7 @@ async function loadManualFixtures() {
       status: f.status || "NS",
       source: "MANUAL",
       seriesId: f.seriesId || null,
+      note: f.note || null,
     }))
     .filter((f) => f.fixtureId && f.kickoffISO && f.home && f.away);
 }
@@ -1210,6 +1212,33 @@ router.get("/daily-featured", async (req, res) => {
     return res.json({ ok: true, fixture: featured });
   } catch (e) {
     res.status(500).json({ ok: false, error: "DAILY_FEATURED_ERR", detail: String(e.message || e) });
+  }
+});
+
+// GET /api/live/match-notes            → tüm notlar { fixtureId: {note, updatedAt} }
+// GET /api/live/match-notes?ids=a,b,c  → sadece istenen maçların notları
+// Kullanıcı tarafı: maç kartında/tahmin ekranında admin notunu gösterir.
+router.get("/match-notes", async (req, res) => {
+  try {
+    const raw = await readJson(MATCH_NOTES_FILE, { notes: {} });
+    const all = raw && typeof raw.notes === "object" && raw.notes ? raw.notes : {};
+
+    const idsParam = String(req.query.ids || "").trim();
+    let out = {};
+    if (idsParam) {
+      const ids = idsParam.split(",").map((s) => s.trim()).filter(Boolean);
+      for (const id of ids) {
+        if (all[id]) out[id] = { note: all[id].note, updatedAt: all[id].updatedAt || null };
+      }
+    } else {
+      for (const [id, v] of Object.entries(all)) {
+        if (v && v.note) out[id] = { note: v.note, updatedAt: v.updatedAt || null };
+      }
+    }
+
+    res.json({ ok: true, count: Object.keys(out).length, notes: out });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: "MATCH_NOTES_FAILED", detail: String((e && e.message) || e) });
   }
 });
 
