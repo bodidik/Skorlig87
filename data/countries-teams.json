@@ -2,7 +2,7 @@
   "version": "1.0",
   "countries": [
     {
-      "code": "TR", "name": "Türkiye", "flag": "🇹🇷", "lang": "tr",
+      "code": "TR", "name": "Türkiye", "localName": "Türkiye", "flag": "🇹🇷", "lang": "tr",
       "topLeague": "Süper Lig",
       "teams": ["Galatasaray","Fenerbahçe","Beşiktaş","Trabzonspor","Başakşehir","Adana Demirspor","Sivasspor","Kayserispor","Gaziantep FK","Konyaspor","Kasımpaşa","Antalyaspor","Hatayspor","Samsunspor","Alanyaspor","Pendikspor","Rizespor","Ankaragücü","Fatih Karagümrük","Eyüpspor"]
     },
@@ -17,7 +17,7 @@
       "teams": ["Anderlecht","Club Brugge","Standard Liège","Gent","Union Saint-Gilloise","Genk","Antwerp","Cercle Brugge","Mechelen","Charleroi","Westerlo","Kortrijk","Sint-Truiden","Eupen","Beerschot","OH Leuven"]
     },
     {
-      "code": "GB", "name": "England", "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "lang": "en",
+      "code": "GB", "name": "England", "localName": "England", "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "lang": "en",
       "topLeague": "Premier League",
       "teams": ["Manchester City","Arsenal","Liverpool","Chelsea","Tottenham Hotspur","Manchester United","Newcastle United","Aston Villa","Brighton","West Ham","Brentford","Fulham","Crystal Palace","Wolverhampton","Everton","Nottingham Forest","Bournemouth","Leicester City","Ipswich Town","Southampton"]
     },
@@ -32,7 +32,7 @@
       "teams": ["Bayern München","Borussia Dortmund","RB Leipzig","Bayer Leverkusen","Borussia Mönchengladbach","Eintracht Frankfurt","VfB Stuttgart","Werder Bremen","SC Freiburg","Union Berlin","TSG Hoffenheim","VfL Wolfsburg","FC Augsburg","FSV Mainz","SV Darmstadt","FC Heidenheim","Holstein Kiel","St. Pauli"]
     },
     {
-      "code": "FR", "name": "France", "flag": "🇫🇷", "lang": "fr",
+      "code": "FR", "name": "France", "localName": "France", "flag": "🇫🇷", "lang": "fr",
       "topLeague": "Ligue 1",
       "teams": ["Paris Saint-Germain","Olympique Lyon","Olympique Marseille","AS Monaco","Lille OSC","OGC Nice","Stade Rennais","RC Lens","RC Strasbourg","Montpellier","Nantes","Toulouse","Brest","Le Havre","Metz","Reims","Clermont","Lorient","Auxerre","Angers"]
     },
@@ -42,7 +42,7 @@
       "teams": ["Juventus","Inter Milano","AC Milan","Napoli","AS Roma","SS Lazio","Atalanta","Fiorentina","Bologna","Torino","Udinese","Sassuolo","Monza","Empoli","Lecce","Hellas Verona","Frosinone","Cagliari","Genoa","Salernitana","Como","Venezia","Parma","Palermo"]
     },
     {
-      "code": "PT", "name": "Portugal", "flag": "🇵🇹", "lang": "pt",
+      "code": "PT", "name": "Portugal", "localName": "Portugal", "flag": "🇵🇹", "lang": "pt",
       "topLeague": "Primeira Liga",
       "teams": ["Benfica","FC Porto","Sporting CP","SC Braga","Vitória SC","Boavista","Moreirense","Famalicão","Gil Vicente","Rio Ave","Estoril","Casa Pia","Chaves","Arouca","Vizela","Portimonense","Estrela Amadora","Farense"]
     },
@@ -112,7 +112,7 @@
       "teams": ["CSKA Sofia","Levski Sofia","Ludogorets","Botev Plovdiv","CSKA 1948","Lok. Sofia","Lok. Plovdiv","Slavia Sofia","Etar","Marek Dupnitsa","Lok. Mezdra"]
     },
     {
-      "code": "US", "name": "United States", "flag": "🇺🇸", "lang": "en",
+      "code": "US", "name": "United States", "localName": "United States", "flag": "🇺🇸", "lang": "en",
       "topLeague": "MLS",
       "teams": ["LA Galaxy","LA FC","New York City FC","New York Red Bulls","Atlanta United","Seattle Sounders","Portland Timbers","FC Dallas","Toronto FC","Columbus Crew","Philadelphia Union","Inter Miami","Chicago Fire","New England Revolution","DC United","Real Salt Lake","Vancouver Whitecaps","Austin FC","CF Montréal","San Jose Earthquakes"]
     },
@@ -122,7 +122,7 @@
       "teams": ["Flamengo","Palmeiras","Santos","São Paulo","Corinthians","Athletico Paranaense","Fluminense","Grêmio","Internacional","Vasco da Gama","Botafogo","Cruzeiro","Atlético Mineiro","Fortaleza","Bahia","RB Bragantino","Cuiabá","Goiás","Coritiba","Juventude"]
     },
     {
-      "code": "AR", "name": "Argentina", "flag": "🇦🇷", "lang": "es",
+      "code": "AR", "name": "Argentina", "localName": "Argentina", "flag": "🇦🇷", "lang": "es",
       "topLeague": "Liga Profesional",
       "teams": ["River Plate","Boca Juniors","Racing Club","Independiente","San Lorenzo","Estudiantes","Vélez Sársfield","Huracán","Lanús","Talleres","Belgrano","Godoy Cruz","Defensa y Justicia","Tigre","Banfield","Arsenal de Sarandí","Platense","Colón","Newell's Old Boys","Rosario Central"]
     },
