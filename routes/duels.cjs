@@ -13,6 +13,7 @@ const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 
 const MIN_STAKE = 1;
 const MAX_STAKE = 12;
+const HOUSE_CUT_PCT = 0.05;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -196,9 +197,10 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db) {
   for (const duel of settled) {
     try {
       if (duel.winnerId) {
-        await creditLc(db, duel.winnerId, duel.pot, "duel_win", duel.id);
+        const prize = duel.winAmount ?? duel.pot;
+        await creditLc(db, duel.winnerId, prize, "duel_win", duel.id);
       } else {
-        // Tie: refund both
+        // Tie: full refund, no house cut
         await creditLc(db, duel.creatorId, duel.stake, "duel_tie_refund", duel.id);
         await creditLc(db, duel.acceptorId, duel.stake, "duel_tie_refund", duel.id);
       }
@@ -242,6 +244,9 @@ router.post("/duels/create", verifyToken, async (req, res) => {
 
     const nowISO = new Date().toISOString();
     const id = genId();
+    const pot = s * 2;
+    const houseCut = Math.round(pot * HOUSE_CUT_PCT * 10) / 10;
+    const winAmount = Math.round((pot - houseCut) * 10) / 10;
     const duel = {
       id, fixtureId: fx, stake: s,
       creatorId, creatorName: String(creatorName || "").trim() || null,
@@ -252,7 +257,7 @@ router.post("/duels/create", verifyToken, async (req, res) => {
       league: String(league || "").trim() || null,
       kickoffISO: kickoffISO || null,
       creatorPoints: null, acceptorPoints: null, winnerId: null,
-      pot: s * 2,
+      pot, houseCut, winAmount,
       createdAt: nowISO, acceptedAt: null, settledAt: null,
     };
 
@@ -400,6 +405,58 @@ router.get("/duels/my", async (req, res) => {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return res.json({ ok: true, count: mine.length, items: mine });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// GET /api/duels/arena?userId= — genel arena: açık duellolar maça göre gruplanmış
+router.get("/duels/arena", async (req, res) => {
+  try {
+    const uid = String(req.query.userId || "").trim();
+    const uidL = uid.toLowerCase();
+    const list = await loadDuels();
+
+    const matchMap = new Map();
+    for (const d of list) {
+      if (d.status !== "open") continue;
+      if (uid && d.creatorId.toLowerCase() === uidL) continue; // kendi duellonu gösterme
+      if (d.challengedId && uid && d.challengedId.toLowerCase() !== uidL) continue; // başkasına özel
+
+      if (!matchMap.has(d.fixtureId)) {
+        matchMap.set(d.fixtureId, {
+          fixtureId: d.fixtureId,
+          home: d.home || "?",
+          away: d.away || "?",
+          league: d.league || null,
+          kickoffISO: d.kickoffISO || null,
+          openDuels: [],
+          minStake: Infinity,
+          maxStake: 0,
+        });
+      }
+      const m = matchMap.get(d.fixtureId);
+      m.openDuels.push(d);
+      if (d.stake < m.minStake) m.minStake = d.stake;
+      if (d.stake > m.maxStake) m.maxStake = d.stake;
+    }
+
+    const matches = Array.from(matchMap.values())
+      .sort((a, b) => b.openDuels.length - a.openDuels.length)
+      .slice(0, 20)
+      .map(m => ({
+        fixtureId: m.fixtureId,
+        home: m.home,
+        away: m.away,
+        league: m.league,
+        kickoffISO: m.kickoffISO,
+        openCount: m.openDuels.length,
+        minStake: m.minStake === Infinity ? 0 : m.minStake,
+        maxStake: m.maxStake,
+        preview: m.openDuels.slice(0, 4),
+      }));
+
+    return res.json({ ok: true, count: matches.length, matches });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
