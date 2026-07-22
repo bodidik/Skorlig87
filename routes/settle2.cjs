@@ -856,6 +856,19 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
 
   await awardLcForRows(rows, db);
 
+  // ── Duello settlement: maç puanları belli olunca düellolar otomatik kapanır ─
+  try {
+    const { settleDuelsForFixture } = require("./duels.cjs");
+    const scoresMap = {};
+    for (const r of rows) scoresMap[r.userId] = Number(r.points || 0);
+    const duelRes = await settleDuelsForFixture(fid, scoresMap, db);
+    if (duelRes.settled > 0) {
+      console.log(`[settle2] ${duelRes.settled} duello kapandı — fixture ${fid}`);
+    }
+  } catch (e) {
+    console.error("[settle2] duello settlement başarısız:", e);
+  }
+
   const nowISO = new Date().toISOString();
 
   await writeJson(LEADERBOARD_FILE, { items: rows, updatedAt: nowISO });
