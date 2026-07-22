@@ -343,12 +343,24 @@ function canonicalCountry(input) {
   return null;
 }
 
-function localizeForCountry(list, country) {
+// extraLeagues: virgülle ayrılmış ülke kodu/adı listesi ("GB,FR" veya "England,France")
+function localizeForCountry(list, country, extraLeagues) {
   const canon = canonicalCountry(country);
-  if (!canon) return list; // ülke yok/bilinmiyor: dokunma
-  const accepted = new Set(COUNTRY_ALIASES[canon] || [canon]);
+  const extras = String(extraLeagues || "")
+    .split(",")
+    .map(e => canonicalCountry(e.trim()))
+    .filter(Boolean);
+
+  // ne ana ülke ne ek lig → filtresiz dön
+  if (!canon && !extras.length) return list;
+
+  const accepted = new Set();
+  for (const c of [canon, ...extras].filter(Boolean)) {
+    for (const alias of (COUNTRY_ALIASES[c] || [c])) accepted.add(alias);
+  }
+
   return list.filter((it) => {
-    if (isGlobalLeagueName(it.league)) return true; // global yarışlar herkese
+    if (isGlobalLeagueName(it.league)) return true;
     return accepted.has(String(it.country || ""));
   });
 }
@@ -1201,7 +1213,7 @@ router.get("/schedule", async (req, res) => {
     let merged = mergeWithManualFixtures(filtered, manualFiltered);
 
     // Kullanıcının yereli: ?country= verildiyse o ülkenin ligi + global yarışlar
-    merged = localizeForCountry(merged, req.query.country);
+    merged = localizeForCountry(merged, req.query.country, req.query.extraLeagues);
 
     // Takım önceliklendirmesi: ?team= verildiyse kullanıcının takımı en üste
     const userTeam = String(req.query.team || "").trim().toLowerCase();
@@ -1303,7 +1315,7 @@ router.get("/open", async (req, res) => {
     let merged = mergeWithManualFixtures(baseFiltered, manualFiltered);
 
     // Kullanıcının yereli: ?country= verildiyse o ülkenin ligi + global yarışlar
-    merged = localizeForCountry(merged, req.query.country);
+    merged = localizeForCountry(merged, req.query.country, req.query.extraLeagues);
 
     // lock + pencere + (kilitli olmayan)
     const windowed = [];

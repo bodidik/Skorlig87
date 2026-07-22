@@ -210,6 +210,8 @@ router.get("/profile", async (req, res) => {
       totals: Number(u.totals || 0),
       lc: typeof u.lc === "number" ? u.lc : null,
       is1987: !!(u.is1987 || String(u.segment || "").toLowerCase() === "1987"),
+      preferredLeagues: Array.isArray(u.preferredLeagues) ? u.preferredLeagues : [],
+      preferredLang: u.preferredLang || null,
     };
 
     return res.json({ ok: true, profile });
@@ -292,6 +294,50 @@ router.post("/set-country", verifyToken, express.json(), async (req, res) => {
       error: "SET_COUNTRY_ERR",
       detail: String(e && (e.message || e)),
     });
+  }
+});
+
+// POST /api/users/set-leagues { leagues: string[] }  — takip edilen ligler (ülke kodları)
+router.post("/set-leagues", verifyToken, express.json(), async (req, res) => {
+  try {
+    const userId = req.uid;
+    const raw = Array.isArray(req.body?.leagues) ? req.body.leagues : [];
+    const { canonicalCountry } = require("./live2.cjs");
+    // Hem 2-harf kod hem tam isim kabul et; geçersizleri at
+    const leagues = raw.map(l => canonicalCountry(String(l).trim())).filter(Boolean).slice(0, 20);
+
+    const data  = await readJson(USERS_FILE, { items: [] });
+    const items = Array.isArray(data.items) ? data.items : [];
+    const nowISO = new Date().toISOString();
+    let u = items.find(x => String(x.userId) === userId);
+    if (!u) { u = { userId, createdAt: nowISO, lc: LC_START, lcLastDaily: null }; items.push(u); }
+    u.preferredLeagues = leagues;
+    u.updatedAt = nowISO;
+    await writeJson(USERS_FILE, { items });
+    return res.json({ ok: true, leagues });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "SET_LEAGUES_ERR", detail: String(e?.message || e) });
+  }
+});
+
+// POST /api/users/set-lang { lang: string }  — dil tercihi
+router.post("/set-lang", verifyToken, express.json(), async (req, res) => {
+  try {
+    const userId = req.uid;
+    const lang = String(req.body?.lang || "").trim().toLowerCase().slice(0, 5);
+    if (!lang) return res.status(400).json({ ok: false, error: "LANG_REQUIRED" });
+
+    const data  = await readJson(USERS_FILE, { items: [] });
+    const items = Array.isArray(data.items) ? data.items : [];
+    const nowISO = new Date().toISOString();
+    let u = items.find(x => String(x.userId) === userId);
+    if (!u) { u = { userId, createdAt: nowISO, lc: LC_START, lcLastDaily: null }; items.push(u); }
+    u.preferredLang = lang;
+    u.updatedAt = nowISO;
+    await writeJson(USERS_FILE, { items });
+    return res.json({ ok: true, lang });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "SET_LANG_ERR", detail: String(e?.message || e) });
   }
 });
 
