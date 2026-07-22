@@ -646,6 +646,66 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
 
   const w = getScoreWeight(st.country);
 
+  // ── Topluluk çarpanları: nadir seçim daha fazla puan kazandırır ──────────
+  // Sadece insan tahminleri kullanılır (botlar kitleyi eğitir, puanı etkilemez)
+  const humanList = list.filter((p) => {
+    const uid = String(p.userId || p.user || "").trim().toLowerCase();
+    return !BOT_USER_ID_SET.has(uid);
+  });
+  const humanTotal = humanList.length;
+
+  // Outcome dağılımı
+  const oc3 = { H: 0, D: 0, A: 0 };
+  for (const p of humanList) {
+    const oc = String(p.outcome || "").toUpperCase();
+    if (oc === "H" || oc === "D" || oc === "A") oc3[oc]++;
+  }
+
+  // Skor dağılımı
+  const scorePickMap = new Map();
+  for (const p of humanList) {
+    if (
+      p.home != null && p.away != null &&
+      Number.isFinite(Number(p.home)) && Number.isFinite(Number(p.away))
+    ) {
+      const key = `${Number(p.home)}-${Number(p.away)}`;
+      scorePickMap.set(key, (scorePickMap.get(key) || 0) + 1);
+    }
+  }
+
+  /**
+   * Outcome çarpanı (H/D/A):
+   *  Herkes 1/3 seçse → 1.0x → 3 puan (baz)
+   *  Çok popüler (70%) → ~0.48x → ~1.4 puan
+   *  Nadir (5%)       → ~2.2x → ~6.7 puan  (max 4.0x → 12 puan)
+   */
+  function outcomeMultiplier(oc) {
+    if (humanTotal < 5) return 1.0; // yeterli veri yok
+    const n = oc3[oc] || 0;
+    if (!n) return 4.0; // hiç seçen yok → max bonus
+    const raw = (humanTotal / 3) / n;
+    return Math.max(0.35, Math.min(4.0, raw));
+  }
+
+  /**
+   * Skor çarpanı:
+   *  "Adil pay" ≈ tahminlerin %5'i (20 yaygın skor varsayımı)
+   *  %25 seçmişse  → 0.2x → capped 0.6x → ~7 puan
+   *  %5 seçmişse   → 1.0x → 12 puan (baz)
+   *  %1 seçmişse   → 5.0x → capped 2.0x → 24 puan
+   *  Hiç seçmeyen  → 2.5x → 30 puan (ultra nadir)
+   */
+  function scoreMultiplier(sh, sa) {
+    if (humanTotal < 5) return 1.0;
+    const key = `${sh}-${sa}`;
+    const n = scorePickMap.get(key) || 0;
+    if (!n) return 2.5;
+    const fairShare = humanTotal * 0.05;
+    const raw = fairShare / n;
+    return Math.max(0.6, Math.min(2.5, raw));
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const rows = [];
 
   for (const p of list) {
@@ -653,14 +713,18 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     let pts = 0;
     const detail = {};
 
-    // 1) Sonuç (1X2): doğru +3, yanlış -1
+    // 1) Sonuç (1X2): doğru = baz(3) × topluluk çarpanı, yanlış -1
     if (p.outcome && typeof p.outcome === "string") {
-      const ok = p.outcome.toUpperCase() === outcome;
-      detail.outcome = ok ? 3 : -1;
+      const oc = p.outcome.toUpperCase();
+      const ok = oc === outcome;
+      const mult = outcomeMultiplier(oc);
+      const earn = Math.round(3 * mult * 10) / 10;
+      detail.outcome = ok ? earn : -1;
+      detail.outcomeMultiplier = Math.round(mult * 100) / 100;
       pts += detail.outcome;
     }
 
-    // 2) Skor: doğru +12, yanlış -0.1
+    // 2) Skor: doğru = baz(12) × skor çarpanı, yanlış -0.1
     const hasScorePred =
       p.home !== null &&
       p.home !== undefined &&
@@ -670,8 +734,13 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
       Number.isFinite(Number(p.away));
 
     if (hasScorePred) {
-      const ok = Number(p.home) === h && Number(p.away) === a;
-      detail.exact = ok ? 12 : -0.1;
+      const ph = Number(p.home);
+      const pa = Number(p.away);
+      const ok = ph === h && pa === a;
+      const mult = scoreMultiplier(ph, pa);
+      const earn = Math.round(12 * mult * 10) / 10;
+      detail.exact = ok ? earn : -0.1;
+      detail.scoreMultiplier = Math.round(mult * 100) / 100;
       pts += detail.exact;
     }
 
@@ -758,7 +827,7 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
       Math.max(0, Number(detail.penaltyAny || 0)) +
       Math.max(0, Number(detail.penaltySide || 0));
 
-    detail.base = Math.max(0, Math.min(MAX_BASE, Number(base || 0)));
+    detail.base = Math.max(0, Number(base || 0)); // üst sınır kalktı: çarpanlar değeri artırabilir
 
     const weightedPoints = pts * w;
 
