@@ -1171,6 +1171,9 @@ router.get("/schedule", async (req, res) => {
     // Kullanıcının yereli: ?country= verildiyse o ülkenin ligi + global yarışlar
     merged = localizeForCountry(merged, req.query.country);
 
+    // Takım önceliklendirmesi: ?team= verildiyse kullanıcının takımı en üste
+    const userTeam = String(req.query.team || "").trim().toLowerCase();
+
     // Admin uyarısı: manuel olup provider’da olmayanlar
     for (const mf of manualFiltered) {
       const key = sameFixtureKey(mf);
@@ -1191,10 +1194,23 @@ router.get("/schedule", async (req, res) => {
       }
     }
 
-    // CAP + sıralama
+    // CAP + sıralama: kullanıcının takımı → diğerleri (kickoff sırası)
+    function teamScore(it) {
+      if (!userTeam) return 0;
+      const h = String(it.home || "").toLowerCase();
+      const a = String(it.away || "").toLowerCase();
+      if (h === userTeam || a === userTeam) return 2;
+      if (h.includes(userTeam) || a.includes(userTeam)) return 1;
+      return 0;
+    }
+
     const per = new Map();
     const capped = [];
-    for (const it of merged.sort((a, b) => (parseKickoffMs(a) ?? 0) - (parseKickoffMs(b) ?? 0))) {
+    for (const it of merged.sort((a, b) => {
+      const ts = teamScore(b) - teamScore(a);
+      if (ts !== 0) return ts;
+      return (parseKickoffMs(a) ?? 0) - (parseKickoffMs(b) ?? 0);
+    })) {
       const key = it.country || "Other";
       const c = per.get(key) || 0;
       if (c < cap) {

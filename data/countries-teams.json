@@ -1,0 +1,145 @@
+{
+  "version": "1.0",
+  "countries": [
+    {
+      "code": "TR", "name": "Türkiye", "flag": "🇹🇷", "lang": "tr",
+      "topLeague": "Süper Lig",
+      "teams": ["Galatasaray","Fenerbahçe","Beşiktaş","Trabzonspor","Başakşehir","Adana Demirspor","Sivasspor","Kayserispor","Gaziantep FK","Konyaspor","Kasımpaşa","Antalyaspor","Hatayspor","Samsunspor","Alanyaspor","Pendikspor","Rizespor","Ankaragücü","Fatih Karagümrük","Eyüpspor"]
+    },
+    {
+      "code": "GR", "name": "Greece", "localName": "Ελλάδα", "flag": "🇬🇷", "lang": "el",
+      "topLeague": "Super League",
+      "teams": ["AEK Athens","Olympiakos","PAOK","Panathinaikos","Aris Thessaloniki","Atromitos","OFI Crete","Volos","Asteras Tripolis","PAS Giannina","Lamia","Levadiakos","Panserraikos","Xanthi","Ionikos","Kallithea"]
+    },
+    {
+      "code": "BE", "name": "Belgium", "localName": "België", "flag": "🇧🇪", "lang": "nl",
+      "topLeague": "Jupiler Pro League",
+      "teams": ["Anderlecht","Club Brugge","Standard Liège","Gent","Union Saint-Gilloise","Genk","Antwerp","Cercle Brugge","Mechelen","Charleroi","Westerlo","Kortrijk","Sint-Truiden","Eupen","Beerschot","OH Leuven"]
+    },
+    {
+      "code": "GB", "name": "England", "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "lang": "en",
+      "topLeague": "Premier League",
+      "teams": ["Manchester City","Arsenal","Liverpool","Chelsea","Tottenham Hotspur","Manchester United","Newcastle United","Aston Villa","Brighton","West Ham","Brentford","Fulham","Crystal Palace","Wolverhampton","Everton","Nottingham Forest","Bournemouth","Leicester City","Ipswich Town","Southampton"]
+    },
+    {
+      "code": "ES", "name": "Spain", "localName": "España", "flag": "🇪🇸", "lang": "es",
+      "topLeague": "La Liga",
+      "teams": ["Real Madrid","FC Barcelona","Atlético de Madrid","Sevilla","Valencia","Real Betis","Athletic Bilbao","Real Sociedad","Villarreal","Osasuna","Celta Vigo","Girona","Rayo Vallecano","Getafe","Espanyol","Las Palmas","Deportivo Alavés","Leganés","Valladolid","Mallorca"]
+    },
+    {
+      "code": "DE", "name": "Germany", "localName": "Deutschland", "flag": "🇩🇪", "lang": "de",
+      "topLeague": "Bundesliga",
+      "teams": ["Bayern München","Borussia Dortmund","RB Leipzig","Bayer Leverkusen","Borussia Mönchengladbach","Eintracht Frankfurt","VfB Stuttgart","Werder Bremen","SC Freiburg","Union Berlin","TSG Hoffenheim","VfL Wolfsburg","FC Augsburg","FSV Mainz","SV Darmstadt","FC Heidenheim","Holstein Kiel","St. Pauli"]
+    },
+    {
+      "code": "FR", "name": "France", "flag": "🇫🇷", "lang": "fr",
+      "topLeague": "Ligue 1",
+      "teams": ["Paris Saint-Germain","Olympique Lyon","Olympique Marseille","AS Monaco","Lille OSC","OGC Nice","Stade Rennais","RC Lens","RC Strasbourg","Montpellier","Nantes","Toulouse","Brest","Le Havre","Metz","Reims","Clermont","Lorient","Auxerre","Angers"]
+    },
+    {
+      "code": "IT", "name": "Italy", "localName": "Italia", "flag": "🇮🇹", "lang": "it",
+      "topLeague": "Serie A",
+      "teams": ["Juventus","Inter Milano","AC Milan","Napoli","AS Roma","SS Lazio","Atalanta","Fiorentina","Bologna","Torino","Udinese","Sassuolo","Monza","Empoli","Lecce","Hellas Verona","Frosinone","Cagliari","Genoa","Salernitana","Como","Venezia","Parma","Palermo"]
+    },
+    {
+      "code": "PT", "name": "Portugal", "flag": "🇵🇹", "lang": "pt",
+      "topLeague": "Primeira Liga",
+      "teams": ["Benfica","FC Porto","Sporting CP","SC Braga","Vitória SC","Boavista","Moreirense","Famalicão","Gil Vicente","Rio Ave","Estoril","Casa Pia","Chaves","Arouca","Vizela","Portimonense","Estrela Amadora","Farense"]
+    },
+    {
+      "code": "NL", "name": "Netherlands", "localName": "Nederland", "flag": "🇳🇱", "lang": "nl",
+      "topLeague": "Eredivisie",
+      "teams": ["Ajax","PSV Eindhoven","Feyenoord","AZ Alkmaar","FC Utrecht","FC Twente","Vitesse","SC Heerenveen","Sparta Rotterdam","Heracles","Go Ahead Eagles","NEC Nijmegen","PEC Zwolle","RKC Waalwijk","Fortuna Sittard","Almere City","Willem II","NAC Breda"]
+    },
+    {
+      "code": "RU", "name": "Russia", "localName": "Россия", "flag": "🇷🇺", "lang": "ru",
+      "topLeague": "Premier League",
+      "teams": ["Spartak Moscow","CSKA Moscow","Zenit St. Petersburg","Lokomotiv Moscow","Dynamo Moscow","Krasnodar","Rubin Kazan","Akhmat Grozny","Sochi","Rostov","Ural","Orenburg","Khimki","Fakel Voronezh","KAMAZ","Krylia Sovetov"]
+    },
+    {
+      "code": "UA", "name": "Ukraine", "localName": "Україна", "flag": "🇺🇦", "lang": "uk",
+      "topLeague": "Premier League",
+      "teams": ["Dynamo Kyiv","Shakhtar Donetsk","Metalist 1925","Vorskla Poltava","Chornomorets Odesa","Metalurh Zaporizhia","Dnipro-1","Rukh Lviv","Kryvbas Kryvyi Rih","Kolos Kovalivka","Olimpik Donetsk"]
+    },
+    {
+      "code": "HR", "name": "Croatia", "localName": "Hrvatska", "flag": "🇭🇷", "lang": "hr",
+      "topLeague": "HNL",
+      "teams": ["Dinamo Zagreb","Hajduk Split","HNK Rijeka","NK Osijek","NK Lokomotiva","Gorica","Varaždin","Slaven Belupo","Istra 1961","NK Šibenik","Rudes","NK Zagora"]
+    },
+    {
+      "code": "RS", "name": "Serbia", "localName": "Србија", "flag": "🇷🇸", "lang": "sr",
+      "topLeague": "SuperLiga",
+      "teams": ["Red Star Belgrade","Partizan","FK Vojvodina","FK Čukarički","FK Radnički Niš","FK Spartak","FK Napredak","FK Radnik Bijeljina","FK Mladost","FK IMT","FK Javor Ivanjica"]
+    },
+    {
+      "code": "AT", "name": "Austria", "localName": "Österreich", "flag": "🇦🇹", "lang": "de",
+      "topLeague": "Bundesliga",
+      "teams": ["Red Bull Salzburg","Rapid Vienna","Austria Vienna","LASK","Sturm Graz","Wolfsberg","Ried","Hartberg","Rheindorf Altach","WSG Tirol","Austria Klagenfurt","Blau-Weiß Linz"]
+    },
+    {
+      "code": "CH", "name": "Switzerland", "localName": "Schweiz", "flag": "🇨🇭", "lang": "de",
+      "topLeague": "Super League",
+      "teams": ["FC Basel","Young Boys","FC Zürich","Servette","FC Luzern","FC St. Gallen","Grasshopper","Lugano","FC Winterthur","Lausanne-Sport","Xamax","FC Sion"]
+    },
+    {
+      "code": "CZ", "name": "Czech Republic", "localName": "Česko", "flag": "🇨🇿", "lang": "cs",
+      "topLeague": "1. liga",
+      "teams": ["Slavia Praha","Sparta Praha","Viktoria Plzeň","Baník Ostrava","Bohemians 1905","Sigma Olomouc","Slovácko","FK Jablonec","Teplice","Liberec","Hradec Králové","Pardubice","Karviná","Brno","České Budějovice"]
+    },
+    {
+      "code": "PL", "name": "Poland", "localName": "Polska", "flag": "🇵🇱", "lang": "pl",
+      "topLeague": "Ekstraklasa",
+      "teams": ["Legia Warsaw","Lech Poznań","Wisła Kraków","Raków Częstochowa","Widzew Łódź","Cracovia","Śląsk Wrocław","Górnik Zabrze","Zagłębie Lubin","Pogoń Szczecin","Piast Gliwice","Jagiellonia Białystok","Lechia Gdańsk","Korona Kielce","Stal Mielec","Warta Poznań"]
+    },
+    {
+      "code": "RO", "name": "Romania", "localName": "România", "flag": "🇷🇴", "lang": "ro",
+      "topLeague": "Superliga",
+      "teams": ["FCSB","CFR Cluj","Rapid București","Universitatea Craiova","FC Voluntari","Petrolul Ploiești","FC Hermannstadt","Farul Constanța","Sepsi OSK","UTA Arad","FC Botoșani","Politehnica Iași","Poli Timișoara","Chindia Târgoviște"]
+    },
+    {
+      "code": "HU", "name": "Hungary", "localName": "Magyarország", "flag": "🇭🇺", "lang": "hu",
+      "topLeague": "OTP Bank Liga",
+      "teams": ["Ferencváros","MOL Fehérvár","Puskás Akadémia","Debreceni VSC","MTK Budapest","Budapest Honvéd","Paks","Újpest","Zalaegerszeg","Kecskemét","Gyirmót","Kisvárda Master Good"]
+    },
+    {
+      "code": "SK", "name": "Slovakia", "localName": "Slovensko", "flag": "🇸🇰", "lang": "sk",
+      "topLeague": "Fortuna liga",
+      "teams": ["Slovan Bratislava","Spartak Trnava","DAC Dunajská Streda","FC Košice","Žilina","Ružomberok","Trenčín","FK Senica","FC Nitra","Zlaté Moravce","Skalica","Pohronie"]
+    },
+    {
+      "code": "BG", "name": "Bulgaria", "localName": "България", "flag": "🇧🇬", "lang": "bg",
+      "topLeague": "First Professional League",
+      "teams": ["CSKA Sofia","Levski Sofia","Ludogorets","Botev Plovdiv","CSKA 1948","Lok. Sofia","Lok. Plovdiv","Slavia Sofia","Etar","Marek Dupnitsa","Lok. Mezdra"]
+    },
+    {
+      "code": "US", "name": "United States", "flag": "🇺🇸", "lang": "en",
+      "topLeague": "MLS",
+      "teams": ["LA Galaxy","LA FC","New York City FC","New York Red Bulls","Atlanta United","Seattle Sounders","Portland Timbers","FC Dallas","Toronto FC","Columbus Crew","Philadelphia Union","Inter Miami","Chicago Fire","New England Revolution","DC United","Real Salt Lake","Vancouver Whitecaps","Austin FC","CF Montréal","San Jose Earthquakes"]
+    },
+    {
+      "code": "BR", "name": "Brazil", "localName": "Brasil", "flag": "🇧🇷", "lang": "pt",
+      "topLeague": "Brasileirão Série A",
+      "teams": ["Flamengo","Palmeiras","Santos","São Paulo","Corinthians","Athletico Paranaense","Fluminense","Grêmio","Internacional","Vasco da Gama","Botafogo","Cruzeiro","Atlético Mineiro","Fortaleza","Bahia","RB Bragantino","Cuiabá","Goiás","Coritiba","Juventude"]
+    },
+    {
+      "code": "AR", "name": "Argentina", "flag": "🇦🇷", "lang": "es",
+      "topLeague": "Liga Profesional",
+      "teams": ["River Plate","Boca Juniors","Racing Club","Independiente","San Lorenzo","Estudiantes","Vélez Sársfield","Huracán","Lanús","Talleres","Belgrano","Godoy Cruz","Defensa y Justicia","Tigre","Banfield","Arsenal de Sarandí","Platense","Colón","Newell's Old Boys","Rosario Central"]
+    },
+    {
+      "code": "MX", "name": "Mexico", "localName": "México", "flag": "🇲🇽", "lang": "es",
+      "topLeague": "Liga MX",
+      "teams": ["Club América","Chivas de Guadalajara","Cruz Azul","Pumas UNAM","Tigres UANL","Monterrey","Toluca","Atlas","Santos Laguna","Pachuca","León","Necaxa","Puebla","FC Juárez","Mazatlán","Querétaro","San Luis","Tijuana","Atlético de San Luis","Atlante"]
+    },
+    {
+      "code": "SA", "name": "Saudi Arabia", "localName": "السعودية", "flag": "🇸🇦", "lang": "ar",
+      "topLeague": "Saudi Pro League",
+      "teams": ["Al-Hilal","Al-Nassr","Al-Ittihad","Al-Ahli","Al-Shabab","Al-Qadsiah","Al-Ettifaq","Al-Fateh","Al-Hazem","Al-Raed","Al-Wehda","Al-Okhdood","Damac","Al-Feiha","Al-Taawoun","Al-Khaleej","Al-Riyadh","Abha"]
+    },
+    {
+      "code": "JP", "name": "Japan", "localName": "日本", "flag": "🇯🇵", "lang": "ja",
+      "topLeague": "J1 League",
+      "teams": ["Vissel Kobe","Yokohama F. Marinos","Urawa Red Diamonds","Kawasaki Frontale","Gamba Osaka","Cerezo Osaka","Kashima Antlers","Kashiwa Reysol","Nagoya Grampus","FC Tokyo","Sanfrecce Hiroshima","Júbilo Iwata","Albirex Niigata","Sagan Tosu","Machida Zelvia","Shonan Bellmare","Kyoto Sanga","Consadole Sapporo"]
+    }
+  ]
+}
