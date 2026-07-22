@@ -34,6 +34,17 @@ router.get("/leagues", (_req, res) => {
   res.json({ ok: true, leagues: scraper.LEAGUES });
 });
 
+// GET /api/livescore/source-stats — kaynak başarı oranları + eleme önerileri
+router.get("/source-stats", (_req, res) => {
+  try {
+    const report = scraper.getStats();
+    const eliminate = report.filter(r => r.suggestion === "ELE");
+    res.json({ ok: true, report, eliminateSuggestions: eliminate.map(r => r.name) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 router.post("/refresh", async (_req, res) => {
   try {
     const result = await scraper.scrape();
