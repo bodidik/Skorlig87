@@ -85,6 +85,10 @@ const ALLOWED = {
   Ukraine: [/premier\s*liga/i],
   USA: [/mls/i],
   "Saudi Arabia": [/pro\s*league/i],
+  Austria: [/bundesliga/i, /admiral\s*bundesliga/i],
+  Switzerland: [/super\s*league/i, /credit\s*suisse/i],
+  Poland: [/ekstraklasa/i],
+  Mexico: [/liga\s*mx/i, /liga\s*bbva/i],
 
   // Avrupa / Dünya kupaları
   World: [
@@ -283,6 +287,7 @@ const COUNTRY_FLAGS = {
   Italy: "🇮🇹", France: "🇫🇷", Netherlands: "🇳🇱", Belgium: "🇧🇪", Greece: "🇬🇷",
   Portugal: "🇵🇹", Brazil: "🇧🇷", Argentina: "🇦🇷", Japan: "🇯🇵", Russia: "🇷🇺",
   Ukraine: "🇺🇦", USA: "🇺🇸", "Saudi Arabia": "🇸🇦",
+  Austria: "🇦🇹", Switzerland: "🇨🇭", Poland: "🇵🇱", Mexico: "🇲🇽",
 };
 
 // UI'da gösterilecek seçilebilir ülkeler (World/Europe/International meta anahtarları hariç,
@@ -290,18 +295,34 @@ const COUNTRY_FLAGS = {
 const SELECTABLE_COUNTRIES = Object.keys(ALLOWED)
   .filter((c) => !["World", "Europe", "International", "Turkey"].includes(c));
 
+// ISO 3166-1 alpha-2 kodu → ALLOWED kanonik isim
+const ISO2_TO_COUNTRY = {
+  TR: "Türkiye", GB: "England", ES: "Spain",  DE: "Germany",  IT: "Italy",
+  FR: "France",  NL: "Netherlands", BE: "Belgium", GR: "Greece", PT: "Portugal",
+  BR: "Brazil",  AR: "Argentina",   JP: "Japan",   RU: "Russia", UA: "Ukraine",
+  US: "USA",     SA: "Saudi Arabia", AT: "Austria", CH: "Switzerland",
+  PL: "Poland",  MX: "Mexico",
+};
+
 // Aksan/büyük-küçük/bozuk-bayt farklarına dayanıklı kanonik ülke adı.
-// "turkiye", "Turkey", "TÜRKİYE", hatta bozuk kodlanmış "T?rkiye" -> "Türkiye"
+// "GR", "greece", "TÜRKİYE", "T?rkiye" hepsini doğru ALLOWED anahtarına çevirir.
 function canonicalCountry(input) {
-  const norm = (s) =>
-    String(s || "")
+  const s = String(input || "").trim();
+  if (!s) return null;
+
+  // ISO 2-harf kod (yeni seçiciden gelen format)
+  const upper = s.toUpperCase();
+  if (ISO2_TO_COUNTRY[upper]) return ISO2_TO_COUNTRY[upper];
+
+  const norm = (x) =>
+    String(x || "")
       .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "") // aksanları at
-      .replace(/[�?]/g, "")        // bozuk kodlama kalıntılarını at
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9 ]/gi, "")
       .toLowerCase()
       .trim();
 
-  const n = norm(input);
+  const n = norm(s);
   if (!n) return null;
   if (n === "turkiye" || n === "turkey" || n === "trkiye") return "Türkiye";
   for (const c of Object.keys(ALLOWED)) {
