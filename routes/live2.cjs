@@ -89,6 +89,13 @@ const ALLOWED = {
   Switzerland: [/super\s*league/i, /credit\s*suisse/i],
   Poland: [/ekstraklasa/i],
   Mexico: [/liga\s*mx/i, /liga\s*bbva/i],
+  Croatia: [/hnl/i, /hrvatska\s*nogometna/i, /superkup/i],
+  Serbia: [/superliga/i, /serbian\s*super/i],
+  "Czech Republic": [/czech\s*(first|liga)/i, /fortuna\s*liga/i, /1\.\s*liga/i],
+  Romania: [/liga\s*i/i, /superliga/i, /liga\s*1/i],
+  Hungary: [/nb\s*i/i, /nemzeti\s*bajnoks/i, /otp\s*bank/i],
+  Slovakia: [/fortuna\s*liga/i, /slovak\s*(super|liga)/i],
+  Bulgaria: [/efbet\s*liga/i, /first\s*professional/i, /parva\s*liga/i],
 
   // Avrupa / Dünya kupaları
   World: [
@@ -288,6 +295,8 @@ const COUNTRY_FLAGS = {
   Portugal: "🇵🇹", Brazil: "🇧🇷", Argentina: "🇦🇷", Japan: "🇯🇵", Russia: "🇷🇺",
   Ukraine: "🇺🇦", USA: "🇺🇸", "Saudi Arabia": "🇸🇦",
   Austria: "🇦🇹", Switzerland: "🇨🇭", Poland: "🇵🇱", Mexico: "🇲🇽",
+  Croatia: "🇭🇷", Serbia: "🇷🇸", "Czech Republic": "🇨🇿",
+  Romania: "🇷🇴", Hungary: "🇭🇺", Slovakia: "🇸🇰", Bulgaria: "🇧🇬",
 };
 
 // UI'da gösterilecek seçilebilir ülkeler (World/Europe/International meta anahtarları hariç,
@@ -302,6 +311,8 @@ const ISO2_TO_COUNTRY = {
   BR: "Brazil",  AR: "Argentina",   JP: "Japan",   RU: "Russia", UA: "Ukraine",
   US: "USA",     SA: "Saudi Arabia", AT: "Austria", CH: "Switzerland",
   PL: "Poland",  MX: "Mexico",
+  HR: "Croatia", RS: "Serbia", CZ: "Czech Republic",
+  RO: "Romania", HU: "Hungary", SK: "Slovakia", BG: "Bulgaria",
 };
 
 // Aksan/büyük-küçük/bozuk-bayt farklarına dayanıklı kanonik ülke adı.
