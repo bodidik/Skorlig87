@@ -5,6 +5,25 @@
 
 const path = require("path");
 const fs   = require("fs");
+const fsp  = require("fs").promises;
+
+// ─── Ban cache (60 sn TTL, her restart'ta sıfırlanır) ────────────────────────
+const BANNED_FILE = path.join(__dirname, "..", "data", "banned-users.json");
+let _bannedCache  = new Set();
+let _bannedAt     = 0;
+
+async function isBanned(uid) {
+  if (Date.now() - _bannedAt > 60_000) {
+    try {
+      const raw = JSON.parse(await fsp.readFile(BANNED_FILE, "utf8"));
+      _bannedCache = new Set(
+        (raw.items || []).map(x => String(x.userId || x).toLowerCase()).filter(Boolean)
+      );
+    } catch { _bannedCache = new Set(); }
+    _bannedAt = Date.now();
+  }
+  return _bannedCache.has(String(uid || "").toLowerCase());
+}
 
 let _auth = null;
 let _initTried = false;
@@ -66,6 +85,9 @@ async function verifyToken(req, res, next) {
     const decoded    = await fbAuth.verifyIdToken(token);
     req.uid          = decoded.uid;
     req.firebaseUser = decoded;
+    if (await isBanned(req.uid)) {
+      return res.status(403).json({ ok: false, error: "USER_BANNED" });
+    }
     next();
   } catch (e) {
     console.warn("[verifyToken] invalid token:", e.message);

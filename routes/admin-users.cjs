@@ -6,8 +6,9 @@ const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
 
-const DATA_DIR = path.join(__dirname, "..", "data");
-const FILE = path.join(DATA_DIR, "admin-users.json");
+const DATA_DIR    = path.join(__dirname, "..", "data");
+const FILE        = path.join(DATA_DIR, "admin-users.json");
+const BANNED_FILE = path.join(DATA_DIR, "banned-users.json");
 
 function normUserId(v) {
   return String(v || "").trim().toLowerCase();
@@ -117,6 +118,57 @@ router.post("/admin-users/remove", async (req, res) => {
   const out = { items: next, updatedAt: new Date().toISOString() };
   await writeJsonAtomic(FILE, out);
   res.json({ ok: true, ...out });
+});
+
+// ─── Ban yönetimi ────────────────────────────────────────────────────────────
+
+async function getBanned() {
+  const j = await readJson(BANNED_FILE, { items: [] });
+  return Array.isArray(j.items) ? j.items : [];
+}
+
+/**
+ * GET /api/admin/banned
+ * Engellenen kullanıcıların listesi.
+ */
+router.get("/banned", async (req, res) => {
+  if (!requireAdminToken(req, res)) return;
+  const items = await getBanned();
+  res.json({ ok: true, count: items.length, items });
+});
+
+/**
+ * POST /api/admin/ban   { userId, reason? }
+ * Kullanıcıyı engelle.
+ */
+router.post("/ban", async (req, res) => {
+  if (!requireAdminToken(req, res)) return;
+  const userId = String(req.body?.userId || "").trim();
+  const reason = String(req.body?.reason || "").trim() || null;
+  if (!userId) return res.status(400).json({ ok: false, error: "BAD_USERID" });
+
+  const items = await getBanned();
+  const already = items.find(x => String(x.userId || "").toLowerCase() === userId.toLowerCase());
+  if (!already) {
+    items.push({ userId, reason, bannedAt: new Date().toISOString() });
+    await writeJsonAtomic(BANNED_FILE, { items, updatedAt: new Date().toISOString() });
+  }
+  res.json({ ok: true, userId, already: !!already, count: items.length });
+});
+
+/**
+ * POST /api/admin/unban   { userId }
+ * Engeli kaldır.
+ */
+router.post("/unban", async (req, res) => {
+  if (!requireAdminToken(req, res)) return;
+  const userId = String(req.body?.userId || "").trim();
+  if (!userId) return res.status(400).json({ ok: false, error: "BAD_USERID" });
+
+  const items = await getBanned();
+  const next  = items.filter(x => String(x.userId || "").toLowerCase() !== userId.toLowerCase());
+  await writeJsonAtomic(BANNED_FILE, { items: next, updatedAt: new Date().toISOString() });
+  res.json({ ok: true, userId, removed: items.length - next.length, count: next.length });
 });
 
 module.exports = router;
