@@ -1215,6 +1215,21 @@ router.get("/daily-featured", async (req, res) => {
   }
 });
 
+// GET /api/live/streak?userId=...
+// Kullanıcının aktif seri bilgisini döndürür (herkes kendi serisini görebilir).
+router.get("/streak", async (req, res) => {
+  try {
+    const userId = String(req.query.userId || "").trim();
+    if (!userId) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
+
+    const { getStreak, TIERS } = require("../services/streak.cjs");
+    const data = await getStreak(userId);
+    res.json({ ok: true, userId, ...data, tiers: TIERS });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: "STREAK_FAILED", detail: String((e && e.message) || e) });
+  }
+});
+
 // GET /api/live/match-notes            → tüm notlar { fixtureId: {note, updatedAt} }
 // GET /api/live/match-notes?ids=a,b,c  → sadece istenen maçların notları
 // Kullanıcı tarafı: maç kartında/tahmin ekranında admin notunu gösterir.

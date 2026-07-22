@@ -28,6 +28,7 @@ const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 
 // 🔹 LigCoin parametreleri
 const LC_START = 30;
+const LC_ENTRY_COST = 3;
 
 // Bot userId set'i (LC ödülü verilmeyecek)
 let BOT_USER_ID_SET = new Set();
@@ -380,13 +381,16 @@ function getScoreWeight(country) {
 // outcome(3) + exact(12) + FG(1) + HT(2) + redAny(1.5) + redSide(1) + penAny(1.5) + penSide(1) = 22
 const MAX_BASE = 22;
 
+// Giriş bedeli 3 LC. Eğri, "doğru bilen oyuncunun cüzdanı erimesin" diye
+// yükseltildi: tek doğru sonuç (base≈3-4) girişi karşılar, daha fazlası kâr.
+// Tavan 6 → 12.
 function computeLcRewardFromDetail(detail) {
   const base = Number(detail && detail.base != null ? detail.base : 0);
-  if (base >= 20) return 6;
-  if (base >= 16) return 5;
-  if (base >= 12) return 4;
-  if (base >= 8) return 3;
-  if (base >= 4) return 2;
+  if (base >= 22) return 12;
+  if (base >= 16) return 9;
+  if (base >= 12) return 7;
+  if (base >= 8) return 5;
+  if (base >= 4) return 3;
   if (base > 0) return 1;
   return 0;
 }
@@ -474,26 +478,34 @@ async function awardLcForRows(rows, db) {
     if (BOT_USER_ID_SET.has(uidLower)) continue;
 
     const reward = computeLcRewardFromDetail(r.detail);
-    if (reward <= 0) continue;
+    const base = Number(r.detail && r.detail.base != null ? r.detail.base : 0);
+    const refund = base > 0 ? LC_ENTRY_COST : 0;
+    const totalGain = reward + refund;
+    if (totalGain <= 0) continue;
 
     let u = usersItems.find((x) => String(x.userId) === uid);
     if (!u) {
-      u = { userId: uid, mainTeam: null, createdAt: nowISO, lc: LC_START + reward, lcLastDaily: null };
+      u = { userId: uid, mainTeam: null, createdAt: nowISO, lc: LC_START + totalGain, lcLastDaily: null };
       usersItems.push(u);
     } else {
       if (typeof u.lc !== "number") u.lc = LC_START;
-      u.lc = Number(u.lc || 0) + reward;
+      u.lc = Number(u.lc || 0) + totalGain;
       u.lcUpdatedAt = nowISO;
-      u.lcLastReason = "match_reward";
-      u.lcLastAmount = reward;
+      u.lcLastReason = refund > 0 ? "match_reward+entry_refund" : "match_reward";
+      u.lcLastAmount = totalGain;
     }
 
     const wu = ensureWalletUserRecord(uid);
-    wu.balance += reward;
-    wu.totalEarned += reward;
+    wu.balance += totalGain;
+    wu.totalEarned += totalGain;
     wu.updatedAt = nowISO;
 
-    addLedgerEntryFile({ userId: uid, amount: reward, reason: "match_reward", fixtureId: r.fixtureId });
+    if (reward > 0) {
+      addLedgerEntryFile({ userId: uid, amount: reward, reason: "match_reward", fixtureId: r.fixtureId });
+    }
+    if (refund > 0) {
+      addLedgerEntryFile({ userId: uid, amount: refund, reason: "entry_refund", fixtureId: r.fixtureId });
+    }
 
     if (usersCol) {
       mongoUserOps.push({
@@ -502,24 +514,27 @@ async function awardLcForRows(rows, db) {
           update: {
             $set: { userId: uid, userIdLower: uidLower, updatedAt: nowISO },
             $setOnInsert: { createdAt: nowISO, lastDailyAt: null, totalSpent: 0, is1987: false },
-            $inc: { balance: reward, totalEarned: reward },
+            $inc: { balance: totalGain, totalEarned: totalGain },
           },
           upsert: true,
         },
       });
     }
     if (ledgerCol) {
-      mongoLedgerDocs.push({
-        id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
-        userId: uid,
-        userIdLower: uidLower,
-        kind: "reward",
-        amount: reward,
-        reason: "match_reward",
-        fixtureId: r.fixtureId,
-        meta: null,
-        createdAt: nowISO,
-      });
+      if (reward > 0) {
+        mongoLedgerDocs.push({
+          id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
+          userId: uid, userIdLower: uidLower, kind: "reward", amount: reward,
+          reason: "match_reward", fixtureId: r.fixtureId, meta: null, createdAt: nowISO,
+        });
+      }
+      if (refund > 0) {
+        mongoLedgerDocs.push({
+          id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
+          userId: uid, userIdLower: uidLower, kind: "reward", amount: refund,
+          reason: "entry_refund", fixtureId: r.fixtureId, meta: null, createdAt: nowISO,
+        });
+      }
     }
   }
 
@@ -546,6 +561,79 @@ async function awardLcForRows(rows, db) {
       console.error("[settle2] Mongo wallet_ledger insertMany failed:", e);
     }
   }
+}
+
+/**
+ * Seri (streak) bonuslarını cüzdana yatırır.
+ * bonusMap: Map<userId, { bonusLC, tier }>  (streak.recordBatch çıktısı)
+ * Sadece bonusLC > 0 olanlara yazar. Bot filtresi çağırandan gelir.
+ */
+async function awardStreakBonuses(bonusMap, fixtureId, db) {
+  if (!bonusMap || bonusMap.size === 0) return [];
+  const nowISO = new Date().toISOString();
+  const awarded = [];
+
+  const walletState = (await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })) || {};
+  if (!Array.isArray(walletState.users)) walletState.users = [];
+  if (!Array.isArray(walletState.ledger)) walletState.ledger = [];
+
+  const usersRaw = await readJson(USERS_FILE, { users: [], items: [] });
+  const usersItems = Array.isArray(usersRaw)
+    ? usersRaw
+    : Array.isArray(usersRaw.users) ? usersRaw.users
+    : Array.isArray(usersRaw.items) ? usersRaw.items : [];
+
+  for (const [uid, info] of bonusMap.entries()) {
+    const bonus = Number(info && info.bonusLC) || 0;
+    if (bonus <= 0) continue;
+
+    let wu = walletState.users.find((x) => String(x.userId || "").toLowerCase() === uid.toLowerCase());
+    if (!wu) {
+      wu = { userId: uid, balance: 0, createdAt: nowISO, updatedAt: nowISO, lastDailyAt: null, totalEarned: 0, totalSpent: 0 };
+      walletState.users.push(wu);
+    }
+    wu.balance = Number(wu.balance || 0) + bonus;
+    wu.totalEarned = Number(wu.totalEarned || 0) + bonus;
+    wu.updatedAt = nowISO;
+
+    walletState.ledger.push({
+      id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
+      userId: uid, kind: "reward", amount: bonus,
+      reason: "streak_bonus", fixtureId,
+      meta: info.tier ? { tier: info.tier.label } : null,
+      createdAt: nowISO,
+    });
+
+    let u = usersItems.find((x) => String(x.userId) === uid);
+    if (u) { u.lc = Number(u.lc || 0) + bonus; u.lcUpdatedAt = nowISO; u.lcLastReason = "streak_bonus"; u.lcLastAmount = bonus; }
+
+    awarded.push({ userId: uid, bonus, tier: info.tier ? info.tier.label : null });
+
+    if (db) {
+      try {
+        await db.collection("lc_wallet_users").updateOne(
+          { userIdLower: uid.toLowerCase() },
+          { $inc: { balance: bonus, totalEarned: bonus }, $set: { updatedAt: nowISO },
+            $setOnInsert: { userId: uid, userIdLower: uid.toLowerCase(), createdAt: nowISO, lastDailyAt: null, totalSpent: 0 } },
+          { upsert: true }
+        );
+        await db.collection("lc_wallet_ledger").insertOne({
+          id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
+          userId: uid, userIdLower: uid.toLowerCase(), kind: "reward", amount: bonus,
+          reason: "streak_bonus", fixtureId, meta: info.tier ? { tier: info.tier.label } : null, createdAt: nowISO,
+        });
+      } catch (e) {
+        console.error("[settle2] streak bonus mongo failed:", e);
+      }
+    }
+  }
+
+  walletState.updatedAt = nowISO;
+  await writeJson(WALLET_FILE, walletState);
+  if (Array.isArray(usersRaw)) await writeJson(USERS_FILE, usersItems);
+  else await writeJson(USERS_FILE, { ...usersRaw, users: usersItems, items: usersItems });
+
+  return awarded;
 }
 
 async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLive = false } = {}) {
@@ -680,11 +768,14 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
    *  Nadir (5%)       → ~2.2x → ~6.7 puan  (max 4.0x → 12 puan)
    */
   function outcomeMultiplier(oc) {
-    if (humanTotal < 5) return 1.0; // yeterli veri yok
+    if (humanTotal < 2) return 1.0; // hiç sinyal yok
+    // Güven: 2 katılımcıda 0.4, 5+ katılımcıda tam (1.0). Az veride
+    // çarpan 1.0'a yaklaştırılır — pilotta bile contrarian fark eder.
+    const conf = Math.min(1, humanTotal / 5);
     const n = oc3[oc] || 0;
-    if (!n) return 4.0; // hiç seçen yok → max bonus
-    const raw = (humanTotal / 3) / n;
-    return Math.max(0.35, Math.min(4.0, raw));
+    const raw = n === 0 ? 4.0 : (humanTotal / 3) / n; // hiç seçen yok → max
+    const damped = 1 + (raw - 1) * conf;
+    return Math.max(0.35, Math.min(4.0, damped));
   }
 
   /**
@@ -696,13 +787,14 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
    *  Hiç seçmeyen  → 2.5x → 30 puan (ultra nadir)
    */
   function scoreMultiplier(sh, sa) {
-    if (humanTotal < 5) return 1.0;
+    if (humanTotal < 2) return 1.0;
+    const conf = Math.min(1, humanTotal / 5);
     const key = `${sh}-${sa}`;
     const n = scorePickMap.get(key) || 0;
-    if (!n) return 2.5;
     const fairShare = humanTotal * 0.05;
-    const raw = fairShare / n;
-    return Math.max(0.6, Math.min(2.5, raw));
+    const raw = n === 0 ? 2.5 : fairShare / n;
+    const damped = 1 + (raw - 1) * conf;
+    return Math.max(0.6, Math.min(2.5, damped));
   }
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -856,6 +948,34 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
 
   await awardLcForRows(rows, db);
 
+  // ── Seri (streak) sistemi: 1X2 tahmini olan insan oyuncular için ─────────────
+  // Doğru sonuç → seriye eklenir (odds = contrarian çarpan, min 1.0),
+  // yanlış → seri kırılır. Tier atlanınca (Isınıyor/Ateşte/Durdurulamıyor)
+  // bonus LC cüzdana yatar. Bahis yapmayan seriye dokunmaz.
+  let streakAwards = [];
+  try {
+    const { recordBatch } = require("../services/streak.cjs");
+    const streakEntries = [];
+    for (const r of rows) {
+      const uidLower = String(r.userId || "").trim().toLowerCase();
+      if (!uidLower || BOT_USER_ID_SET.has(uidLower)) continue;
+      const d = r.detail || {};
+      if (d.outcome === undefined) continue; // 1X2 bahsi yoksa seriye dahil değil
+      const correct = Number(d.outcome) > 0;
+      const odds = Math.max(1.0, Number(d.outcomeMultiplier) || 1.0);
+      streakEntries.push({ userId: r.userId, fixtureId: fid, correct, odds });
+    }
+    if (streakEntries.length) {
+      const bonusMap = await recordBatch(streakEntries);
+      streakAwards = await awardStreakBonuses(bonusMap, fid, db);
+      if (streakAwards.length) {
+        console.log(`[settle2] ${streakAwards.length} seri bonusu verildi — fixture ${fid}`);
+      }
+    }
+  } catch (e) {
+    console.error("[settle2] streak processing failed:", e);
+  }
+
   // ── Duello settlement: maç puanları belli olunca düellolar otomatik kapanır ─
   try {
     const { settleDuelsForFixture } = require("./duels.cjs");
@@ -945,6 +1065,7 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     penaltySide: penaltySideActual,
     leaderboard: rows,
     competitionIds,
+    streakAwards,
   };
 }
 

@@ -109,6 +109,76 @@ async function recordWrong(userId, fixtureId) {
   return { cumOdds: s.cumOdds, count: s.count, bonusLC: 0, tier: null, currentTier: currentTier(s.cumOdds), seriesBroken: true };
 }
 
+/**
+ * Toplu seri kaydı — tek maçtaki tüm doğru/yanlış sonuçları TEK dosya
+ * okuma+yazma ile işler (maç başına N ayrı yazma yerine 1).
+ *
+ * entries: [{ userId, fixtureId, correct: boolean, odds?: number }]
+ *   - correct=true  → seriye odds eklenir, tier atlandıysa bonusLC verilir
+ *   - correct=false → seri kırılır
+ *   - odds verilmezse 1.0 kabul edilir (nadir seçim = yüksek odds = hızlı tier)
+ *
+ * dönüş: Map<userId, { bonusLC, tier, seriesCount, seriesCumOdds }>
+ */
+async function recordBatch(entries) {
+  const out = new Map();
+  if (!Array.isArray(entries) || entries.length === 0) return out;
+
+  const streaks = await loadStreaks();
+  let dirty = false;
+
+  for (const e of entries) {
+    const userId = e && e.userId;
+    if (!userId) continue;
+    const s = getUserStreak(streaks, userId);
+    dirty = true;
+
+    if (e.correct) {
+      const odds = Number.isFinite(Number(e.odds)) ? Number(e.odds) : 1.0;
+
+      s.cumOdds = +(s.cumOdds + odds).toFixed(2);
+      s.count += 1;
+
+      if (!s.activeSeries) {
+        s.activeSeries = true;
+        s.seriesCumOdds = 0;
+        s.seriesCount = 0;
+        s.lastTier = -1;
+      }
+      s.seriesCumOdds = +(s.seriesCumOdds + odds).toFixed(2);
+      s.seriesCount += 1;
+      if (s.seriesCumOdds > s.bestSeries) s.bestSeries = s.seriesCumOdds;
+
+      s.history.push({ fixtureId: e.fixtureId, odds, at: new Date().toISOString(), correct: true });
+      if (s.history.length > 50) s.history = s.history.slice(-50);
+
+      const tier = currentTier(s.seriesCumOdds);
+      let bonusLC = 0;
+      let newTier = null;
+      if (tier) {
+        const tierIdx = TIERS.indexOf(tier);
+        if (tierIdx > s.lastTier) {
+          bonusLC = tier.bonus;
+          newTier = tier;
+          s.lastTier = tierIdx;
+        }
+      }
+      out.set(userId, { bonusLC, tier: newTier, seriesCount: s.seriesCount, seriesCumOdds: s.seriesCumOdds });
+    } else {
+      s.history.push({ fixtureId: e.fixtureId, odds: 0, at: new Date().toISOString(), correct: false });
+      if (s.history.length > 50) s.history = s.history.slice(-50);
+      s.activeSeries = false;
+      s.seriesCumOdds = 0;
+      s.seriesCount = 0;
+      s.lastTier = -1;
+      out.set(userId, { bonusLC: 0, tier: null, seriesCount: 0, seriesCumOdds: 0, seriesBroken: true });
+    }
+  }
+
+  if (dirty) await saveStreaks(streaks);
+  return out;
+}
+
 async function getStreak(userId) {
   const streaks = await loadStreaks();
   const s = getUserStreak(streaks, userId);
@@ -120,4 +190,4 @@ async function getStreak(userId) {
   };
 }
 
-module.exports = { recordCorrect, recordWrong, getStreak, TIERS, currentTier };
+module.exports = { recordCorrect, recordWrong, recordBatch, getStreak, TIERS, currentTier };
