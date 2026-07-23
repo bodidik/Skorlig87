@@ -628,7 +628,7 @@ router.get("/blocks/:userId", async (req,res)=>{
 // ─── DAVET SİSTEMİ ───────────────────────────────────────────────────────────
 const crypto = require("crypto");
 const WALLET_FILE = path.join(DATA, "lc-wallet.json");
-const INVITE_REWARD = 10; // her ikisine de verilecek LC
+const INVITE_REWARD = 15; // her ikisine de verilecek LC
 
 async function loadWallet() {
   const w = await readJson(WALLET_FILE, { users: [], ledger: [] });
