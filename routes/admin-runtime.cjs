@@ -707,7 +707,7 @@ router.get("/fixtures", async (req, res) => {
    TheSportsDB – takım ara → yaklaşan maçları getir
    GET /api/admin/search-match?q=karabag
    ========================================================= */
-router.get("/search-match", requireAdminToken, async (req, res) => {
+router.get("/search-match", async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
     if (!q || q.length < 2) return res.status(400).json({ ok: false, error: "QUERY_TOO_SHORT" });
