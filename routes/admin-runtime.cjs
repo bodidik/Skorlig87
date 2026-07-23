@@ -703,4 +703,64 @@ router.get("/fixtures", async (req, res) => {
   }
 });
 
+/* =========================================================
+   TheSportsDB – takım ara → yaklaşan maçları getir
+   GET /api/admin/search-match?q=karabag
+   ========================================================= */
+router.get("/search-match", requireAdminToken, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim();
+    if (!q || q.length < 2) return res.status(400).json({ ok: false, error: "QUERY_TOO_SHORT" });
+
+    const teamRes = await fetch(
+      `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(q)}`
+    );
+    const teamData = await teamRes.json();
+    const teams = (teamData.teams || []).filter(t => t.strSport === "Soccer").slice(0, 5);
+
+    if (teams.length === 0) return res.json({ ok: true, teams: [], events: [] });
+
+    const allEvents = [];
+    for (const team of teams) {
+      try {
+        const evRes = await fetch(
+          `https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=${team.idTeam}`
+        );
+        const evData = await evRes.json();
+        for (const e of (evData.events || [])) {
+          allEvents.push({
+            idEvent: e.idEvent,
+            home: e.strHomeTeam,
+            away: e.strAwayTeam,
+            dateEvent: e.dateEvent,
+            time: (e.strTime || "00:00:00").slice(0, 5),
+            league: e.strLeague,
+            country: e.strCountry || "",
+            teamId: team.idTeam,
+            teamName: team.strTeam,
+          });
+        }
+      } catch { /* skip failed team */ }
+    }
+
+    const seen = new Set();
+    const unique = allEvents.filter(e => {
+      const k = e.idEvent;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+
+    unique.sort((a, b) => (a.dateEvent + a.time).localeCompare(b.dateEvent + b.time));
+
+    res.json({
+      ok: true,
+      teams: teams.map(t => ({ id: t.idTeam, name: t.strTeam, league: t.strLeague, country: t.strCountry, badge: t.strBadge })),
+      events: unique.slice(0, 15),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 module.exports = router;
