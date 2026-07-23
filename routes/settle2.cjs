@@ -1386,6 +1386,71 @@ router.get("/match-race", async (req, res) => {
 });
 
 /**
+ * GET /api/rt/user-profile?userId=<target>
+ * Herkese açık mini profil: puan, maç sayısı, üyelik tarihi, rütbe bilgisi
+ */
+router.get("/user-profile", async (req, res) => {
+  try {
+    const targetId = String(req.query.userId || "").trim();
+    if (!targetId) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
+
+    const tidLower = targetId.toLowerCase();
+
+    // totals.json → puan & maç sayısı
+    const totalsRaw = await readJson(TOTALS_FILE, { items: [] });
+    const totalsRow = (totalsRaw.items || []).find(
+      (r) => String(r.userId || "").toLowerCase() === tidLower
+    );
+
+    // users.json → üyelik tarihi
+    const usersRaw = await readJson(USERS_FILE, { items: [] });
+    const usersList = Array.isArray(usersRaw) ? usersRaw : usersRaw.items || usersRaw.users || [];
+    const userRow = usersList.find(
+      (u) => String(u.userId || "").toLowerCase() === tidLower
+    );
+
+    // lc-wallet.json → LC bakiye
+    const walletRaw = await readJson(WALLET_FILE, { users: [] });
+    const walletRow = (walletRaw.users || []).find(
+      (u) => String(u.userId || "").toLowerCase() === tidLower
+    );
+
+    // preds.json → toplam tahmin sayısı
+    const predsRaw = await readJson(PREDS_FILE, []);
+    const predsAll = Array.isArray(predsRaw) ? predsRaw : predsRaw.items || [];
+    const predCount = predsAll.filter(
+      (p) => String(p.userId || p.user || "").toLowerCase() === tidLower
+    ).length;
+
+    // leaderboard sırası
+    const allTotals = (totalsRaw.items || [])
+      .slice()
+      .sort((a, b) => (Number(b.totalPoints) || 0) - (Number(a.totalPoints) || 0));
+    const globalRank = allTotals.findIndex(
+      (r) => String(r.userId || "").toLowerCase() === tidLower
+    );
+
+    const totalPoints = Math.round(Number(totalsRow?.totalPoints || 0));
+    const matches = Number(totalsRow?.matches || 0);
+
+    return res.json({
+      ok: true,
+      userId: targetId,
+      totalPoints,
+      totalPenalty: Math.round(Number(totalsRow?.totalPenalty || 0)),
+      matches,
+      predCount,
+      globalRank: globalRank >= 0 ? globalRank + 1 : null,
+      totalPlayers: allTotals.length,
+      lc: Math.round(Number(walletRow?.balance || 0)),
+      joinedAt: userRow?.createdAt || walletRow?.createdAt || null,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "PROFILE_FAILED", detail: String(e?.message || e) });
+  }
+});
+
+/**
  * GET /api/rt/pred/history?userId=...&limit=50
  * ✅ Kullanıcının maç bazlı puan geçmişi (match-results.json)
  */
