@@ -1278,20 +1278,59 @@ router.get("/match-race", async (req, res) => {
     const topN = Math.max(1, Math.min(100, Number(req.query.top || 50)));
     if (!fixtureId) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
 
-    const result = await scoreFixture(fixtureId, { updateTotals: false, db: null, allowLive: true });
-    const st = await readJson(stateFile(fixtureId), null);
+    // Tüm tahminleri ve fixture bilgisini oku
+    const predsRaw = await readJson(PREDS_FILE, []);
+    const predsAll = Array.isArray(predsRaw) ? predsRaw : predsRaw.items || [];
+    const fixturePreds = predsAll.filter((p) => String(p.fixtureId) === fixtureId);
 
+    // Fixture bilgisi (home/away/date)
+    const fixtures = await loadFixturesList();
+    const fxInfo = fixtures.find((f) => String(f.fixtureId || f.id) === fixtureId);
+
+    let result = null;
+    let st = null;
+    try {
+      result = await scoreFixture(fixtureId, { updateTotals: false, db: null, allowLive: true });
+      st = await readJson(stateFile(fixtureId), null);
+    } catch (_ignore) {
+      // Maç henüz başlamadı — pre-match moduna düş
+    }
+
+    // Pre-match: scoreFixture başarısız → katılımcı listesi döndür
+    if (!result) {
+      const participants = fixturePreds.map((p) => ({
+        userId: String(p.userId || p.user || ""),
+        joinedAt: p.createdAt || p.timestamp || null,
+      }));
+      const meJoined = userId
+        ? participants.some((p) => p.userId.toLowerCase() === userId.toLowerCase())
+        : false;
+      return res.json({
+        ok: true,
+        fixtureId,
+        phase: "pre",
+        state: {
+          status: "NS",
+          home: fxInfo?.home || null,
+          away: fxInfo?.away || null,
+          date: fxInfo?.date || fxInfo?.dateEvent || null,
+          time: fxInfo?.time || null,
+          league: fxInfo?.league || null,
+        },
+        totalPlayers: participants.length,
+        participants: participants.slice(0, topN),
+        meJoined,
+      });
+    }
+
+    // Canlı / biten maç — mevcut mantık
     const rows = (result.leaderboard || [])
       .slice()
       .sort((a, b) => (b.points || 0) - (a.points || 0) || String(a.userId).localeCompare(String(b.userId)));
 
-    // "Tutuyor" = kullanıcının 1X2 tahmini şu anki outcome ile aynı
     const currentOutcome = result.outcome || null;
-    const predsRaw = await readJson(PREDS_FILE, []);
-    const predsAll = Array.isArray(predsRaw) ? predsRaw : predsRaw.items || [];
     const outcomeByUser = new Map();
-    for (const p of predsAll) {
-      if (String(p.fixtureId) !== fixtureId) continue;
+    for (const p of fixturePreds) {
       const uid = String(p.userId || p.user || "").trim().toLowerCase();
       if (uid) outcomeByUser.set(uid, String(p.outcome || "").toUpperCase() || null);
     }
@@ -1319,6 +1358,7 @@ router.get("/match-race", async (req, res) => {
     return res.json({
       ok: true,
       fixtureId,
+      phase: "live",
       state: {
         status: st?.status || "NS",
         minute: st?.minute ?? null,
