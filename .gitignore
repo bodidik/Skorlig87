@@ -13,7 +13,6 @@ data/*
 data/live/
 !data/bot-profiles.json
 !data/countries-teams.json
-!data/providers.json
 !data/settings.json
 !data/runtime-mode.json
 !data/presets.json
