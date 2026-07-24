@@ -107,7 +107,21 @@ async function afGet(pathQs) {
       signal: ctrl.signal,
     });
     clearTimeout(tid);
-    const j = await r.json();
+    const j = await r.json().catch(() => null);
+
+    // API-Football hata sinyalleri: HTTP 2xx dışı VEYA errors alanı dolu.
+    // (Askıya alınmış hesap 200 + errors ile dönebiliyor; bunu başarı sayma.)
+    const afErrors = j && j.errors;
+    const hasErr = Array.isArray(afErrors)
+      ? afErrors.length > 0
+      : (afErrors && typeof afErrors === "object" ? Object.keys(afErrors).length > 0 : false);
+    if (!r.ok || hasErr) {
+      await bumpAf(false, Date.now() - t0);
+      const detail = hasErr ? JSON.stringify(afErrors) : `HTTP ${r.status}`;
+      console.warn("[af-sync] AF isteği reddedildi:", detail);
+      return [];
+    }
+
     await bumpAf(true, Date.now() - t0);
     return Array.isArray(j && j.response) ? j.response : [];
   } catch (e) {
@@ -357,6 +371,8 @@ async function tick() {
 function start(port) {
   if (_timer) return;
   _selfPort = Number(port) || 4102;
+  // Servisi tamamen kapatmak için .env'e SKORLIG_AF_SYNC=0 koy
+  // (server.cjs mount seviyesinde de aynı bayrağı kontrol eder).
   if (!AF_KEY) {
     console.log("[af-sync] AF_KEY yok, senkron devre dışı");
     return;
