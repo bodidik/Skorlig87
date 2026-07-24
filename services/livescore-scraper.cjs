@@ -526,7 +526,10 @@ const SOURCES = [
   { name: "tntsports",    fn: fromTNTSports },
   { name: "wslfootball",  fn: fromWSLFootball },
   { name: "soccersapi",   fn: fromSoccersAPI },
-  { name: "api-football", fn: fromApiFootball },
+  // api-football: hesap askıya alındı (dashboard.api-football.com "suspended").
+  // Kırık fallback gereksiz deneme + log gürültüsü yaratıyordu; hesap düzelince
+  // aşağıdaki satırı geri aç.
+  // { name: "api-football", fn: fromApiFootball },
 ];
 
 // ─── Main scrape ──────────────────────────────────────────────────────────────
