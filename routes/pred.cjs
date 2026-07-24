@@ -1006,10 +1006,16 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
 
     const nowISO = new Date().toISOString();
 
+    // Skor girilmişse outcome'u otomatik türet
+    let derivedOutcome = outcome || null;
+    if (h != null && a != null) {
+      derivedOutcome = h > a ? "H" : h === a ? "D" : "A";
+    }
+
     const rec = {
       fixtureId: fx,
       userId: uid,
-      outcome: outcome || null,
+      outcome: derivedOutcome,
       home: h,
       away: a,
       firstGoal: firstGoal || null,

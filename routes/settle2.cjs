@@ -1337,32 +1337,69 @@ router.get("/match-race", async (req, res) => {
       });
     }
 
-    // Canlı / biten maç — mevcut mantık
-    const rows = (result.leaderboard || [])
-      .slice()
-      .sort((a, b) => (b.points || 0) - (a.points || 0) || String(a.userId).localeCompare(String(b.userId)));
+    // Canlı / biten maç — skor bazlı yarış mantığı
+    const rows = (result.leaderboard || []).slice();
 
-    const currentOutcome = result.outcome || null;
-    const outcomeByUser = new Map();
+    // Her kullanıcının tahmini skorunu ve outcome'ını haritala
+    const predByUser = new Map();
     for (const p of fixturePreds) {
       const uid = String(p.userId || p.user || "").trim().toLowerCase();
-      if (uid) outcomeByUser.set(uid, String(p.outcome || "").toUpperCase() || null);
+      if (!uid) continue;
+      predByUser.set(uid, {
+        home: p.home != null ? Number(p.home) : null,
+        away: p.away != null ? Number(p.away) : null,
+        outcome: String(p.outcome || "").toUpperCase() || null,
+      });
     }
 
+    // Gerçek skor
+    const actualScore = st?.score || result.finalScore || null;
+    const actH = actualScore ? Number(actualScore.home) : 0;
+    const actA = actualScore ? Number(actualScore.away) : 0;
+    const currentOutcome = result.outcome || null;
+
     let inRaceCount = 0;
-    const decorated = rows.map((r, ix) => {
+    const decorated = rows.map((r) => {
       const uidLower = String(r.userId || "").toLowerCase();
-      const pick = outcomeByUser.get(uidLower) || null;
-      const inRace = !!(pick && currentOutcome && pick === currentOutcome);
+      const pred = predByUser.get(uidLower) || null;
+
+      let inRace = false;
+      let distance = null;
+      let predScore = null;
+
+      if (pred && pred.home != null && pred.away != null) {
+        predScore = { home: pred.home, away: pred.away };
+        // Skor imkansız mı? Gerçek gol tahmini aştıysa → elendi
+        inRace = actH <= pred.home && actA <= pred.away;
+        distance = Math.abs(pred.home - actH) + Math.abs(pred.away - actA);
+      } else {
+        // Skor tahmini yok → eski H/D/A mantığı, sıralamada en sona
+        const pick = pred?.outcome || null;
+        inRace = !!(pick && currentOutcome && pick === currentOutcome);
+        distance = 999;
+      }
+
       if (inRace) inRaceCount++;
       return {
-        rank: ix + 1,
+        rank: 0,
         userId: r.userId,
         displayName: getName(r.userId),
         points: Math.round((r.points || 0) * 100) / 100,
         inRace,
+        distance,
+        predScore,
       };
     });
+
+    // Sıralama: yarışta olanlar önce, sonra distance (küçük=iyi), sonra puan (büyük=iyi)
+    decorated.sort((a, b) => {
+      if (a.inRace !== b.inRace) return a.inRace ? -1 : 1;
+      const dA = a.distance ?? 999;
+      const dB = b.distance ?? 999;
+      if (dA !== dB) return dA - dB;
+      return (b.points || 0) - (a.points || 0);
+    });
+    decorated.forEach((r, i) => { r.rank = i + 1; });
 
     let me = null;
     if (userId) {
