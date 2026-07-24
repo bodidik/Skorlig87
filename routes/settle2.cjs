@@ -1312,10 +1312,13 @@ router.get("/match-race", async (req, res) => {
 
     // Pre-match: scoreFixture başarısız → katılımcı listesi döndür
     if (!result) {
-      const participants = fixturePreds.map((p) => {
-        const uid = String(p.userId || p.user || "");
-        return { userId: uid, displayName: getName(uid), joinedAt: p.createdAt || p.timestamp || null };
-      });
+      // Sadece skor tahmini yapanlar yarışa dahil
+      const participants = fixturePreds
+        .filter((p) => p.home != null && p.away != null)
+        .map((p) => {
+          const uid = String(p.userId || p.user || "");
+          return { userId: uid, displayName: getName(uid), joinedAt: p.createdAt || p.timestamp || null, predScore: { home: p.home, away: p.away } };
+        });
       const meJoined = userId
         ? participants.some((p) => p.userId.toLowerCase() === userId.toLowerCase())
         : false;
@@ -1358,27 +1361,21 @@ router.get("/match-race", async (req, res) => {
     const actA = actualScore ? Number(actualScore.away) : 0;
     const currentOutcome = result.outcome || null;
 
+    // Sadece skor tahmini yapanlar yarışa alınır
+    const scoredRows = rows.filter((r) => {
+      const uid = String(r.userId || "").toLowerCase();
+      const pred = predByUser.get(uid);
+      return pred && pred.home != null && pred.away != null;
+    });
+
     let inRaceCount = 0;
-    const decorated = rows.map((r) => {
+    const decorated = scoredRows.map((r) => {
       const uidLower = String(r.userId || "").toLowerCase();
-      const pred = predByUser.get(uidLower) || null;
-
-      let inRace = false;
-      let distance = null;
-      let predScore = null;
-
-      if (pred && pred.home != null && pred.away != null) {
-        predScore = { home: pred.home, away: pred.away };
-        // Skor imkansız mı? Gerçek gol tahmini aştıysa → elendi
-        inRace = actH <= pred.home && actA <= pred.away;
-        distance = Math.abs(pred.home - actH) + Math.abs(pred.away - actA);
-      } else {
-        // Skor tahmini yok → eski H/D/A mantığı, sıralamada en sona
-        const pick = pred?.outcome || null;
-        inRace = !!(pick && currentOutcome && pick === currentOutcome);
-        distance = 999;
-      }
-
+      const pred = predByUser.get(uidLower);
+      const predScore = { home: pred.home, away: pred.away };
+      // Gerçek skor tahmini aştıysa imkansız → elendi
+      const inRace = actH <= pred.home && actA <= pred.away;
+      const distance = Math.abs(pred.home - actH) + Math.abs(pred.away - actA);
       if (inRace) inRaceCount++;
       return {
         rank: 0,
