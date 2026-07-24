@@ -7,8 +7,18 @@ firebase-service-account.json
 .env
 .env.local
 
-# Kullanici verileri — repo'ya gitmesin
-data/
+# Kullanici verileri (runtime state) — repo'ya gitmesin.
+# Seed/config dosyalari (uygulamanin calismasi icin gerekli) asagida istisna.
+data/*
+data/live/
+!data/bot-profiles.json
+!data/countries-teams.json
+!data/providers.json
+!data/settings.json
+!data/runtime-mode.json
+!data/presets.json
+!data/gs1987-codes.json
+!data/admin-users.json
 public/privacy-page/
 
 mobile/.expo/
