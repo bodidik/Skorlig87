@@ -1296,12 +1296,26 @@ router.get("/match-race", async (req, res) => {
       // Maç henüz başlamadı — pre-match moduna düş
     }
 
+    // Kullanıcı isim haritası: userId → displayName
+    const usersAll = await readJson(USERS_FILE, { items: [] });
+    const usersItems = Array.isArray(usersAll) ? usersAll : usersAll.items || usersAll.users || [];
+    const nameMap = new Map();
+    for (const u of usersItems) {
+      const uid = String(u.userId || "");
+      nameMap.set(uid, u.nickname || u.displayName || uid);
+    }
+    const getName = (uid) => {
+      const name = nameMap.get(uid);
+      if (name && name !== uid) return name;
+      return uid.length > 12 ? uid.slice(0, 8) + "…" : uid;
+    };
+
     // Pre-match: scoreFixture başarısız → katılımcı listesi döndür
     if (!result) {
-      const participants = fixturePreds.map((p) => ({
-        userId: String(p.userId || p.user || ""),
-        joinedAt: p.createdAt || p.timestamp || null,
-      }));
+      const participants = fixturePreds.map((p) => {
+        const uid = String(p.userId || p.user || "");
+        return { userId: uid, displayName: getName(uid), joinedAt: p.createdAt || p.timestamp || null };
+      });
       const meJoined = userId
         ? participants.some((p) => p.userId.toLowerCase() === userId.toLowerCase())
         : false;
@@ -1344,6 +1358,7 @@ router.get("/match-race", async (req, res) => {
       return {
         rank: ix + 1,
         userId: r.userId,
+        displayName: getName(r.userId),
         points: Math.round((r.points || 0) * 100) / 100,
         inRace,
       };
@@ -1436,6 +1451,7 @@ router.get("/user-profile", async (req, res) => {
     return res.json({
       ok: true,
       userId: targetId,
+      displayName: userRow?.nickname || userRow?.displayName || null,
       totalPoints,
       totalPenalty: Math.round(Number(totalsRow?.totalPenalty || 0)),
       matches,

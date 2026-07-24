@@ -205,6 +205,7 @@ router.get("/profile", async (req, res) => {
     const u = await ensureUser(userId);
     const profile = {
       userId,
+      nickname: u.nickname || null,
       mainTeam: u.mainTeam || null,
       country: u.country || null,
       totals: Number(u.totals || 0),
@@ -317,6 +318,41 @@ router.post("/set-leagues", verifyToken, express.json(), async (req, res) => {
     return res.json({ ok: true, leagues });
   } catch (e) {
     return res.status(500).json({ ok: false, error: "SET_LEAGUES_ERR", detail: String(e?.message || e) });
+  }
+});
+
+// POST /api/users/set-nickname { nickname: string }  — görünen kullanıcı adı
+router.post("/set-nickname", verifyToken, express.json(), async (req, res) => {
+  try {
+    const userId = req.uid;
+    const raw = String(req.body?.nickname || "").trim();
+    // 2-20 karakter, harf/rakam/boşluk/._- ; başında-sonunda boşluk yok
+    if (raw.length < 2 || raw.length > 20) {
+      return res.status(400).json({ ok: false, error: "NICKNAME_LENGTH", detail: "2-20 karakter olmalı" });
+    }
+    if (!/^[\p{L}\p{N} ._-]+$/u.test(raw)) {
+      return res.status(400).json({ ok: false, error: "NICKNAME_INVALID", detail: "Geçersiz karakter" });
+    }
+
+    const data  = await readJson(USERS_FILE, { items: [] });
+    const items = Array.isArray(data.items) ? data.items : [];
+    const nowISO = new Date().toISOString();
+
+    // Benzersizlik: aynı nickname başka bir kullanıcıda varsa reddet (case-insensitive)
+    const taken = items.some(
+      x => String(x.userId) !== userId &&
+           String(x.nickname || "").toLowerCase() === raw.toLowerCase()
+    );
+    if (taken) return res.status(409).json({ ok: false, error: "NICKNAME_TAKEN", detail: "Bu kullanıcı adı alınmış" });
+
+    let u = items.find(x => String(x.userId) === userId);
+    if (!u) { u = { userId, createdAt: nowISO, lc: LC_START, lcLastDaily: null }; items.push(u); }
+    u.nickname = raw;
+    u.updatedAt = nowISO;
+    await writeJson(USERS_FILE, { items });
+    return res.json({ ok: true, nickname: raw });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "SET_NICKNAME_ERR", detail: String(e?.message || e) });
   }
 });
 
