@@ -321,11 +321,29 @@ router.post("/set-leagues", verifyToken, express.json(), async (req, res) => {
   }
 });
 
+// Rezerve kullanıcı adları — taklit/karışıklık önlemek için yasak (case-insensitive tam eşleşme)
+const RESERVED_NICKNAMES = new Set([
+  "admin", "administrator", "yonetici", "moderator", "mod",
+  "sistem", "system", "skorlig", "official", "resmi", "destek", "support",
+  "bot", "demo", "demo1", "demo_admin", "null", "undefined",
+  "1987gs", "gs1987", "ben", "sen",
+]);
+
+// Türkçe karakterleri sadeleştirip normalize et (İ/I, ş, ü... rezerve/karşılaştırma için)
+function normNick(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/ı/g, "i").replace(/İ/g, "i")
+    .replace(/ş/g, "s").replace(/ğ/g, "g")
+    .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
+    .trim();
+}
+
 // POST /api/users/set-nickname { nickname: string }  — görünen kullanıcı adı
 router.post("/set-nickname", verifyToken, express.json(), async (req, res) => {
   try {
     const userId = req.uid;
-    const raw = String(req.body?.nickname || "").trim();
+    const raw = String(req.body?.nickname || "").trim().replace(/\s+/g, " ");
     // 2-20 karakter, harf/rakam/boşluk/._- ; başında-sonunda boşluk yok
     if (raw.length < 2 || raw.length > 20) {
       return res.status(400).json({ ok: false, error: "NICKNAME_LENGTH", detail: "2-20 karakter olmalı" });
@@ -334,15 +352,23 @@ router.post("/set-nickname", verifyToken, express.json(), async (req, res) => {
       return res.status(400).json({ ok: false, error: "NICKNAME_INVALID", detail: "Geçersiz karakter" });
     }
 
+    const normRaw = normNick(raw);
+
+    // Rezerve kelime kontrolü (normalize edilmiş halle)
+    if (RESERVED_NICKNAMES.has(normRaw)) {
+      return res.status(409).json({ ok: false, error: "NICKNAME_RESERVED", detail: "Bu kullanıcı adı kullanılamaz" });
+    }
+
     const data  = await readJson(USERS_FILE, { items: [] });
     const items = Array.isArray(data.items) ? data.items : [];
     const nowISO = new Date().toISOString();
 
-    // Benzersizlik: aynı nickname başka bir kullanıcıda varsa reddet (case-insensitive)
-    const taken = items.some(
-      x => String(x.userId) !== userId &&
-           String(x.nickname || "").toLowerCase() === raw.toLowerCase()
-    );
+    // Benzersizlik: başka bir kullanıcının nickname'i VEYA userId'si ile çakışmasın.
+    // (userId kontrolü, okunabilir UID'li eski hesapların taklit edilmesini engeller)
+    const taken = items.some((x) => {
+      if (String(x.userId) === userId) return false;
+      return normNick(x.nickname) === normRaw || normNick(x.userId) === normRaw;
+    });
     if (taken) return res.status(409).json({ ok: false, error: "NICKNAME_TAKEN", detail: "Bu kullanıcı adı alınmış" });
 
     let u = items.find(x => String(x.userId) === userId);
