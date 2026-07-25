@@ -2,8 +2,13 @@
 /**
  * CANLI SKOR BORU HATTI DOĞRULAMA — salt okunur.
  *
- *   node scripts/verify-livescore.cjs            → scrape + tüm kontroller
- *   node scripts/verify-livescore.cjs --no-fetch → sadece önbellekten (hızlı)
+ *   node scripts/verify-livescore.cjs             → scrape + tüm kontroller
+ *   node scripts/verify-livescore.cjs --no-fetch  → sadece önbellekten (hızlı)
+ *   node scripts/verify-livescore.cjs --probe     → HER kaynağı tek tek dener
+ *
+ * --probe önemli: şelale ilk başarılı kaynakta durduğu için yedeklerin
+ * bozulduğu fark edilmez. Bu mod her kaynağı izole çalıştırıp gerçekten
+ * veri döndürüp döndürmediğini ölçer.
  *
  * Kontroller:
  *   1) Kaynak şelalesi — hangi site çalışıyor, kaç yedek gerçekten sağlam
@@ -17,6 +22,7 @@ const fs = require("fs");
 const path = require("path");
 
 const NO_FETCH = process.argv.includes("--no-fetch");
+const PROBE = process.argv.includes("--probe");
 
 const API_DIR = path.join(__dirname, "..");
 // server.cjs ile aynı env'i gör — yoksa SKORLIG_* anahtarları yanlış raporlanır
@@ -60,25 +66,47 @@ let problems = 0;
   console.log();
 
   console.log("── 1) Kaynak şelalesi sağlamlığı ──");
-  const stats = scraper.getStats();
-  const rows = Array.isArray(stats) ? stats : stats.sources || stats.items || [];
   let working = 0;
-  for (const s of rows) {
-    const ok = Number(s.success || 0) > 0;
-    if (ok) working++;
-    console.log(
-      `   ${ok ? "✅" : "❌"} ${String(s.name).padEnd(14)}` +
-      `deneme ${String(s.attempts).padStart(4)}  başarı ${String(s.success).padStart(4)}` +
-      `  oran ${String(s.rate).padStart(4)}%  son: ${s.lastSuccess || "HİÇ"}`
-    );
+
+  if (PROBE) {
+    console.log("   (--probe: her kaynak tek tek deneniyor, uzun sürebilir)");
+    for (const name of scraper.SOURCE_NAMES) {
+      try {
+        const r = await scraper.scrapeOne(name);
+        const ok = r.count > 0;
+        if (ok) working++;
+        const live = r.matches.filter((m) => m.isLive).length;
+        const ft = r.matches.filter((m) => m.isFinished).length;
+        console.log(
+          `   ${ok ? "✅" : "❌"} ${name.padEnd(14)}${String(r.count).padStart(5)} maç` +
+          `  (canlı ${String(live).padStart(3)}, bitmiş ${String(ft).padStart(3)})  ${r.ms}ms`
+        );
+      } catch (e) {
+        console.log(`   ❌ ${name.padEnd(14)}HATA: ${String(e.message).slice(0, 60)}`);
+      }
+    }
+  } else {
+    const stats = scraper.getStats();
+    const rows = Array.isArray(stats) ? stats : stats.sources || stats.items || [];
+    for (const s of rows) {
+      const ok = Number(s.success || 0) > 0;
+      if (ok) working++;
+      console.log(
+        `   ${ok ? "✅" : "❌"} ${String(s.name).padEnd(14)}` +
+        `deneme ${String(s.attempts).padStart(4)}  başarı ${String(s.success).padStart(4)}` +
+        `  oran ${String(s.rate).padStart(4)}%  son: ${s.lastSuccess || "HİÇ"}`
+      );
+    }
+    console.log("   (geçmiş istatistik — gerçek durum için --probe kullan)");
   }
+
   console.log();
   if (working <= 1) {
     problems++;
     console.log(`   ⚠ TEK NOKTA ARIZASI: sadece ${working} kaynak çalışıyor.`);
     console.log("     Bu kaynak bloklanırsa/HTML değişirse tüm puanlama durur.");
   } else {
-    console.log(`   ✅ ${working} kaynak çalışıyor — yedek var.`);
+    console.log(`   ✅ ${working} kaynak veri döndürüyor — yedek var.`);
   }
   console.log();
 

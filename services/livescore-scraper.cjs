@@ -324,31 +324,89 @@ function fromSkySports() {
 
 // ─── Source 6: Goal.com ───────────────────────────────────────────────────────
 
+/**
+ * Goal.com — Next.js gömülü JSON'undan okur (CSS seçici DEĞİL).
+ *
+ * Neden: eski sürüm `[class*='MatchRow']` gibi seçiciler kullanıyordu ve
+ * hiç çalışmadı (0/13 deneme). Site derlenmiş/hash'li sınıf adları üretiyor,
+ * bunlar her deploy'da değişir — seçiciyle scrape sürdürülemez.
+ * `__NEXT_DATA__` ise sayfanın kendi veri sözleşmesi; çok daha kararlı.
+ *
+ * Yol: props.pageProps.content.liveScores[] → { competition, matches[] }
+ * Maç: { teamA, teamB, score:{teamA,teamB}, status, period:{type,minute},
+ *        redCards:{teamA,teamB}, startDate }
+ * status: RESULT (bitti) · LIVE · FIXTURE (başlamadı) · POSTPONED · CANCELLED
+ * Ölçüm (2026-07-25): 66 lig, 291 maç, 53 canlı.
+ */
 function fromGoal() {
   return scrapeWithBrowser(
     "https://www.goal.com/en/live-scores",
     () => {
-      // React app — data-testid attributes or compiled class patterns
-      const rows    = document.querySelectorAll("[data-testid='match-row'], [class*='MatchRow'], [class*='matchRow'], .match-cell");
+      const el = document.getElementById("__NEXT_DATA__");
+      if (!el) return [];
+      let data;
+      try { data = JSON.parse(el.textContent || "{}"); } catch { return []; }
+
+      const groups = data?.props?.pageProps?.content?.liveScores;
+      if (!Array.isArray(groups)) return [];
+
+      const two = (n) => String(n).padStart(2, "0");
       const results = [];
-      rows.forEach(row => {
-        const homeTeam  = row.querySelector("[data-testid='home-team-name'], [class*='HomeTeam'] span, [class*='homeTeam'] span")?.textContent?.trim() || "";
-        const awayTeam  = row.querySelector("[data-testid='away-team-name'], [class*='AwayTeam'] span, [class*='awayTeam'] span")?.textContent?.trim() || "";
-        if (!homeTeam || !awayTeam) return;
-        const homeScore = row.querySelector("[data-testid='home-score'], [class*='HomeScore'], [class*='homeScore']")?.textContent?.trim() || null;
-        const awayScore = row.querySelector("[data-testid='away-score'], [class*='AwayScore'], [class*='awayScore']")?.textContent?.trim() || null;
-        const status    = row.querySelector("[data-testid='match-status'], [class*='MatchTime'], [class*='matchTime']")?.textContent?.trim() || "—";
-        results.push({
-          homeTeam, awayTeam, homeScore, awayScore,
-          status, startTime: "", htScore: null, matchDate: "",
-          homeCrest: null, awayCrest: null, homeRed: 0, awayRed: 0,
-          isLive: /\d+'/.test(status) || status === "HT",
-          isHT: status === "HT", isFinished: status === "FT",
-          compTitle: "", compCountry: "",
-        });
-      });
+
+      for (const g of groups) {
+        const compTitle = g?.competition?.name || "";
+        const compCountry = g?.competition?.area?.name || "";
+        for (const m of g?.matches || []) {
+          const homeTeam = m?.teamA?.name || m?.teamA?.full || m?.teamA?.short || "";
+          const awayTeam = m?.teamB?.name || m?.teamB?.full || m?.teamB?.short || "";
+          if (!homeTeam || !awayTeam) continue;
+
+          const st = String(m?.status || "").toUpperCase();
+          const isFinished = st === "RESULT";
+          const isLive = st === "LIVE";
+          const periodType = String(m?.period?.type || "").toUpperCase();
+          const minute = m?.period?.minute;
+          const isHT = isLive && periodType === "HALF_TIME";
+
+          // Skor yalnızca başlamış maçlarda anlamlı
+          const hasScore = m?.score && m.score.teamA != null && m.score.teamB != null;
+          const homeScore = hasScore && !(st === "FIXTURE") ? String(m.score.teamA) : null;
+          const awayScore = hasScore && !(st === "FIXTURE") ? String(m.score.teamB) : null;
+
+          // matchDate — livescore-sync kickoff toleransı için "YYYY-MM-DD HH:mm" bekler
+          let matchDate = "";
+          let startTime = "";
+          if (m?.startDate) {
+            const d = new Date(m.startDate);
+            if (!isNaN(d)) {
+              startTime = `${two(d.getHours())}:${two(d.getMinutes())}`;
+              matchDate = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${startTime}`;
+            }
+          }
+
+          const statusText = isFinished
+            ? "MS"
+            : isHT
+              ? "HT"
+              : isLive && Number.isFinite(minute)
+                ? `${minute}'`
+                : startTime || st;
+
+          results.push({
+            homeTeam, awayTeam, homeScore, awayScore,
+            status: statusText, startTime, htScore: null, matchDate,
+            homeCrest: m?.teamA?.image?.url || null,
+            awayCrest: m?.teamB?.image?.url || null,
+            homeRed: Number(m?.redCards?.teamA || 0),
+            awayRed: Number(m?.redCards?.teamB || 0),
+            isLive, isHT, isFinished,
+            compTitle, compCountry,
+          });
+        }
+      }
       return results;
     },
+    // Seçici beklemesi yok: veri HTML'in içinde gömülü, render beklemeye gerek yok
     null
   );
 }
@@ -516,13 +574,38 @@ function fromSoccersAPI() {
 
 // ─── Waterfall ────────────────────────────────────────────────────────────────
 
+/**
+ * Şelale sırası: ÇALIŞTIĞI DOĞRULANAN kaynaklar önce.
+ *
+ * Sıra önemli — şelale ilk başarılı kaynakta durur. Bir dönem goal.com 6.
+ * sıradaydı ve önünde 4 bozuk kaynak vardı; mackolik düştüğünde her denemede
+ * ~20 saniye boşa gidiyordu (ölçülen tam tur: 104 sn, hepsi başarısız).
+ *
+ * Durum (ölçüm: 2026-07-25, scripts/verify-livescore.cjs --probe):
+ *   ✅ mackolik   666 maç / 3.0sn — birincil
+ *   ✅ goal       291 maç / 2.7sn — __NEXT_DATA__ gömülü JSON, seçici yok
+ *   ❌ bilyoner   URL'ler ölü (400/404) — site yeniden yapılandırılmış
+ *   ❌ nesine     /canli 404; canlı bülten API'si skor taşımıyor (sadece oran)
+ *   ❌ bbc        .sp-c-fixture kayboldu; site hash'li sınıf (ssrcss-*) üretiyor,
+ *                 her deploy'da değişir. __INITIAL_DATA__ global'i var ama sayfa
+ *                 çok ağır, domcontentloaded'da henüz dolmuyor.
+ *   ❌ skysports  .matches__item eşleşmiyor
+ *   ❌ tntsports  sayfa 30sn'de yüklenmiyor (reklam/consent yığını)
+ *   ❌ wslfootball sadece kadınlar süper ligi — kapsam zaten dar
+ *   ❌ soccersapi widget; /data uçları var ama canlı skor içermiyor
+ *
+ * Bozuk olanlar listede bırakıldı: ikisi de düşerse yine de denensin, ve
+ * biri düzelirse --probe ile fark edilsin. Ama sona alındılar.
+ */
 const SOURCES = [
+  // — doğrulanmış —
   { name: "mackolik",     fn: fromMackolik },
-  { name: "bilyoner",     fn: fromBilyoner },
-  { name: "nesine",       fn: fromNesine },
+  { name: "goal",         fn: fromGoal },
+  // — şu an veri döndürmüyor (yukarıdaki teşhislere bak) —
   { name: "bbc",          fn: fromBBC },
   { name: "skysports",    fn: fromSkySports },
-  { name: "goal",         fn: fromGoal },
+  { name: "bilyoner",     fn: fromBilyoner },
+  { name: "nesine",       fn: fromNesine },
   { name: "tntsports",    fn: fromTNTSports },
   { name: "wslfootball",  fn: fromWSLFootball },
   { name: "soccersapi",   fn: fromSoccersAPI },
@@ -642,4 +725,23 @@ function stop() {
   if (_interval) { clearInterval(_interval); _interval = null; }
 }
 
-module.exports = { scrape, getCache, getStats, start, stop, LEAGUES };
+/**
+ * Tek bir kaynağı izole test eder — şelaleyi çalıştırmadan.
+ * Kaynak bozulduğunda hangi adımda kırıldığını görmek için gerekli
+ * (kaynaklar sessizce 0 maç dönüp şelalede fark edilmeden eleniyordu).
+ */
+async function scrapeOne(name) {
+  const s = SOURCES.find((x) => x.name === name);
+  if (!s) {
+    const list = SOURCES.map((x) => x.name).join(", ");
+    throw new Error(`Bilinmeyen kaynak: ${name}. Mevcut: ${list}`);
+  }
+  const t0 = Date.now();
+  const matches = await s.fn();
+  return { name, ms: Date.now() - t0, count: Array.isArray(matches) ? matches.length : 0, matches };
+}
+
+module.exports = {
+  scrape, getCache, getStats, start, stop, LEAGUES,
+  scrapeOne, SOURCE_NAMES: SOURCES.map((s) => s.name),
+};
