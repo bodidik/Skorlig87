@@ -325,9 +325,12 @@ async function buildFixtureMetaMap() {
   return map;
 }
 
-async function upsertMatchResultSnapshot({ fixtureId, finalScore, meta, rows }) {
+async function upsertMatchResultSnapshot({ fixtureId, finalScore, meta, rows, awardedAt }) {
   const nowISO = new Date().toISOString();
   const book = await loadMatchResultsBook();
+
+  const idx = book.items.findIndex((x) => normFid(x?.fixtureId) === normFid(fixtureId));
+  const existing = idx >= 0 ? book.items[idx] : null;
 
   const snap = {
     fixtureId: normFid(fixtureId),
@@ -335,9 +338,10 @@ async function upsertMatchResultSnapshot({ fixtureId, finalScore, meta, rows }) 
     finalScore: finalScore || null,
     meta: meta || null,
     rows: Array.isArray(rows) ? rows : [],
+    // awardedAt: bir kez yazılınca sabit kalır (idempotency sentinel)
+    awardedAt: existing?.awardedAt || awardedAt || null,
   };
 
-  const idx = book.items.findIndex((x) => normFid(x?.fixtureId) === normFid(fixtureId));
   if (idx >= 0) book.items[idx] = snap;
   else book.items.push(snap);
 
@@ -378,20 +382,20 @@ function getScoreWeight(country) {
   return Object.prototype.hasOwnProperty.call(SCORE_WEIGHTS, c) ? SCORE_WEIGHTS[c] : 1.0;
 }
 
-// outcome(3) + exact(12) + FG(1) + HT(2) + redAny(1.5) + redSide(1) + penAny(1.5) + penSide(1) = 22
-const MAX_BASE = 22;
-
-// Giriş bedeli 3 LC. Eğri, "doğru bilen oyuncunun cüzdanı erimesin" diye
-// yükseltildi: tek doğru sonuç (base≈3-4) girişi karşılar, daha fazlası kâr.
-// Tavan 6 → 12.
+// Odds-bazlı sistemde puan yelpazesi genişledi:
+// - Favori outcome doğru = ~3p
+// - Underdog outcome doğru = ~12p (cap)
+// - Exact skor doğru = 7-30p (nadirlik çarpanı)
+// - Yan kalemler (FG/HT/red/pen) maç zorluğuyla çarpılı
+// Toplam üst sınır ~50p'a çıkabilir. Eşikler bu yeni yelpazeye göre.
 function computeLcRewardFromDetail(detail) {
   const base = Number(detail && detail.base != null ? detail.base : 0);
-  if (base >= 22) return 12;
-  if (base >= 16) return 9;
-  if (base >= 12) return 7;
-  if (base >= 8) return 5;
-  if (base >= 4) return 3;
-  if (base > 0) return 1;
+  if (base >= 30) return 15;  // usta: skor + yan kalemler
+  if (base >= 20) return 10;  // çok iyi
+  if (base >= 12) return  7;  // underdog outcome veya iyi paket
+  if (base >=  6) return  4;  // mid-tier + yan kalem
+  if (base >=  3) return  2;  // favori outcome doğru
+  if (base >   0) return  1;  // bir şey bilmiş
   return 0;
 }
 
@@ -740,11 +744,18 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
   const { calcOdds } = require("../services/odds-engine.cjs");
   const matchOdds = calcOdds(st.home || "", st.away || "");
   // Odds → outcome çarpanı: 1.01 oddsı 0.34x (~1 puan), 4.0 oddsı 4.0x (12 puan)
-  // Lineer normalize: (odds - 1) / (4 - 1) * 3.66 + 0.34, clamp [0.34, 4.0]
   function oddsMultiplier(oc) {
     const raw = oc === "H" ? matchOdds.home : oc === "A" ? matchOdds.away : matchOdds.draw;
     return Math.max(0.34, Math.min(4.0, raw));
   }
+
+  // Maç zorluk çarpanı: (H_odds + A_odds) / 2 / 2 = maç ortalama oddsı / 2
+  // Sakin maç (avg 1.5) → 0.75x, dengeli maç (2.0) → 1.0x, zor maç (2.5) → 1.25x
+  // Yan kalemlere (FG/HT/red/pen) uygulanır — çünkü bunlar sabit puanlıydı
+  const matchDifficulty = Math.max(
+    0.6,
+    Math.min(1.6, (matchOdds.home + matchOdds.away) / 4)
+  );
 
   // ── Topluluk çarpanı: skor tahmini için nadir skor daha fazla kazandırır ──
   const humanList = list.filter((p) => {
@@ -791,14 +802,16 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     let pts = 0;
     const detail = {};
 
-    // 1) Sonuç (1X2): doğru = baz(3) × odds çarpanı, yanlış -1
-    // Kolay maç (Barcelona fav, odds 1.05) → ~3.2p; zor maç (2.10) → ~6.3p
+    // 1) Sonuç (1X2): doğru = baz(3) × odds, yanlış = -(odds × 0.5)
+    // Ceza da oran bazlı: kolay favoriyi yanlış bilmek az ceza,
+    // zor underdog'u yanlış bilmek daha çok ceza (ama ödülün 1/6'sı).
     if (p.outcome && typeof p.outcome === "string") {
       const oc = p.outcome.toUpperCase();
       const ok = oc === outcome;
       const mult = oddsMultiplier(oc);
       const earn = Math.round(3 * mult * 10) / 10;
-      detail.outcome = ok ? earn : -1;
+      const penalty = -Math.round(mult * 0.5 * 10) / 10; // ödülün ~1/6'sı
+      detail.outcome = ok ? earn : penalty;
       detail.outcomeMultiplier = Math.round(mult * 100) / 100;
       pts += detail.outcome;
     }
@@ -823,17 +836,21 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
       pts += detail.exact;
     }
 
-    // 3) İlk gol: doğru +1, yanlış -0.2
+    // 3) İlk gol: doğru = +1 × maç zorluğu, yanlış = -0.2 × maç zorluğu
     if (p.firstGoal) {
       const ok = String(p.firstGoal).toUpperCase() === String(fg || "");
-      detail.firstGoal = ok ? 1 : -0.2;
+      detail.firstGoal = ok
+        ? Math.round(1 * matchDifficulty * 10) / 10
+        : -Math.round(0.2 * matchDifficulty * 10) / 10;
       pts += detail.firstGoal;
     }
 
-    // 4) İlk yarı: doğru +2, yanlış -0.4
+    // 4) İlk yarı: doğru = +2 × maç zorluğu, yanlış = -0.4 × maç zorluğu
     if (hasHT && p.firstHalf) {
       const ok = String(p.firstHalf).toUpperCase() === htOutcome;
-      detail.firstHalf = ok ? 2 : -0.4;
+      detail.firstHalf = ok
+        ? Math.round(2 * matchDifficulty * 10) / 10
+        : -Math.round(0.4 * matchDifficulty * 10) / 10;
       pts += detail.firstHalf;
     }
 
@@ -855,13 +872,15 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     }
 
     if (predRedAny === true || predRedAny === false) {
-      redAnyPts = predRedAny === redAnyActual ? 1.5 : -0.3;
+      redAnyPts = predRedAny === redAnyActual
+        ? Math.round(1.5 * matchDifficulty * 10) / 10
+        : -Math.round(0.3 * matchDifficulty * 10) / 10;
     }
 
     if (predRedAny === true && predRedSide && redAnyActual === true) {
       const act = redSideActual ? String(redSideActual).toUpperCase() : null;
-      if (act && predRedSide === act) redSidePts = 1;
-      else redSidePenalty = -0.2;
+      if (act && predRedSide === act) redSidePts = Math.round(1 * matchDifficulty * 10) / 10;
+      else redSidePenalty = -Math.round(0.2 * matchDifficulty * 10) / 10;
     }
 
     detail.redAny = redAnyPts;
@@ -879,13 +898,15 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     if (predPenaltySide !== "H" && predPenaltySide !== "A") predPenaltySide = null;
 
     if (predPenaltyAny === true || predPenaltyAny === false) {
-      penaltyAnyPts = predPenaltyAny === penaltyAnyActual ? 1.5 : -0.3;
+      penaltyAnyPts = predPenaltyAny === penaltyAnyActual
+        ? Math.round(1.5 * matchDifficulty * 10) / 10
+        : -Math.round(0.3 * matchDifficulty * 10) / 10;
     }
 
     if (predPenaltyAny === true && predPenaltySide && penaltyAnyActual === true) {
       const act = penaltySideActual ? String(penaltySideActual).toUpperCase() : null;
-      if (act && predPenaltySide === act) penaltySidePts = 1;
-      else penaltySidePenalty = -0.2;
+      if (act && predPenaltySide === act) penaltySidePts = Math.round(1 * matchDifficulty * 10) / 10;
+      else penaltySidePenalty = -Math.round(0.2 * matchDifficulty * 10) / 10;
     }
 
     detail.penaltyAny = penaltyAnyPts;
@@ -931,6 +952,35 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
       leaderboard: rows,
       competitionIds,
     };
+  }
+
+  // 🔒 Idempotency: aynı fixture için totals/LC ikinci kez yatmasın.
+  // livescore-sync + af-sync + manuel çağrılar aynı fixture'ı defalarca
+  // settle2'ye gönderebilir. Sentinel: match-results snapshot'ta `awardedAt`.
+  try {
+    const existingBook = await loadMatchResultsBook();
+    const existing = (existingBook.items || []).find(
+      (x) => normFid(x?.fixtureId) === fid
+    );
+    if (existing && existing.awardedAt) {
+      console.log(`[settle2] fixture ${fid} zaten ödüllendirilmiş (${existing.awardedAt}) — tekrar yatırılmayacak`);
+      return {
+        fixtureId: fid,
+        finalScore: { home: h, away: a },
+        outcome,
+        firstGoal: fg,
+        redAny: redAnyActual,
+        redSide: redSideActual,
+        penaltyAny: penaltyAnyActual,
+        penaltySide: penaltySideActual,
+        leaderboard: rows,
+        competitionIds,
+        alreadySettled: true,
+        awardedAt: existing.awardedAt,
+      };
+    }
+  } catch (e) {
+    console.error("[settle2] idempotency check failed:", e);
   }
 
   await awardLcForRows(rows, db);
@@ -980,7 +1030,7 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
 
   await writeJson(LEADERBOARD_FILE, { items: rows, updatedAt: nowISO });
 
-  // ✅ match-results snapshot (kalıcı maç bazlı kayıt)
+  // ✅ match-results snapshot (kalıcı maç bazlı kayıt + idempotency sentinel)
   try {
     const fxMap = await buildFixtureMetaMap();
     const fxMeta = fxMap.get(fid) || {};
@@ -998,6 +1048,7 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
         status: st.status || "FT",
       },
       rows,
+      awardedAt: nowISO, // ← idempotency sentinel: tekrar yatırma
     });
   } catch (e) {
     console.error("[settle2] match-results snapshot write failed:", e);
@@ -1185,9 +1236,28 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
 
 /**
  * POST /api/rt/settle2
+ * 🔒 Sadece localhost'tan (livescore-sync, af-sync) veya admin token ile çağrılabilir.
+ * Aksi halde birisi ham HTTP ile POST atarak totals'a defalarca puan yatırtabilir.
+ * (Idempotency de var — awardedAt sentinel — ama katmanlı savunma.)
  */
+function isInternalCaller(req) {
+  const remote = String(req.socket?.remoteAddress || req.ip || "");
+  const isLocal = remote === "127.0.0.1" || remote === "::1" || remote === "::ffff:127.0.0.1";
+  if (isLocal) return true;
+  const expected = String(
+    process.env.SKORLIG_ADMIN_TOKEN ||
+    process.env.ADMIN_TOKEN ||
+    ""
+  ).trim();
+  const got = String(req.headers["x-admin-token"] || "").trim();
+  return !!(expected && got && got === expected);
+}
+
 router.post("/settle2", async (req, res) => {
   try {
+    if (!isInternalCaller(req)) {
+      return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+    }
     const fixtureId = String(req.query.fixtureId || req.body?.fixtureId || "");
     const db = req.app?.locals?.db || null;
 

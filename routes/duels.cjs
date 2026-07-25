@@ -10,6 +10,9 @@ const { verifyToken } = require("../middleware/verifyToken.cjs");
 const DATA_DIR = path.join(__dirname, "..", "data");
 const DUELS_FILE = path.join(DATA_DIR, "duels.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
+const PREDS_FILE = path.join(DATA_DIR, "preds.json");
+
+const { calcOdds } = require("../services/odds-engine.cjs");
 
 const MIN_STAKE = 1;
 const MAX_STAKE = 12;
@@ -37,6 +40,36 @@ function genId() {
 
 function getDb(req) {
   return req?.app?.locals?.db || null;
+}
+
+// 🔒 Kickoff kilidi: maç başladıysa düello kurulamaz / kabul edilemez.
+// (aksi halde skoru görüp bahse girmek mümkün olur)
+const LIVE_DIR = path.join(DATA_DIR, "live");
+const DUEL_LOCK_BEFORE_MIN = 10;
+
+async function isFixtureLocked(fixtureId) {
+  const fid = String(fixtureId || "").trim();
+  if (!fid) return { locked: false, reason: "NO_FIXTURE" };
+
+  const st = await readJson(path.join(LIVE_DIR, `${fid}.json`), null);
+  if (!st || typeof st !== "object") return { locked: false, reason: "NO_STATE" };
+
+  const status = String(st.status || "").toUpperCase();
+  if (status && status !== "NS") {
+    return { locked: true, reason: "MATCH_ALREADY_STARTED", status };
+  }
+
+  const kickoffISO = st.kickoffISO || st.kickoff || null;
+  if (!kickoffISO) return { locked: false, reason: "NO_KICKOFF" };
+
+  const koMs = new Date(String(kickoffISO)).getTime();
+  if (!Number.isFinite(koMs)) return { locked: false, reason: "BAD_KICKOFF" };
+
+  const lockAt = koMs - DUEL_LOCK_BEFORE_MIN * 60 * 1000;
+  if (Date.now() >= lockAt) {
+    return { locked: true, reason: "DUEL_LOCKED_BEFORE_KICKOFF", kickoffISO, lockAtISO: new Date(lockAt).toISOString() };
+  }
+  return { locked: false, reason: null };
 }
 
 // ─── File-based LC helpers ────────────────────────────────────────────────────
@@ -153,10 +186,31 @@ async function creditLc(db, uid, amount, reason, duelId) {
 
 // ─── Exported: settle duels for a fixture (called from settle2.cjs) ──────────
 // scoresMap: { [userId]: points }
+// Düello puanı = kazanan tahminin decimal odds'ı (bilyoner tarzı)
+// Örnek: Barcelona (1.05) doğru → 1.05p · Inter Turku (8.0) doğru → 8.0p
 
 async function settleDuelsForFixture(fixtureId, scoresMap, db) {
   const fid = String(fixtureId || "").trim();
   if (!fid || !scoresMap) return { settled: 0 };
+
+  // Gerçek maç sonucunu scoresMap'ten türet (en yüksek puanlı satırdan değil,
+  // direkt olarak her kullanıcının tahminini preds.json'dan al)
+  let predsAll = [];
+  try {
+    const raw = JSON.parse(await fsp.readFile(PREDS_FILE, "utf8"));
+    predsAll = Array.isArray(raw) ? raw : raw?.items || [];
+  } catch {}
+  const fixPreds = predsAll.filter(p => String(p.fixtureId) === fid);
+
+  // Gerçek outcome'u scoresMap'teki pozitif-outcome'lu kişiden çıkar
+  // (settle2 zaten hesapladı, outcome bilgisi duel objesinde yok ama
+  //  scoresMap pozitif puan = doğru tahmin sahibi → hangi outcome?)
+  // Daha güvenli: preds + scoresMap çakışmasından bul
+  function getUserPred(uid) {
+    if (!uid) return null;
+    const u = String(uid).toLowerCase();
+    return fixPreds.find(p => String(p.userId || p.user || "").toLowerCase() === u) || null;
+  }
 
   const settled = [];
 
@@ -168,20 +222,38 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db) {
     for (const duel of list) {
       if (duel.fixtureId !== fid || duel.status !== "active") continue;
 
-      // Normalize userId lookups (case-insensitive)
-      function getPoints(uid) {
+      // Maç odds'ı (oluşturulurken home/away kaydedildi)
+      const odds = duel.home && duel.away
+        ? calcOdds(duel.home, duel.away)
+        : { home: 2.0, draw: 3.2, away: 2.0 };
+
+      // scoresMap'ten gerçek outcome'u bul:
+      // Doğru tahmin yapanın puanı pozitif, yanlışın negatif/sıfır
+      // scoresMap'teki en yüksek puana bak → o outcome doğru
+      // Ama bunu doğrudan outcome string olarak bilmiyoruz.
+      // Çözüm: her iki duelistin tahminini al, kimin puanı pozitifse o kazandı
+
+      function getOddsPoints(uid) {
         if (!uid) return 0;
         const k = Object.keys(scoresMap).find(
-          k => k.toLowerCase() === String(uid).toLowerCase()
+          k2 => k2.toLowerCase() === String(uid).toLowerCase()
         );
-        return k != null ? Number(scoresMap[k] || 0) : 0;
+        const rawPts = k != null ? Number(scoresMap[k] || 0) : 0;
+        // rawPts > 0 → doğru tahmin; odds puanı = tahmin edilen sonucun odds'ı
+        if (rawPts <= 0) return 0;
+        const pred = getUserPred(uid);
+        const oc = pred?.outcome ? String(pred.outcome).toUpperCase() : null;
+        if (oc === "H") return odds.home;
+        if (oc === "D") return odds.draw;
+        if (oc === "A") return odds.away;
+        return rawPts; // outcome tahmini yoksa scoreFixture puanına düş
       }
 
-      const cp = getPoints(duel.creatorId);
-      const ap = getPoints(duel.acceptorId);
+      const cp = getOddsPoints(duel.creatorId);
+      const ap = getOddsPoints(duel.acceptorId);
 
-      duel.creatorPoints = cp;
-      duel.acceptorPoints = ap;
+      duel.creatorPoints = Math.round(cp * 100) / 100;
+      duel.acceptorPoints = Math.round(ap * 100) / 100;
       duel.status = "settled";
       duel.settledAt = nowISO;
       duel.winnerId = cp > ap ? duel.creatorId : ap > cp ? duel.acceptorId : null;
@@ -234,6 +306,12 @@ router.post("/duels/create", verifyToken, async (req, res) => {
     const targetId = challengedId ? String(challengedId).trim() : null;
     if (targetId && targetId.toLowerCase() === creatorId.toLowerCase()) {
       return res.status(400).json({ ok: false, error: "CANNOT_CHALLENGE_YOURSELF" });
+    }
+
+    // 🔒 Maç başladıysa düello kurulamaz
+    const lock = await isFixtureLocked(fx);
+    if (lock.locked) {
+      return res.status(409).json({ ok: false, error: lock.reason, fixtureId: fx, lockAtISO: lock.lockAtISO || null });
     }
 
     // Deduct stake from creator
@@ -299,6 +377,10 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
       if (duel.challengedId && duel.challengedId.toLowerCase() !== acceptorId.toLowerCase()) {
         result = { err: "NOT_YOUR_CHALLENGE" }; return;
       }
+
+      // 🔒 Maç başladıysa düello kabul edilemez
+      const lock = await isFixtureLocked(duel.fixtureId);
+      if (lock.locked) { result = { err: lock.reason }; return; }
 
       // Deduct inside DUELS lock — same pattern as pred.cjs
       const spend = await deductLc(db, acceptorId, duel.stake, "duel_accept", did);

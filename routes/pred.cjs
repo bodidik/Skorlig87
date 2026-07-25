@@ -823,6 +823,21 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
         .status(400)
         .json({ ok: false, error: "FIXTURE_AND_USER_REQUIRED" });
     }
+
+    // 🔒 Kickoff kilidi: maç başladıktan sonra tahmin gönderilemez / değiştirilemez
+    // (aksi halde skoru görüp tahmin değiştirerek her maçı doğru bilmek mümkün olur)
+    const lockRes = await assertPredNotLocked(fx);
+    if (lockRes.locked) {
+      return res.status(409).json({
+        ok: false,
+        error: lockRes.reason || "PRED_LOCKED",
+        fixtureId: fx,
+        status: lockRes.lock?.status || null,
+        kickoffISO: lockRes.lock?.kickoffISO || null,
+        lockAtISO: lockRes.lock?.lockAtISO || null,
+      });
+    }
+
     // Mevcut tahmin listesini oku (hem LC için, hem yazmak için)
     const { list, wrap } = await loadPredList();
 
