@@ -75,13 +75,62 @@ const TEAM_MAP = {
   "atletico madrid": ["atlético madrid", "atletico madrid", "atletico de madrid"],
 };
 
+/**
+ * Yaş/cinsiyet/rezerv takım işaretleri. Bunlar A takımıyla ASLA
+ * birleştirilmemeli: "Barcelona (K)" kadın takımıdır, "Tottenham U21" altyapıdır.
+ * Aksi halde A takımı fixture'ı altyapı maçının skorunu alır.
+ */
+const QUALIFIER_RE =
+  /(\bu\s?1[4-9]\b|\bu\s?2[0-3]\b|\bii\b|\bb\s?tak[ıi]m\b|\breserves?\b|\bakademi\b|\(k\)|\(w\)|\bkad[ıi]n\b|\bwomen\b|\bfeminin\b)/i;
+
+// Kulüp tipi ekleri (FC, SK, VfB...) — meşru varyant eşleşmesini kolaylaştırmak
+// için atılır. \b sınırı kullanıldığı için kelime İÇİNDE eşleşmez
+// ("Aston" içindeki "as" atılmaz).
+const CLUB_AFFIX_RE =
+  /\b(fc|sc|sk|cf|ac|as|afc|cd|ud|sv|vfb|vfl|fk|if|bk|nk|hk|ks|cs|rc|sd)\b/g;
+
+function baseNormalize(s) {
+  return String(s || "")
+    .toLowerCase()
+    // Türkçe harfleri ASCII'ye indir (İ/ı önce, NFD bunları bozuyor)
+    .replace(/[İı]/g, "i")
+    .replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u")
+    .replace(/ö/g, "o").replace(/ç/g, "c")
+    // kalan diakritikleri sıyır (é, á, ø...)
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[.\-_'’`]/g, " ")
+    .replace(CLUB_AFFIX_RE, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Takım adını eşleştirme anahtarına çevirir.
+ *
+ * DİKKAT — bir dönem burada `n.includes(v)` vardı ve TEAM_MAP'te "ts", "gs",
+ * "fb" gibi kısa kısaltmalar olduğu için felaket sonuç veriyordu:
+ * "Botev Vra[ts]a", "Por[ts]mouth", "Ludogore[ts]" → hepsi "trabzonspor";
+ * "Au[gs]burg", "Livin[gs]ton" → "galatasaray". Bu, 45 dakikalık kickoff
+ * toleransı içinde oynanan yabancı bir maçın skorunun bizim fixture'a
+ * yazılmasına yol açıyordu (yanlış settle → yanlış puan/LC).
+ * Ölçülen etki: 1411 takımın 30'u yanlış eşleşiyordu.
+ *
+ * Artık SADECE TAM eşitlik kullanılıyor ve yaş/kadın/rezerv işaretleri
+ * anahtara ekleniyor, böylece A takımıyla karışmıyorlar.
+ */
 function normalizeTeam(name) {
   if (!name) return "";
-  const n = name.toLowerCase().trim();
+  const raw = String(name).toLowerCase();
+  const qMatch = raw.match(QUALIFIER_RE);
+  const qualifier = qMatch ? "|" + qMatch[0].replace(/\s+/g, "") : "";
+
+  const n = baseNormalize(name);
+  if (!n) return raw.trim() + qualifier;
+
   for (const [canonical, variants] of Object.entries(TEAM_MAP)) {
-    if (variants.some(v => n === v || n.includes(v))) return canonical;
+    if (variants.some(v => baseNormalize(v) === n)) return canonical + qualifier;
   }
-  return n;
+  return n + qualifier;
 }
 
 // ──────────────────────────────────────────────
@@ -288,4 +337,6 @@ function start(intervalMs = 30 * 1000, apiPort = 4102) {
   setInterval(sync, intervalMs);
 }
 
-module.exports = { sync, getLastSync, start };
+// normalizeTeam/findLiveMatch test edilebilir olsun diye export edilir —
+// eşleştirme hataları sessizce yanlış skor yazdırdığı için doğrulanabilir olmalı.
+module.exports = { sync, getLastSync, start, normalizeTeam, findLiveMatch, TEAM_MAP };
