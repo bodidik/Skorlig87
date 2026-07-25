@@ -411,6 +411,93 @@ function fromGoal() {
   );
 }
 
+// ─── Source: ESPN (HTTP, tarayıcı YOK) ────────────────────────────────────────
+
+/**
+ * ESPN genel futbol skorboard'u — açık JSON ucu, anahtar/kayıt gerekmez.
+ *
+ * Neden değerli: Puppeteer'a hiç ihtiyaç duymaz. Diğer tüm kaynaklar tarayıcı
+ * başlatıyor (2-15 sn + bellek); Chrome bulunamadığı veya çöktüğü senaryoda
+ * hepsi birden düşer. Bu kaynak o ortak arıza noktasının dışında kalır.
+ * Ölçüm (2026-07-25): 376ms, 100 maç.
+ *
+ * Yapı: events[].competitions[0].competitors[] → { homeAway, team, score }
+ * status.type.name: STATUS_SCHEDULED · STATUS_IN_PROGRESS · STATUS_HALFTIME
+ *                   STATUS_FULL_TIME · STATUS_FINAL_PEN · STATUS_POSTPONED
+ *
+ * Sınır: "all" ucu ~100 maçla sınırlı ve lig ADI dönmüyor (uid içinde sadece
+ * sayısal lig kimliği var: s:600~l:19834~e:...). Skorlar doğru olduğu için
+ * settle açısından sorun değil; lig adı yalnızca gruplama/görsel amaçlı.
+ */
+function fromESPN() {
+  const URL_ALL = "https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard";
+
+  return (async () => {
+    const res = await fetch(URL_ALL, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error(`espn HTTP ${res.status}`);
+    const data = await res.json();
+    const events = Array.isArray(data?.events) ? data.events : [];
+
+    const two = (n) => String(n).padStart(2, "0");
+    const out = [];
+
+    for (const ev of events) {
+      const comp = ev?.competitions?.[0];
+      if (!comp) continue;
+      const home = (comp.competitors || []).find((c) => c.homeAway === "home");
+      const away = (comp.competitors || []).find((c) => c.homeAway === "away");
+      const homeTeam = home?.team?.displayName || home?.team?.name || "";
+      const awayTeam = away?.team?.displayName || away?.team?.name || "";
+      if (!homeTeam || !awayTeam) continue;
+
+      const t = ev?.status?.type || {};
+      const name = String(t.name || "").toUpperCase();
+      const state = String(t.state || "").toLowerCase(); // pre | in | post
+      const isFinished = state === "post" && t.completed !== false;
+      const isLive = state === "in";
+      const isHT = name === "STATUS_HALFTIME";
+      const started = state !== "pre";
+
+      const homeScore = started && home?.score != null ? String(home.score) : null;
+      const awayScore = started && away?.score != null ? String(away.score) : null;
+
+      let matchDate = "";
+      let startTime = "";
+      if (ev?.date) {
+        const d = new Date(ev.date);
+        if (!isNaN(d)) {
+          startTime = `${two(d.getHours())}:${two(d.getMinutes())}`;
+          matchDate = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${startTime}`;
+        }
+      }
+
+      const clock = ev?.status?.displayClock || "";
+      const status = isFinished ? "MS" : isHT ? "HT" : isLive ? clock || "CANLI" : startTime || "—";
+
+      // uid: "s:600~l:19834~e:401886521" — lig adı yok, kimliği etiket olarak kullan
+      const leagueId = String(ev?.uid || "").match(/~l:(\d+)/)?.[1] || "";
+
+      out.push({
+        homeTeam, awayTeam, homeScore, awayScore,
+        status, startTime, htScore: null, matchDate,
+        homeCrest: home?.team?.logo || null,
+        awayCrest: away?.team?.logo || null,
+        homeRed: 0, awayRed: 0,
+        isLive, isHT, isFinished,
+        compTitle: leagueId ? `ESPN ${leagueId}` : "",
+        compCountry: "",
+      });
+    }
+    return out;
+  })();
+}
+
 // ─── Source 7: API-Football (HTTP, no browser) ────────────────────────────────
 
 function fromApiFootball() {
@@ -599,8 +686,9 @@ function fromSoccersAPI() {
  */
 const SOURCES = [
   // — doğrulanmış —
-  { name: "mackolik",     fn: fromMackolik },
-  { name: "goal",         fn: fromGoal },
+  { name: "mackolik",     fn: fromMackolik },   // en geniş kapsam
+  { name: "goal",         fn: fromGoal },       // gömülü JSON
+  { name: "espn",         fn: fromESPN },       // HTTP-only: Chrome gerekmez
   // — şu an veri döndürmüyor (yukarıdaki teşhislere bak) —
   { name: "bbc",          fn: fromBBC },
   { name: "skysports",    fn: fromSkySports },
