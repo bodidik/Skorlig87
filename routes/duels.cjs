@@ -189,12 +189,28 @@ async function creditLc(db, uid, amount, reason, duelId) {
 // Düello puanı = kazanan tahminin decimal odds'ı (bilyoner tarzı)
 // Örnek: Barcelona (1.05) doğru → 1.05p · Inter Turku (8.0) doğru → 8.0p
 
-async function settleDuelsForFixture(fixtureId, scoresMap, db) {
+/**
+ * @param {string} fixtureId
+ * @param {Record<string,number>} scoresMap  { userId: toplam maç puanı }
+ * @param {*} db
+ * @param {"H"|"D"|"A"|null} actualOutcome  gerçek maç sonucu (settle2'den)
+ *
+ * DİKKAT: actualOutcome ZORUNLUDUR. Bir dönem "scoresMap puanı > 0 ise tahmin
+ * doğrudur" varsayımı kullanılıyordu — bu HATALIYDI: scoresMap toplam maç
+ * puanıdır (ilk gol, kırmızı, penaltı dahil). Sonucu YANLIŞ bilen ama yan
+ * kalemleri tutturan oyuncunun puanı pozitif çıkıyor ve kod ona sonucu doğru
+ * bilmiş gibi tam odds veriyordu.
+ */
+async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = null) {
   const fid = String(fixtureId || "").trim();
   if (!fid || !scoresMap) return { settled: 0 };
 
-  // Gerçek maç sonucunu scoresMap'ten türet (en yüksek puanlı satırdan değil,
-  // direkt olarak her kullanıcının tahminini preds.json'dan al)
+  const actual = actualOutcome ? String(actualOutcome).toUpperCase() : null;
+  if (!actual) {
+    console.warn(`[duels] ${fid}: actualOutcome verilmedi — düello puanı scoreFixture toplamına düşüyor`);
+  }
+
+  // Her duelistin bu maçtaki tahmini (odds puanı için outcome gerekli)
   let predsAll = [];
   try {
     const raw = JSON.parse(await fsp.readFile(PREDS_FILE, "utf8"));
@@ -202,14 +218,17 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db) {
   } catch {}
   const fixPreds = predsAll.filter(p => String(p.fixtureId) === fid);
 
-  // Gerçek outcome'u scoresMap'teki pozitif-outcome'lu kişiden çıkar
-  // (settle2 zaten hesapladı, outcome bilgisi duel objesinde yok ama
-  //  scoresMap pozitif puan = doğru tahmin sahibi → hangi outcome?)
-  // Daha güvenli: preds + scoresMap çakışmasından bul
+  // Mükerrer kayıt olursa EN SON tahmin geçerli (settle2 ile aynı kural)
   function getUserPred(uid) {
     if (!uid) return null;
     const u = String(uid).toLowerCase();
-    return fixPreds.find(p => String(p.userId || p.user || "").toLowerCase() === u) || null;
+    const mine = fixPreds.filter(p => String(p.userId || p.user || "").toLowerCase() === u);
+    if (!mine.length) return null;
+    return mine.reduce((best, cur) => {
+      const tb = new Date(best.at || best.createdAt || 0).getTime() || 0;
+      const tc = new Date(cur.at || cur.createdAt || 0).getTime() || 0;
+      return tc >= tb ? cur : best;
+    });
   }
 
   const settled = [];
@@ -227,26 +246,26 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db) {
         ? calcOdds(duel.home, duel.away)
         : { home: 2.0, draw: 3.2, away: 2.0 };
 
-      // scoresMap'ten gerçek outcome'u bul:
-      // Doğru tahmin yapanın puanı pozitif, yanlışın negatif/sıfır
-      // scoresMap'teki en yüksek puana bak → o outcome doğru
-      // Ama bunu doğrudan outcome string olarak bilmiyoruz.
-      // Çözüm: her iki duelistin tahminini al, kimin puanı pozitifse o kazandı
-
+      // Düello puanı = tahmin edilen sonucun odds'ı — SADECE sonuç doğruysa.
+      // Doğruluk gerçek sonuçla karşılaştırılır (scoresMap puanıyla DEĞİL;
+      // o toplam puandır, yan kalemlerden pozitif olabilir).
       function getOddsPoints(uid) {
         if (!uid) return 0;
-        const k = Object.keys(scoresMap).find(
-          k2 => k2.toLowerCase() === String(uid).toLowerCase()
-        );
-        const rawPts = k != null ? Number(scoresMap[k] || 0) : 0;
-        // rawPts > 0 → doğru tahmin; odds puanı = tahmin edilen sonucun odds'ı
-        if (rawPts <= 0) return 0;
         const pred = getUserPred(uid);
         const oc = pred?.outcome ? String(pred.outcome).toUpperCase() : null;
+
+        // Sonuç tahmini yok VEYA gerçek sonuç bilinmiyor → scoreFixture toplamı
+        if (!oc || !actual) {
+          const k = Object.keys(scoresMap).find(
+            k2 => k2.toLowerCase() === String(uid).toLowerCase()
+          );
+          return k != null ? Number(scoresMap[k] || 0) : 0;
+        }
+
+        if (oc !== actual) return 0; // sonucu yanlış bildi
         if (oc === "H") return odds.home;
         if (oc === "D") return odds.draw;
-        if (oc === "A") return odds.away;
-        return rawPts; // outcome tahmini yoksa scoreFixture puanına düş
+        return odds.away;
       }
 
       const cp = getOddsPoints(duel.creatorId);

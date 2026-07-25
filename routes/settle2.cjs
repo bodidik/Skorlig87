@@ -29,6 +29,15 @@ const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const LC_START = 30;
 const LC_ENTRY_COST = 3;
 
+// 🔹 Puanlama sabitleri
+// odds-engine'in fiyatlara gömdüğü bahisçi marjı — ima edilen olasılığı
+// (P = margin/odds) geri çıkarmak için gerekli. odds-engine.cjs ile aynı olmalı.
+const BOOKMAKER_MARGIN = 1.08;
+// Yanlış 1X2 tahmininin ceza tabanı: ceza = BASE / odds
+// (bölme — çarpma değil; gerekçe puanlama bloğunda açıklandı)
+// odds 1.05 favori kaçtı → -2.1 · odds 2.4 → -0.9 · odds 4.0 underdog → -0.5
+const OUTCOME_PENALTY_BASE = 2.16;
+
 // Bot kimlikleri — tek kaynak (aktif kadro + emekli botlar).
 // LC ödülü, topluluk çarpanı ve seri hesabı bu kümeyi kullanır.
 const { BOT_ID_SET: BOT_USER_ID_SET } = require("../lib/botIds.cjs");
@@ -749,13 +758,23 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     return Math.max(0.34, Math.min(4.0, raw));
   }
 
-  // Maç zorluk çarpanı: (H_odds + A_odds) / 2 / 2 = maç ortalama oddsı / 2
-  // Sakin maç (avg 1.5) → 0.75x, dengeli maç (2.0) → 1.0x, zor maç (2.5) → 1.25x
-  // Yan kalemlere (FG/HT/red/pen) uygulanır — çünkü bunlar sabit puanlıydı
-  const matchDifficulty = Math.max(
-    0.6,
-    Math.min(1.6, (matchOdds.home + matchOdds.away) / 4)
+  // Maç zorluk (belirsizlik) çarpanı — yan kalemlere (FG/HT/red/pen) uygulanır.
+  //
+  // DİKKAT: Bir dönem bu (home_odds + away_odds)/4 idi; hem YÖNÜ TERSTİ hem
+  // DOYUYORDU. Underdog oddsı sınırsız büyüdüğü için (Real Madrid-Ümraniyespor
+  // → away 877) toplam her zaman tavana çarpıyor, en dengesiz maç en yüksek
+  // çarpanı alıyordu. Oysa eşitsiz maçta ilk golü/ilk yarıyı bilmek KOLAYDIR.
+  //
+  // Doğru ölçü favorinin ima edilen olasılığı: yüksekse maç tahmin edilebilir.
+  //   favProb ≈ 0.45 (dengeli)  → ~1.10   ödül biraz artar
+  //   favProb ≈ 0.75 (eşitsiz)  → ~0.60   ödül azalır
+  const impliedProb = (odds) => (odds > 0 ? BOOKMAKER_MARGIN / odds : 0);
+  const favProb = Math.max(
+    impliedProb(matchOdds.home),
+    impliedProb(matchOdds.draw),
+    impliedProb(matchOdds.away)
   );
+  const matchDifficulty = Math.max(0.6, Math.min(1.4, 2 * (1 - favProb)));
 
   // ── Topluluk çarpanı: skor tahmini için nadir skor daha fazla kazandırır ──
   const humanList = list.filter((p) => {
@@ -802,15 +821,22 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     let pts = 0;
     const detail = {};
 
-    // 1) Sonuç (1X2): doğru = baz(3) × odds, yanlış = -(odds × 0.5)
-    // Ceza da oran bazlı: kolay favoriyi yanlış bilmek az ceza,
-    // zor underdog'u yanlış bilmek daha çok ceza (ama ödülün 1/6'sı).
+    // 1) Sonuç (1X2): doğru = baz(3) × odds, yanlış = -(CEZA_BAZ / odds)
+    //
+    // CEZA NEDEN ODDS'A BÖLÜNÜYOR (çarpılmıyor):
+    //   odds = margin/P olduğundan ödül tarafının beklenen değeri her seçimde
+    //   sabittir (P × 3 × margin/P = 3 × margin). Yani tüm strateji cezadan
+    //   gelir. Cezayı odds ile ÇARPMAK riskli seçimi iki kez cezalandırır
+    //   (hem kazanma şansı düşük, hem ceza büyük) → favori oynamak her zaman
+    //   kârlı olur, cesur tahmin ölür. Bölmek bunu tersine çevirir:
+    //   favoriyi kaçırmak pahalı, underdog'u kaçırmak ucuz.
+    //   (Kullanıcı ilkesi: cesur tahminde "hepsi azar azar kessin".)
     if (p.outcome && typeof p.outcome === "string") {
       const oc = p.outcome.toUpperCase();
       const ok = oc === outcome;
       const mult = oddsMultiplier(oc);
       const earn = Math.round(3 * mult * 10) / 10;
-      const penalty = -Math.round(mult * 0.5 * 10) / 10; // ödülün ~1/6'sı
+      const penalty = -Math.round((OUTCOME_PENALTY_BASE / mult) * 10) / 10;
       detail.outcome = ok ? earn : penalty;
       detail.outcomeMultiplier = Math.round(mult * 100) / 100;
       pts += detail.outcome;
@@ -1018,7 +1044,9 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     const { settleDuelsForFixture } = require("./duels.cjs");
     const scoresMap = {};
     for (const r of rows) scoresMap[r.userId] = Number(r.points || 0);
-    const duelRes = await settleDuelsForFixture(fid, scoresMap, db);
+    // outcome ZORUNLU: duels puanı "sonucu doğru bildi mi" kararını buna göre
+    // verir. Geçilmezse toplam puana düşer ve yanlış sonuç ödüllenebilir.
+    const duelRes = await settleDuelsForFixture(fid, scoresMap, db, outcome);
     if (duelRes.settled > 0) {
       console.log(`[settle2] ${duelRes.settled} duello kapandı — fixture ${fid}`);
     }
