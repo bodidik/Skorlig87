@@ -7,10 +7,16 @@ const path = require("path");
 const DATA_DIR = path.join(__dirname, "..", "data");
 const STREAK_FILE = path.join(DATA_DIR, "streaks.json");
 
+// Odds-bazlı sistemde eşikler yükseltildi:
+// Eski community çarpanı 0.35-4.0 çok gürültülüydü, gerçek odds 1.05-4.0
+// daha kararlı biriktiği için hedefler ~2x arttırıldı.
+// - Isınıyor: ~5-7 favori doğru VEYA 2-3 dengeli doğru
+// - Ateşte: ~10 favori VEYA 5-6 dengeli
+// - Durdurulamıyor: ~15-20 favori VEYA 8-10 dengeli-zor
 const TIERS = [
-  { threshold:  5,  bonus:  5, label: "Isınıyor",         badge: null },
-  { threshold: 10,  bonus: 15, label: "Ateşte",           badge: "fire" },
-  { threshold: 20,  bonus: 25, label: "Durdurulamıyor",   badge: "unstoppable" },
+  { threshold: 10,  bonus:  5, label: "Isınıyor",         badge: null },
+  { threshold: 20,  bonus: 15, label: "Ateşte",           badge: "fire" },
+  { threshold: 40,  bonus: 25, label: "Durdurulamıyor",   badge: "unstoppable" },
 ];
 
 async function loadStreaks() {
