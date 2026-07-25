@@ -1,19 +1,25 @@
 "use strict";
 /**
- * preds.json TEKİLLEŞTİRME — aynı user + aynı fixture için tek kayıt bırakır.
+ * preds.json TEMİZLİĞİ — iki geçiş:
+ *
+ *   GEÇİŞ 1: geçersiz fixtureId'li kayıtlar silinir.
+ *     Bir betiğin yorum satırı fixtureId argümanı olarak geçmiş ve dosyaya
+ *     1000 kayıt yazılmış ("# SkorLig: tek maç için bot üret ..."). Hiçbir
+ *     maçla eşleşmez; puanlamayı etkilemez ama sayıları kirletir.
+ *
+ *   GEÇİŞ 2: aynı user + aynı fixture için tek kayıt bırakılır.
+ *     Eski bot üretimi mükerrer kayıt bırakmış. scoreFixture her tahmin için
+ *     satır ürettiğinden tek settle'da bile o kullanıcı N kere puanlanıyordu.
+ *     (settle2 artık runtime'da da tekilleştiriyor — bu script dosyayı kalıcı
+ *     olarak temizler.)
+ *
+ *     Hangi kayıt tutulur: `at`/`createdAt` en yeni olan. Zaman damgaları
+ *     eşitse dosyada SONRA gelen — pred/submit yeni kaydı dizinin sonuna
+ *     eklediği için doğru varsayım (settle2 ile aynı kural).
  *
  * Kullanım:
  *   node scripts/dedupe-preds.cjs           → sadece rapor (DRY RUN, yazmaz)
  *   node scripts/dedupe-preds.cjs --apply   → yedek alıp temizler
- *
- * Neden gerekli: eski bot üretimi aynı user+fixture için birden fazla kayıt
- * bırakmış. scoreFixture her tahmin için satır ürettiğinden, tek settle'da
- * bile o kullanıcı N kere puanlanıyordu. (settle2 artık runtime'da da
- * tekilleştiriyor — bu script dosyayı kalıcı olarak temizler.)
- *
- * Hangi kayıt tutulur: `at`/`createdAt` en yeni olan. Zaman damgaları eşitse
- * dosyada SONRA gelen tutulur — pred/submit yeni kaydı dizinin sonuna eklediği
- * için "sonra gelen = daha yeni" doğru varsayımdır (settle2 ile aynı kural).
  */
 
 const fs = require("fs");
@@ -26,6 +32,23 @@ const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 
 function ts(rec) {
   return new Date((rec && (rec.at || rec.createdAt)) || 0).getTime() || 0;
+}
+
+/**
+ * Geçerli fixtureId: boş olmayan, boşluk/'#' içermeyen, aşırı uzun olmayan slug.
+ * Gerçek örnekler: "1394548", "GS-2026-01-05-TS", "UCL-GS-USG-20251125"
+ * Bilinen bozuk : bir betiğin yorum satırı (boşluk + '#' içeriyor, 40+ karakter)
+ */
+function invalidReason(rec) {
+  const raw = rec == null ? null : rec.fixtureId;
+  if (raw == null || String(raw).trim() === "") return "fixtureId boş";
+  const f = String(raw);
+  if (/\s/.test(f)) return "fixtureId boşluk içeriyor";
+  if (f.includes("#")) return "fixtureId '#' içeriyor";
+  if (f.length > 40) return `fixtureId aşırı uzun (${f.length} karakter)`;
+  const uid = String((rec.userId || rec.user) || "").trim();
+  if (!uid) return "userId boş";
+  return null;
 }
 
 const line = (c = "=") => console.log(c.repeat(74));
@@ -54,13 +77,39 @@ console.log(`Toplam kayıt : ${list.length}`);
 console.log(`Format       : ${isWrapped ? "{ items: [...] }" : "düz dizi"}`);
 console.log();
 
-// ── Grupla ─────────────────────────────────────────────────────────────────
+const dropIdx = new Set();
+
+// ── GEÇİŞ 1: geçersiz kayıtlar ─────────────────────────────────────────────
+console.log("── GEÇİŞ 1: geçersiz fixtureId / userId ──");
+const invalidByReason = new Map(); // sebep -> { count, samples:Set(fixtureId) }
+for (let i = 0; i < list.length; i++) {
+  const reason = invalidReason(list[i]);
+  if (!reason) continue;
+  dropIdx.add(i);
+  if (!invalidByReason.has(reason)) invalidByReason.set(reason, { count: 0, samples: new Set() });
+  const g = invalidByReason.get(reason);
+  g.count++;
+  if (g.samples.size < 3) g.samples.add(String(list[i] && list[i].fixtureId).slice(0, 60));
+}
+
+if (!invalidByReason.size) {
+  console.log("   ✅ Geçersiz kayıt yok.");
+} else {
+  for (const [reason, g] of invalidByReason) {
+    console.log(`   ✗ ${String(g.count).padStart(5)} kayıt — ${reason}`);
+    for (const s of g.samples) console.log(`        örnek: ${JSON.stringify(s)}`);
+  }
+}
+console.log();
+
+// ── GEÇİŞ 2: mükerrer kayıtlar (geçersizler hariç) ─────────────────────────
+console.log("── GEÇİŞ 2: mükerrer user + fixture ──");
 const groups = new Map(); // key -> [{idx, rec}]
 for (let i = 0; i < list.length; i++) {
+  if (dropIdx.has(i)) continue; // geçersizler zaten silinecek
   const rec = list[i];
   const fid = String((rec && rec.fixtureId) || "").trim();
   const uid = String((rec && (rec.userId || rec.user)) || "").trim().toLowerCase();
-  if (!fid || !uid) continue;
   const k = `${fid}::${uid}`;
   if (!groups.has(k)) groups.set(k, []);
   groups.get(k).push({ idx: i, rec });
@@ -68,15 +117,17 @@ for (let i = 0; i < list.length; i++) {
 
 const dupGroups = [...groups.entries()].filter(([, arr]) => arr.length > 1);
 
-if (!dupGroups.length) {
-  console.log("✅ Mükerrer kayıt yok — temizlik gerekmiyor.");
+if (!dupGroups.length && !invalidByReason.size) {
+  console.log("   ✅ Mükerrer kayıt yok.");
+  console.log();
+  line();
+  console.log("✅ Dosya temiz — yapılacak bir şey yok.");
   line();
   process.exit(0);
 }
 
-// ── Hangisi tutulacak? ─────────────────────────────────────────────────────
+// ── Mükerrerlerde hangisi tutulacak? ───────────────────────────────────────
 const keepIdx = new Set();
-const dropIdx = new Set();
 
 for (const [key, arr] of groups) {
   if (arr.length === 1) {
@@ -94,26 +145,34 @@ for (const [key, arr] of groups) {
   for (const x of arr) if (x.idx !== winner.idx) dropIdx.add(x.idx);
 }
 
-// ── Rapor ──────────────────────────────────────────────────────────────────
-console.log(`Mükerrer grup   : ${dupGroups.length}`);
-console.log(`Silinecek kayıt : ${dropIdx.size}`);
-console.log(`Kalacak kayıt   : ${list.length - dropIdx.size}`);
-console.log();
-
 const fmt = (r) => {
   const h = r.home != null ? r.home : "-";
   const a = r.away != null ? r.away : "-";
   return `at=${r.at || r.createdAt || "YOK"}  oc=${r.outcome || "-"}  skor=${h}-${a}`;
 };
 
-console.log("Grup detayları:");
-for (const [key, arr] of dupGroups) {
-  console.log(`  ${key}  (${arr.length} kayıt)`);
-  for (const { idx, rec } of arr) {
-    const mark = dropIdx.has(idx) ? "  ✗ sil " : "  ✓ TUT ";
-    console.log(`   ${mark} idx=${String(idx).padStart(4)}  ${fmt(rec)}`);
+if (dupGroups.length) {
+  console.log(`   ${dupGroups.length} mükerrer grup:`);
+  for (const [key, arr] of dupGroups) {
+    console.log(`   ${key}  (${arr.length} kayıt)`);
+    for (const { idx, rec } of arr) {
+      const mark = dropIdx.has(idx) ? "  ✗ sil " : "  ✓ TUT ";
+      console.log(`    ${mark} idx=${String(idx).padStart(4)}  ${fmt(rec)}`);
+    }
   }
+} else {
+  console.log("   ✅ Mükerrer kayıt yok.");
 }
+console.log();
+
+// ── Özet ───────────────────────────────────────────────────────────────────
+const invalidCount = [...invalidByReason.values()].reduce((s, g) => s + g.count, 0);
+const dupCount = dropIdx.size - invalidCount;
+console.log("── ÖZET ──");
+console.log(`   geçersiz kayıt   : ${invalidCount}`);
+console.log(`   mükerrer kayıt   : ${dupCount}`);
+console.log(`   toplam silinecek : ${dropIdx.size}`);
+console.log(`   kalacak kayıt    : ${list.length} → ${list.length - dropIdx.size}`);
 console.log();
 
 if (!APPLY) {
@@ -153,12 +212,16 @@ for (const r of verifyList) {
   seen.set(k, (seen.get(k) || 0) + 1);
 }
 const stillDup = [...seen.values()].filter((n) => n > 1).length;
+const stillInvalid = verifyList.filter((r) => invalidReason(r) !== null).length;
 
 line();
-if (stillDup === 0 && verifyList.length === cleaned.length) {
-  console.log(`✅ DOĞRULANDI — ${dropIdx.size} mükerrer kayıt silindi, kalan mükerrer: 0`);
+if (stillDup === 0 && stillInvalid === 0 && verifyList.length === cleaned.length) {
+  console.log(`✅ DOĞRULANDI — ${dropIdx.size} kayıt silindi (${invalidCount} geçersiz + ${dupCount} mükerrer)`);
+  console.log(`   kalan geçersiz: 0 · kalan mükerrer: 0 · toplam kayıt: ${verifyList.length}`);
 } else {
-  console.log(`⚠ DOĞRULAMA SORUNU — kalan mükerrer grup: ${stillDup}, kayıt: ${verifyList.length}`);
-  console.log(`  Yedek: ${backup}`);
+  console.log("⚠ DOĞRULAMA SORUNU:");
+  console.log(`   kalan geçersiz: ${stillInvalid} · kalan mükerrer grup: ${stillDup}`);
+  console.log(`   beklenen kayıt: ${cleaned.length} · bulunan: ${verifyList.length}`);
+  console.log(`   Yedek: ${backup}`);
 }
 line();
