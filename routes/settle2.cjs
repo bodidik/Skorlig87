@@ -715,7 +715,24 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
 
   const predsRaw = await readJson(PREDS_FILE, []);
   const preds = Array.isArray(predsRaw) ? predsRaw : Array.isArray(predsRaw?.items) ? predsRaw.items : [];
-  const list = preds.filter((p) => String(p.fixtureId) === fid);
+  const listRaw = preds.filter((p) => String(p.fixtureId) === fid);
+
+  // 🔒 Mükerrer tahmin koruması: aynı user+fixture için birden fazla kayıt
+  // varsa (eski bot üretimi veya bozuk yazma) EN SON olanı geçerli sayılır.
+  // Aksi halde kullanıcı tek settle'da N kere puanlanır.
+  const bestByUser = new Map();
+  for (const p of listRaw) {
+    const uid = String(p.userId || p.user || "anon").trim().toLowerCase();
+    const prev = bestByUser.get(uid);
+    if (!prev) { bestByUser.set(uid, p); continue; }
+    const tNew = new Date(p.at || p.createdAt || 0).getTime() || 0;
+    const tOld = new Date(prev.at || prev.createdAt || 0).getTime() || 0;
+    if (tNew >= tOld) bestByUser.set(uid, p);
+  }
+  const list = Array.from(bestByUser.values());
+  if (list.length !== listRaw.length) {
+    console.warn(`[settle2] ${fid}: ${listRaw.length - list.length} mükerrer tahmin yok sayıldı`);
+  }
 
   const h = Number(st.score?.home || 0);
   const a = Number(st.score?.away || 0);
