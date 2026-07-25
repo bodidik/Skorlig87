@@ -10,6 +10,9 @@ const DATA_DIR         = path.join(__dirname, "..", "data");
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const TOTALS_FILE      = path.join(DATA_DIR, "totals.json");
 
+// Sıralama: kümülatif puan değil, güven ağırlıklı ortalama (bkz. lib/ranking.cjs)
+const { rankRows, rankingMeta } = require("../lib/ranking.cjs");
+
 async function readJson(file, fb=null){
   try{
     const txt = await fsp.readFile(file,"utf8");
@@ -29,8 +32,13 @@ async function readJson(file, fb=null){
  *
  * Çıktı:
  *  leaderboard: [
- *    { userId, total, played, penalties, avg }
+ *    { userId, total, played, penalties, avg, rating }
  *  ]
+ *  ranking: { sortedBy, method, confidenceK, priorMean, note }
+ *
+ * Sıralama `rating`'e göredir (güven ağırlıklı ortalama) — kümülatif `total`
+ * değil. Sebep: 1000 bot her maça girdiği için kümülatifte insan yetişemez;
+ * düz ortalamada da tek şanslı tahmin zirve getirir. bkz. lib/ranking.cjs
  */
 router.get("/", async (req,res)=>{
   const db = req.app?.locals?.db || null;
@@ -39,26 +47,22 @@ router.get("/", async (req,res)=>{
   if (db) {
     try {
       const col = db.collection("season_totals");
+      // Sıralama uygulama tarafında (rating) yapılır; Mongo sort'u sadece
+      // deterministik bir okuma sırası için.
       const docs = await col
         .find({})
         .sort({ totalPoints: -1 })
         .toArray();
 
       if (docs && docs.length) {
-        const rows = docs.map(d => {
-          const total     = Number(d.totalPoints   || 0);
-          const played    = Number(d.matches       || 0);
-          const penalties = Number(d.totalPenalty  || 0);
-          const avg       = played ? Math.round(total / played) : 0;
-
-          return {
+        const rows = rankRows(
+          docs.map(d => ({
             userId: d.userId || d.userIdLower || "anon",
-            total,
-            played,
-            penalties,
-            avg
-          };
-        });
+            total: Number(d.totalPoints || 0),
+            played: Number(d.matches || 0),
+            penalties: Number(d.totalPenalty || 0),
+          }))
+        );
 
         const updatedAt =
           docs[0]?.updatedAt ||
@@ -68,6 +72,7 @@ router.get("/", async (req,res)=>{
         return res.json({
           ok: true,
           leaderboard: rows,
+          ranking: rankingMeta(rows),
           updatedAt,
           source: "mongo_season_totals",
         });
@@ -81,26 +86,19 @@ router.get("/", async (req,res)=>{
   // 2) 🟢 totals.json (yeni dosya tabanlı sezon toplamları)
   const totals = await readJson(TOTALS_FILE, null);
   if (totals && Array.isArray(totals.items) && totals.items.length) {
-    const rows = totals.items
-      .map(t => {
-        const total     = Number(t.totalPoints   || 0);
-        const played    = Number(t.matches       || 0);
-        const penalties = Number(t.totalPenalty  || 0);
-        const avg       = played ? Math.round(total / played) : 0;
-
-        return {
-          userId: t.userId,
-          total,
-          played,
-          penalties,
-          avg,
-        };
-      })
-      .sort((a,b) => b.total - a.total);
+    const rows = rankRows(
+      totals.items.map(t => ({
+        userId: t.userId,
+        total: Number(t.totalPoints || 0),
+        played: Number(t.matches || 0),
+        penalties: Number(t.totalPenalty || 0),
+      }))
+    );
 
     return res.json({
       ok: true,
       leaderboard: rows,
+      ranking: rankingMeta(rows),
       updatedAt: totals.updatedAt || null,
       source: "totals_json",
     });
@@ -123,16 +121,12 @@ router.get("/", async (req,res)=>{
     acc.penalties += Number(r.penalty  || 0);
   }
 
-  const rows = Array.from(byUser.values())
-    .map(r => ({
-      ...r,
-      avg: r.played ? Math.round(r.total / r.played) : 0
-    }))
-    .sort((a,b)=> b.total - a.total);
+  const rows = rankRows(Array.from(byUser.values()));
 
   return res.json({
     ok:true,
     leaderboard: rows,
+    ranking: rankingMeta(rows),
     updatedAt: lb.updatedAt || null,
     source: "leaderboard_json_legacy",
   });
