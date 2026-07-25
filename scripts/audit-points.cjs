@@ -13,19 +13,19 @@
  *     (tek settle'da çoklu puanlanmaya yol açar)
  *  4) totals.json'daki kayıtların bot / test / gerçek kullanıcı dağılımı
  *
- * Not: bot-profiles.json şeması [{ id, club, segment, tier }] — bot kimliği
- * `id` alanında. pred.cjs ve settle2.cjs de `p.id || p.userId` okur.
+ * Bot kimliği lib/botIds.cjs'ten okunur — kodun kullandığı kümenin aynısı
+ * (aktif kadro + emekli botlar). Böylece denetim, runtime ile aynı şeyi görür.
  */
 
 const fs = require("fs");
 const path = require("path");
+const { isBot, BOT_ID_SET, BOT_PROFILES } = require("../lib/botIds.cjs");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const F = {
   matchResults: path.join(DATA_DIR, "match-results.json"),
   totals: path.join(DATA_DIR, "totals.json"),
   preds: path.join(DATA_DIR, "preds.json"),
-  botProfiles: path.join(DATA_DIR, "bot-profiles.json"),
 };
 
 function readJson(file, fallback) {
@@ -50,16 +50,9 @@ const line = (c = "=") => console.log(c.repeat(78));
 const book = readJson(F.matchResults, { items: [] });
 const totals = readJson(F.totals, { items: [] });
 const preds = asList(readJson(F.preds, []));
-const botProfiles = readJson(F.botProfiles, []);
 
 const snaps = asList(book);
 const totalRows = asList(totals);
-
-const botIds = new Set(
-  (Array.isArray(botProfiles) ? botProfiles : [])
-    .map((b) => String(b.id || b.userId || "").trim().toLowerCase())
-    .filter(Boolean)
-);
 
 line();
 console.log("SKORLIG PUAN DENETİMİ");
@@ -67,7 +60,7 @@ line();
 console.log(`match-results.json : ${snaps.length} maç snapshot`);
 console.log(`totals.json        : ${totalRows.length} kullanıcı (updatedAt: ${totals.updatedAt || "-"})`);
 console.log(`preds.json         : ${preds.length} tahmin kaydı`);
-console.log(`bot-profiles.json  : ${botIds.size} bot kimliği`);
+console.log(`bot kimliği        : ${BOT_ID_SET.size} (aktif kadro ${BOT_PROFILES.length} + emekli ${BOT_ID_SET.size - BOT_PROFILES.length})`);
 console.log();
 
 let problems = 0;
@@ -168,31 +161,33 @@ console.log();
 
 // ── 4) Kullanıcı dağılımı ──────────────────────────────────────────────────
 console.log("── 4) totals.json kullanıcı dağılımı ──");
-const cat = { bot: [], legacyBot: [], test: [], firebaseUid: [], other: [] };
+const cat = { bot: [], test: [], firebaseUid: [], unknown: [] };
 const TEST_IDS = new Set(["demo1", "demo2", "dz", "demo_admin", "admin", "dev"]);
 
 for (const row of totalRows) {
   const raw = String(row.userId || "");
-  const l = raw.toLowerCase();
-  if (botIds.has(l)) cat.bot.push(row);
-  else if (/^bot[_-]/.test(l)) cat.legacyBot.push(row);
-  else if (TEST_IDS.has(l)) cat.test.push(row);
+  if (isBot(raw)) cat.bot.push(row);
+  else if (TEST_IDS.has(raw.toLowerCase())) cat.test.push(row);
   else if (/^[A-Za-z0-9]{26,32}$/.test(raw)) cat.firebaseUid.push(row);
-  else cat.other.push(row);
+  else cat.unknown.push(row);
 }
 
-console.log(`   bot-profiles.json'daki bot : ${cat.bot.length}`);
-console.log(`   eski bot_* isimli          : ${cat.legacyBot.length}`);
-console.log(`   test hesabı                : ${cat.test.length}`);
-console.log(`   gerçek Firebase UID        : ${cat.firebaseUid.length}`);
-console.log(`   diğer / sınıflanamayan     : ${cat.other.length}`);
+console.log(`   bot olarak tanınan   : ${cat.bot.length}`);
+console.log(`   test hesabı          : ${cat.test.length}`);
+console.log(`   gerçek Firebase UID  : ${cat.firebaseUid.length}`);
+console.log(`   sınıflanamayan       : ${cat.unknown.length}`);
 
-const phantom = cat.legacyBot.length + cat.other.length;
-if (phantom > 0) {
+if (cat.unknown.length > 0) {
   problems++;
   console.log();
-  console.log(`   ⚠ ${phantom} hesap bot-profiles.json'da DEĞİL → kod bunları "insan" sayar.`);
-  console.log("     Etkisi: topluluk çarpanı (scoreMultiplier) bozulur, settle'da LC alırlar.");
+  console.log(`   ⚠ ${cat.unknown.length} hesap ne bot ne test ne geçerli UID → kod bunları "insan" sayar.`);
+  console.log("     Etkisi: topluluk çarpanı bozulur, settle'da LC alırlar.");
+  console.log("     Çözüm: gerçek kullanıcı değilse data/bot-legacy-ids.json içine ekle.");
+  cat.unknown.slice(0, 15).forEach((r) => console.log(`       ${r.userId}`));
+  if (cat.unknown.length > 15) console.log(`       … ve ${cat.unknown.length - 15} tane daha`);
+} else {
+  console.log();
+  console.log("   ✅ Sınıflanamayan hesap yok — bot/insan ayrımı temiz.");
 }
 
 if (cat.firebaseUid.length) {

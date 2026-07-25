@@ -12,7 +12,6 @@ const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 const LIVE_DIR = path.join(DATA_DIR, "live"); // fixture state için
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
-const BOT_PROFILES_PATH = path.join(DATA_DIR, "bot-profiles.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 
 // 🔹 Otomatik LC birikimi (token bitince bekle)
@@ -440,48 +439,16 @@ async function spendLcMatchIfNeededMongo(db, userId, fixtureId, cost, alreadyPre
  *   Şema: [{ id, club, segment, tier }, ...]
  * - Buradan BOT_PROFILES, BOT_USER_ID_SET ve BOT_PROFILE_MAP üretilir.
  */
-let BOT_PROFILES = [];
-let BOT_USER_ID_SET = new Set();
-let BOT_PROFILE_MAP = new Map();
-
-try {
-  // JSON yükle
-  const rawProfiles = require(BOT_PROFILES_PATH);
-  if (Array.isArray(rawProfiles)) {
-    BOT_PROFILES = rawProfiles
-      .map((p) => {
-        const userId = String(p.id || p.userId || "").trim();
-        if (!userId) return null;
-        return {
-          userId,
-          favTeam: p.club || null,
-          segment: p.segment || null,
-          tier: p.tier || null,
-        };
-      })
-      .filter(Boolean);
-
-    BOT_USER_ID_SET = new Set(
-      BOT_PROFILES.map((b) => b.userId.toLowerCase())
-    );
-    BOT_PROFILE_MAP = new Map(
-      BOT_PROFILES.map((b) => [b.userId.toLowerCase(), b])
-    );
-
-    console.log(
-      `[pred] loaded ${BOT_PROFILES.length} bot profiles from bot-profiles.json`
-    );
-  } else {
-    console.log(
-      "[pred] bot-profiles.json did not contain an array; BOT_PROFILES empty."
-    );
-  }
-} catch (e) {
-  console.log(
-    "[pred] bot-profiles.json not found or invalid; BOT_PROFILES empty:",
-    e && (e.message || e)
-  );
-}
+// Bot kimlikleri — tek kaynak (lib/botIds.cjs).
+//  BOT_PROFILES    : aktif kadro — tahmin ÜRETEN botlar (bot-profiles.json)
+//  BOT_USER_ID_SET : kimlik kümesi — aktif + emekli (bot-legacy-ids.json dahil)
+// Emekli botlar yeni tahmin üretmez ama "bot" olarak tanınır; aksi halde
+// puanlama/LC/topluluk çarpanı onları insan sayar.
+const {
+  BOT_PROFILES,
+  BOT_PROFILE_MAP,
+  BOT_ID_SET: BOT_USER_ID_SET,
+} = require("../lib/botIds.cjs");
 
 /**
  * Deterministik random (fixtureId + userId → her çağrıda aynı tahmin)

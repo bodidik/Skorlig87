@@ -12,6 +12,7 @@ firebase-service-account.json
 data/*
 data/live/
 !data/bot-profiles.json
+!data/bot-legacy-ids.json
 !data/countries-teams.json
 !data/settings.json
 !data/runtime-mode.json

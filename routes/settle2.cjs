@@ -17,7 +17,6 @@ const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 const TOTALS_FILE = path.join(DATA_DIR, "totals.json");
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
-const BOT_PROFILES_PATH = path.join(DATA_DIR, "bot-profiles.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const RESULTS_FILE = path.join(DATA_DIR, "results.json");
 const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
@@ -30,25 +29,9 @@ const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const LC_START = 30;
 const LC_ENTRY_COST = 3;
 
-// Bot userId set'i (LC ödülü verilmeyecek)
-let BOT_USER_ID_SET = new Set();
-try {
-  // require cache sorunlarına rağmen bu dosya genelde sabit; sorun olursa readJson'a çeviririz
-  const raw = require(BOT_PROFILES_PATH);
-  if (Array.isArray(raw)) {
-    BOT_USER_ID_SET = new Set(
-      raw
-        .map((p) => String(p.id || p.userId || "").trim().toLowerCase())
-        .filter(Boolean)
-    );
-    console.log(`[settle2] loaded ${BOT_USER_ID_SET.size} bot ids from bot-profiles.json`);
-  }
-} catch (e) {
-  console.log(
-    "[settle2] bot-profiles.json not found or invalid; BOT_USER_ID_SET empty:",
-    e && (e.message || e)
-  );
-}
+// Bot kimlikleri — tek kaynak (aktif kadro + emekli botlar).
+// LC ödülü, topluluk çarpanı ve seri hesabı bu kümeyi kullanır.
+const { BOT_ID_SET: BOT_USER_ID_SET } = require("../lib/botIds.cjs");
 
 async function readJson(file, fb = null) {
   try {
