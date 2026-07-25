@@ -734,22 +734,26 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
 
   const w = getScoreWeight(st.country);
 
-  // ── Topluluk çarpanları: nadir seçim daha fazla puan kazandırır ──────────
-  // Sadece insan tahminleri kullanılır (botlar kitleyi eğitir, puanı etkilemez)
+  // ── Maç oddsı (odds-engine): outcome puanının temeli ──────────────────────
+  // Barcelona - Inter Turku: home ~1.05 → kolay, az puan
+  // Bayern - Liverpool: home ~2.10 → zor, çok puan
+  const { calcOdds } = require("../services/odds-engine.cjs");
+  const matchOdds = calcOdds(st.home || "", st.away || "");
+  // Odds → outcome çarpanı: 1.01 oddsı 0.34x (~1 puan), 4.0 oddsı 4.0x (12 puan)
+  // Lineer normalize: (odds - 1) / (4 - 1) * 3.66 + 0.34, clamp [0.34, 4.0]
+  function oddsMultiplier(oc) {
+    const raw = oc === "H" ? matchOdds.home : oc === "A" ? matchOdds.away : matchOdds.draw;
+    return Math.max(0.34, Math.min(4.0, raw));
+  }
+
+  // ── Topluluk çarpanı: skor tahmini için nadir skor daha fazla kazandırır ──
   const humanList = list.filter((p) => {
     const uid = String(p.userId || p.user || "").trim().toLowerCase();
     return !BOT_USER_ID_SET.has(uid);
   });
   const humanTotal = humanList.length;
 
-  // Outcome dağılımı
-  const oc3 = { H: 0, D: 0, A: 0 };
-  for (const p of humanList) {
-    const oc = String(p.outcome || "").toUpperCase();
-    if (oc === "H" || oc === "D" || oc === "A") oc3[oc]++;
-  }
-
-  // Skor dağılımı
+  // Skor dağılımı (sadece skor çarpanı için)
   const scorePickMap = new Map();
   for (const p of humanList) {
     if (
@@ -762,28 +766,10 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
   }
 
   /**
-   * Outcome çarpanı (H/D/A):
-   *  Herkes 1/3 seçse → 1.0x → 3 puan (baz)
-   *  Çok popüler (70%) → ~0.48x → ~1.4 puan
-   *  Nadir (5%)       → ~2.2x → ~6.7 puan  (max 4.0x → 12 puan)
-   */
-  function outcomeMultiplier(oc) {
-    if (humanTotal < 2) return 1.0; // hiç sinyal yok
-    // Güven: 2 katılımcıda 0.4, 5+ katılımcıda tam (1.0). Az veride
-    // çarpan 1.0'a yaklaştırılır — pilotta bile contrarian fark eder.
-    const conf = Math.min(1, humanTotal / 5);
-    const n = oc3[oc] || 0;
-    const raw = n === 0 ? 4.0 : (humanTotal / 3) / n; // hiç seçen yok → max
-    const damped = 1 + (raw - 1) * conf;
-    return Math.max(0.35, Math.min(4.0, damped));
-  }
-
-  /**
    * Skor çarpanı:
    *  "Adil pay" ≈ tahminlerin %5'i (20 yaygın skor varsayımı)
-   *  %25 seçmişse  → 0.2x → capped 0.6x → ~7 puan
+   *  %25 seçmişse  → capped 0.6x → ~7 puan
    *  %5 seçmişse   → 1.0x → 12 puan (baz)
-   *  %1 seçmişse   → 5.0x → capped 2.0x → 24 puan
    *  Hiç seçmeyen  → 2.5x → 30 puan (ultra nadir)
    */
   function scoreMultiplier(sh, sa) {
@@ -805,11 +791,12 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     let pts = 0;
     const detail = {};
 
-    // 1) Sonuç (1X2): doğru = baz(3) × topluluk çarpanı, yanlış -1
+    // 1) Sonuç (1X2): doğru = baz(3) × odds çarpanı, yanlış -1
+    // Kolay maç (Barcelona fav, odds 1.05) → ~3.2p; zor maç (2.10) → ~6.3p
     if (p.outcome && typeof p.outcome === "string") {
       const oc = p.outcome.toUpperCase();
       const ok = oc === outcome;
-      const mult = outcomeMultiplier(oc);
+      const mult = oddsMultiplier(oc);
       const earn = Math.round(3 * mult * 10) / 10;
       detail.outcome = ok ? earn : -1;
       detail.outcomeMultiplier = Math.round(mult * 100) / 100;
