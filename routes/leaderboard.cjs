@@ -12,18 +12,74 @@ const TOTALS_FILE      = path.join(DATA_DIR, "totals.json");
 
 // Sıralama: kümülatif puan değil, güven ağırlıklı ortalama (bkz. lib/ranking.cjs)
 const { rankRows, rankingMeta } = require("../lib/ranking.cjs");
+const { attachCountries, countryOfUser } = require("../lib/user-country.cjs");
 
 async function readJson(file, fb=null){
   try{
     const txt = await fsp.readFile(file,"utf8");
     return JSON.parse(txt);
-  }catch{ 
-    return fb; 
+  }catch{
+    return fb;
   }
 }
 
 /**
+ * Ham satırları kapsama göre süzer, sonra sıralar.
+ *
+ * SIRA ÖNEMLİ — önce süz, sonra sırala. rankRows() havuz ortalamasını
+ * (priorMean) aldığı listeden hesaplar; ülke listesi kendi ortalamasına göre
+ * daraltılmalı. Önce sıralayıp sonra süzmek, oyuncuyu küresel havuza göre
+ * puanlayıp ülke etiketi yapıştırmak olurdu — sıra numaraları da delik delik
+ * çıkardı (1., 4., 9. ...).
+ *
+ * @returns {{ rows, scope, country, poolSize }}
+ */
+async function scopedRank(rawRows, { scope, country }) {
+  const withCountry = await attachCountries(rawRows);
+
+  const wantCountry = scope === "country" ? String(country || "").trim() : null;
+  const pool = wantCountry
+    ? withCountry.filter((r) => r.country === wantCountry)
+    : withCountry;
+
+  return {
+    rows: rankRows(pool),
+    scope: wantCountry ? "country" : "global",
+    country: wantCountry || null,
+    poolSize: pool.length,
+  };
+}
+
+/**
+ * Kapsam parametrelerini çözer.
+ *   ?scope=country&userId=...   → kullanıcının kendi ülkesi
+ *   ?scope=country&country=Japan → açıkça belirtilen ülke
+ *   (varsayılan)                → küresel
+ *
+ * Ülke istenip de çözülemezse (kullanıcı henüz ülke seçmemiş) küresele
+ * düşer ve `requestedScope` alanıyla bunu istemciye bildirir — sessizce boş
+ * liste dönmek, ekranda "kimse yok" gibi görünürdü.
+ */
+async function resolveScope(req) {
+  const scope = String(req.query.scope || "global").trim().toLowerCase();
+  if (scope !== "country") return { scope: "global", country: null, fellBack: false };
+
+  let country = String(req.query.country || "").trim();
+  if (!country) {
+    const uid = String(req.query.userId || req.uid || "").trim();
+    if (uid) country = (await countryOfUser(uid)) || "";
+  }
+  if (!country) return { scope: "global", country: null, fellBack: true };
+  return { scope: "country", country, fellBack: false };
+}
+
+/**
  * GET /api/leaderboard
+ *
+ * Sorgu:
+ *  scope=global (varsayılan) | country
+ *  country=Japan   — açık ülke; yoksa userId'nin ülkesi kullanılır
+ *  userId=...      — scope=country için ülke kaynağı
  *
  * Öncelik sırası:
  *  1) MongoDB (season_totals koleksiyonu) – varsa
@@ -32,16 +88,29 @@ async function readJson(file, fb=null){
  *
  * Çıktı:
  *  leaderboard: [
- *    { userId, total, played, penalties, avg, rating }
+ *    { userId, total, played, penalties, avg, rating, country }
  *  ]
  *  ranking: { sortedBy, method, confidenceK, priorMean, note }
+ *  scope:   { requested, applied, country, poolSize }
  *
  * Sıralama `rating`'e göredir (güven ağırlıklı ortalama) — kümülatif `total`
- * değil. Sebep: 1000 bot her maça girdiği için kümülatifte insan yetişemez;
+ * değil. Sebep: 1280 bot her maça girdiği için kümülatifte insan yetişemez;
  * düz ortalamada da tek şanslı tahmin zirve getirir. bkz. lib/ranking.cjs
+ *
+ * ÜLKE KAPSAMI: kullanıcı kendi ülkesinde yarışabilsin diye var. Tek küresel
+ * havuzda Türk kullanıcılar ve 200 Türk botu baskındı; Portekizli kullanıcı
+ * için oyun "başkasının ligine misafir olmak" gibiydi.
  */
 router.get("/", async (req,res)=>{
   const db = req.app?.locals?.db || null;
+  const sc = await resolveScope(req);
+  const scopeInfo = (r) => ({
+    requested: String(req.query.scope || "global").toLowerCase(),
+    applied: r.scope,
+    country: r.country,
+    poolSize: r.poolSize,
+    ...(sc.fellBack ? { fellBackReason: "COUNTRY_UNKNOWN" } : {}),
+  });
 
   // 1) 🔵 Mongo sezon toplamları
   if (db) {
@@ -55,13 +124,14 @@ router.get("/", async (req,res)=>{
         .toArray();
 
       if (docs && docs.length) {
-        const rows = rankRows(
+        const r = await scopedRank(
           docs.map(d => ({
             userId: d.userId || d.userIdLower || "anon",
             total: Number(d.totalPoints || 0),
             played: Number(d.matches || 0),
             penalties: Number(d.totalPenalty || 0),
-          }))
+          })),
+          sc
         );
 
         const updatedAt =
@@ -71,8 +141,9 @@ router.get("/", async (req,res)=>{
 
         return res.json({
           ok: true,
-          leaderboard: rows,
-          ranking: rankingMeta(rows),
+          leaderboard: r.rows,
+          ranking: rankingMeta(r.rows),
+          scope: scopeInfo(r),
           updatedAt,
           source: "mongo_season_totals",
         });
@@ -86,19 +157,21 @@ router.get("/", async (req,res)=>{
   // 2) 🟢 totals.json (yeni dosya tabanlı sezon toplamları)
   const totals = await readJson(TOTALS_FILE, null);
   if (totals && Array.isArray(totals.items) && totals.items.length) {
-    const rows = rankRows(
+    const r = await scopedRank(
       totals.items.map(t => ({
         userId: t.userId,
         total: Number(t.totalPoints || 0),
         played: Number(t.matches || 0),
         penalties: Number(t.totalPenalty || 0),
-      }))
+      })),
+      sc
     );
 
     return res.json({
       ok: true,
-      leaderboard: rows,
-      ranking: rankingMeta(rows),
+      leaderboard: r.rows,
+      ranking: rankingMeta(r.rows),
+      scope: scopeInfo(r),
       updatedAt: totals.updatedAt || null,
       source: "totals_json",
     });
@@ -121,15 +194,53 @@ router.get("/", async (req,res)=>{
     acc.penalties += Number(r.penalty  || 0);
   }
 
-  const rows = rankRows(Array.from(byUser.values()));
+  const r = await scopedRank(Array.from(byUser.values()), sc);
 
   return res.json({
     ok:true,
-    leaderboard: rows,
-    ranking: rankingMeta(rows),
+    leaderboard: r.rows,
+    ranking: rankingMeta(r.rows),
+    scope: scopeInfo(r),
     updatedAt: lb.updatedAt || null,
     source: "leaderboard_json_legacy",
   });
+});
+
+/**
+ * GET /api/leaderboard/countries
+ * Ülke sekmesi için: hangi ülkelerde kaç yarışmacı var.
+ * Boş ülkeyi listelemeyiz — kullanıcı tıklayıp kendinden başka kimse
+ * olmadığını görmesin.
+ */
+router.get("/countries", async (req, res) => {
+  try {
+    const totals = await readJson(TOTALS_FILE, null);
+    let raw = [];
+    if (totals && Array.isArray(totals.items)) {
+      raw = totals.items.map(t => ({ userId: t.userId }));
+    } else {
+      const lb = await readJson(LEADERBOARD_FILE, { items: [] });
+      const seen = new Set();
+      for (const it of (Array.isArray(lb.items) ? lb.items : [])) {
+        const u = it.userId || "anon";
+        if (!seen.has(u)) { seen.add(u); raw.push({ userId: u }); }
+      }
+    }
+
+    const withCountry = await attachCountries(raw);
+    const counts = new Map();
+    for (const r of withCountry) {
+      if (!r.country) continue;
+      counts.set(r.country, (counts.get(r.country) || 0) + 1);
+    }
+
+    const items = Array.from(counts, ([country, players]) => ({ country, players }))
+      .sort((a, b) => b.players - a.players || a.country.localeCompare(b.country));
+
+    res.json({ ok: true, count: items.length, items });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 module.exports = router;

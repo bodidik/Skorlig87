@@ -5998,5 +5998,1685 @@
     "club": "Global XI",
     "segment": "GLB",
     "tier": "wild"
+  },
+  {
+    "id": "Frontale17",
+    "club": "Kawasaki Frontale",
+    "segment": "JPN",
+    "tier": "elite"
+  },
+  {
+    "id": "Marinos54",
+    "club": "Yokohama F. Marinos",
+    "segment": "JPN",
+    "tier": "elite"
+  },
+  {
+    "id": "UrawaRed91",
+    "club": "Urawa Reds",
+    "segment": "JPN",
+    "tier": "elite"
+  },
+  {
+    "id": "Vissel45",
+    "club": "Vissel Kobe",
+    "segment": "JPN",
+    "tier": "elite"
+  },
+  {
+    "id": "GambaOsk82",
+    "club": "Gamba Osaka",
+    "segment": "JPN",
+    "tier": "elite"
+  },
+  {
+    "id": "Antlers36",
+    "club": "Kashima Antlers",
+    "segment": "JPN",
+    "tier": "elite"
+  },
+  {
+    "id": "Kawasaki73",
+    "club": "Kawasaki Frontale",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Yokohama27",
+    "club": "Yokohama F. Marinos",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "RedsFan64",
+    "club": "Urawa Reds",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "KobeFan18",
+    "club": "Vissel Kobe",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Osaka55",
+    "club": "Gamba Osaka",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Kashima92",
+    "club": "Kashima Antlers",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Todoroki46",
+    "club": "Kawasaki Frontale",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Torikolo83",
+    "club": "Yokohama F. Marinos",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Saitama37",
+    "club": "Urawa Reds",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Noevir74",
+    "club": "Vissel Kobe",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Suita28",
+    "club": "Gamba Osaka",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Ibaraki65",
+    "club": "Kashima Antlers",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Frontale19",
+    "club": "Kawasaki Frontale",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Marinos56",
+    "club": "Yokohama F. Marinos",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "UrawaRed93",
+    "club": "Urawa Reds",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Vissel47",
+    "club": "Vissel Kobe",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "GambaOsk84",
+    "club": "Gamba Osaka",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Antlers38",
+    "club": "Kashima Antlers",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Kawasaki75",
+    "club": "Kawasaki Frontale",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "Yokohama29",
+    "club": "Yokohama F. Marinos",
+    "segment": "JPN",
+    "tier": "solid"
+  },
+  {
+    "id": "RedsFan66",
+    "club": "Urawa Reds",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "KobeFan20",
+    "club": "Vissel Kobe",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Osaka57",
+    "club": "Gamba Osaka",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Kashima94",
+    "club": "Kashima Antlers",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Todoroki48",
+    "club": "Kawasaki Frontale",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Torikolo85",
+    "club": "Yokohama F. Marinos",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Saitama39",
+    "club": "Urawa Reds",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Noevir76",
+    "club": "Vissel Kobe",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Suita30",
+    "club": "Gamba Osaka",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Ibaraki67",
+    "club": "Kashima Antlers",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Frontale21",
+    "club": "Kawasaki Frontale",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Marinos58",
+    "club": "Yokohama F. Marinos",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "UrawaRed95",
+    "club": "Urawa Reds",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Vissel49",
+    "club": "Vissel Kobe",
+    "segment": "JPN",
+    "tier": "wild"
+  },
+  {
+    "id": "Mengao17",
+    "club": "Flamengo",
+    "segment": "BRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Verdao54",
+    "club": "Palmeiras",
+    "segment": "BRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Fiel91",
+    "club": "Corinthians",
+    "segment": "BRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Tricolor45",
+    "club": "São Paulo",
+    "segment": "BRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Peixe82",
+    "club": "Santos",
+    "segment": "BRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Imortal36",
+    "club": "Grêmio",
+    "segment": "BRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Colorado73",
+    "club": "Internacional",
+    "segment": "BRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Flu27",
+    "club": "Fluminense",
+    "segment": "BRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Rubronegro64",
+    "club": "Flamengo",
+    "segment": "BRA",
+    "tier": "elite"
+  },
+  {
+    "id": "Porco18",
+    "club": "Palmeiras",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Timao55",
+    "club": "Corinthians",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "SoberanoSP92",
+    "club": "São Paulo",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Alvinegro46",
+    "club": "Santos",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Tricolor83",
+    "club": "Grêmio",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Beira37",
+    "club": "Internacional",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Tricolor74",
+    "club": "Fluminense",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Nacao28",
+    "club": "Flamengo",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Alviverde65",
+    "club": "Palmeiras",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Alvinegro19",
+    "club": "Corinthians",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Morumbi56",
+    "club": "São Paulo",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "VilaBelmiro93",
+    "club": "Santos",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Arena47",
+    "club": "Grêmio",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Inter84",
+    "club": "Internacional",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Laranjeiras38",
+    "club": "Fluminense",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Mengao75",
+    "club": "Flamengo",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Verdao29",
+    "club": "Palmeiras",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Fiel66",
+    "club": "Corinthians",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Tricolor20",
+    "club": "São Paulo",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Peixe57",
+    "club": "Santos",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Imortal94",
+    "club": "Grêmio",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Colorado48",
+    "club": "Internacional",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Flu85",
+    "club": "Fluminense",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Rubronegro39",
+    "club": "Flamengo",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Porco76",
+    "club": "Palmeiras",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Timao30",
+    "club": "Corinthians",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "SoberanoSP67",
+    "club": "São Paulo",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Alvinegro21",
+    "club": "Santos",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Tricolor58",
+    "club": "Grêmio",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Beira95",
+    "club": "Internacional",
+    "segment": "BRA",
+    "tier": "solid"
+  },
+  {
+    "id": "Tricolor49",
+    "club": "Fluminense",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Nacao86",
+    "club": "Flamengo",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Alviverde40",
+    "club": "Palmeiras",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Alvinegro77",
+    "club": "Corinthians",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Morumbi31",
+    "club": "São Paulo",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "VilaBelmiro68",
+    "club": "Santos",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Arena22",
+    "club": "Grêmio",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Inter59",
+    "club": "Internacional",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Laranjeiras96",
+    "club": "Fluminense",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Mengao50",
+    "club": "Flamengo",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Verdao98",
+    "club": "Palmeiras",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Fiel41",
+    "club": "Corinthians",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Tricolor78",
+    "club": "São Paulo",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Peixe32",
+    "club": "Santos",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Imortal69",
+    "club": "Grêmio",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Colorado23",
+    "club": "Internacional",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Flu60",
+    "club": "Fluminense",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Rubronegro97",
+    "club": "Flamengo",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Porco51",
+    "club": "Palmeiras",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "Timao88",
+    "club": "Corinthians",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "SoberanoSP42",
+    "club": "São Paulo",
+    "segment": "BRA",
+    "tier": "wild"
+  },
+  {
+    "id": "GalaxyFan17",
+    "club": "LA Galaxy",
+    "segment": "USA",
+    "tier": "elite"
+  },
+  {
+    "id": "Blackblue54",
+    "club": "LAFC",
+    "segment": "USA",
+    "tier": "elite"
+  },
+  {
+    "id": "MiamiPink91",
+    "club": "Inter Miami",
+    "segment": "USA",
+    "tier": "elite"
+  },
+  {
+    "id": "Sounder45",
+    "club": "Seattle Sounders",
+    "segment": "USA",
+    "tier": "elite"
+  },
+  {
+    "id": "ATLUTD82",
+    "club": "Atlanta United",
+    "segment": "USA",
+    "tier": "elite"
+  },
+  {
+    "id": "RBNY36",
+    "club": "New York Red Bulls",
+    "segment": "USA",
+    "tier": "elite"
+  },
+  {
+    "id": "CarsonLA73",
+    "club": "LA Galaxy",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "LAFCFan27",
+    "club": "LAFC",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "InterMia64",
+    "club": "Inter Miami",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "CascadiaS18",
+    "club": "Seattle Sounders",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "FiveStripe55",
+    "club": "Atlanta United",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "MetroFan92",
+    "club": "New York Red Bulls",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "LAGalaxy46",
+    "club": "LA Galaxy",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "Angeleno83",
+    "club": "LAFC",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "Herons37",
+    "club": "Inter Miami",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "RaveGreen74",
+    "club": "Seattle Sounders",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "Mercedes28",
+    "club": "Atlanta United",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "Harrison65",
+    "club": "New York Red Bulls",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "GalaxyFan19",
+    "club": "LA Galaxy",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "Blackblue56",
+    "club": "LAFC",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "MiamiPink93",
+    "club": "Inter Miami",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "Sounder47",
+    "club": "Seattle Sounders",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "ATLUTD84",
+    "club": "Atlanta United",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "RBNY38",
+    "club": "New York Red Bulls",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "CarsonLA75",
+    "club": "LA Galaxy",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "LAFCFan29",
+    "club": "LAFC",
+    "segment": "USA",
+    "tier": "solid"
+  },
+  {
+    "id": "InterMia66",
+    "club": "Inter Miami",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "CascadiaS20",
+    "club": "Seattle Sounders",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "FiveStripe57",
+    "club": "Atlanta United",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "MetroFan94",
+    "club": "New York Red Bulls",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "LAGalaxy48",
+    "club": "LA Galaxy",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "Angeleno85",
+    "club": "LAFC",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "Herons39",
+    "club": "Inter Miami",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "RaveGreen76",
+    "club": "Seattle Sounders",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "Mercedes30",
+    "club": "Atlanta United",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "Harrison67",
+    "club": "New York Red Bulls",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "GalaxyFan21",
+    "club": "LA Galaxy",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "Blackblue58",
+    "club": "LAFC",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "MiamiPink95",
+    "club": "Inter Miami",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "Sounder49",
+    "club": "Seattle Sounders",
+    "segment": "USA",
+    "tier": "wild"
+  },
+  {
+    "id": "Aguila17",
+    "club": "Club América",
+    "segment": "MEX",
+    "tier": "elite"
+  },
+  {
+    "id": "Chiva54",
+    "club": "Guadalajara",
+    "segment": "MEX",
+    "tier": "elite"
+  },
+  {
+    "id": "Cementero91",
+    "club": "Cruz Azul",
+    "segment": "MEX",
+    "tier": "elite"
+  },
+  {
+    "id": "Tigre45",
+    "club": "Tigres UANL",
+    "segment": "MEX",
+    "tier": "elite"
+  },
+  {
+    "id": "Rayado82",
+    "club": "Monterrey",
+    "segment": "MEX",
+    "tier": "elite"
+  },
+  {
+    "id": "Puma36",
+    "club": "Pumas UNAM",
+    "segment": "MEX",
+    "tier": "elite"
+  },
+  {
+    "id": "Americanista73",
+    "club": "Club América",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Rojiblanco27",
+    "club": "Guadalajara",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Maquina64",
+    "club": "Cruz Azul",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Incomparable18",
+    "club": "Tigres UANL",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Albiazul55",
+    "club": "Monterrey",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Auriazul92",
+    "club": "Pumas UNAM",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Azulcrema46",
+    "club": "Club América",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Chivahermano83",
+    "club": "Guadalajara",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "CruzAzul37",
+    "club": "Cruz Azul",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Volcan74",
+    "club": "Tigres UANL",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Gigante28",
+    "club": "Monterrey",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Universidad65",
+    "club": "Pumas UNAM",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Aguila19",
+    "club": "Club América",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Chiva56",
+    "club": "Guadalajara",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Cementero93",
+    "club": "Cruz Azul",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Tigre47",
+    "club": "Tigres UANL",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Rayado84",
+    "club": "Monterrey",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Puma38",
+    "club": "Pumas UNAM",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Americanista75",
+    "club": "Club América",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Rojiblanco29",
+    "club": "Guadalajara",
+    "segment": "MEX",
+    "tier": "solid"
+  },
+  {
+    "id": "Maquina66",
+    "club": "Cruz Azul",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Incomparable20",
+    "club": "Tigres UANL",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Albiazul57",
+    "club": "Monterrey",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Auriazul94",
+    "club": "Pumas UNAM",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Azulcrema48",
+    "club": "Club América",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Chivahermano85",
+    "club": "Guadalajara",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "CruzAzul39",
+    "club": "Cruz Azul",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Volcan76",
+    "club": "Tigres UANL",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Gigante30",
+    "club": "Monterrey",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Universidad67",
+    "club": "Pumas UNAM",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Aguila21",
+    "club": "Club América",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Chiva58",
+    "club": "Guadalajara",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Cementero95",
+    "club": "Cruz Azul",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Tigre49",
+    "club": "Tigres UANL",
+    "segment": "MEX",
+    "tier": "wild"
+  },
+  {
+    "id": "Zaeem17",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "elite"
+  },
+  {
+    "id": "Nasrawi54",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "elite"
+  },
+  {
+    "id": "Ittihadi91",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "elite"
+  },
+  {
+    "id": "Ahlawi45",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "elite"
+  },
+  {
+    "id": "Hilali82",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "elite"
+  },
+  {
+    "id": "Alami36",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "elite"
+  },
+  {
+    "id": "Amid73",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Raqi27",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Azraq64",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Asfar18",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Jeddah55",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Akhdar92",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Zaeem46",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Nasrawi83",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Ittihadi37",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Ahlawi74",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Hilali28",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Alami65",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Amid19",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Raqi56",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Azraq93",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Asfar47",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Jeddah84",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Akhdar38",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Zaeem75",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Nasrawi29",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "solid"
+  },
+  {
+    "id": "Ittihadi66",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Ahlawi20",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Hilali57",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Alami94",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Amid48",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Raqi85",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Azraq39",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Asfar76",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Jeddah30",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Akhdar67",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Zaeem21",
+    "club": "Al-Hilal",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Nasrawi58",
+    "club": "Al-Nassr",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Ittihadi95",
+    "club": "Al-Ittihad",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Ahlawi49",
+    "club": "Al-Ahli",
+    "segment": "SAU",
+    "tier": "wild"
+  },
+  {
+    "id": "Thrylos17",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "elite"
+  },
+  {
+    "id": "Trifylli54",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "elite"
+  },
+  {
+    "id": "Dikefalos91",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "elite"
+  },
+  {
+    "id": "Aspromavros45",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Pireas82",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Prasinos36",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Enosi73",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Toumba27",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Erythrolefkos64",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Leoforos18",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Kitrinos55",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Salonika92",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Thrylos46",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Trifylli83",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Dikefalos37",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Aspromavros74",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Pireas28",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Prasinos65",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Enosi19",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Toumba56",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Zenitchik17",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "elite"
+  },
+  {
+    "id": "Krasnobely54",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "elite"
+  },
+  {
+    "id": "Armeec91",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "elite"
+  },
+  {
+    "id": "Zheleznaya45",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Piter82",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Myaso36",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Konyushnya73",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Parovoz27",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Nevsky64",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Spartach18",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Krasnosiny55",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Cherkizovo92",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Zenitchik46",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Krasnobely83",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Armeec37",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Zheleznaya74",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Piter28",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Myaso65",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Konyushnya19",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Parovoz56",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Legionista17",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "elite"
+  },
+  {
+    "id": "Kolejorz54",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "elite"
+  },
+  {
+    "id": "Medaliki91",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "elite"
+  },
+  {
+    "id": "BialaGwiazda45",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Wojskowi82",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Lechita36",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Rakow73",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Wislak27",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Lazienkowska64",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Bulgarska18",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Czestochowa55",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Reymonta92",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Legionista46",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Kolejorz83",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Medaliki37",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "BialaGwiazda74",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Wojskowi28",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Lechita65",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Rakow19",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Wislak56",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "wild"
   }
 ]
