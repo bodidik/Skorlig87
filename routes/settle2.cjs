@@ -30,9 +30,8 @@ const LC_START = 30;
 const LC_ENTRY_COST = 3;
 
 // 🔹 Puanlama sabitleri
-// odds-engine'in fiyatlara gömdüğü bahisçi marjı — ima edilen olasılığı
-// (P = margin/odds) geri çıkarmak için gerekli. odds-engine.cjs ile aynı olmalı.
-const BOOKMAKER_MARGIN = 1.08;
+// Bahisçi marjı artık services/match-weights.cjs'te (MW.BOOKMAKER_MARGIN).
+// İma edilen olasılık hesabı da orada — burada kopyası tutulmuyor.
 // Yanlış 1X2 tahmininin ceza tabanı: ceza = BASE / odds
 // (bölme — çarpma değil; gerekçe puanlama bloğunda açıklandı)
 // odds 1.05 favori kaçtı → -2.1 · odds 2.4 → -0.9 · odds 4.0 underdog → -0.5
@@ -347,32 +346,11 @@ async function upsertMatchResultSnapshot({ fixtureId, finalScore, meta, rows, aw
  *  SCORING
  * ====================== */
 
-const SCORE_WEIGHTS = {
-  Türkiye: 1.0,
-  Turkey: 1.0,
-  England: 1.05,
-  Spain: 1.05,
-  Germany: 1.05,
-  Italy: 1.05,
-  France: 1.05,
-  Netherlands: 1.03,
-  Belgium: 1.03,
-  Greece: 1.03,
-  Portugal: 1.03,
-  Brazil: 1.03,
-  Argentina: 1.03,
-  Japan: 1.03,
-  Russia: 1.03,
-  Ukraine: 1.03,
-  USA: 1.02,
-  "United States": 1.02,
-  "Saudi Arabia": 1.02,
-  "Suudi Arabistan": 1.02,
-};
-function getScoreWeight(country) {
-  const c = String(country || "").trim();
-  return Object.prototype.hasOwnProperty.call(SCORE_WEIGHTS, c) ? SCORE_WEIGHTS[c] : 1.0;
-}
+// Ağırlık/çarpan formülleri services/match-weights.cjs'te — tahmin ekranının
+// puan önizlemesi de aynı modülü kullanıyor. Buradaki hesabın kopyasını
+// başka yere yazma; ikisi ayrışırsa ekran yanlış puan gösterir.
+const MW = require("../services/match-weights.cjs");
+const { getScoreWeight } = MW;
 
 // Odds-bazlı sistemde puan yelpazesi genişledi:
 // - Favori outcome doğru = ~3p
@@ -747,34 +725,11 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
 
   const w = getScoreWeight(st.country);
 
-  // ── Maç oddsı (odds-engine): outcome puanının temeli ──────────────────────
-  // Barcelona - Inter Turku: home ~1.05 → kolay, az puan
-  // Bayern - Liverpool: home ~2.10 → zor, çok puan
-  const { calcOdds } = require("../services/odds-engine.cjs");
-  const matchOdds = calcOdds(st.home || "", st.away || "");
-  // Odds → outcome çarpanı: 1.01 oddsı 0.34x (~1 puan), 4.0 oddsı 4.0x (12 puan)
-  function oddsMultiplier(oc) {
-    const raw = oc === "H" ? matchOdds.home : oc === "A" ? matchOdds.away : matchOdds.draw;
-    return Math.max(0.34, Math.min(4.0, raw));
-  }
-
-  // Maç zorluk (belirsizlik) çarpanı — yan kalemlere (FG/HT/red/pen) uygulanır.
-  //
-  // DİKKAT: Bir dönem bu (home_odds + away_odds)/4 idi; hem YÖNÜ TERSTİ hem
-  // DOYUYORDU. Underdog oddsı sınırsız büyüdüğü için (Real Madrid-Ümraniyespor
-  // → away 877) toplam her zaman tavana çarpıyor, en dengesiz maç en yüksek
-  // çarpanı alıyordu. Oysa eşitsiz maçta ilk golü/ilk yarıyı bilmek KOLAYDIR.
-  //
-  // Doğru ölçü favorinin ima edilen olasılığı: yüksekse maç tahmin edilebilir.
-  //   favProb ≈ 0.45 (dengeli)  → ~1.10   ödül biraz artar
-  //   favProb ≈ 0.75 (eşitsiz)  → ~0.60   ödül azalır
-  const impliedProb = (odds) => (odds > 0 ? BOOKMAKER_MARGIN / odds : 0);
-  const favProb = Math.max(
-    impliedProb(matchOdds.home),
-    impliedProb(matchOdds.draw),
-    impliedProb(matchOdds.away)
-  );
-  const matchDifficulty = Math.max(0.6, Math.min(1.4, 2 * (1 - favProb)));
+  // ── Maç oddsı + zorluk: match-weights.cjs tek kaynak ─────────────────────
+  // Formüllerin gerekçesi ve tarihçesi o dosyada. Tahmin ekranının puan
+  // önizlemesi de aynı fonksiyonları kullanıyor.
+  const oddsMultiplier = (oc) => MW.oddsMultiplier(st.home, st.away, oc);
+  const matchDifficulty = MW.matchDifficulty(st.home, st.away);
 
   // ── Topluluk çarpanı: skor tahmini için nadir skor daha fazla kazandırır ──
   const humanList = list.filter((p) => {
@@ -795,23 +750,8 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     }
   }
 
-  /**
-   * Skor çarpanı:
-   *  "Adil pay" ≈ tahminlerin %5'i (20 yaygın skor varsayımı)
-   *  %25 seçmişse  → capped 0.6x → ~7 puan
-   *  %5 seçmişse   → 1.0x → 12 puan (baz)
-   *  Hiç seçmeyen  → 2.5x → 30 puan (ultra nadir)
-   */
-  function scoreMultiplier(sh, sa) {
-    if (humanTotal < 2) return 1.0;
-    const conf = Math.min(1, humanTotal / 5);
-    const key = `${sh}-${sa}`;
-    const n = scorePickMap.get(key) || 0;
-    const fairShare = humanTotal * 0.05;
-    const raw = n === 0 ? 2.5 : fairShare / n;
-    const damped = 1 + (raw - 1) * conf;
-    return Math.max(0.6, Math.min(2.5, damped));
-  }
+  const scoreMultiplier = (sh, sa) =>
+    MW.scoreMultiplier(humanTotal, scorePickMap, `${sh}-${sa}`);
   // ─────────────────────────────────────────────────────────────────────────
 
   const rows = [];

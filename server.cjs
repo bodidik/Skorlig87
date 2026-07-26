@@ -160,6 +160,8 @@ safeMount("tournaments",      () => app.use("/api/tournaments",   require("./rou
 safeMount("weekly-picks",     () => app.use("/api/weekly-picks", require("./routes/weekly-picks.cjs")));
 safeMount("teams",            () => app.use("/api/teams",        require("./routes/teams.cjs")));
 safeMount("auth-firebase",    () => app.use("/api",              require("./routes/auth-firebase.cjs")));
+safeMount("push",             () => app.use("/api/push",         require("./routes/push.cjs")));
+safeMount("pred-weights",     () => app.use("/api",              require("./routes/pred-weights.cjs")));
 
 /* 🔹 Yeni: runtime mode admin paneli */
 safeMount("admin-runtime", () =>
@@ -233,5 +235,11 @@ app.listen(PORT, HOST, () => {
 
   if (process.env.SKORLIG_SYNC !== "0") {
     safeMount("livescore-sync", () => require("./services/livescore-sync.cjs").start(30 * 1000, PORT));
+  }
+
+  /* 🔔 Push bildirim zamanlayıcı: maç başlangıcı + sonuç duyurusu
+     Kapatmak için: SKORLIG_PUSH_SCHED=0 (gönderimin tamamı: SKORLIG_PUSH=0) */
+  if (process.env.SKORLIG_PUSH_SCHED !== "0") {
+    safeMount("push-scheduler", () => require("./services/push-scheduler.cjs").start(5 * 60 * 1000));
   }
 });
