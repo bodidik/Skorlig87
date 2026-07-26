@@ -242,4 +242,15 @@ app.listen(PORT, HOST, () => {
   if (process.env.SKORLIG_PUSH_SCHED !== "0") {
     safeMount("push-scheduler", () => require("./services/push-scheduler.cjs").start(5 * 60 * 1000));
   }
+
+  /* 📅 Fikstür senkronu: football-data.org → fixtures.json
+     Ülke sıralaması için maç programı gerekli — Portekizli/Brezilyalı oyuncunun
+     tahmin edecek maçı olmalı. Manuel girilen maçlara dokunmaz.
+     6 saatte bir, tur başına 3 istek (kota: 10/dk).
+     Kapatmak için: SKORLIG_FIXTURE_SYNC=0 */
+  if (process.env.SKORLIG_FIXTURE_SYNC !== "0" && process.env.FDO_KEY) {
+    safeMount("fixture-sync", () =>
+      require("./services/fixture-sync.cjs").start(6 * 3600 * 1000, { days: 30 })
+    );
+  }
 });

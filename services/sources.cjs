@@ -35,11 +35,14 @@ const SOURCES = [
     name: "Bilyoner",
     tier: 1,
     kind: "scraper",
-    status: "active",
+    status: "broken",
     url: "https://www.bilyoner.com/iddaa",
     module: "./scrapers/bilyoner.cjs",
     provides: ["fixtures", "odds"],
-    notes: "Bilyoner API üzerinden iddaa programı + 1X2 oranları. Fetch tabanlı (Puppeteer yok).",
+    notes:
+      "ÇALIŞMIYOR (2026-07-26 doğrulandı): sportsbookv2.bilyoner.com artık DNS'te " +
+      "çözülmüyor (ENOTFOUND), scraper 0 maç dönüyor. 'active' kaldığı sürece kademe " +
+      "boşuna bu kaynağı deniyordu. Yeni uç nokta bulununca status'ü active yap.",
   },
   {
     id: "skorx",
@@ -62,9 +65,13 @@ const SOURCES = [
     status: "active",
     url: "https://www.thesportsdb.com/api",
     envKey: null,                    // ücretsiz katman key gerektirmez
-    provides: ["fixtures", "results", "teams"],
+    provides: ["results", "teams"],  // "fixtures" KASITLI olarak yok — aşağıdaki nota bak
     quota: { daily: 1000 },
-    notes: "Ücretsiz API. Global kapsama orta. Logo/takım bilgisi iyi.",
+    notes:
+      "Ücretsiz katmanda eventsday.php sorgu BAŞINA SADECE 3 sonuç döndürüyor " +
+      "(2026-07-26 ölçüldü: her tarih tam 3 maç, 16 Ağustos dahil). Fikstür " +
+      "programı için kullanılamaz — 'fixtures' listeden çıkarıldı. Takım/logo " +
+      "bilgisi ve tekil sonuç sorgusu için hâlâ işe yarar.",
   },
 
   // ─── TIER 3: Ücretli API (son çare) ──────────────────────────
@@ -73,12 +80,16 @@ const SOURCES = [
     name: "API-Football",
     tier: 3,
     kind: "api",
-    status: "active",
+    status: "suspended",
     url: process.env.AF_BASE || "https://v3.football.api-sports.io",
     envKey: "AF_KEY",
     provides: ["fixtures", "live", "results", "teams", "leagues"],
     quota: { daily: 100 },
-    notes: "En kapsamlı ama günde 100 istek (ücretsiz tier). Kota korumalı kullan.",
+    notes:
+      "HESAP ASKIYA ALINMIŞ (2026-07-26): /status → 'Your account is suspended'. " +
+      "Anahtar .env'de duruyor ama her istek boş dönüyor. dashboard.api-football.com " +
+      "üzerinden hesabın açılması gerekiyor. Kapsamı en geniş kaynak (Süper Lig, " +
+      "J-League dahil) — düzelirse fikstür senkronu buraya da bağlanmalı.",
   },
   {
     id: "fdo",
@@ -88,9 +99,16 @@ const SOURCES = [
     status: "active",
     url: process.env.FDO_BASE || "https://api.football-data.org/v4",
     envKey: "FDO_KEY",
+    module: "./fixture-sync.cjs",
     provides: ["fixtures", "results", "leagues"],
-    quota: { daily: 1000 },
-    notes: "Büyük Avrupa ligleri iyi. Canlı skor yok, program/sonuç için.",
+    quota: { daily: 1000, perMinute: 10 },
+    notes:
+      "ŞU AN FİKSTÜRÜN TEK ÇALIŞAN KAYNAĞI (services/fixture-sync.cjs). " +
+      "Ücretsiz katman 13 yarışma: Brezilya, İngiltere (PL+Championship), İspanya, " +
+      "İtalya, Almanya, Fransa, Hollanda, Portekiz + UCL/Libertadores/Dünya Kupası. " +
+      "KAPSAM DIŞI: Türkiye, Japonya, ABD, Meksika, S.Arabistan, Yunanistan, Rusya, " +
+      "Polonya, Arjantin — bu ülkeler manuel girişle besleniyor. " +
+      "Sorgu penceresi en fazla 10 gün. Canlı skor yok.",
   },
 ];
 
