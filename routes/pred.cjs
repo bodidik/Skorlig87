@@ -29,6 +29,12 @@ const INITIAL_DEFAULT = 30;
 const INITIAL_1987 = 60;
 const LC_MATCH_COST = 3; // matchEntryCost – hem backend hem frontend bu rakamla uyumlu
 
+// 🔹 Ölçeklenme: Mongo primary olduğunda preds.json'a yazmak 17MB'lık dosyayı
+// her submit'te baştan yazar — 500k kullanıcıda çöker. Bu bayrak açıkken
+// (geçiş dönemi) dosya mirror'ı korunur; production'da SKORLIG_PREDS_FILE_MIRROR=0
+// ile kapatılıp yalnızca MongoDB kullanılır.
+const PREDS_FILE_MIRROR = String(process.env.SKORLIG_PREDS_FILE_MIRROR ?? "1") !== "0";
+
 // ----------------- JSON HELPER'LAR -----------------
 async function readJson(file, fb) {
   try {
@@ -561,6 +567,19 @@ async function upsertPredictionMongo(db, rec, opts = {}) {
   );
 }
 
+// Belirli fixture+user için tahmin var mı? (Mongo primary — alreadyPredicted)
+async function predExistsMongo(db, fixtureId, userId) {
+  if (!db) return false;
+  const uidLower = String(userId || "").trim().toLowerCase();
+  if (!uidLower) return false;
+  const col = db.collection("predictions");
+  const doc = await col.findOne(
+    { fixtureId: String(fixtureId), userIdLower: uidLower },
+    { projection: { _id: 1 } }
+  );
+  return !!doc;
+}
+
 async function upsertManyPredictionsMongo(db, recs, opts = {}) {
   if (!db || !Array.isArray(recs) || !recs.length) return;
   const col = db.collection("predictions");
@@ -805,16 +824,26 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
       });
     }
 
-    // Mevcut tahmin listesini oku (hem LC için, hem yazmak için)
-    const { list, wrap } = await loadPredList();
+    // Mevcut tahmin listesini oku — yalnızca dosya moduna düşülecekse.
+    // Mongo primary'de 17MB dosyayı okumak/yazmak ölçekte çöker.
+    const needFile = !db || PREDS_FILE_MIRROR;
+    let list = [];
+    let wrap = null;
+    if (needFile) {
+      const loaded = await loadPredList();
+      list = loaded.list;
+      wrap = loaded.wrap;
+    }
 
     // Aynı fixture + user için daha önce tahmin var mı?
     const uidLower_forCheck = uid.toLowerCase();
-    const alreadyPredicted = list.some((p) => {
-    const fxId = String(p.fixtureId || "").trim();
-    const puid = String(p.userId || p.user || "").trim().toLowerCase();
-    return fxId === fx && puid === uidLower_forCheck;
-  });
+    const alreadyPredicted = db
+      ? await predExistsMongo(db, fx, uid)
+      : list.some((p) => {
+          const fxId = String(p.fixtureId || "").trim();
+          const puid = String(p.userId || p.user || "").trim().toLowerCase();
+          return fxId === fx && puid === uidLower_forCheck;
+        });
 
         // --- HİLE ENGELİ: event sonrası mikro tahmin lock (minute bazlı + ISO fallback) ---
     const st = await readJson(stateFile(fx), null);
@@ -979,13 +1008,6 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
 
     // Aynı kullanıcı + fixture için son tahmini yazsın (eski kaydı temizle)
     const uidLower = uid.toLowerCase();
-
-    const filtered = list.filter((p) => {
-      const sameFx = String(p.fixtureId || "").trim() === fx;
-      const pidLower = String(p.userId || p.user || "").trim().toLowerCase();
-      return !(sameFx && pidLower === uidLower);
-    });
-
     const nowISO = new Date().toISOString();
 
     // Skor girilmişse outcome'u otomatik türet
@@ -1017,21 +1039,25 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
       at: nowISO,
     };
 
-    filtered.push(rec);
-
-    if (wrap) {
-      wrap.items = filtered;
-      await writeJson(PREDS_FILE, wrap);
-    } else {
-      await writeJson(PREDS_FILE, filtered);
+    // 🔵 Mongo primary yazma (varsa) — upsert, önceki kaydı ezer
+    if (db) {
+      await upsertPredictionMongo(db, rec, { source: "user" });
     }
 
-    // 🔵 Mongo mirror (varsa)
-    if (db) {
-      try {
-        await upsertPredictionMongo(db, rec, { source: "user" });
-      } catch (e) {
-        console.error("[pred] Mongo mirror failed for submit:", e);
+    // 🟢 Dosya yazma — yalnızca dosya modunda veya geçiş mirror'ı açıkken.
+    // (Mongo primary + mirror kapalı → 17MB dosyaya hiç dokunulmaz.)
+    if (needFile) {
+      const filtered = list.filter((p) => {
+        const sameFx = String(p.fixtureId || "").trim() === fx;
+        const pidLower = String(p.userId || p.user || "").trim().toLowerCase();
+        return !(sameFx && pidLower === uidLower);
+      });
+      filtered.push(rec);
+      if (wrap) {
+        wrap.items = filtered;
+        await writeJson(PREDS_FILE, wrap);
+      } else {
+        await writeJson(PREDS_FILE, filtered);
       }
     }
 
@@ -1405,17 +1431,7 @@ router.post("/pred/bots-generate", async (req, res) => {
     }
 
     const db = getDb(req);
-
-    // Mevcut tahminler
-    const { list, wrap } = await loadPredList();
-
-    // Bu fixture + bot-profiles.json'dan gelen tüm bot userId'lerini temizle
-    const filtered = list.filter((p) => {
-      const sameFixture = String(p.fixtureId || "") === fx;
-      const uid = String(p.userId || "").trim().toLowerCase();
-      const isBot = BOT_USER_ID_SET.has(uid);
-      return !(sameFixture && isBot);
-    });
+    const needFile = !db || PREDS_FILE_MIRROR;
 
     // Fixture meta (varsa)
     const meta = await readFixtureMeta(fx);
@@ -1433,24 +1449,28 @@ router.post("/pred/bots-generate", async (req, res) => {
       });
     });
 
-    const finalList = filtered.concat(newRecs);
-
-    if (wrap) {
-      wrap.items = finalList;
-      await writeJson(PREDS_FILE, wrap);
-    } else {
-      await writeJson(PREDS_FILE, finalList);
+    // 🔵 Mongo primary (varsa): bu fixture'ın eski bot tahminlerini sil, yenile
+    if (db) {
+      const col = db.collection("predictions");
+      await col.deleteMany({ fixtureId: fx, isBot: true });
+      await upsertManyPredictionsMongo(db, newRecs, { source: "bot" });
     }
 
-    // 🔵 Mongo mirror (varsa) – bot tahminleri
-    if (db) {
-      try {
-        await upsertManyPredictionsMongo(db, newRecs, { source: "bot" });
-      } catch (e) {
-        console.error(
-          "[pred] Mongo mirror failed for bots-generate:",
-          e
-        );
+    // 🟢 Dosya yazma — yalnızca dosya modunda veya mirror açıkken
+    if (needFile) {
+      const { list, wrap } = await loadPredList();
+      const filtered = list.filter((p) => {
+        const sameFixture = String(p.fixtureId || "") === fx;
+        const uid = String(p.userId || "").trim().toLowerCase();
+        const isBot = BOT_USER_ID_SET.has(uid);
+        return !(sameFixture && isBot);
+      });
+      const finalList = filtered.concat(newRecs);
+      if (wrap) {
+        wrap.items = finalList;
+        await writeJson(PREDS_FILE, wrap);
+      } else {
+        await writeJson(PREDS_FILE, finalList);
       }
     }
 
@@ -1474,8 +1494,17 @@ router.post("/pred/bots-generate", async (req, res) => {
 // GET /api/pred/list?fixtureId=...
 router.get("/pred/list", async (req, res) => {
   try {
-    const { list } = await loadPredList();
+    const db = getDb(req);
     const fx = String(req.query.fixtureId || "").trim();
+
+    if (db) {
+      const col = db.collection("predictions");
+      const query = fx ? { fixtureId: fx } : {};
+      const items = await col.find(query, { projection: { _id: 0 } }).toArray();
+      return res.json({ ok: true, count: items.length, items });
+    }
+
+    const { list } = await loadPredList();
     const filtered = fx
       ? list.filter((p) => String(p.fixtureId) === fx)
       : list;
@@ -1497,16 +1526,35 @@ router.delete("/pred/cancel", verifyToken, express.json(), async (req, res) => {
     const uid = req.uid;
     if (!fx || !uid) return res.status(400).json({ ok: false, error: "FIXTURE_AND_USER_REQUIRED" });
 
-    const { list, wrap } = await loadPredList();
-    const before = list.length;
-    const filtered = list.filter((p) =>
-      !(String(p.fixtureId || "") === fx && String(p.userId || p.user || "").toLowerCase() === uid.toLowerCase())
-    );
-    if (filtered.length === before) return res.json({ ok: true, deleted: 0, message: "Tahmin bulunamadı" });
+    const db = getDb(req);
+    const needFile = !db || PREDS_FILE_MIRROR;
 
-    const toWrite = wrap ? { ...wrap, items: filtered } : filtered;
-    await fsp.writeFile(PREDS_FILE, JSON.stringify(toWrite, null, 2), "utf8");
-    res.json({ ok: true, deleted: before - filtered.length });
+    let deleted = 0;
+
+    // 🔵 Mongo primary
+    if (db) {
+      const col = db.collection("predictions");
+      const r = await col.deleteOne({ fixtureId: fx, userIdLower: uid.toLowerCase() });
+      deleted = r.deletedCount || 0;
+    }
+
+    // 🟢 Dosya (dosya modu veya mirror açık)
+    if (needFile) {
+      await withFileLock(PREDS_FILE, async () => {
+        const { list, wrap } = await loadPredList();
+        const before = list.length;
+        const filtered = list.filter((p) =>
+          !(String(p.fixtureId || "") === fx && String(p.userId || p.user || "").toLowerCase() === uid.toLowerCase())
+        );
+        if (filtered.length !== before) {
+          if (!db) deleted = before - filtered.length;
+          await writeJson(PREDS_FILE, wrap ? { ...wrap, items: filtered } : filtered);
+        }
+      });
+    }
+
+    if (deleted === 0) return res.json({ ok: true, deleted: 0, message: "Tahmin bulunamadı" });
+    res.json({ ok: true, deleted });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -1609,16 +1657,28 @@ router.get("/pred/my", async (req, res) => {
     }
 
     // 4) pred detayı (ilk tahmin)
-    const { list: predList } = await loadPredList();
     const uidLower = uid.toLowerCase();
+
+    // Mongo varsa kullanıcının tahminlerini tek sorguda al; yoksa dosyadan.
+    let predByFixture = new Map();
+    if (db) {
+      const docs = await db.collection("predictions")
+        .find({ userIdLower: uidLower, fixtureId: { $in: Array.from(fidSet) } })
+        .toArray();
+      predByFixture = new Map(docs.map((p) => [String(p.fixtureId || ""), p]));
+    } else {
+      const { list: predList } = await loadPredList();
+      for (const p of predList) {
+        if (String(p.userId || p.user || "").toLowerCase() !== uidLower) continue;
+        predByFixture.set(String(p.fixtureId || ""), p);
+      }
+    }
 
     const items = [];
     for (const fid of fidSet) {
       const fx = fxMap.get(fid) || {};
       const live = await getLiveState(fid);
-      const pred = predList.find((p) =>
-        String(p.fixtureId || "") === fid && String(p.userId || p.user || "").toLowerCase() === uidLower
-      ) || null;
+      const pred = predByFixture.get(fid) || null;
 
       items.push({
         fixtureId: fid,

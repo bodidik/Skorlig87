@@ -65,6 +65,18 @@ function stateFile(fid) {
   return path.join(LIVE_DIR, `${String(fid)}.json`);
 }
 
+// Bir fixture'ın tahminlerini getir. Mongo primary varsa oradan (indeksli
+// tek sorgu), yoksa 17MB preds.json'dan filtreleyerek. 500k'da dosya taraması
+// her settle'da tüm dosyayı okur — Mongo'da yalnızca ilgili fixture döner.
+async function loadFixturePreds(fid, db) {
+  if (db) {
+    return db.collection("predictions").find({ fixtureId: String(fid) }).toArray();
+  }
+  const predsRaw = await readJson(PREDS_FILE, []);
+  const preds = Array.isArray(predsRaw) ? predsRaw : Array.isArray(predsRaw?.items) ? predsRaw.items : [];
+  return preds.filter((p) => String(p.fixtureId) === String(fid));
+}
+
 async function fileExists(p) {
   try {
     await fsp.access(p);
@@ -719,9 +731,7 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     }
   }
 
-  const predsRaw = await readJson(PREDS_FILE, []);
-  const preds = Array.isArray(predsRaw) ? predsRaw : Array.isArray(predsRaw?.items) ? predsRaw.items : [];
-  const listRaw = preds.filter((p) => String(p.fixtureId) === fid);
+  const listRaw = await loadFixturePreds(fid, db);
 
   // 🔒 Mükerrer tahmin koruması: aynı user+fixture için birden fazla kayıt
   // varsa (eski bot üretimi veya bozuk yazma) EN SON olanı geçerli sayılır.
@@ -1353,9 +1363,8 @@ router.get("/match-race", async (req, res) => {
     if (!fixtureId) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
 
     // Tüm tahminleri ve fixture bilgisini oku
-    const predsRaw = await readJson(PREDS_FILE, []);
-    const predsAll = Array.isArray(predsRaw) ? predsRaw : predsRaw.items || [];
-    const fixturePreds = predsAll.filter((p) => String(p.fixtureId) === fixtureId);
+    const db = req.app?.locals?.db || null;
+    const fixturePreds = await loadFixturePreds(fixtureId, db);
 
     // Fixture bilgisi (home/away/date)
     const fixtures = await loadFixturesList();
@@ -1538,12 +1547,18 @@ router.get("/user-profile", async (req, res) => {
       (u) => String(u.userId || "").toLowerCase() === tidLower
     );
 
-    // preds.json → toplam tahmin sayısı
-    const predsRaw = await readJson(PREDS_FILE, []);
-    const predsAll = Array.isArray(predsRaw) ? predsRaw : predsRaw.items || [];
-    const predCount = predsAll.filter(
-      (p) => String(p.userId || p.user || "").toLowerCase() === tidLower
-    ).length;
+    // toplam tahmin sayısı — Mongo varsa indeksli count, yoksa dosya taraması
+    const dbRef = req.app?.locals?.db || null;
+    let predCount;
+    if (dbRef) {
+      predCount = await dbRef.collection("predictions").countDocuments({ userIdLower: tidLower });
+    } else {
+      const predsRaw = await readJson(PREDS_FILE, []);
+      const predsAll = Array.isArray(predsRaw) ? predsRaw : predsRaw.items || [];
+      predCount = predsAll.filter(
+        (p) => String(p.userId || p.user || "").toLowerCase() === tidLower
+      ).length;
+    }
 
     // leaderboard sırası
     const allTotals = (totalsRaw.items || [])
@@ -1636,18 +1651,27 @@ router.get("/pred/history/detail", async (req, res) => {
         (r) => String(r.userId || "").trim().toLowerCase() === uidLower
       ) || null;
 
-    // preds.json içinden benim tahminim (son kaydı tercih eder)
-    const predsRaw = await readJson(PREDS_FILE, []);
-    const preds = Array.isArray(predsRaw) ? predsRaw : Array.isArray(predsRaw?.items) ? predsRaw.items : [];
-    const myPred =
-      preds
-        .slice()
-        .reverse()
-        .find(
-          (p) =>
-            String(p.fixtureId) === fixtureId &&
-            String(p.userId || "").trim().toLowerCase() === uidLower
-        ) || null;
+    // benim tahminim (son kaydı tercih eder) — Mongo primary varsa oradan
+    const dbRef = req.app?.locals?.db || null;
+    let myPred = null;
+    if (dbRef) {
+      myPred = await dbRef.collection("predictions").findOne({
+        fixtureId,
+        userIdLower: uidLower,
+      });
+    } else {
+      const predsRaw = await readJson(PREDS_FILE, []);
+      const preds = Array.isArray(predsRaw) ? predsRaw : Array.isArray(predsRaw?.items) ? predsRaw.items : [];
+      myPred =
+        preds
+          .slice()
+          .reverse()
+          .find(
+            (p) =>
+              String(p.fixtureId) === fixtureId &&
+              String(p.userId || "").trim().toLowerCase() === uidLower
+          ) || null;
+    }
 
     // state (varsa) — gerçek meta/FT kanıtı
     const st = await readJson(stateFile(fixtureId), null);
