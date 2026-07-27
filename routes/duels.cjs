@@ -38,6 +38,26 @@ function genId() {
   return "duel_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
 }
 
+/**
+ * Ateşle-unut bildirim. Düello akışını ASLA bloklamaz veya bozmaz:
+ * push servisi çökse/yavaşlasa bile LC işlemi ve yanıt etkilenmez.
+ */
+function notify(userIds, payload) {
+  try {
+    const ids = (Array.isArray(userIds) ? userIds : [userIds]).filter(Boolean);
+    if (!ids.length) return;
+    require("../services/push.cjs")
+      .sendToUsers(ids, { type: "duel", ...payload })
+      .catch((e) => console.warn("[duels] bildirim hatası:", e.message));
+  } catch (e) {
+    console.warn("[duels] bildirim atlandı:", e.message);
+  }
+}
+
+function duelMatchLabel(d) {
+  return d.home && d.away ? `${d.home} – ${d.away}` : "maç";
+}
+
 function getDb(req) {
   return req?.app?.locals?.db || null;
 }
@@ -298,6 +318,33 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
       if (db) {
         try { await db.collection("duels").updateOne({ id: duel.id }, { $set: duel }); } catch {}
       }
+
+      // Sonucu iki tarafa da bildir — kaybeden de ne olduğunu görmeli.
+      const label = duelMatchLabel(duel);
+      const cp = duel.creatorPoints ?? 0;
+      const ap = duel.acceptorPoints ?? 0;
+      const data = { screen: "duel", duelId: duel.id, fixtureId: duel.fixtureId };
+
+      if (!duel.winnerId) {
+        const body = `${label} — ${cp} / ${ap}. Berabere, ${duel.stake} LC iade edildi.`;
+        notify([duel.creatorId, duel.acceptorId], { title: "🤝 Düello berabere", body, data });
+      } else {
+        const winnerIsCreator = duel.winnerId === duel.creatorId;
+        const loserId  = winnerIsCreator ? duel.acceptorId : duel.creatorId;
+        const winPts   = winnerIsCreator ? cp : ap;
+        const losePts  = winnerIsCreator ? ap : cp;
+
+        notify(duel.winnerId, {
+          title: "🏆 Düelloyu kazandın",
+          body: `${label} — ${winPts} / ${losePts}. ${duel.winAmount ?? duel.pot} LC hesabına geçti.`,
+          data,
+        });
+        notify(loserId, {
+          title: "⚔️ Düelloyu kaybettin",
+          body: `${label} — ${losePts} / ${winPts}. Bir sonrakinde revanş al.`,
+          data,
+        });
+      }
     } catch (e) {
       console.error("[duels] settle credit failed for", duel.id, e);
     }
@@ -368,6 +415,15 @@ router.post("/duels/create", verifyToken, async (req, res) => {
       try { await db.collection("duels").insertOne(duel); } catch (e) { console.error("[duels] mongo create:", e); }
     }
 
+    // Hedefi olan düello → meydan okunana haber ver. Açık düelloda alıcı yok.
+    if (targetId) {
+      notify(targetId, {
+        title: "⚔️ Sana meydan okundu",
+        body: `${duel.creatorName || "Bir rakip"} ${duelMatchLabel(duel)} maçında ${s} LC'lik düello açtı.`,
+        data: { screen: "duel", duelId: id, fixtureId: fx },
+      });
+    }
+
     return res.json({ ok: true, duel });
   } catch (e) {
     console.error("[duels] create failed:", e);
@@ -420,6 +476,15 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
     if (db) {
       try { await db.collection("duels").updateOne({ id: did }, { $set: result.duel }); } catch {}
     }
+
+    // Kuran kişi rakibinin belli olduğunu bilmeli — açık düelloda bunu
+    // başka türlü fark etmesi mümkün değil.
+    notify(result.duel.creatorId, {
+      title: "⚔️ Düellon kabul edildi",
+      body: `${acceptorName || "Bir rakip"} ${duelMatchLabel(result.duel)} düellonu kabul etti. Ödül: ${result.duel.winAmount} LC.`,
+      data: { screen: "duel", duelId: did, fixtureId: result.duel.fixtureId },
+    });
+
     return res.json({ ok: true, duel: result.duel });
   } catch (e) {
     console.error("[duels] accept failed:", e);
