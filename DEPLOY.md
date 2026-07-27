@@ -160,9 +160,31 @@ node -e "require('./lib/mongo.cjs').getDb().then(async d=>{console.log('mongo sn
 node -e "console.log('dosya snapshot:', JSON.parse(require('fs').readFileSync('data/match-results.json','utf8')).items.length)"
 ```
 
-Sayılar yakın değilse **kapatma**. Geçmişi taşımak için aynayı bir süre `1`'de
-bırak: her yeni settle ilgili maçı Mongo'ya da yazar, ama eski maçlar
-kendiliğinden taşınmaz — gerekirse tek seferlik bir aktarım yaz.
+### Geçmişi taşı
+
+`settle2` yalnızca YENİ settle'ları Mongo'ya yazar; eski snapshot'lar
+kendiliğinden taşınmaz. Tek seferlik aktarım (idempotent, tekrar çalıştırılabilir):
+
+```bash
+node scripts/migrate-match-results.cjs
+```
+
+Aktarım bittiğinde doğrulama otomatik çalışır. Sonradan tekrar denetlemek için:
+
+```bash
+node scripts/migrate-match-results.cjs --verify
+```
+
+Kontrol ettikleri: snapshot sayısı · zorunlu indeksler · örneklemde satır sayısı
+· **`awardedAt` mührü** (kaybolursa maç yeniden ödüllendirilir) · ve asıl sorgu
+yolu — bir kullanıcının geçmişi Mongo'dan gerçekten dönüyor mu.
+
+> Son madde önemli: veri doğru görünse bile `rows.userIdLower` alanı eksikse
+> geçmiş sorgusu **hata vermeden boş döner**; kullanıcı geçmişini kaybetmiş
+> sanır. Script bunu ayrıca sınar.
+
+- `SONUC: GO` + çıkış kodu 0 → devam et
+- `SONUC: NO-GO` + çıkış kodu 1 → **bayrağı çevirme**
 
 ### Kapat
 
