@@ -224,35 +224,80 @@ function fromBilyoner() {
 
 // ─── Source 3: Nesine ─────────────────────────────────────────────────────────
 
+/**
+ * Nesine — canlı skor sayfası.
+ *
+ * ÖNCEKİ SÜRÜM ÖLÜ ADRESİ KAZIYORDU: iddaa.nesine.com/canli artık 404
+ * ("Aradığınız sayfa bulunamadı"). Sayfa yüklendiği için hata fırlatmıyor,
+ * sessizce 0 maç dönüyordu. Doğru adres www.nesine.com/iddaa/canli-skor/futbol.
+ *
+ * Not: nesine'nin bülten API'si (bulten.nesine.com/api/bulten/getlivebultenv3)
+ * JSON döner ama SKOR İÇERMEZ — bahis programı + oranlardır. Canlı skor için
+ * bu sayfa ayrıştırılmak zorunda.
+ *
+ * Ayrıca yalnızca canlı değil, günün tamamı gelir (biten + başlamamış dahil).
+ */
 function fromNesine() {
   return scrapeWithBrowser(
-    "https://iddaa.nesine.com/canli",
+    "https://www.nesine.com/iddaa/canli-skor/futbol",
     () => {
-      const rows = document.querySelectorAll(
-        ".match-row, .event-row, [class*='MatchRow'], [class*='matchRow'], [class*='EventRow']"
-      );
       const results = [];
-      rows.forEach(row => {
-        const teams    = row.querySelectorAll("[class*='team'], [class*='Team']");
-        if (teams.length < 2) return;
-        const homeTeam = teams[0]?.textContent?.trim() || "";
-        const awayTeam = teams[1]?.textContent?.trim() || "";
+      const txt = (el) => (el?.textContent || "").replace(/\s+/g, " ").trim();
+
+      document.querySelectorAll("[data-test-id='ClassicMatchLine']").forEach((row) => {
+        const homeTeam = txt(row.querySelector(".home-team"));
+        const awayTeam = txt(row.querySelector(".away-team"));
         if (!homeTeam || !awayTeam) return;
-        const scoreEls  = row.querySelectorAll("[class*='score'], [class*='Score']");
-        const homeScore = scoreEls[0]?.textContent?.trim() || null;
-        const awayScore = scoreEls[1]?.textContent?.trim() || null;
-        const status    = row.querySelector("[class*='time'], [class*='minute'], [class*='status'], [class*='Status']")?.textContent?.trim() || "—";
+
+        // Skor kutusu yalnızca başlamış maçlarda dolu.
+        const hs = txt(row.querySelector(".home-score"));
+        const as = txt(row.querySelector(".away-score"));
+
+        // Durum rozeti: "88'" | "MS" | "20:00" (başlamamışta kickoff saati)
+        const status = txt(row.querySelector("[data-test-id='Status'], .status")) || "—";
+
+        // Satır sınıfı durumun asıl kaynağı — metinden daha kararlı.
+        // "live liveData" | "not-started unliveData" |
+        // "match-not-play unliveData" | "extra-time unliveData finished"
+        const cls = String(row.className || "");
+        // \b sınırı "unliveData" ile eşleşmez (n-l arasında sözcük sınırı yok),
+        // bu yüzden ayrıca dışlamaya gerek kalmaz.
+        const isLive = /\bliveData\b/.test(cls);
+        const isFinished = /match-not-play|finished/.test(cls);
+        const notStarted = /not-started/.test(cls);
+
+        // Lig adı: maç listesi <ul class="classic-score">, lig başlığı onun
+        // hemen ÖNCEKİ kardeşi. Başlığın kendi sınıfı derleme üretimi
+        // (f23faf59...) olduğundan sınıfa değil yapıya bakılır.
+        const ul = row.closest("ul.classic-score") || row.closest("ul");
+        const league = txt(ul?.previousElementSibling);
+
         results.push({
-          homeTeam, awayTeam, homeScore, awayScore,
-          status, startTime: "", htScore: null, matchDate: "",
-          homeCrest: null, awayCrest: null, homeRed: 0, awayRed: 0,
-          isLive: true, isHT: status === "HT", isFinished: false,
-          compTitle: "", compCountry: "Turkey",
+          homeTeam,
+          awayTeam,
+          homeScore: notStarted ? null : hs || null,
+          awayScore: notStarted ? null : as || null,
+          status: isFinished ? "MS" : status,
+          startTime: notStarted ? status : "",
+          htScore: null,
+          matchDate: "",
+          homeCrest: null,
+          awayCrest: null,
+          homeRed: 0,
+          awayRed: 0,
+          isLive,
+          isHT: status === "HT" || status === "DA",
+          isFinished,
+          compTitle: league || "",
+          // Ülke lig adının içinde gömülü geliyor ("BREZİLYA SERİE A");
+          // ayrı bir alan yok, matchLeague() anahtar kelimeyle eşleştirir.
+          compCountry: "",
         });
       });
+
       return results;
     },
-    null
+    "[data-test-id='ClassicMatchLine']"
   );
 }
 
@@ -626,36 +671,106 @@ function fromWSLFootball() {
 
 // ─── Source 10: SoccersAPI livescore widget ───────────────────────────────────
 
+/**
+ * SoccersAPI — canlı skor widget'ı.
+ *
+ * ÖNCEKİ SÜRÜM YANLIŞ SAYFAYI KAZIYORDU: livescore.soccersapi.com/livescore-widget
+ * widget'ın KURULUM sayfası ("Get Widget", "Fonts", "Colors" ayarları) — maç
+ * verisi içermez. Bu yüzden hatasız ama hep 0 maç dönüyordu. Asıl veri
+ * ls.soccersapi.com'daki widget önizlemesinde.
+ *
+ * Yeni ayrıştırıcı joker (`[class*='...']`) seçici kullanmaz; işaretlemedeki
+ * data-* öznitelikleri okunur — bunlar sınıf adlarından çok daha kararlıdır
+ * ve ülke/lig/durum bilgisini hazır verir.
+ */
 function fromSoccersAPI() {
   return scrapeWithBrowser(
-    "https://livescore.soccersapi.com/livescore-widget",
+    "https://ls.soccersapi.com/?w=w_preview",
     () => {
-      // Widget sayfası — React veya Angular tabanlı olabilir
-      const rows = document.querySelectorAll(
-        "[class*='match'], [class*='fixture'], [class*='event'], [class*='game'], tr.match"
-      );
       const results = [];
-      rows.forEach(row => {
-        const homeTeam = row.querySelector("[class*='home'] [class*='name'], [class*='homeTeam'], [class*='home-name']")?.textContent?.trim() || "";
-        const awayTeam = row.querySelector("[class*='away'] [class*='name'], [class*='awayTeam'], [class*='away-name']")?.textContent?.trim() || "";
+
+      document.querySelectorAll(".match[data-match]").forEach((row) => {
+        // Takım adı: kap içindeki metin (logo <img> metin üretmez).
+        // İçerideki .events kutusu kart/gol ikonları taşır, metni ayıklanır.
+        const teamName = (el) => {
+          if (!el) return "";
+          const clone = el.cloneNode(true);
+          clone.querySelectorAll(".events").forEach((e) => e.remove());
+          return (clone.textContent || "").replace(/\s+/g, " ").trim();
+        };
+
+        const homeEl = row.querySelector(".mteams .home");
+        const awayEl = row.querySelector(".mteams .away");
+        const homeTeam = teamName(homeEl);
+        const awayTeam = teamName(awayEl);
         if (!homeTeam || !awayTeam) return;
-        const homeScore = row.querySelector("[class*='homeScore'], [class*='home-score'], [class*='home'] [class*='score']")?.textContent?.trim() || null;
-        const awayScore = row.querySelector("[class*='awayScore'], [class*='away-score'], [class*='away'] [class*='score']")?.textContent?.trim() || null;
-        const status    = row.querySelector("[class*='status'], [class*='time'], [class*='minute']")?.textContent?.trim() || "—";
-        const compEl    = row.closest("[class*='league'], [class*='competition']")?.querySelector("[class*='name'], [class*='title']");
+
+        const hs = row.querySelector("[data-home-score]");
+        const as = row.querySelector("[data-away-score]");
+        const homeScore = hs ? hs.getAttribute("data-home-score") : null;
+        const awayScore = as ? as.getAttribute("data-away-score") : null;
+
+        // Durum rozeti: "NS" | "FT" | "HT" | "45'" ...
+        const statusEl = row.querySelector(".status_info span");
+        const status = (statusEl?.textContent || "").trim() || "—";
+
+        // data-status-id kaynağın kendi kodu: 0=başlamadı, 1=oynanıyor, 3=bitti.
+        // Metin yerine buna bakmak dil/biçim değişimlerine dayanıklı.
+        const sid = String(row.getAttribute("data-status-id") || "");
+        const isLive = sid === "1" || /^\d+['’]/.test(status) || status === "HT";
+        const isFinished = sid === "3" || status === "FT";
+
+        // data-datetime UTC'dir (11:00 → sayfada 14:00 TRT görünüyor).
+        // Diğer ayrıştırıcılarla (goal/espn) aynı kural: sunucu yerel saatine
+        // çevrilip "HH:MM" ve "YYYY-MM-DD HH:MM" üretilir.
+        const dtRaw = row.getAttribute("data-datetime") || "";
+        const two = (n) => String(n).padStart(2, "0");
+        let startTime = "";
+        let matchDate = "";
+        if (dtRaw) {
+          const d = new Date(dtRaw.replace(" ", "T") + "Z");
+          if (!isNaN(d.getTime())) {
+            startTime = `${two(d.getHours())}:${two(d.getMinutes())}`;
+            matchDate = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${startTime}`;
+          }
+        }
+
+        // Canlı maçta .tm .time kickoff DEĞİL, oynanan dakikayı taşır.
+        // Bu yüzden startTime her zaman data-datetime'dan türetilir; dakika
+        // status alanına yazılır (goal/espn'deki "45'" / "CANLI" biçimi).
+        const minuteRaw = row.querySelector(".tm .time")?.getAttribute("data-time") || "";
+        const statusText = isFinished
+          ? "MS"
+          : status === "HT"
+          ? "HT"
+          : isLive
+          ? (/^\d+$/.test(minuteRaw) ? `${minuteRaw}'` : status || "CANLI")
+          : startTime || status;
+
         results.push({
-          homeTeam, awayTeam, homeScore, awayScore,
-          status, startTime: "", htScore: null, matchDate: "",
-          homeCrest: null, awayCrest: null, homeRed: 0, awayRed: 0,
-          isLive: /\d+'/.test(status) || status === "HT",
-          isHT: status === "HT", isFinished: status === "FT",
-          compTitle:   compEl?.textContent?.trim() || "",
-          compCountry: "",
+          homeTeam,
+          awayTeam,
+          homeScore,
+          awayScore,
+          status: statusText,
+          startTime,
+          htScore: null,
+          matchDate,
+          homeCrest: homeEl?.querySelector("img")?.getAttribute("src") || null,
+          awayCrest: awayEl?.querySelector("img")?.getAttribute("src") || null,
+          homeRed: 0,
+          awayRed: 0,
+          isLive,
+          isHT: status === "HT",
+          isFinished,
+          compTitle: row.getAttribute("data-league-name") || "",
+          compCountry: row.getAttribute("data-country-name") || "",
         });
       });
+
       return results;
     },
-    null
+    ".match[data-match]"
   );
 }
 
