@@ -106,7 +106,7 @@ const PLAN = {
     },
   },
   GRE: {
-    count: 20,
+    count: 40,
     clubs: {
       "Olympiakos":    ["Thrylos", "Pireas", "Erythrolefkos"],
       "Panathinaikos": ["Trifylli", "Prasinos", "Leoforos"],
@@ -115,7 +115,7 @@ const PLAN = {
     },
   },
   RUS: {
-    count: 20,
+    count: 40,
     clubs: {
       "Zenit St. Petersburg": ["Zenitchik", "Piter", "Nevsky"],
       "Spartak Moscow":       ["Krasnobely", "Myaso", "Spartach"],
@@ -124,12 +124,49 @@ const PLAN = {
     },
   },
   POL: {
-    count: 20,
+    count: 40,
     clubs: {
       "Legia Warsaw":        ["Legionista", "Wojskowi", "Lazienkowska"],
       "Lech Poznań":         ["Kolejorz", "Lechita", "Bulgarska"],
       "Raków Częstochowa":   ["Medaliki", "Rakow", "Czestochowa"],
       "Wisła Kraków":        ["BialaGwiazda", "Wislak", "Reymonta"],
+    },
+  },
+
+  /* ── Üçüncü dalga: orijinal kadronun TEK KULÜPLÜ ülkeleri ────────────────
+   * NED/BEL/POR'da 20 botun tamamı tek kulüptendi (Ajax, Anderlecht, Porto) —
+   * Ajax–Feyenoord maçında 40 Ajax taraftarı çıkıyordu. Büyütmede mevcut kulüp
+   * listeye ALINMADI: yeni 20 bot tamamen rakip kulüplere dağılsın ve kadro
+   * dengelensin (final: 20 mevcut + 5'er rakip).
+   *
+   * Mevcut botların kulübü değiştirilmedi — lakapları kulübe bağlı
+   * ("Godenzonen" Ajax lakabı), yeniden atamak sahte görünürdü.
+   */
+  NED: {
+    count: 40,
+    clubs: {
+      "PSV":         ["Boeren", "Eindhoven", "Philips"],
+      "Feyenoord":   ["Legioen", "DeKuip", "Rotterdammer"],
+      "AZ Alkmaar":  ["Alkmaarder", "AZFan", "Kaasstad"],
+      "FC Twente":   ["Tukker", "Enschede", "Grolsch"],
+    },
+  },
+  BEL: {
+    count: 40,
+    clubs: {
+      "Club Brugge":    ["Blauwzwart", "Brugge", "JanBreydel"],
+      "KRC Genk":       ["Smurfen", "Genkie", "Cegeka"],
+      "KAA Gent":       ["Buffalo", "Gentenaar", "Ghelamco"],
+      "Royal Antwerp":  ["Bosuil", "Antwerpen", "GreatOld"],
+    },
+  },
+  POR: {
+    count: 40,
+    clubs: {
+      "Benfica":     ["Encarnado", "Luz", "Aguias"],
+      "Sporting CP": ["Leao", "Alvalade", "Verdebranco"],
+      "SC Braga":    ["Arsenalista", "Bracarense", "Pedreira"],
+      "Rio Ave":     ["VilaConde", "RioAve", "Arcos"],
     },
   },
 

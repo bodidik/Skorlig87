@@ -9838,5 +9838,725 @@
     "club": "Lokomotiv Plovdiv",
     "segment": "BUL",
     "tier": "wild"
+  },
+  {
+    "id": "Erythrolefkos93",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "elite"
+  },
+  {
+    "id": "Leoforos47",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "elite"
+  },
+  {
+    "id": "Kitrinos84",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "elite"
+  },
+  {
+    "id": "Salonika38",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Thrylos75",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Trifylli29",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Dikefalos66",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Aspromavros20",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Pireas57",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Prasinos94",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Enosi48",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Toumba85",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Erythrolefkos39",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "solid"
+  },
+  {
+    "id": "Leoforos76",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Kitrinos30",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Salonika67",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Thrylos21",
+    "club": "Olympiakos",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Trifylli58",
+    "club": "Panathinaikos",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Dikefalos95",
+    "club": "AEK Athens",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Aspromavros49",
+    "club": "PAOK",
+    "segment": "GRE",
+    "tier": "wild"
+  },
+  {
+    "id": "Nevsky93",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "elite"
+  },
+  {
+    "id": "Spartach47",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "elite"
+  },
+  {
+    "id": "Krasnosiny84",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "elite"
+  },
+  {
+    "id": "Cherkizovo38",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Zenitchik75",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Krasnobely29",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Armeec66",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Zheleznaya20",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Piter57",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Myaso94",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Konyushnya48",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Parovoz85",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Nevsky39",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "solid"
+  },
+  {
+    "id": "Spartach76",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Krasnosiny30",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Cherkizovo67",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Zenitchik21",
+    "club": "Zenit St. Petersburg",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Krasnobely58",
+    "club": "Spartak Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Armeec95",
+    "club": "CSKA Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Zheleznaya49",
+    "club": "Lokomotiv Moscow",
+    "segment": "RUS",
+    "tier": "wild"
+  },
+  {
+    "id": "Lazienkowska93",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "elite"
+  },
+  {
+    "id": "Bulgarska47",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "elite"
+  },
+  {
+    "id": "Czestochowa84",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "elite"
+  },
+  {
+    "id": "Reymonta38",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Legionista75",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Kolejorz29",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Medaliki66",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "BialaGwiazda20",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Wojskowi57",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Lechita94",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Rakow48",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Wislak85",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Lazienkowska39",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "solid"
+  },
+  {
+    "id": "Bulgarska76",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Czestochowa30",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Reymonta67",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Legionista21",
+    "club": "Legia Warsaw",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Kolejorz58",
+    "club": "Lech Poznań",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Medaliki95",
+    "club": "Raków Częstochowa",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "BialaGwiazda49",
+    "club": "Wisła Kraków",
+    "segment": "POL",
+    "tier": "wild"
+  },
+  {
+    "id": "Philips93",
+    "club": "PSV",
+    "segment": "NED",
+    "tier": "elite"
+  },
+  {
+    "id": "Rotterdammer47",
+    "club": "Feyenoord",
+    "segment": "NED",
+    "tier": "elite"
+  },
+  {
+    "id": "Kaasstad84",
+    "club": "AZ Alkmaar",
+    "segment": "NED",
+    "tier": "elite"
+  },
+  {
+    "id": "Grolsch38",
+    "club": "FC Twente",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Boeren75",
+    "club": "PSV",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Legioen29",
+    "club": "Feyenoord",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Alkmaarder66",
+    "club": "AZ Alkmaar",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Tukker20",
+    "club": "FC Twente",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Eindhoven57",
+    "club": "PSV",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "DeKuip94",
+    "club": "Feyenoord",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "AZFan48",
+    "club": "AZ Alkmaar",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Enschede85",
+    "club": "FC Twente",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Philips39",
+    "club": "PSV",
+    "segment": "NED",
+    "tier": "solid"
+  },
+  {
+    "id": "Rotterdammer76",
+    "club": "Feyenoord",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "Kaasstad30",
+    "club": "AZ Alkmaar",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "Grolsch67",
+    "club": "FC Twente",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "Boeren21",
+    "club": "PSV",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "Legioen58",
+    "club": "Feyenoord",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "Alkmaarder95",
+    "club": "AZ Alkmaar",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "Tukker49",
+    "club": "FC Twente",
+    "segment": "NED",
+    "tier": "wild"
+  },
+  {
+    "id": "JanBreydel93",
+    "club": "Club Brugge",
+    "segment": "BEL",
+    "tier": "elite"
+  },
+  {
+    "id": "Cegeka47",
+    "club": "KRC Genk",
+    "segment": "BEL",
+    "tier": "elite"
+  },
+  {
+    "id": "Ghelamco84",
+    "club": "KAA Gent",
+    "segment": "BEL",
+    "tier": "elite"
+  },
+  {
+    "id": "GreatOld38",
+    "club": "Royal Antwerp",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Blauwzwart75",
+    "club": "Club Brugge",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Smurfen29",
+    "club": "KRC Genk",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Buffalo66",
+    "club": "KAA Gent",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Bosuil20",
+    "club": "Royal Antwerp",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Brugge57",
+    "club": "Club Brugge",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Genkie94",
+    "club": "KRC Genk",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Gentenaar48",
+    "club": "KAA Gent",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Antwerpen85",
+    "club": "Royal Antwerp",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "JanBreydel39",
+    "club": "Club Brugge",
+    "segment": "BEL",
+    "tier": "solid"
+  },
+  {
+    "id": "Cegeka76",
+    "club": "KRC Genk",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "Ghelamco30",
+    "club": "KAA Gent",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "GreatOld67",
+    "club": "Royal Antwerp",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "Blauwzwart21",
+    "club": "Club Brugge",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "Smurfen58",
+    "club": "KRC Genk",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "Buffalo95",
+    "club": "KAA Gent",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "Bosuil49",
+    "club": "Royal Antwerp",
+    "segment": "BEL",
+    "tier": "wild"
+  },
+  {
+    "id": "Aguias93",
+    "club": "Benfica",
+    "segment": "POR",
+    "tier": "elite"
+  },
+  {
+    "id": "Verdebranco47",
+    "club": "Sporting CP",
+    "segment": "POR",
+    "tier": "elite"
+  },
+  {
+    "id": "Pedreira84",
+    "club": "SC Braga",
+    "segment": "POR",
+    "tier": "elite"
+  },
+  {
+    "id": "Arcos38",
+    "club": "Rio Ave",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Encarnado75",
+    "club": "Benfica",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Leao29",
+    "club": "Sporting CP",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Arsenalista66",
+    "club": "SC Braga",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "VilaConde20",
+    "club": "Rio Ave",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Luz57",
+    "club": "Benfica",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Alvalade94",
+    "club": "Sporting CP",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Bracarense48",
+    "club": "SC Braga",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "RioAve85",
+    "club": "Rio Ave",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Aguias39",
+    "club": "Benfica",
+    "segment": "POR",
+    "tier": "solid"
+  },
+  {
+    "id": "Verdebranco76",
+    "club": "Sporting CP",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "Pedreira30",
+    "club": "SC Braga",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "Arcos67",
+    "club": "Rio Ave",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "Encarnado21",
+    "club": "Benfica",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "Leao58",
+    "club": "Sporting CP",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "Arsenalista95",
+    "club": "SC Braga",
+    "segment": "POR",
+    "tier": "wild"
+  },
+  {
+    "id": "VilaConde49",
+    "club": "Rio Ave",
+    "segment": "POR",
+    "tier": "wild"
   }
 ]
