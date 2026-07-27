@@ -21,6 +21,7 @@ const premium = require("../lib/premium.cjs");
 // 🔹 Atomik yazma + dosya kilidi (race önleme)
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { isInternalCaller } = require("../lib/internal-caller.cjs");
 
 // 🔹 LigCoin / cüzdan parametreleri
 // lc-wallet.cjs ile SENKRON tutulmalı
@@ -1502,6 +1503,14 @@ function pickBotsForFixture(fixtureId, needed, fixtureCountry) {
  */
 router.post("/pred/bots-generate", async (req, res) => {
   try {
+    // 🔒 Yönetim ucu: kimlik istemiyordu — herkes herhangi bir maça bot
+    // üretebiliyordu. Dosya modunda her çağrı 17MB okuma/yazma demek, yani
+    // ucuz bir DoS; ayrıca maçta hangi botların görüneceği dışarıdan
+    // değiştirilebiliyordu. settle2 ile aynı koruma uygulanır.
+    // (bot-filler loopback'ten çağırdığı için etkilenmez.)
+    if (!isInternalCaller(req)) {
+      return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+    }
     // PREDS_FILE kilidi: /pred/submit ile aynı dosyaya yazdığından
     // eşzamanlı çalışırlarsa tahmin kaybı olmasın.
     await withFileLock(PREDS_FILE, async () => {
