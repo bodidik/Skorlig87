@@ -6,6 +6,13 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 
+// Dosya kilidi + atomik yazma.
+// settle2 cüzdana/kullanıcı dosyasına yazan en ağır modül; pred.cjs ve
+// lc-wallet.cjs aynı dosyalara kilitle yazıyor. Buradan kilitsiz yazılırsa
+// onların kilidi anlamsızlaşır (lost update → LC kaybı).
+// Global kilit sırası: PREDS → WALLET → USERS (döngü yok).
+const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
+
 const BUILD = "settle2-2026-07-16-penalty20pct"; // ✅ ceza %20 orantılı
 // NOT: Puanlama/ödül herkes için eşittir — premium'un maç başı avantajı YOK
 // (rekabet adaleti). Premium avantajları LC ekonomisinde: bedava giriş +
@@ -50,8 +57,9 @@ async function readJson(file, fb = null) {
   }
 }
 async function writeJson(file, data) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
+  // Atomik yazma (tmp + rename): süreç yazma ortasında ölse bile dosya
+  // ya eski ya yeni tam haliyle kalır — yarım JSON oluşmaz.
+  await writeJsonAtomic(file, data);
 }
 function stateFile(fid) {
   return path.join(LIVE_DIR, `${String(fid)}.json`);
@@ -316,7 +324,15 @@ async function buildFixtureMetaMap() {
   return map;
 }
 
-async function upsertMatchResultSnapshot({ fixtureId, finalScore, meta, rows, awardedAt }) {
+// Defter read-modify-write: iki FARKLI maç aynı anda sonuçlanırsa kilitsiz
+// hâlde biri diğerinin snapshot'ını (ve awardedAt mührünü) siler.
+async function upsertMatchResultSnapshot(args) {
+  return withFileLock(MATCH_RESULTS_FILE, () =>
+    _upsertMatchResultSnapshotUnlocked(args)
+  );
+}
+
+async function _upsertMatchResultSnapshotUnlocked({ fixtureId, finalScore, meta, rows, awardedAt }) {
   const nowISO = new Date().toISOString();
   const book = await loadMatchResultsBook();
 
@@ -369,9 +385,21 @@ function computeLcRewardFromDetail(detail) {
   return 0;
 }
 
+/**
+ * Maç ödüllerini cüzdana + users.json'a yatırır.
+ *
+ * Kilitli sarmalayıcı: asıl gövde _awardLcForRowsUnlocked'ta. WALLET ve USERS
+ * dosyaları birlikte read-modify-write edildiği için ikisi de tüm işlem
+ * boyunca tutulur. Sıra WALLET → USERS (global sırayla uyumlu).
+ */
 async function awardLcForRows(rows, db) {
   if (!rows || !rows.length) return;
+  return withFileLock(WALLET_FILE, () =>
+    withFileLock(USERS_FILE, () => _awardLcForRowsUnlocked(rows, db))
+  );
+}
 
+async function _awardLcForRowsUnlocked(rows, db) {
   const nowISO = new Date().toISOString();
 
   const usersDataRaw = await readJson(USERS_FILE, { users: [], items: [] });
@@ -544,6 +572,14 @@ async function awardLcForRows(rows, db) {
  */
 async function awardStreakBonuses(bonusMap, fixtureId, db) {
   if (!bonusMap || bonusMap.size === 0) return [];
+  return withFileLock(WALLET_FILE, () =>
+    withFileLock(USERS_FILE, () =>
+      _awardStreakBonusesUnlocked(bonusMap, fixtureId, db)
+    )
+  );
+}
+
+async function _awardStreakBonusesUnlocked(bonusMap, fixtureId, db) {
   const nowISO = new Date().toISOString();
   const awarded = [];
 
@@ -1022,43 +1058,48 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     console.error("[settle2] match-results snapshot write failed:", e);
   }
 
-  const totalsRaw = await readJson(TOTALS_FILE, { items: [], updatedAt: null });
+  // Kümülatif toplamlar: read-modify-write, kilit şart. İki maç aynı anda
+  // sonuçlanırsa (livescore-sync toplu settle) kilitsiz hâlde biri diğerinin
+  // puanını ezer.
+  await withFileLock(TOTALS_FILE, async () => {
+    const totalsRaw = await readJson(TOTALS_FILE, { items: [], updatedAt: null });
 
-  const map = new Map();
-  for (const it of totalsRaw.items || []) {
-    map.set(String(it.userId), {
-      userId: String(it.userId),
-      totalPoints: Number(it.totalPoints || 0),
-      totalPenalty: Number(it.totalPenalty || 0),
-      matches: Number(it.matches || 0),
-      lastAt: it.lastAt || null,
-    });
-  }
+    const map = new Map();
+    for (const it of totalsRaw.items || []) {
+      map.set(String(it.userId), {
+        userId: String(it.userId),
+        totalPoints: Number(it.totalPoints || 0),
+        totalPenalty: Number(it.totalPenalty || 0),
+        matches: Number(it.matches || 0),
+        lastAt: it.lastAt || null,
+      });
+    }
 
-  for (const r of rows) {
-    const key = String(r.userId);
-    const cur = map.get(key) || { userId: key, totalPoints: 0, totalPenalty: 0, matches: 0, lastAt: null };
+    for (const r of rows) {
+      const key = String(r.userId);
+      const cur = map.get(key) || { userId: key, totalPoints: 0, totalPenalty: 0, matches: 0, lastAt: null };
 
-    cur.totalPoints += Number(r.points || 0);
-    cur.totalPenalty +=
-      Number(r.detail?.zeroPenalty || 0) +
-      Number(r.detail?.redSidePenalty || 0) +
-      Number(r.detail?.penaltySidePenalty || 0);
+      cur.totalPoints += Number(r.points || 0);
+      cur.totalPenalty +=
+        Number(r.detail?.zeroPenalty || 0) +
+        Number(r.detail?.redSidePenalty || 0) +
+        Number(r.detail?.penaltySidePenalty || 0);
 
-    cur.matches += 1;
-    cur.lastAt = nowISO;
-    map.set(key, cur);
-  }
+      cur.matches += 1;
+      cur.lastAt = nowISO;
+      map.set(key, cur);
+    }
 
-  const outTotals = {
-    items: Array.from(map.values()).map((x) => ({
-      ...x,
-      totalPoints: Math.round(x.totalPoints),
-      totalPenalty: Math.round(x.totalPenalty),
-    })),
-    updatedAt: nowISO,
-  };
-  await writeJson(TOTALS_FILE, outTotals);
+    const outTotals = {
+      items: Array.from(map.values()).map((x) => ({
+        ...x,
+        totalPoints: Math.round(x.totalPoints),
+        totalPenalty: Math.round(x.totalPenalty),
+      })),
+      updatedAt: nowISO,
+    };
+    await writeJson(TOTALS_FILE, outTotals);
+  });
 
   return {
     fixtureId: fid,
@@ -1151,7 +1192,8 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
       t.status = "settled";
       t.settledAt = nowISO;
 
-      // Credit winners' wallets
+      // Credit winners' wallets — WALLET kilidi altında (lost update önlenir)
+      await withFileLock(WALLET_FILE, async () => {
       const walletState = (await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })) || {};
       if (!Array.isArray(walletState.users)) walletState.users = [];
       if (!Array.isArray(walletState.ledger)) walletState.ledger = [];
@@ -1193,6 +1235,7 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
 
       walletState.updatedAt = nowISO;
       await writeJson(WALLET_FILE, walletState);
+      }); // withFileLock(WALLET_FILE)
       console.log(`[settle2] auto-settled tournament ${t.code}: ${t.payouts.length} payouts`);
     }
 
@@ -1229,7 +1272,13 @@ router.post("/settle2", async (req, res) => {
     const fixtureId = String(req.query.fixtureId || req.body?.fixtureId || "");
     const db = req.app?.locals?.db || null;
 
-    const result = await scoreFixture(fixtureId, { updateTotals: true, db });
+    // Maç bazlı kilit: idempotency mührü "oku → kontrol et → ödüllendir → yaz"
+    // olarak işliyor. Kilitsiz hâlde aynı fixture'a iki eşzamanlı settle
+    // (livescore-sync tick'i uzun sürünce bir sonraki tick üstüne biner)
+    // ikisi de mührü boş görür ve LC iki kez yatar.
+    const result = await withFileLock(`settle:${fixtureId}`, () =>
+      scoreFixture(fixtureId, { updateTotals: true, db })
+    );
 
     // Fire-and-forget: tournaments that include this fixture
     tryAutoSettleTournaments(fixtureId, result.outcome, db).catch(() => {});
