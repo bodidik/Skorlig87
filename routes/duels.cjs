@@ -7,7 +7,9 @@ const fsp = require("fs").promises;
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// settle2 ile aynı env: düello sonuçlandırma settle akışının içinden çağrılır,
+// testlerde izole veri dizinine yönlendirilebilmesi gerekir.
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const DUELS_FILE = path.join(DATA_DIR, "duels.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
@@ -230,13 +232,30 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
     console.warn(`[duels] ${fid}: actualOutcome verilmedi — düello puanı scoreFixture toplamına düşüyor`);
   }
 
-  // Her duelistin bu maçtaki tahmini (odds puanı için outcome gerekli)
-  let predsAll = [];
+  // Her duelistin bu maçtaki tahmini (odds puanı için outcome gerekli).
+  //
+  // ⚠️ MONGO YOLU ŞART — iki nedenle:
+  //  1) MALİYET: dosya yolu TÜM preds.json'ı okuyup belleğe alıyordu. Bugün
+  //     17 MB; tek bir settle'ın en pahalı I/O'su buydu (diğer her şeyin
+  //     toplamından büyük) ve kullanıcı sayısıyla büyüyor.
+  //  2) MIGRATION TUZAĞI: SKORLIG_PREDS_FILE_MIRROR=0 yapıldığında preds.json
+  //     artık YAZILMAZ. Yalnızca dosyayı okusaydık düellolar donmuş veriyle
+  //     sonuçlanır, tahmin bulunamadığı için sessizce odds tabanlı puanlama
+  //     yerine scoreFixture toplamına düşerdi — çökme yok, sessiz yanlış sonuç.
+  //
+  // settle2.loadFixturePreds ile AYNI kaynak kullanılır (tek doğruluk).
+  let fixPreds = [];
   try {
-    const raw = JSON.parse(await fsp.readFile(PREDS_FILE, "utf8"));
-    predsAll = Array.isArray(raw) ? raw : raw?.items || [];
-  } catch {}
-  const fixPreds = predsAll.filter(p => String(p.fixtureId) === fid);
+    if (db) {
+      fixPreds = await db.collection("predictions").find({ fixtureId: fid }).toArray();
+    } else {
+      const raw = JSON.parse(await fsp.readFile(PREDS_FILE, "utf8"));
+      const predsAll = Array.isArray(raw) ? raw : raw?.items || [];
+      fixPreds = predsAll.filter(p => String(p.fixtureId) === fid);
+    }
+  } catch (e) {
+    console.warn(`[duels] ${fid}: tahminler okunamadi:`, e.message);
+  }
 
   // Mükerrer kayıt olursa EN SON tahmin geçerli (settle2 ile aynı kural)
   function getUserPred(uid) {
