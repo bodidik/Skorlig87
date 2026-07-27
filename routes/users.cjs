@@ -287,6 +287,11 @@ router.post("/set-country", verifyToken, express.json(), async (req, res) => {
     }
 
     await writeJson(USERS_FILE, { items });
+
+    // user-country önbelleği 15sn TTL'li — ülke değişince sıralamanın hemen
+    // doğru listeye düşmesi için düşür.
+    try { require("../lib/user-country.cjs").invalidate(); } catch {}
+
     return res.json({ ok: true, userId, country });
   } catch (e) {
     console.error("SET_COUNTRY_ERR", e);
