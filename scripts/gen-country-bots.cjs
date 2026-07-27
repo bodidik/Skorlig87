@@ -132,6 +132,91 @@ const PLAN = {
       "Wisła Kraków":        ["BialaGwiazda", "Wislak", "Reymonta"],
     },
   },
+
+  /* ── İkinci dalga: bot doluluk sistemi kurulunca fark edilen boşluk ───────
+   * Sunucunun desteklediği 28 ülkenin 9'unda hiç bot yoktu; o ülkelerin
+   * maçları global kadroyla doluyor, ülke sıralamaları boş kalıyordu.
+   * Lakaplar yine KULÜBE BAĞLI (tribün/şehir/stadyum karşılığı).
+   */
+  UKR: {
+    count: 20,
+    clubs: {
+      "Shakhtar Donetsk": ["Hirnyky", "Shakhtar", "Donbas"],
+      "Dynamo Kyiv":      ["Dynamivets", "Kyivlyanyn", "Lobanovskyi"],
+      "Zorya Luhansk":    ["Zorya", "Luhansk", "Chornomorets"],
+      "Dnipro-1":         ["Dnipro", "Sicheslav", "Dniprovets"],
+    },
+  },
+  SUI: {
+    count: 20,
+    clubs: {
+      "FC Basel":     ["Bebbi", "Rotblau", "Joggeli"],
+      "Young Boys":   ["Gelbschwarz", "Wankdorf", "Berner"],
+      "Servette":     ["Grenat", "Geneve", "Praille"],
+      "FC St. Gallen": ["Espenblock", "Gallus", "Kybunpark"],
+    },
+  },
+  CRO: {
+    count: 20,
+    clubs: {
+      "Dinamo Zagreb": ["Modri", "Maksimir", "Purger"],
+      "Hajduk Split":  ["Bili", "Poljud", "Torcida"],
+      "HNK Rijeka":    ["Rijeka", "Kvarner", "Rujevica"],
+      "NK Osijek":     ["Osijek", "Slavonac", "Drava"],
+    },
+  },
+  SRB: {
+    count: 20,
+    clubs: {
+      "Red Star Belgrade": ["Zvezdas", "Marakana", "Delija"],
+      "Partizan Belgrade": ["Grobar", "Humska", "Parni"],
+      "Vojvodina":         ["Vosa", "Novisad", "Karadjordje"],
+    },
+  },
+  CZE: {
+    count: 20,
+    clubs: {
+      "Slavia Prague":  ["Sesivani", "Eden", "Slavista"],
+      "Sparta Prague":  ["Letna", "Sparta", "Rudi"],
+      "Viktoria Plzen": ["Viktorka", "Plzen", "Doosan"],
+    },
+  },
+  ROU: {
+    count: 20,
+    clubs: {
+      "FCSB":                  ["Ros-albastru", "Ghencea", "Stelist"],
+      "CFR Cluj":              ["Feroviar", "Cluj", "Gruia"],
+      "Universitatea Craiova": ["Craiova", "Oltenia", "Stiinta"],
+      "Rapid Bucureşti":       ["Giulesti", "Rapidist", "Vișinii"],
+    },
+  },
+  HUN: {
+    count: 20,
+    clubs: {
+      "Ferencváros":     ["Fradi", "Groupama", "Zoldfeher"],
+      "MOL Fehérvár":    ["Fehervar", "Sostoi", "Videoton"],
+      "Puskás Akadémia": ["Felcsut", "Akademia", "Pancho"],
+      "Újpest":          ["Ujpest", "Lilak", "Megyeri"],
+    },
+  },
+  SVK: {
+    count: 20,
+    clubs: {
+      "Slovan Bratislava":   ["Belasi", "Tehelne", "Slovanista"],
+      "Spartak Trnava":      ["Andel", "Trnava", "Spartakovec"],
+      "MŠK Žilina":          ["Sosoni", "Zilina", "Vodarska"],
+      "DAC Dunajská Streda": ["Zlatozluti", "Dunajska", "Sarlo"],
+    },
+  },
+  BUL: {
+    count: 20,
+    clubs: {
+      "Ludogorets Razgrad": ["Orlite", "Razgrad", "Ludogorec"],
+      "CSKA Sofia":         ["Armeec", "Balgarska", "Chervenite"],
+      "Levski Sofia":       ["Sinite", "Gerena", "Levskar"],
+      "Lokomotiv Plovdiv":  ["Smurfove", "Plovdiv", "Lokomotiv"],
+    },
+  },
 };
 
 /* Mevcut kadronun tier oranı: elite %15 · solid %50 · wild %35.
@@ -185,9 +270,27 @@ function main() {
 
   const taken = new Set(existing.map((p) => String(p.id).toLowerCase()));
   const added = [];
+  const skipped = [];
+
+  // Segment düzeyinde idempotanlık — ŞART.
+  // buildProfiles çakışan kimlik bulunca bir sonraki numaraya geçer; bu yüzden
+  // zaten üretilmiş bir segment tekrar işlenirse çakışma yaşamaz, sadece FARKLI
+  // numaralarla ikinci bir kadro üretir ve o ülkenin bot sayısını ikiye katlar.
+  // Kimlik bazlı `taken` kontrolü bunu yakalayamaz.
+  const existingSegments = new Set(
+    existing.map((p) => String(p.segment || "").toUpperCase())
+  );
 
   for (const [segment, spec] of Object.entries(PLAN)) {
+    if (existingSegments.has(segment.toUpperCase())) {
+      skipped.push(segment);
+      continue;
+    }
     added.push(...buildProfiles(segment, spec, taken));
+  }
+
+  if (skipped.length) {
+    console.log(`Atlanan (kadrosu zaten var): ${skipped.join(", ")}\n`);
   }
 
   const bySeg = {};

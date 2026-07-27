@@ -435,6 +435,15 @@ const TEAM_RATINGS = {
   "CSKA Sofia": 66, "Levski Sofia": 65,
   "Lokomotiv Plovdiv": 64, "Botev Plovdiv": 63, "Slavia Sofia": 62,
 
+  // ── SLOVAKIA (Niké Liga) ───────────────────────────────────────
+  // Ülke botu kadrosu için eklendi: kulüpleri burada olmayan botlar
+  // DEFAULT_RATING (65) alır ve taraftarlık karakteri kaybolur.
+  "Slovan Bratislava": 70, "ŠK Slovan Bratislava": 70,
+  "Spartak Trnava": 66, "MŠK Žilina": 65, "Zilina": 65,
+  "DAC Dunajská Streda": 65, "Dunajska Streda": 65,
+  "MFK Ružomberok": 62, "Ruzomberok": 62,
+  "FC Košice": 62, "Kosice": 62, "Podbrezová": 61,
+
   // ── CYPRUS (First Division) ────────────────────────────────────
   "APOEL": 69, "APOEL Nicosia": 69,
   "Omonia Nicosia": 67, "AEK Larnaca": 66, "Apollon Limassol": 65,
