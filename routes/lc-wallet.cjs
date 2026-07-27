@@ -295,11 +295,63 @@ router.get("/lc-wallet/summary", async (req, res) => {
 
     if (db) {
       // 🔵 Mongo modu
+      //
+      // ⚠️ Bu dal eskiden yalnızca bakiyeyi OKUYUP dönüyordu; dosya dalının
+      // yaptığı iki işi atlıyordu:
+      //   • premium aylık kasa  → abone 2. aydan sonra hiç LC almıyordu
+      //   • otomatik token birikimi (applyRegen) → LC'si biten kullanıcı
+      //     KALICI olarak takılı kalıyordu; oyunun ücretsiz döngüsü ölüydü
+      // Ayrıca fiyatlar sabitlerden dönüyordu, yani premium indirimi
+      // görünmüyordu. Üçü de burada düzeltildi.
+      const isPrem = await premium.isPremium(userId);
+      const regenOpts = premium.regenParams(isPrem);
+      const col = db.collection("lc_wallet_users");
+      const uidLower = userId.toLowerCase();
+
       const user = await ensureWalletUserMongo(db, userId);
+
+      // applyRegen/grantMonthlyIfDue düz nesne üzerinde çalışır — Mongo
+      // dokümanına uygulanıp değişen alanlar geri yazılır.
+      const prevRegenAt = user.lastRegenAt ?? null;
+      const monthlyGranted = premium.grantMonthlyIfDue(user, isPrem);
+      const regenEarned = applyRegen(user, Date.now(), regenOpts);
+
+      if (monthlyGranted > 0 || regenEarned > 0 || (user.lastRegenAt ?? null) !== prevRegenAt) {
+        // Koşullu filtre: eşzamanlı iki summary çağrısından yalnızca biri
+        // yazabilir, diğerinin hesabı düşer (çift birikim olmaz).
+        const r = await col.updateOne(
+          { userIdLower: uidLower, lastRegenAt: prevRegenAt },
+          {
+            $set: {
+              balance: user.balance,
+              totalEarned: user.totalEarned || 0,
+              lastRegenAt: user.lastRegenAt ?? null,
+              lastMonthlyAt: user.lastMonthlyAt ?? null,
+              updatedAt: user.updatedAt || new Date().toISOString(),
+            },
+          }
+        );
+
+        if (r.modifiedCount && monthlyGranted > 0) {
+          await addLedgerEntryMongo(db, {
+            userId,
+            kind: "reward",
+            amount: monthlyGranted,
+            reason: "premium_monthly",
+            meta: { month: premium.monthKey() },
+          });
+        }
+        if (!r.modifiedCount) {
+          // Yarışı kaybettik: taze veriyle yanıtla, kendi hesabımızı at.
+          const fresh = await col.findOne({ userIdLower: uidLower });
+          if (fresh) Object.assign(user, fresh);
+        }
+      }
 
       const today = todayKey();
       const last  = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
       const canClaim = !last || last !== today;
+      const dailyAmount = premium.dailyLc(isPrem);
 
       return res.json({
         ok: true,
@@ -310,18 +362,22 @@ router.get("/lc-wallet/summary", async (req, res) => {
           totalEarned: user.totalEarned || 0,
           totalSpent: user.totalSpent || 0,
           is1987: !!user.is1987,
+          premium: isPrem,
         },
         daily: {
           today,
           canClaim,
-          amount: DAILY_LC,
+          amount: dailyAmount,
         },
         pricing: {
-          daily: DAILY_LC,
-          matchEntryCost: MATCH_ENTRY_COST,
+          daily: dailyAmount,
+          matchEntryCost: premium.matchCost(isPrem, MATCH_ENTRY_COST),
           initialDefault: INITIAL_DEFAULT,
           initial1987: INITIAL_1987,
         },
+        premium: isPrem,
+        premiumMonthly: premium.monthlyInfo(user, isPrem),
+        regen: regenInfo(user, Date.now(), regenOpts),
         updatedAt: user.updatedAt || null,
       });
     }
@@ -716,26 +772,68 @@ router.post("/lc-wallet/purchase", verifyToken, express.json(), async (req, res)
     const bonus = isPrem ? Math.round(pkg.lc * premium.PERKS.storeBonusPct) : 0;
     const totalLc = pkg.lc + bonus;
 
-    // Cüzdan mutasyonu — kilitli (lost update önlenir)
-    const newBalance = await withFileLock(WALLET_FILE, async () => {
-      const { state, user } = await ensureWalletUserFile(userId);
+    const ledgerMeta = {
+      packageId: pkg.id,
+      priceTRY: pkg.priceTRY,
+      mode: "mock",
+      baseLc: pkg.lc,
+      premiumBonus: bonus,
+    };
 
-      user.balance = Number(user.balance || 0) + totalLc;
-      user.totalEarned = Number(user.totalEarned || 0) + totalLc;
-      user.updatedAt = nowISO;
+    // ⚠️ MONGO DALI ŞART: summary/daily-claim/ledger uçları db varken
+    // Mongo'dan okuyup ERKEN DÖNER. Burası yalnızca dosyaya yazsaydı (eski
+    // hâli) kullanıcı paketi satın alır, bakiyesi lc-wallet.json'a yazılır,
+    // uygulama summary'yi açar ve Mongo'dan okuduğu için ALDIĞI LC GÖRÜNMEZ.
+    // Gerçek ödeme açıldığında bu doğrudan para kaybı demek.
+    const db = getDb(req);
 
-      addLedgerEntryFile(state, {
+    let newBalance;
+    if (db) {
+      await ensureWalletUserMongo(db, userId);
+      const col = db.collection("lc_wallet_users");
+      const uidLower = userId.toLowerCase();
+
+      // $inc atomiktir. Harcamadan farklı olarak yükleme bir ön koşul
+      // taşımaz (bakiye yeterliliği aranmaz), bu yüzden optimistic
+      // concurrency turuna gerek yok — yarış koşulu oluşmaz.
+      await col.updateOne(
+        { userIdLower: uidLower },
+        { $inc: { balance: totalLc, totalEarned: totalLc }, $set: { updatedAt: nowISO } }
+      );
+
+      await addLedgerEntryMongo(db, {
         userId,
         kind: "purchase",
         amount: totalLc,
         reason: "store_purchase_mock",
         fixtureId: null,
-        meta: { packageId: pkg.id, priceTRY: pkg.priceTRY, mode: "mock", baseLc: pkg.lc, premiumBonus: bonus },
+        meta: ledgerMeta,
       });
 
-      await saveWalletState(state);
-      return user.balance;
-    });
+      const fresh = await col.findOne({ userIdLower: uidLower });
+      newBalance = Number(fresh?.balance ?? 0);
+    } else {
+      // 🟢 Dosya modu — kilitli (lost update önlenir)
+      newBalance = await withFileLock(WALLET_FILE, async () => {
+        const { state, user } = await ensureWalletUserFile(userId);
+
+        user.balance = Number(user.balance || 0) + totalLc;
+        user.totalEarned = Number(user.totalEarned || 0) + totalLc;
+        user.updatedAt = nowISO;
+
+        addLedgerEntryFile(state, {
+          userId,
+          kind: "purchase",
+          amount: totalLc,
+          reason: "store_purchase_mock",
+          fixtureId: null,
+          meta: ledgerMeta,
+        });
+
+        await saveWalletState(state);
+        return user.balance;
+      });
+    }
 
     // users.json lc alanını da senkron tut — ayrı dosya, ayrı kilit
     try {
@@ -837,24 +935,59 @@ router.post("/lc-wallet/premium/subscribe", verifyToken, express.json(), async (
       return untilISO;
     });
 
-    // Bu ayın kasasını hemen yatır (abone olur olmaz değer görsün)
+    // Bu ayın kasasını hemen yatır (abone olur olmaz değer görsün).
+    // Purchase ile aynı gerekçe: db varken summary Mongo'dan okur, bu LC
+    // yalnızca dosyaya yazılsaydı kullanıcıya hiç görünmezdi.
+    const db = getDb(req);
     let monthlyGranted = 0;
     try {
-      monthlyGranted = await withFileLock(WALLET_FILE, async () => {
-        const { state, user } = await ensureWalletUserFile(userId);
-        const granted = premium.grantMonthlyIfDue(user, true);
-        if (granted > 0) {
-          addLedgerEntryFile(state, {
-            userId,
-            kind: "reward",
-            amount: granted,
-            reason: "premium_monthly",
-            meta: { month: premium.monthKey() },
-          });
-          await saveWalletState(state);
+      if (db) {
+        const col = db.collection("lc_wallet_users");
+        const uidLower = userId.toLowerCase();
+        const mk = premium.monthKey();
+        const amount = premium.PERKS.monthlyLc;
+
+        await ensureWalletUserMongo(db, userId);
+
+        if (amount > 0) {
+          // Koşullu güncelleme dosya sürümünden DAHA güvenli: filtre
+          // "bu ay verilmemiş" şartını yazmayla aynı atomik işleme koyar,
+          // yani eşzamanlı iki istek de gelse ay içinde tek kez yatar.
+          const r = await col.updateOne(
+            { userIdLower: uidLower, lastMonthlyAt: { $ne: mk } },
+            {
+              $inc: { balance: amount, totalEarned: amount },
+              $set: { lastMonthlyAt: mk, updatedAt: nowISO },
+            }
+          );
+          if (r.modifiedCount) {
+            monthlyGranted = amount;
+            await addLedgerEntryMongo(db, {
+              userId,
+              kind: "reward",
+              amount,
+              reason: "premium_monthly",
+              meta: { month: mk },
+            });
+          }
         }
-        return granted;
-      });
+      } else {
+        monthlyGranted = await withFileLock(WALLET_FILE, async () => {
+          const { state, user } = await ensureWalletUserFile(userId);
+          const granted = premium.grantMonthlyIfDue(user, true);
+          if (granted > 0) {
+            addLedgerEntryFile(state, {
+              userId,
+              kind: "reward",
+              amount: granted,
+              reason: "premium_monthly",
+              meta: { month: premium.monthKey() },
+            });
+            await saveWalletState(state);
+          }
+          return granted;
+        });
+      }
     } catch (e) {
       console.warn("[premium] abonelik aylık kasa yatırılamadı:", e && e.message ? e.message : e);
     }
