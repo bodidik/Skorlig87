@@ -8758,5 +8758,1085 @@
     "club": "Lokomotiv Plovdiv",
     "segment": "BUL",
     "tier": "wild"
+  },
+  {
+    "id": "Donbas93",
+    "club": "Shakhtar Donetsk",
+    "segment": "UKR",
+    "tier": "elite"
+  },
+  {
+    "id": "Lobanovskyi47",
+    "club": "Dynamo Kyiv",
+    "segment": "UKR",
+    "tier": "elite"
+  },
+  {
+    "id": "Chornomorets84",
+    "club": "Zorya Luhansk",
+    "segment": "UKR",
+    "tier": "elite"
+  },
+  {
+    "id": "Dniprovets38",
+    "club": "Dnipro-1",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Hirnyky75",
+    "club": "Shakhtar Donetsk",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Dynamivets29",
+    "club": "Dynamo Kyiv",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Zorya66",
+    "club": "Zorya Luhansk",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Dnipro20",
+    "club": "Dnipro-1",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Shakhtar57",
+    "club": "Shakhtar Donetsk",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Kyivlyanyn94",
+    "club": "Dynamo Kyiv",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Luhansk48",
+    "club": "Zorya Luhansk",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Sicheslav85",
+    "club": "Dnipro-1",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Donbas39",
+    "club": "Shakhtar Donetsk",
+    "segment": "UKR",
+    "tier": "solid"
+  },
+  {
+    "id": "Lobanovskyi76",
+    "club": "Dynamo Kyiv",
+    "segment": "UKR",
+    "tier": "wild"
+  },
+  {
+    "id": "Chornomorets30",
+    "club": "Zorya Luhansk",
+    "segment": "UKR",
+    "tier": "wild"
+  },
+  {
+    "id": "Dniprovets67",
+    "club": "Dnipro-1",
+    "segment": "UKR",
+    "tier": "wild"
+  },
+  {
+    "id": "Hirnyky21",
+    "club": "Shakhtar Donetsk",
+    "segment": "UKR",
+    "tier": "wild"
+  },
+  {
+    "id": "Dynamivets58",
+    "club": "Dynamo Kyiv",
+    "segment": "UKR",
+    "tier": "wild"
+  },
+  {
+    "id": "Zorya95",
+    "club": "Zorya Luhansk",
+    "segment": "UKR",
+    "tier": "wild"
+  },
+  {
+    "id": "Dnipro49",
+    "club": "Dnipro-1",
+    "segment": "UKR",
+    "tier": "wild"
+  },
+  {
+    "id": "Joggeli93",
+    "club": "FC Basel",
+    "segment": "SUI",
+    "tier": "elite"
+  },
+  {
+    "id": "Berner47",
+    "club": "Young Boys",
+    "segment": "SUI",
+    "tier": "elite"
+  },
+  {
+    "id": "Praille84",
+    "club": "Servette",
+    "segment": "SUI",
+    "tier": "elite"
+  },
+  {
+    "id": "Kybunpark38",
+    "club": "FC St. Gallen",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Bebbi75",
+    "club": "FC Basel",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Gelbschwarz29",
+    "club": "Young Boys",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Grenat66",
+    "club": "Servette",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Espenblock20",
+    "club": "FC St. Gallen",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Rotblau57",
+    "club": "FC Basel",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Wankdorf94",
+    "club": "Young Boys",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Geneve48",
+    "club": "Servette",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Gallus85",
+    "club": "FC St. Gallen",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Joggeli39",
+    "club": "FC Basel",
+    "segment": "SUI",
+    "tier": "solid"
+  },
+  {
+    "id": "Berner76",
+    "club": "Young Boys",
+    "segment": "SUI",
+    "tier": "wild"
+  },
+  {
+    "id": "Praille30",
+    "club": "Servette",
+    "segment": "SUI",
+    "tier": "wild"
+  },
+  {
+    "id": "Kybunpark67",
+    "club": "FC St. Gallen",
+    "segment": "SUI",
+    "tier": "wild"
+  },
+  {
+    "id": "Bebbi21",
+    "club": "FC Basel",
+    "segment": "SUI",
+    "tier": "wild"
+  },
+  {
+    "id": "Gelbschwarz58",
+    "club": "Young Boys",
+    "segment": "SUI",
+    "tier": "wild"
+  },
+  {
+    "id": "Grenat95",
+    "club": "Servette",
+    "segment": "SUI",
+    "tier": "wild"
+  },
+  {
+    "id": "Espenblock49",
+    "club": "FC St. Gallen",
+    "segment": "SUI",
+    "tier": "wild"
+  },
+  {
+    "id": "Purger93",
+    "club": "Dinamo Zagreb",
+    "segment": "CRO",
+    "tier": "elite"
+  },
+  {
+    "id": "Torcida47",
+    "club": "Hajduk Split",
+    "segment": "CRO",
+    "tier": "elite"
+  },
+  {
+    "id": "Rujevica84",
+    "club": "HNK Rijeka",
+    "segment": "CRO",
+    "tier": "elite"
+  },
+  {
+    "id": "Drava38",
+    "club": "NK Osijek",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Modri75",
+    "club": "Dinamo Zagreb",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Bili29",
+    "club": "Hajduk Split",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Rijeka66",
+    "club": "HNK Rijeka",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Osijek20",
+    "club": "NK Osijek",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Maksimir57",
+    "club": "Dinamo Zagreb",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Poljud94",
+    "club": "Hajduk Split",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Kvarner48",
+    "club": "HNK Rijeka",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Slavonac85",
+    "club": "NK Osijek",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Purger39",
+    "club": "Dinamo Zagreb",
+    "segment": "CRO",
+    "tier": "solid"
+  },
+  {
+    "id": "Torcida76",
+    "club": "Hajduk Split",
+    "segment": "CRO",
+    "tier": "wild"
+  },
+  {
+    "id": "Rujevica30",
+    "club": "HNK Rijeka",
+    "segment": "CRO",
+    "tier": "wild"
+  },
+  {
+    "id": "Drava67",
+    "club": "NK Osijek",
+    "segment": "CRO",
+    "tier": "wild"
+  },
+  {
+    "id": "Modri21",
+    "club": "Dinamo Zagreb",
+    "segment": "CRO",
+    "tier": "wild"
+  },
+  {
+    "id": "Bili58",
+    "club": "Hajduk Split",
+    "segment": "CRO",
+    "tier": "wild"
+  },
+  {
+    "id": "Rijeka95",
+    "club": "HNK Rijeka",
+    "segment": "CRO",
+    "tier": "wild"
+  },
+  {
+    "id": "Osijek49",
+    "club": "NK Osijek",
+    "segment": "CRO",
+    "tier": "wild"
+  },
+  {
+    "id": "Vosa93",
+    "club": "Vojvodina",
+    "segment": "SRB",
+    "tier": "elite"
+  },
+  {
+    "id": "Marakana47",
+    "club": "Red Star Belgrade",
+    "segment": "SRB",
+    "tier": "elite"
+  },
+  {
+    "id": "Humska84",
+    "club": "Partizan Belgrade",
+    "segment": "SRB",
+    "tier": "elite"
+  },
+  {
+    "id": "Novisad38",
+    "club": "Vojvodina",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Delija75",
+    "club": "Red Star Belgrade",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Parni29",
+    "club": "Partizan Belgrade",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Karadjordje66",
+    "club": "Vojvodina",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Zvezdas20",
+    "club": "Red Star Belgrade",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Grobar57",
+    "club": "Partizan Belgrade",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Vosa94",
+    "club": "Vojvodina",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Marakana48",
+    "club": "Red Star Belgrade",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Humska85",
+    "club": "Partizan Belgrade",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Novisad39",
+    "club": "Vojvodina",
+    "segment": "SRB",
+    "tier": "solid"
+  },
+  {
+    "id": "Delija76",
+    "club": "Red Star Belgrade",
+    "segment": "SRB",
+    "tier": "wild"
+  },
+  {
+    "id": "Parni30",
+    "club": "Partizan Belgrade",
+    "segment": "SRB",
+    "tier": "wild"
+  },
+  {
+    "id": "Karadjordje67",
+    "club": "Vojvodina",
+    "segment": "SRB",
+    "tier": "wild"
+  },
+  {
+    "id": "Zvezdas21",
+    "club": "Red Star Belgrade",
+    "segment": "SRB",
+    "tier": "wild"
+  },
+  {
+    "id": "Grobar58",
+    "club": "Partizan Belgrade",
+    "segment": "SRB",
+    "tier": "wild"
+  },
+  {
+    "id": "Vosa95",
+    "club": "Vojvodina",
+    "segment": "SRB",
+    "tier": "wild"
+  },
+  {
+    "id": "Marakana49",
+    "club": "Red Star Belgrade",
+    "segment": "SRB",
+    "tier": "wild"
+  },
+  {
+    "id": "Viktorka93",
+    "club": "Viktoria Plzen",
+    "segment": "CZE",
+    "tier": "elite"
+  },
+  {
+    "id": "Eden47",
+    "club": "Slavia Prague",
+    "segment": "CZE",
+    "tier": "elite"
+  },
+  {
+    "id": "Sparta84",
+    "club": "Sparta Prague",
+    "segment": "CZE",
+    "tier": "elite"
+  },
+  {
+    "id": "Plzen38",
+    "club": "Viktoria Plzen",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Slavista75",
+    "club": "Slavia Prague",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Rudi29",
+    "club": "Sparta Prague",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Doosan66",
+    "club": "Viktoria Plzen",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Sesivani20",
+    "club": "Slavia Prague",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Letna57",
+    "club": "Sparta Prague",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Viktorka94",
+    "club": "Viktoria Plzen",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Eden48",
+    "club": "Slavia Prague",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Sparta85",
+    "club": "Sparta Prague",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Plzen39",
+    "club": "Viktoria Plzen",
+    "segment": "CZE",
+    "tier": "solid"
+  },
+  {
+    "id": "Slavista76",
+    "club": "Slavia Prague",
+    "segment": "CZE",
+    "tier": "wild"
+  },
+  {
+    "id": "Rudi30",
+    "club": "Sparta Prague",
+    "segment": "CZE",
+    "tier": "wild"
+  },
+  {
+    "id": "Doosan67",
+    "club": "Viktoria Plzen",
+    "segment": "CZE",
+    "tier": "wild"
+  },
+  {
+    "id": "Sesivani21",
+    "club": "Slavia Prague",
+    "segment": "CZE",
+    "tier": "wild"
+  },
+  {
+    "id": "Letna58",
+    "club": "Sparta Prague",
+    "segment": "CZE",
+    "tier": "wild"
+  },
+  {
+    "id": "Viktorka95",
+    "club": "Viktoria Plzen",
+    "segment": "CZE",
+    "tier": "wild"
+  },
+  {
+    "id": "Eden49",
+    "club": "Slavia Prague",
+    "segment": "CZE",
+    "tier": "wild"
+  },
+  {
+    "id": "Stelist93",
+    "club": "FCSB",
+    "segment": "ROU",
+    "tier": "elite"
+  },
+  {
+    "id": "Gruia47",
+    "club": "CFR Cluj",
+    "segment": "ROU",
+    "tier": "elite"
+  },
+  {
+    "id": "Stiinta84",
+    "club": "Universitatea Craiova",
+    "segment": "ROU",
+    "tier": "elite"
+  },
+  {
+    "id": "Vișinii38",
+    "club": "Rapid Bucureşti",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Ros-albastru75",
+    "club": "FCSB",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Feroviar29",
+    "club": "CFR Cluj",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Craiova66",
+    "club": "Universitatea Craiova",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Giulesti20",
+    "club": "Rapid Bucureşti",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Ghencea57",
+    "club": "FCSB",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Cluj94",
+    "club": "CFR Cluj",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Oltenia48",
+    "club": "Universitatea Craiova",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Rapidist85",
+    "club": "Rapid Bucureşti",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Stelist39",
+    "club": "FCSB",
+    "segment": "ROU",
+    "tier": "solid"
+  },
+  {
+    "id": "Gruia76",
+    "club": "CFR Cluj",
+    "segment": "ROU",
+    "tier": "wild"
+  },
+  {
+    "id": "Stiinta30",
+    "club": "Universitatea Craiova",
+    "segment": "ROU",
+    "tier": "wild"
+  },
+  {
+    "id": "Vișinii67",
+    "club": "Rapid Bucureşti",
+    "segment": "ROU",
+    "tier": "wild"
+  },
+  {
+    "id": "Ros-albastru21",
+    "club": "FCSB",
+    "segment": "ROU",
+    "tier": "wild"
+  },
+  {
+    "id": "Feroviar58",
+    "club": "CFR Cluj",
+    "segment": "ROU",
+    "tier": "wild"
+  },
+  {
+    "id": "Craiova95",
+    "club": "Universitatea Craiova",
+    "segment": "ROU",
+    "tier": "wild"
+  },
+  {
+    "id": "Giulesti49",
+    "club": "Rapid Bucureşti",
+    "segment": "ROU",
+    "tier": "wild"
+  },
+  {
+    "id": "Zoldfeher93",
+    "club": "Ferencváros",
+    "segment": "HUN",
+    "tier": "elite"
+  },
+  {
+    "id": "Videoton47",
+    "club": "MOL Fehérvár",
+    "segment": "HUN",
+    "tier": "elite"
+  },
+  {
+    "id": "Pancho84",
+    "club": "Puskás Akadémia",
+    "segment": "HUN",
+    "tier": "elite"
+  },
+  {
+    "id": "Megyeri38",
+    "club": "Újpest",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Fradi75",
+    "club": "Ferencváros",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Fehervar29",
+    "club": "MOL Fehérvár",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Felcsut66",
+    "club": "Puskás Akadémia",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Ujpest20",
+    "club": "Újpest",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Groupama57",
+    "club": "Ferencváros",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Sostoi94",
+    "club": "MOL Fehérvár",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Akademia48",
+    "club": "Puskás Akadémia",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Lilak85",
+    "club": "Újpest",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Zoldfeher39",
+    "club": "Ferencváros",
+    "segment": "HUN",
+    "tier": "solid"
+  },
+  {
+    "id": "Videoton76",
+    "club": "MOL Fehérvár",
+    "segment": "HUN",
+    "tier": "wild"
+  },
+  {
+    "id": "Pancho30",
+    "club": "Puskás Akadémia",
+    "segment": "HUN",
+    "tier": "wild"
+  },
+  {
+    "id": "Megyeri67",
+    "club": "Újpest",
+    "segment": "HUN",
+    "tier": "wild"
+  },
+  {
+    "id": "Fradi21",
+    "club": "Ferencváros",
+    "segment": "HUN",
+    "tier": "wild"
+  },
+  {
+    "id": "Fehervar58",
+    "club": "MOL Fehérvár",
+    "segment": "HUN",
+    "tier": "wild"
+  },
+  {
+    "id": "Felcsut95",
+    "club": "Puskás Akadémia",
+    "segment": "HUN",
+    "tier": "wild"
+  },
+  {
+    "id": "Ujpest49",
+    "club": "Újpest",
+    "segment": "HUN",
+    "tier": "wild"
+  },
+  {
+    "id": "Slovanista93",
+    "club": "Slovan Bratislava",
+    "segment": "SVK",
+    "tier": "elite"
+  },
+  {
+    "id": "Spartakovec47",
+    "club": "Spartak Trnava",
+    "segment": "SVK",
+    "tier": "elite"
+  },
+  {
+    "id": "Vodarska84",
+    "club": "MŠK Žilina",
+    "segment": "SVK",
+    "tier": "elite"
+  },
+  {
+    "id": "Sarlo38",
+    "club": "DAC Dunajská Streda",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Belasi75",
+    "club": "Slovan Bratislava",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Andel29",
+    "club": "Spartak Trnava",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Sosoni66",
+    "club": "MŠK Žilina",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Zlatozluti20",
+    "club": "DAC Dunajská Streda",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Tehelne57",
+    "club": "Slovan Bratislava",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Trnava94",
+    "club": "Spartak Trnava",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Zilina48",
+    "club": "MŠK Žilina",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Dunajska85",
+    "club": "DAC Dunajská Streda",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Slovanista39",
+    "club": "Slovan Bratislava",
+    "segment": "SVK",
+    "tier": "solid"
+  },
+  {
+    "id": "Spartakovec76",
+    "club": "Spartak Trnava",
+    "segment": "SVK",
+    "tier": "wild"
+  },
+  {
+    "id": "Vodarska30",
+    "club": "MŠK Žilina",
+    "segment": "SVK",
+    "tier": "wild"
+  },
+  {
+    "id": "Sarlo67",
+    "club": "DAC Dunajská Streda",
+    "segment": "SVK",
+    "tier": "wild"
+  },
+  {
+    "id": "Belasi21",
+    "club": "Slovan Bratislava",
+    "segment": "SVK",
+    "tier": "wild"
+  },
+  {
+    "id": "Andel58",
+    "club": "Spartak Trnava",
+    "segment": "SVK",
+    "tier": "wild"
+  },
+  {
+    "id": "Sosoni95",
+    "club": "MŠK Žilina",
+    "segment": "SVK",
+    "tier": "wild"
+  },
+  {
+    "id": "Zlatozluti49",
+    "club": "DAC Dunajská Streda",
+    "segment": "SVK",
+    "tier": "wild"
+  },
+  {
+    "id": "Ludogorec93",
+    "club": "Ludogorets Razgrad",
+    "segment": "BUL",
+    "tier": "elite"
+  },
+  {
+    "id": "Chervenite47",
+    "club": "CSKA Sofia",
+    "segment": "BUL",
+    "tier": "elite"
+  },
+  {
+    "id": "Levskar84",
+    "club": "Levski Sofia",
+    "segment": "BUL",
+    "tier": "elite"
+  },
+  {
+    "id": "Lokomotiv38",
+    "club": "Lokomotiv Plovdiv",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Orlite75",
+    "club": "Ludogorets Razgrad",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Armeec29",
+    "club": "CSKA Sofia",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Sinite66",
+    "club": "Levski Sofia",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Smurfove20",
+    "club": "Lokomotiv Plovdiv",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Razgrad57",
+    "club": "Ludogorets Razgrad",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Balgarska94",
+    "club": "CSKA Sofia",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Gerena48",
+    "club": "Levski Sofia",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Plovdiv85",
+    "club": "Lokomotiv Plovdiv",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Ludogorec39",
+    "club": "Ludogorets Razgrad",
+    "segment": "BUL",
+    "tier": "solid"
+  },
+  {
+    "id": "Chervenite76",
+    "club": "CSKA Sofia",
+    "segment": "BUL",
+    "tier": "wild"
+  },
+  {
+    "id": "Levskar30",
+    "club": "Levski Sofia",
+    "segment": "BUL",
+    "tier": "wild"
+  },
+  {
+    "id": "Lokomotiv67",
+    "club": "Lokomotiv Plovdiv",
+    "segment": "BUL",
+    "tier": "wild"
+  },
+  {
+    "id": "Orlite21",
+    "club": "Ludogorets Razgrad",
+    "segment": "BUL",
+    "tier": "wild"
+  },
+  {
+    "id": "Armeec58",
+    "club": "CSKA Sofia",
+    "segment": "BUL",
+    "tier": "wild"
+  },
+  {
+    "id": "Sinite95",
+    "club": "Levski Sofia",
+    "segment": "BUL",
+    "tier": "wild"
+  },
+  {
+    "id": "Smurfove49",
+    "club": "Lokomotiv Plovdiv",
+    "segment": "BUL",
+    "tier": "wild"
   }
 ]

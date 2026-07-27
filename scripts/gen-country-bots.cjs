@@ -139,7 +139,7 @@ const PLAN = {
    * Lakaplar yine KULÜBE BAĞLI (tribün/şehir/stadyum karşılığı).
    */
   UKR: {
-    count: 20,
+    count: 40,
     clubs: {
       "Shakhtar Donetsk": ["Hirnyky", "Shakhtar", "Donbas"],
       "Dynamo Kyiv":      ["Dynamivets", "Kyivlyanyn", "Lobanovskyi"],
@@ -148,7 +148,7 @@ const PLAN = {
     },
   },
   SUI: {
-    count: 20,
+    count: 40,
     clubs: {
       "FC Basel":     ["Bebbi", "Rotblau", "Joggeli"],
       "Young Boys":   ["Gelbschwarz", "Wankdorf", "Berner"],
@@ -157,7 +157,7 @@ const PLAN = {
     },
   },
   CRO: {
-    count: 20,
+    count: 40,
     clubs: {
       "Dinamo Zagreb": ["Modri", "Maksimir", "Purger"],
       "Hajduk Split":  ["Bili", "Poljud", "Torcida"],
@@ -166,7 +166,7 @@ const PLAN = {
     },
   },
   SRB: {
-    count: 20,
+    count: 40,
     clubs: {
       "Red Star Belgrade": ["Zvezdas", "Marakana", "Delija"],
       "Partizan Belgrade": ["Grobar", "Humska", "Parni"],
@@ -174,7 +174,7 @@ const PLAN = {
     },
   },
   CZE: {
-    count: 20,
+    count: 40,
     clubs: {
       "Slavia Prague":  ["Sesivani", "Eden", "Slavista"],
       "Sparta Prague":  ["Letna", "Sparta", "Rudi"],
@@ -182,7 +182,7 @@ const PLAN = {
     },
   },
   ROU: {
-    count: 20,
+    count: 40,
     clubs: {
       "FCSB":                  ["Ros-albastru", "Ghencea", "Stelist"],
       "CFR Cluj":              ["Feroviar", "Cluj", "Gruia"],
@@ -191,7 +191,7 @@ const PLAN = {
     },
   },
   HUN: {
-    count: 20,
+    count: 40,
     clubs: {
       "Ferencváros":     ["Fradi", "Groupama", "Zoldfeher"],
       "MOL Fehérvár":    ["Fehervar", "Sostoi", "Videoton"],
@@ -200,7 +200,7 @@ const PLAN = {
     },
   },
   SVK: {
-    count: 20,
+    count: 40,
     clubs: {
       "Slovan Bratislava":   ["Belasi", "Tehelne", "Slovanista"],
       "Spartak Trnava":      ["Andel", "Trnava", "Spartakovec"],
@@ -209,7 +209,7 @@ const PLAN = {
     },
   },
   BUL: {
-    count: 20,
+    count: 40,
     clubs: {
       "Ludogorets Razgrad": ["Orlite", "Razgrad", "Ludogorec"],
       "CSKA Sofia":         ["Armeec", "Balgarska", "Chervenite"],
@@ -229,6 +229,32 @@ function tierFor(i, total) {
   return "wild";
 }
 
+/** Hedef kadro büyüklüğü için tier başına kaç bot olmalı. */
+function tierTargets(total) {
+  const t = { elite: 0, solid: 0, wild: 0 };
+  for (let i = 0; i < total; i++) t[tierFor(i, total)]++;
+  return t;
+}
+
+/**
+ * Kadro büyütülürken (20 → 40) yeni botlara verilecek tier'ları hesaplar:
+ * hedef dağılımdan mevcutları düşer, EKSİĞİ tamamlar.
+ *
+ * Neden gerekli: tierFor(i, total) sıralamaya bağlı. Yeni botlar i=20..39
+ * aralığında üretildiği için hepsi solid/wild olurdu (elite hiç gelmezdi) ve
+ * o ülkenin botları diğer ülkelerinkinden sistematik olarak daha kötü tahminci
+ * olurdu — ülke sıralamaları kıyaslanamaz hale gelirdi.
+ */
+function tiersToAdd(total, existingTiers) {
+  const target = tierTargets(total);
+  const queue = [];
+  for (const tier of ["elite", "solid", "wild"]) {
+    const need = Math.max(0, target[tier] - (existingTiers[tier] || 0));
+    for (let i = 0; i < need; i++) queue.push(tier);
+  }
+  return queue;
+}
+
 /**
  * Deterministik üretim. Kulüpler sırayla dolaşılır, her kulübün kendi lakap
  * havuzundan isim alınır — böylece lakap-kulüp eşlemesi hep doğru kalır.
@@ -236,11 +262,16 @@ function tierFor(i, total) {
  * Numara 17-99 arası; "87" içeren veya çakışan kimlikler atlanıp bir sonraki
  * numaraya geçilir (üretim yine deterministik, sadece bazı numaralar boş kalır).
  */
-function buildProfiles(segment, spec, taken) {
+function buildProfiles(segment, spec, taken, startIndex = 0, existingTiers = {}) {
   const out = [];
   const clubNames = Object.keys(spec.clubs);
 
-  for (let i = 0; i < spec.count; i++) {
+  // Büyütmede i, mevcut kadronun bittiği yerden devam eder: i=0..startIndex-1
+  // aynı kimlikleri üretirdi, `taken` yüzünden numara kaydırılır ve çakışan
+  // ikinci bir kadro oluşurdu.
+  const tierQueue = tiersToAdd(spec.count, existingTiers);
+
+  for (let i = startIndex; i < spec.count; i++) {
     const club = clubNames[i % clubNames.length];
     const pool = spec.clubs[club];
     const handle = pool[Math.floor(i / clubNames.length) % pool.length];
@@ -258,7 +289,10 @@ function buildProfiles(segment, spec, taken) {
     }
     if (!id) throw new Error(`${segment}/${handle} için uygun kimlik bulunamadı`);
 
-    out.push({ id, club, segment, tier: tierFor(i, spec.count) });
+    // Sıfırdan üretimde bu tierFor(i, count) ile birebir aynı sonucu verir
+    // (kuyruk elite→solid→wild sırasında dolar); büyütmede eksiği tamamlar.
+    const tier = tierQueue.shift() || tierFor(i, spec.count);
+    out.push({ id, club, segment, tier });
   }
   return out;
 }
@@ -277,20 +311,39 @@ function main() {
   // zaten üretilmiş bir segment tekrar işlenirse çakışma yaşamaz, sadece FARKLI
   // numaralarla ikinci bir kadro üretir ve o ülkenin bot sayısını ikiye katlar.
   // Kimlik bazlı `taken` kontrolü bunu yakalayamaz.
-  const existingSegments = new Set(
-    existing.map((p) => String(p.segment || "").toUpperCase())
-  );
+  // Segment → mevcut bot sayısı ve tier dağılımı
+  const bySegment = new Map();
+  for (const p of existing) {
+    const s = String(p.segment || "").toUpperCase();
+    if (!bySegment.has(s)) bySegment.set(s, { count: 0, tiers: {} });
+    const e = bySegment.get(s);
+    e.count++;
+    e.tiers[p.tier] = (e.tiers[p.tier] || 0) + 1;
+  }
+
+  const grown = [];
 
   for (const [segment, spec] of Object.entries(PLAN)) {
-    if (existingSegments.has(segment.toUpperCase())) {
-      skipped.push(segment);
+    const cur = bySegment.get(segment.toUpperCase()) || { count: 0, tiers: {} };
+
+    // Kadro zaten hedefte veya üstünde → dokunma (tekrar çalıştırma güvenli)
+    if (cur.count >= spec.count) {
+      skipped.push(`${segment}(${cur.count})`);
       continue;
     }
-    added.push(...buildProfiles(segment, spec, taken));
+
+    const fresh = buildProfiles(segment, spec, taken, cur.count, cur.tiers);
+    added.push(...fresh);
+    if (cur.count > 0) {
+      grown.push(`${segment} ${cur.count}→${spec.count}`);
+    }
   }
 
   if (skipped.length) {
-    console.log(`Atlanan (kadrosu zaten var): ${skipped.join(", ")}\n`);
+    console.log(`Atlanan (kadro zaten hedefte): ${skipped.join(", ")}\n`);
+  }
+  if (grown.length) {
+    console.log(`Büyütülen: ${grown.join(", ")}\n`);
   }
 
   const bySeg = {};
