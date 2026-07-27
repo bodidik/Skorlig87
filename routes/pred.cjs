@@ -35,6 +35,23 @@ const LC_MATCH_COST = 3; // matchEntryCost – hem backend hem frontend bu rakam
 // ile kapatılıp yalnızca MongoDB kullanılır.
 const PREDS_FILE_MIRROR = String(process.env.SKORLIG_PREDS_FILE_MIRROR ?? "1") !== "0";
 
+/* ======================
+ *  BOT DOLULUK POLİTİKASI
+ *
+ *  Botlar kalıcı nüfus değil, DOLULUK YEDEĞİdir: amaç, gerçek tahminci azken
+ *  kullanıcının maçta/sıralamada/canlı yarışta yalnız kalmamasıdır. Gerçek
+ *  kullanıcı geldikçe bot ihtiyacı azalmalıdır.
+ *
+ *  Formül:  bot_sayısı = max(0, HEDEF − gerçek_tahminci)
+ *  Böylece hedefe ulaşan maça hiç bot girmez; sistem büyüdükçe botlar
+ *  kendiliğinden sahneden çekilir.
+ *
+ *  Ülke eşleştirme: önce maçın ülkesinden botlar seçilir (Türkiye ligi maçına
+ *  İngiliz botu doldurmak hem gerçekçi değil hem ülke sıralamasını bozar),
+ *  eksik kalırsa global/diğer botlarla tamamlanır.
+ * ====================== */
+const BOT_TARGET_PREDICTORS = Number(process.env.SKORLIG_BOT_TARGET || 40);
+
 // ----------------- JSON HELPER'LAR -----------------
 async function readJson(file, fb) {
   try {
@@ -1391,6 +1408,79 @@ function buildBotPrediction({
 }
 
 /**
+ * Bir fixture'daki GERÇEK (bot olmayan) tahminci sayısı.
+ * Doluluk hesabının tabanı — botlar bu sayıyı hedefe tamamlar.
+ */
+async function countRealPredictors(fixtureId, db) {
+  const fx = String(fixtureId);
+
+  if (db) {
+    // isBot alanına güvenmek yerine kimlik kümesiyle de doğrula: eski
+    // kayıtlarda isBot yazılmamış olabilir.
+    const docs = await db
+      .collection("predictions")
+      .find({ fixtureId: fx }, { projection: { userIdLower: 1, _id: 0 } })
+      .toArray();
+    let n = 0;
+    for (const d of docs) {
+      if (!BOT_USER_ID_SET.has(String(d.userIdLower || ""))) n++;
+    }
+    return n;
+  }
+
+  const { list } = await loadPredList();
+  let n = 0;
+  for (const p of list) {
+    if (String(p.fixtureId || "") !== fx) continue;
+    const uid = String(p.userId || p.user || "").trim().toLowerCase();
+    if (uid && !BOT_USER_ID_SET.has(uid)) n++;
+  }
+  return n;
+}
+
+/**
+ * Doldurulacak bot kadrosunu seçer.
+ *
+ * - Önce maçın ülkesinden botlar (ülke sıralaması tutarlı kalsın)
+ * - Yetmezse geri kalan kadrodan tamamlanır
+ * - Seçim fixtureId ile tohumlanır: aynı maç için tekrar çalıştırıldığında
+ *   aynı kadro gelir (tahminler zaten deterministik üretiliyor).
+ */
+function pickBotsForFixture(fixtureId, needed, fixtureCountry) {
+  if (needed <= 0) return [];
+
+  const { countryOfSegment } = require("../lib/bot-countries.cjs");
+  const wanted = String(fixtureCountry || "").trim();
+
+  const local = [];
+  const rest  = [];
+  for (const bot of BOT_PROFILES) {
+    const c = countryOfSegment(bot.segment);
+    if (wanted && c === wanted) local.push(bot);
+    else rest.push(bot);
+  }
+
+  // Deterministik karıştırma (Fisher-Yates + tohumlu rng)
+  const shuffle = (arr, seed) => {
+    const rng = makeSeededRng(seed);
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const picked = shuffle(local, `${fixtureId}::local`).slice(0, needed);
+  if (picked.length < needed) {
+    picked.push(
+      ...shuffle(rest, `${fixtureId}::rest`).slice(0, needed - picked.length)
+    );
+  }
+  return picked;
+}
+
+/**
  * POST /api/pred/bots-generate
  * body: { fixtureId: "..." }
  *
@@ -1436,8 +1526,19 @@ router.post("/pred/bots-generate", async (req, res) => {
     // Fixture meta (varsa)
     const meta = await readFixtureMeta(fx);
 
+    // Doluluk hesabı: hedefi gerçek tahmincilerle karşıla, farkı bot doldursun.
+    // İstek `target` gönderirse onu kullan (admin ayarı), yoksa varsayılan.
+    const target = Math.max(
+      0,
+      Number(req.body?.target) || BOT_TARGET_PREDICTORS
+    );
+    const realCount = await countRealPredictors(fx, db);
+    const needed = Math.max(0, target - realCount);
+
+    const chosenBots = pickBotsForFixture(fx, needed, meta.country);
+
     // Her bot için deterministik RNG
-    const newRecs = BOT_PROFILES.map((bot) => {
+    const newRecs = chosenBots.map((bot) => {
       const rng = makeSeededRng(`${fx}::${bot.userId}`);
       return buildBotPrediction({
         fixtureId: fx,
@@ -1477,7 +1578,14 @@ router.post("/pred/bots-generate", async (req, res) => {
     return res.json({
       ok: true,
       fixtureId: fx,
-      botCount: BOT_PROFILES.length,
+      target,
+      realPredictors: realCount,
+      botCount: newRecs.length,
+      country: meta.country || null,
+      // Hedef zaten gerçek kullanıcılarla dolduysa bot üretilmez.
+      note: needed === 0
+        ? "Hedef gercek tahmincilerle doldu, bot eklenmedi."
+        : undefined,
     });
     }); // withFileLock(PREDS_FILE)
   } catch (e) {
