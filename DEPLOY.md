@@ -136,6 +136,49 @@ devam eder — yanlışlıkla 0 yapmak veri kaybına yol açmaz (test edildi).
 
 ---
 
+## A3. Maç sonucu snapshot aynasını kapat
+
+`match-results.json` her settle'da **baştan yazılıyordu**. Her kayıt maçın tüm
+sıralamasını gömdüğü için dosya hızla büyür (ölçüldü: 15 kayıt / 5.3 MB,
+kayıt başına ~408 KB) ve maliyet **geçmişteki maç sayısıyla** artar — yani
+sistem yaşlandıkça her settle yavaşlar.
+
+⚠️ **Eski kayıtları silerek çözme.** `awardedAt` alanı aynı zamanda çift-ödül
+mührüdür ve `livescore-sync` "hangi maçlar sonuçlandı" bilgisini buradan okur.
+Kayıt silinirse o maç yeniden sonuçlandırılır ve **ödüller ikinci kez dağıtılır**.
+
+### Ön koşul
+
+Snapshot'lar Mongo'da olmalı. `settle2` yeni settle'ları `match_results`
+koleksiyonuna yazar; ayna kapatılmadan önce **geçmiş** snapshot'ların da orada
+olduğundan emin ol — yoksa kullanıcıların maç geçmişi ve haftalık sıralamalar
+eksik görünür.
+
+```bash
+# Mongo'daki snapshot sayısı vs dosyadaki
+node -e "require('./lib/mongo.cjs').getDb().then(async d=>{console.log('mongo snapshot:', await d.collection('match_results').countDocuments());process.exit(0)})"
+node -e "console.log('dosya snapshot:', JSON.parse(require('fs').readFileSync('data/match-results.json','utf8')).items.length)"
+```
+
+Sayılar yakın değilse **kapatma**. Geçmişi taşımak için aynayı bir süre `1`'de
+bırak: her yeni settle ilgili maçı Mongo'ya da yazar, ama eski maçlar
+kendiliğinden taşınmaz — gerekirse tek seferlik bir aktarım yaz.
+
+### Kapat
+
+```
+SKORLIG_MATCHRESULTS_FILE_MIRROR=0
+```
+
+`MONGODB_URI` tanımlı değilse bayrak **yok sayılır**, dosya yazılmaya devam eder.
+
+### Geri alma
+
+`SKORLIG_MATCHRESULTS_FILE_MIRROR=1` + yeniden başlat. Ayna kapalıyken üretilen
+snapshot'lar dosyada yoktur (Mongo'da durur).
+
+---
+
 ## B. Redis (hız sınırı)
 
 Şu an `REDIS_URL` tanımsız ve sayaç **bellekte** tutuluyor. Tek instance'ta
