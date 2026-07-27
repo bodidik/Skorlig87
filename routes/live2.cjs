@@ -127,6 +127,10 @@ const GLOBAL_LEAGUES = [
   /copa\s*america/i,
   /nations\s*league/i,
   /africa\s*cup/i,
+  // Hazırlık maçları: lig-öncesi dönemde herkesin maç görmesi için
+  /haz[ıi]rl[ıi]k/i,
+  /friendl/i,
+  /pre[- ]?season/i,
 ];
 
 // Gençlik / kadın / yedek / alt ligler: ana oyuna girmesin
@@ -137,6 +141,7 @@ const EXCLUDED_LEAGUES = [
   /youth/i,
   /\bwomen\b/i,
   /\bw\.?league\b/i,
+  /kad[ıi]nlar/i,         // Maçkolik Türkçe: "Kadınlar"
   /next\s*pro/i,
   /\breserve/i,
   /\bacademy\b/i,
@@ -367,9 +372,9 @@ function localizeForCountry(list, country, extraLeagues) {
 
 function runtimeCountryCap(mode) {
   const p = String(mode?.profile || "").toUpperCase();
-  if (p === "DEV_4_TEAMS") return 50; // 2 aylık big-4 listesi kırpılmasın
+  if (p === "DEV_4_TEAMS") return 50;
   if (p === "TR_30_TEAMS") return 8;
-  if (p === "GLOBAL_456_TEAMS") return 10;
+  if (p.startsWith("GLOBAL_")) return 10;
   return COUNTRY_CAP_DEFAULT;
 }
 
@@ -1023,7 +1028,7 @@ async function loadManualFixtures() {
     })
     .filter((f) => {
       if (!f.fixtureId || !f.home || !f.away) return false;
-      // kickoffISO veya kickoffDate zorunlu (ikisi birden de olabilir)
+      if (isExcludedLeague(f.league)) return false;
       if (f.kickoffISO) return true;
       return !!(f.kickoffDate && /^\d{4}-\d{2}-\d{2}$/.test(String(f.kickoffDate)));
     });
