@@ -314,6 +314,17 @@ const server = app.listen(PORT, HOST, () => {
       require("./services/bot-filler.cjs").start(10 * 60 * 1000, PORT)
     );
   }
+
+  /* 🩺 Scraper sağlık izleme: canlı skor cache'i bayatlarsa veya çalışan
+     kaynak sayısı düşerse yönetim alarmı üretir. Şelale fiilen tek kaynağa
+     (mackolik) dayandığı için kesinti ancak buradan erken fark edilir.
+     Durum ucu: GET /api/admin/scraper-health
+     Kapatmak için: SKORLIG_SCRAPER_HEALTH=0 */
+  if (process.env.SKORLIG_SCRAPER_HEALTH !== "0") {
+    safeMount("scraper-health", () =>
+      require("./services/scraper-health.cjs").start(10 * 60 * 1000)
+    );
+  }
 });
 
 /* ===== Düzgün kapanış =====

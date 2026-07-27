@@ -763,4 +763,37 @@ router.get("/search-match", async (req, res) => {
   }
 });
 
+/* =========================================================
+   GET /api/admin/scraper-health
+   Canlı skor şelalesinin durumu: cache tazeliği, kaynak başarı oranları,
+   kaç yedek ayakta. Sorun varsa `status` warn/critical döner.
+
+   Neden gerekli: şelale 10 kaynaklı görünüyor ama gerçekte tek kaynağa
+   dayanıyor (mackolik). Bu uç olmadan Maçkolik'in bozulduğu ancak
+   kullanıcı şikâyetinden anlaşılıyordu.
+   ========================================================= */
+router.get("/scraper-health", requireAdminToken, async (req, res) => {
+  try {
+    const health = require("../services/scraper-health.cjs");
+    const r = await health.report();
+    // Sağlıksızsa 200 dışında dönmek izleme araçlarının yakalamasını kolaylaştırır.
+    return res.status(r.status === "critical" ? 503 : 200).json({ ok: true, ...r });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+/* GET /api/admin/alerts?limit=50&kind=scraper_down */
+router.get("/alerts", requireAdminToken, async (req, res) => {
+  try {
+    const { listAlerts } = require("../lib/admin-alerts.cjs");
+    const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
+    const kind = String(req.query.kind || "").trim() || null;
+    const items = await listAlerts(limit, kind);
+    return res.json({ ok: true, count: items.length, items });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 module.exports = router;
