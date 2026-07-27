@@ -18,7 +18,11 @@ const BUILD = "settle2-2026-07-16-penalty20pct"; // ✅ ceza %20 orantılı
 // (rekabet adaleti). Premium avantajları LC ekonomisinde: bedava giriş +
 // aylık kasa (bkz. lib/premium.cjs).
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// Veri kökü testlerde değiştirilebilir (SKORLIG_DATA_DIR). Bu modül puan ve
+// LC dağıttığı için testlerin gerçek kullanıcı verisine dokunmaması şart;
+// izole bir dizine yönlendirilebilmesi bunu sağlar. Üretimde tanımsızdır ve
+// davranış birebir aynıdır.
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const LIVE_DIR = path.join(DATA_DIR, "live");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 const TOTALS_FILE = path.join(DATA_DIR, "totals.json");
@@ -658,7 +662,24 @@ async function _awardStreakBonusesUnlocked(bonusMap, fixtureId, db) {
   return awarded;
 }
 
-async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLive = false } = {}) {
+/**
+ * Maç bazlı kilitli sarmalayıcı.
+ *
+ * İdempotency mührü "oku → kontrol et → ödüllendir → yaz" olarak işler; bu
+ * pencere seri hale getirilmezse aynı fixture'a iki eşzamanlı settle mührü
+ * ikisi de boş görür ve LC İKİ KEZ yatar (ocak ayı ledger'ında gerçekten
+ * yaşandı).
+ *
+ * ⚠️ KİLİT NEDEN BURADA, ÇAĞIRANDA DEĞİL: eskiden yalnızca POST /settle2
+ * route'unu sarıyordu. Test paketi bunu yakaladı — scoreFixture DOĞRUDAN
+ * paralel çağrıldığında (5 çağrı) ödül 5 kez yatıyordu. Koruma çağıranda
+ * yaşarsa, ileride eklenecek her yeni çağıran (toplu settle, cron, başka
+ * servis) hatayı sessizce geri getirir. Artık garanti fonksiyonun kendisinde.
+ *
+ * withFileLock aynı anahtarla İÇ İÇE çağrılırsa kilitlenir (reentrant değil) —
+ * bu yüzden route'daki sarmalayıcı kaldırıldı.
+ */
+async function scoreFixture(fixtureId, opts = {}) {
   const fid = String(fixtureId || "");
   if (!fid) {
     const err = new Error("FIXTURE_REQUIRED");
@@ -666,6 +687,11 @@ async function scoreFixture(fixtureId, { updateTotals = true, db = null, allowLi
     err.httpStatus = 400;
     throw err;
   }
+  return withFileLock(`settle:${fid}`, () => _scoreFixtureUnlocked(fixtureId, opts));
+}
+
+async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null, allowLive = false } = {}) {
+  const fid = String(fixtureId || "");
 
   const debug = {
     build: BUILD,
@@ -1282,13 +1308,10 @@ router.post("/settle2", async (req, res) => {
     const fixtureId = String(req.query.fixtureId || req.body?.fixtureId || "");
     const db = req.app?.locals?.db || null;
 
-    // Maç bazlı kilit: idempotency mührü "oku → kontrol et → ödüllendir → yaz"
-    // olarak işliyor. Kilitsiz hâlde aynı fixture'a iki eşzamanlı settle
-    // (livescore-sync tick'i uzun sürünce bir sonraki tick üstüne biner)
-    // ikisi de mührü boş görür ve LC iki kez yatar.
-    const result = await withFileLock(`settle:${fixtureId}`, () =>
-      scoreFixture(fixtureId, { updateTotals: true, db })
-    );
+    // Maç bazlı kilit artık scoreFixture'ın İÇİNDE (bkz. oradaki not).
+    // Burada tekrar sarmak aynı anahtarla iç içe kilit demek olurdu —
+    // withFileLock reentrant değildir, süreç kilitlenirdi.
+    const result = await scoreFixture(fixtureId, { updateTotals: true, db });
 
     // Fire-and-forget: tournaments that include this fixture
     tryAutoSettleTournaments(fixtureId, result.outcome, db).catch(() => {});
@@ -1698,3 +1721,10 @@ router.get("/pred/history/detail", async (req, res) => {
 });
 
 module.exports = router;
+
+// Test edilebilirlik: iç fonksiyonlar dışa açılır. Router bir fonksiyon
+// nesnesi olduğu için üzerine özellik eklenebilir — live2.cjs'teki
+// (canonicalCountry) desenin aynısı. Uygulama davranışı değişmez.
+module.exports.scoreFixture = scoreFixture;
+module.exports.computeLcRewardFromDetail = computeLcRewardFromDetail;
+module.exports.DATA_DIR = DATA_DIR;

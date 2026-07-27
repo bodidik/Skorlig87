@@ -4,7 +4,10 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// settle2 ile AYNI env değişkeni: seri kayıtları settle sırasında yazılır,
+// bu modül izole edilmezse testler gerçek streaks.json'a sızar (yaşandı —
+// 18 test kullanıcısı üretim dosyasına yazılmıştı). Üretimde tanımsızdır.
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const STREAK_FILE = path.join(DATA_DIR, "streaks.json");
 
 // Odds-bazlı sistemde eşikler yükseltildi:
