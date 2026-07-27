@@ -39,7 +39,8 @@ const DATA_DIR = path.join(__dirname, "..", "data");
 const PROV_FILE = path.join(DATA_DIR, "providers.json"); // provider.js ile aynı dosya
 const FAV_FILE = path.join(DATA_DIR, "users.json"); // { users:[{id, mainTeam}] }
 const MANUAL_FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
-const ADMIN_ALERTS_FILE = path.join(DATA_DIR, "admin-alerts.json");
+// admin-alerts.json artık lib/admin-alerts.cjs üzerinden yazılır (kırpma +
+// tekrar bastırma + dosya kilidi). Yol tanımı orada.
 const LIVE_DIR = path.join(DATA_DIR, "live"); // fixture state için (score, status vs.)
 // Manuel listeleme: ileri kaç gün gösterelim (test dönemi)
 const MANUAL_LIST_AHEAD_DAYS = 60;
@@ -1034,22 +1035,23 @@ async function loadManualFixtures() {
     });
 }
 
+/**
+ * Yönetim alarmı yaz. Gerçek iş lib/admin-alerts.cjs'te — burası yalnızca
+ * eski çağrı imzasını koruyan ince bir sarmalayıcı.
+ *
+ * ESKİ GÖMÜLÜ SÜRÜMÜN İKİ SORUNU VARDI (ölçüldü):
+ *   • Sınırsız büyüme: `items.push()` + yaz, kırpma/TTL yok. 4 günde 1412
+ *     kayıt / 733 KB birikmişti ve HER alarm tüm dosyayı okuyup yazıyordu.
+ *   • Tekrar: 1412 kaydın yalnızca 243'ü tekil mesajdı (ortalama ~6 kat, en
+ *     fazlası 21 kat). Gürültü gerçek sorunu görünmez yapıyordu.
+ *
+ * Ortak modül bunları çözer: aynı alarm soğuma penceresi içinde tekrar
+ * yazılmaz, kayıt sayısı ve yaşı sınırlanır, yazma dosya kilidiyle atomiktir.
+ */
+const { appendAlert } = require("../lib/admin-alerts.cjs");
+
 async function appendAdminAlert(kind, scope, message, meta) {
-  const fb = { items: [] };
-  const raw = (await readJson(ADMIN_ALERTS_FILE, fb)) || fb;
-  const items = Array.isArray(raw.items) ? raw.items : [];
-  const nowISO = new Date().toISOString();
-
-  items.push({
-    id: "alert_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
-    kind,
-    scope,
-    message,
-    meta: meta || null,
-    createdAt: nowISO,
-  });
-
-  await writeJson(ADMIN_ALERTS_FILE, { items });
+  return appendAlert(kind, scope, message, meta);
 }
 
 // Open listesinde kilit: kickoffISO varsa gerçek lock uygula.
