@@ -24,6 +24,7 @@ const crypto = require("crypto");
 const DATA_DIR = path.join(__dirname, "..", "data");
 const MINI_FILE = path.join(DATA_DIR, "mini-tournaments.json");
 const RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
+const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR = path.join(DATA_DIR, "live");
 
 const MIN_FIXTURES = 2;
@@ -407,8 +408,11 @@ router.get("/board", async (req, res) => {
     const fixtureIds = (t.fixtures || []).map((f) => String(f.fixtureId));
 
     // Settle edilmiş sonuç snapshot'ları (kullanıcı-başına puan satırları)
-    const resultsRaw = await readJson(RESULTS_FILE, []);
-    const resultsArr = Array.isArray(resultsRaw) ? resultsRaw : resultsRaw.items || [];
+    // Yalnızca bu turnuvanın maçları — eskiden tüm kitap okunuyordu.
+    const resultsArr = await MatchResults.listSnapshots({
+      db: req.app?.locals?.db || null,
+      fixtureIds,
+    });
     const byFixture = new Map(resultsArr.map((r) => [String(r.fixtureId), r]));
 
     const totals = new Map(); // userId -> { points, settledMatches }

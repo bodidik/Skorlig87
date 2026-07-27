@@ -24,6 +24,7 @@ const DATA_DIR     = path.join(__dirname, "..", "data");
 const FIXTURES     = path.join(DATA_DIR, "fixtures.json");
 const PREDS        = path.join(DATA_DIR, "preds.json");
 const RESULTS      = path.join(DATA_DIR, "match-results.json");
+const MatchResults = require("../lib/match-results.cjs");
 const WALLET       = path.join(DATA_DIR, "lc-wallet.json");
 const SENT_FILE    = path.join(DATA_DIR, "push-sent.json");
 
@@ -127,8 +128,9 @@ async function runKickoffReminders() {
 /* ===== 2) Sonuç bildirimi ===== */
 
 async function runResultNotices() {
-  const snaps = asArray(await readJson(RESULTS, null), "items");
-  const settled = snaps.filter((s) => s?.awardedAt && Array.isArray(s.rows) && s.rows.length);
+  // Filtre depoda: yalnızca ödülü dağıtılmış snapshot'lar gelir.
+  const snaps = await MatchResults.listSnapshots({ settledOnly: true });
+  const settled = snaps.filter((s) => Array.isArray(s.rows) && s.rows.length);
   if (!settled.length) return { sent: 0 };
 
   const keys = settled.map((s) => `result:${s.fixtureId}`);

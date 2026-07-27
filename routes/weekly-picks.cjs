@@ -21,6 +21,7 @@ const PREDS_FILE         = path.join(DATA_DIR, "preds.json");
 const USERS_FILE         = path.join(DATA_DIR, "users.json");
 const WALLET_FILE        = path.join(DATA_DIR, "lc-wallet.json");
 const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
+const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR           = path.join(DATA_DIR, "live");
 
 const WINDOW_BEFORE_MS = 24 * 60 * 60 * 1000;  // 24 saat önce açılır
@@ -245,10 +246,10 @@ router.get("/leaderboard", async (req, res) => {
     if (!is1987Set.size) return res.json({ ok: true, count: 0, items: [], week: new Date(weekAgo).toISOString() });
 
     // match-results.json — son 7 günün maçları
-    const book   = await readJson(MATCH_RESULTS_FILE, { items: [] });
-    const snaps  = (book?.items ?? []).filter(s => {
-      const t = new Date(s.computedAt || 0).getTime();
-      return t >= weekAgo;
+    // Tarih filtresi depoda — eskiden tüm kitap okunup burada süzülüyordu.
+    const snaps = await MatchResults.listSnapshots({
+      db: req.app?.locals?.db || null,
+      sinceISO: new Date(weekAgo).toISOString(),
     });
 
     // Kullanıcı bazında toplam puan

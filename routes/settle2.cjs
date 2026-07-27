@@ -12,6 +12,7 @@ const path = require("path");
 // onların kilidi anlamsızlaşır (lost update → LC kaybı).
 // Global kilit sırası: PREDS → WALLET → USERS (döngü yok).
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
+const MatchResults = require("../lib/match-results.cjs");
 
 const BUILD = "settle2-2026-07-16-penalty20pct"; // ✅ ceza %20 orantılı
 // NOT: Puanlama/ödül herkes için eşittir — premium'un maç başı avantajı YOK
@@ -328,17 +329,7 @@ async function bootstrapStateFromResultsAndFixtures(fid) {
  * ✅ MATCH-RESULTS (HISTORY DEFTERİ)
  * ====================== */
 
-async function loadMatchResultsBook() {
-  const raw = await readJson(MATCH_RESULTS_FILE, { items: [], updatedAt: null });
-  if (!raw || typeof raw !== "object") return { items: [], updatedAt: null };
-  if (!Array.isArray(raw.items)) raw.items = [];
-  return raw;
-}
 
-async function saveMatchResultsBook(book) {
-  book.updatedAt = new Date().toISOString();
-  await writeJson(MATCH_RESULTS_FILE, book);
-}
 
 async function buildFixtureMetaMap() {
   const fixtures = await loadFixturesList();
@@ -360,37 +351,31 @@ async function buildFixtureMetaMap() {
 
 // Defter read-modify-write: iki FARKLI maç aynı anda sonuçlanırsa kilitsiz
 // hâlde biri diğerinin snapshot'ını (ve awardedAt mührünü) siler.
-async function upsertMatchResultSnapshot(args) {
-  return withFileLock(MATCH_RESULTS_FILE, () =>
-    _upsertMatchResultSnapshotUnlocked(args)
+/**
+ * Snapshot yazımı artık lib/match-results.cjs üzerinden: Mongo varsa indeksli
+ * upsert, yoksa dosya. Eskiden TÜM kitap her settle'da yeniden yazılıyordu
+ * (15 kayıt / 5.3 MB) ve maliyet geçmişteki maç sayısıyla büyüyordu.
+ *
+ * Kilit ve "oku → karar ver → yaz" bütünlüğü depo tarafında; `awardedAt`
+ * mührünün korunması aşağıdaki mutate fonksiyonunda.
+ */
+async function upsertMatchResultSnapshot({ fixtureId, finalScore, meta, rows, awardedAt, db = null }) {
+  const nowISO = new Date().toISOString();
+  return MatchResults.upsertSnapshot(
+    fixtureId,
+    (existing) => ({
+      fixtureId: normFid(fixtureId),
+      computedAt: nowISO,
+      finalScore: finalScore || null,
+      meta: meta || null,
+      rows: Array.isArray(rows) ? rows : [],
+      // awardedAt: bir kez yazılınca sabit kalır (idempotency sentinel)
+      awardedAt: existing?.awardedAt || awardedAt || null,
+    }),
+    db
   );
 }
 
-async function _upsertMatchResultSnapshotUnlocked({ fixtureId, finalScore, meta, rows, awardedAt }) {
-  const nowISO = new Date().toISOString();
-  const book = await loadMatchResultsBook();
-
-  const idx = book.items.findIndex((x) => normFid(x?.fixtureId) === normFid(fixtureId));
-  const existing = idx >= 0 ? book.items[idx] : null;
-
-  const snap = {
-    fixtureId: normFid(fixtureId),
-    computedAt: nowISO,
-    finalScore: finalScore || null,
-    meta: meta || null,
-    rows: Array.isArray(rows) ? rows : [],
-    // awardedAt: bir kez yazılınca sabit kalır (idempotency sentinel)
-    awardedAt: existing?.awardedAt || awardedAt || null,
-  };
-
-  if (idx >= 0) book.items[idx] = snap;
-  else book.items.push(snap);
-
-  book.items.sort((a, b) => new Date(b.computedAt || 0) - new Date(a.computedAt || 0));
-  await saveMatchResultsBook(book);
-
-  return snap;
-}
 
 /* ======================
  *  SCORING
@@ -1055,10 +1040,8 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
   // livescore-sync + af-sync + manuel çağrılar aynı fixture'ı defalarca
   // settle2'ye gönderebilir. Sentinel: match-results snapshot'ta `awardedAt`.
   try {
-    const existingBook = await loadMatchResultsBook();
-    const existing = (existingBook.items || []).find(
-      (x) => normFid(x?.fixtureId) === fid
-    );
+    // Tek snapshot yeter — eskiden 5.3 MB'lik kitabın tamamı okunuyordu.
+    const existing = await MatchResults.getSnapshot(fid, db);
     if (existing && existing.awardedAt) {
       console.log(`[settle2] fixture ${fid} zaten ödüllendirilmiş (${existing.awardedAt}) — tekrar yatırılmayacak`);
       return {
@@ -1135,6 +1118,7 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
     const fxMeta = fxMap.get(fid) || {};
 
     await upsertMatchResultSnapshot({
+      db,
       fixtureId: fid,
       finalScore: { home: h, away: a },
       meta: {
@@ -1694,11 +1678,15 @@ router.get("/pred/history", async (req, res) => {
 
     if (!userId) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
 
-    const book = await loadMatchResultsBook();
     const uidLower = userId.toLowerCase();
+    // İndeksli sorgu: yalnızca bu kullanıcının geçtiği snapshot'lar.
+    const snaps = await MatchResults.listSnapshots({
+      db: req.app?.locals?.db || null,
+      userIdLower: uidLower,
+    });
 
     const out = [];
-    for (const snap of book.items || []) {
+    for (const snap of snaps) {
       const rows = Array.isArray(snap.rows) ? snap.rows : [];
       const mine = rows.find((r) => String(r.userId || "").trim().toLowerCase() === uidLower);
       if (!mine) continue;
@@ -1735,8 +1723,7 @@ router.get("/pred/history/detail", async (req, res) => {
     if (!userId) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
     if (!fixtureId) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
 
-    const book = await loadMatchResultsBook();
-    const snap = (book.items || []).find((x) => normFid(x?.fixtureId) === fixtureId) || null;
+    const snap = await MatchResults.getSnapshot(fixtureId, req.app?.locals?.db || null);
     if (!snap) return res.status(404).json({ ok: false, error: "MATCH_RESULT_NOT_FOUND" });
 
     const uidLower = userId.toLowerCase();

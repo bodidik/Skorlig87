@@ -25,6 +25,7 @@ const crypto = require("crypto");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
+const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR = path.join(DATA_DIR, "live");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
@@ -195,10 +196,10 @@ async function collectFixtures(backDays, fwdDays) {
 }
 
 // ---------- haftalık sıralama (match-results snapshot'larından) ----------
-async function buildWeekBoard(weekFixtures) {
+async function buildWeekBoard(weekFixtures, db = null) {
   const fixtureIds = weekFixtures.map((f) => String(f.fixtureId));
-  const resultsRaw = await readJson(RESULTS_FILE, []);
-  const arr = Array.isArray(resultsRaw) ? resultsRaw : resultsRaw.items || [];
+  // Yalnızca bu haftanın maçları — eskiden tüm kitap okunuyordu.
+  const arr = await MatchResults.listSnapshots({ db, fixtureIds });
   const byFixture = new Map(arr.map((r) => [String(r.fixtureId), r]));
 
   const totals = new Map(); // userId -> { points, matches }
@@ -394,7 +395,7 @@ router.get("/current", async (req, res) => {
     const wkFixtures = (weeks.get(targetWk) || []).sort(
       (a, b) => new Date(a.kickoffISO) - new Date(b.kickoffISO)
     );
-    const { board, fixtureViews, settledCount, fixtureCount } = await buildWeekBoard(wkFixtures);
+    const { board, fixtureViews, settledCount, fixtureCount } = await buildWeekBoard(wkFixtures, req.app?.locals?.db || null);
     const finalized = await finalizeWeekIfDone(targetWk, board, settledCount, fixtureCount);
 
     const myRank = userId
@@ -481,7 +482,7 @@ router.get("/week/:weekKey", async (req, res) => {
     }
     fixtures.sort((a, b) => new Date(a.kickoffISO) - new Date(b.kickoffISO));
 
-    const { board, fixtureViews, settledCount, fixtureCount } = await buildWeekBoard(fixtures);
+    const { board, fixtureViews, settledCount, fixtureCount } = await buildWeekBoard(fixtures, req.app?.locals?.db || null);
     const finalized = await finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount);
 
     const myRank = userId

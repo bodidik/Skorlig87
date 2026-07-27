@@ -9,6 +9,7 @@ const LIVE_DIR   = path.join(DATA_DIR, "live");
 const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 const RESULTS_FILE  = path.join(DATA_DIR, "results.json");   // settle2'nin okuduğu file
 const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
+const MatchResults = require("../lib/match-results.cjs");
 
 const livescoreScraper = require("./livescore-scraper.cjs");
 
@@ -264,11 +265,9 @@ async function sync() {
       if (lg.matches) allLive.push(...lg.matches);
     }
 
-    const matchResults = await readJson(MATCH_RESULTS_FILE, { items: [] });
-    const settledIds   = new Set(
-      (Array.isArray(matchResults) ? matchResults : matchResults.items || [])
-        .map(r => r.fixtureId)
-    );
+    // Yalnızca kimlik kümesi gerekiyor — tüm snapshot'ları (satırlarıyla
+    // birlikte) belleğe almanın anlamı yok.
+    const settledIds = await MatchResults.settledFixtureIds();
 
     let newFT = 0;
     let newLive = 0;
