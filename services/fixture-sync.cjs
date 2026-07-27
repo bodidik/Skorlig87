@@ -144,28 +144,34 @@ async function fetchFixtures({ key, days = 30 } = {}) {
 /**
  * Çekilen maçları fixtures.json'a işler.
  *
- * Birleştirme kuralı:
- *   - source !== "FDO" olan kayıt AYNEN korunur (manuel maçlar)
- *   - FDO kaydı varsa güncellenir, yoksa eklenir
- *   - Artık FDO'dan gelmeyen eski FDO kaydı silinir (lig programı değişebilir)
+ * Birleştirme kuralı (ownedSource parametresi ile çalışır — hangi kaynak bu
+ * kayıtları "sahipleniyor"; başka kaynaklara ait maçlara asla dokunmaz):
+ *   - source !== ownedSource olan kayıt AYNEN korunur (manuel + diğer kaynaklar)
+ *   - Aynı kaynaktan kayıt varsa güncellenir, yoksa eklenir
+ *   - Artık gelmeyen eski kayıt silinir (lig programı değişebilir)
  *     ANCAK sadece gelecekteki maçlar: geçmiş maçlar puanlama geçmişi için durur
+ *
+ * ownedSource ile iki farklı besleyicinin (FDO 30 gün ileri, MK 24 saatlik)
+ * aynı fixtures.json'a birbirine dokunmadan yazması mümkün olur. FDO
+ * çekince MK kayıtları, MK çekince FDO kayıtları AYNEN durur.
  */
-function merge(existing, incoming) {
+function merge(existing, incoming, ownedSource = SOURCE) {
   const now = Date.now();
   const incomingIds = new Set(incoming.map((x) => x.fixtureId));
 
   const kept = existing.filter((f) => {
-    if (r2(f?.source) !== SOURCE) return true;              // manuel → dokunma
+    if (r2(f?.source) !== ownedSource) return true;         // başka kaynak → dokunma
     if (incomingIds.has(r2(f?.fixtureId))) return false;    // güncellenecek
     const ko = Date.parse(f?.kickoffISO || "");
-    return !Number.isFinite(ko) || ko < now;                // geçmiş FDO maçı → koru
+    return !Number.isFinite(ko) || ko < now;                // geçmiş kayıt → koru
   });
 
   return {
     list: kept.concat(incoming),
     added: incoming.filter((x) => !existing.some((f) => r2(f?.fixtureId) === x.fixtureId)).length,
     updated: incoming.filter((x) => existing.some((f) => r2(f?.fixtureId) === x.fixtureId)).length,
-    manual: kept.filter((f) => r2(f?.source) !== SOURCE).length,
+    // "manual" adı geriye dönük — ownedSource olmayan her şey (başka kaynak dahil)
+    manual: kept.filter((f) => r2(f?.source) !== ownedSource).length,
   };
 }
 
@@ -239,4 +245,9 @@ function start(intervalMs = 6 * 3600 * 1000, opts = {}) {
   return timer;
 }
 
-module.exports = { syncOnce, fetchFixtures, normalize, merge, start, AREA_TO_COUNTRY };
+module.exports = {
+  syncOnce, fetchFixtures, normalize, merge, start, AREA_TO_COUNTRY,
+  // Diğer besleyicilerin (mackolik-fixture-sync gibi) aynı dosyaya güvenli
+  // yazabilmesi için ortak dosya G/Ç.
+  readFixtures, writeFixtures,
+};

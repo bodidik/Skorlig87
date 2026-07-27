@@ -253,4 +253,15 @@ app.listen(PORT, HOST, () => {
       require("./services/fixture-sync.cjs").start(6 * 3600 * 1000, { days: 30 })
     );
   }
+
+  /* 📅 Maçkolik fikstür senkronu: livescore-cache.json → fixtures.json
+     25+ ülke, bugün + yarın penceresi. FDO ile cascade: kısa vadeli (MK 24h)
+     + uzun vadeli (FDO 30 gün) ayrı ayrı çalışırlar.
+     Her 3 dakika çünkü scraper 2 dakikada bir cache yazar — yeni verileri hızlıca.
+     Kapatmak için: SKORLIG_FIXTURE_SYNC=0 */
+  if (process.env.SKORLIG_FIXTURE_SYNC !== "0") {
+    safeMount("mackolik-fixture-sync", () =>
+      require("./services/mackolik-fixture-sync.cjs").start(3 * 60 * 1000)
+    );
+  }
 });
