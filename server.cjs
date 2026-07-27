@@ -303,6 +303,17 @@ const server = app.listen(PORT, HOST, () => {
       require("./services/mackolik-fixture-sync.cjs").start(3 * 60 * 1000)
     );
   }
+
+  /* 🤖 Bot doluluk: yaklaşan maçlara otomatik bot doldurur.
+     Sayı gerçek tahminciye göre belirlenir (bot = hedef − gerçek), bu yüzden
+     her tur bot sayısı azalır ve hedef dolunca sıfırlanır. Önceden her maç
+     için elle admin isteği gerekiyordu.
+     Kapatmak için: SKORLIG_BOT_FILL=0 */
+  if (process.env.SKORLIG_BOT_FILL !== "0") {
+    safeMount("bot-filler", () =>
+      require("./services/bot-filler.cjs").start(10 * 60 * 1000, PORT)
+    );
+  }
 });
 
 /* ===== Düzgün kapanış =====
