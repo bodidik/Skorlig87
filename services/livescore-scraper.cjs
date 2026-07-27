@@ -692,7 +692,10 @@ const SOURCES = [
   // — şu an veri döndürmüyor (yukarıdaki teşhislere bak) —
   { name: "bbc",          fn: fromBBC },
   { name: "skysports",    fn: fromSkySports },
-  { name: "bilyoner",     fn: fromBilyoner },
+  // bilyoner: API alan adı (sportsbookv2.bilyoner.com) artık DNS'te çözülmüyor —
+  // "fetch failed", HTTP hatası bile alınmıyor. Kaynak ortadan kalkmış; şelalede
+  // tutmak her turda boşuna bekleme demek. Yeni uç bulunursa geri açılabilir.
+  // { name: "bilyoner",     fn: fromBilyoner },
   { name: "nesine",       fn: fromNesine },
   { name: "tntsports",    fn: fromTNTSports },
   { name: "wslfootball",  fn: fromWSLFootball },

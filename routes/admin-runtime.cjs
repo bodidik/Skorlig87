@@ -783,6 +783,31 @@ router.get("/scraper-health", requireAdminToken, async (req, res) => {
   }
 });
 
+/* =========================================================
+   POST /api/admin/scraper-probe
+   Kaynakları tek tek, şelaleden bağımsız dener ve sonucu kaydeder.
+   Yedek sayımının tek güvenilir ölçüsü budur: şelale ilk başarıda durduğu
+   için sonraki kaynaklar neredeyse hiç denenmez, istatistikleri yanıltır.
+   Pahalı (kaynak başına Chrome açar) — normalde 24 saatte bir otomatik.
+   Gövde: { sources?: ["goal","espn"] } — verilmezse tümü.
+   ========================================================= */
+router.post("/scraper-probe", requireAdminToken, express.json(), async (req, res) => {
+  try {
+    const health = require("../services/scraper-health.cjs");
+    const names = Array.isArray(req.body?.sources) ? req.body.sources : null;
+    const doc = await health.probeSources(names);
+    const working = Object.entries(doc.results).filter(([, r]) => r.ok);
+    return res.json({
+      ok: true,
+      checkedAt: doc.checkedAt,
+      working: working.map(([n, r]) => ({ name: n, count: r.count })),
+      results: doc.results,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 /* GET /api/admin/alerts?limit=50&kind=scraper_down */
 router.get("/alerts", requireAdminToken, async (req, res) => {
   try {

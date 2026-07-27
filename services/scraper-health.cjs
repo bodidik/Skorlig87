@@ -25,6 +25,19 @@ const { appendAlert } = require("../lib/admin-alerts.cjs");
 const DATA_DIR = path.join(__dirname, "..", "data");
 const CACHE_FILE = path.join(DATA_DIR, "livescore-cache.json");
 const STATS_FILE = path.join(DATA_DIR, "livescore-stats.json");
+const PROBE_FILE = path.join(DATA_DIR, "scraper-probe.json");
+
+/* ── Neden yoklama (probe) gerekiyor ──────────────────────────────────────
+ * Şelale ilk başarılı kaynakta `break` eder. mackolik hemen hemen her turda
+ * başardığı için SONRAKİ kaynaklar neredeyse hiç denenmez; livescore-stats
+ * içindeki düşük oranları "bozuk" değil "nadiren denendi" anlamına gelir.
+ *
+ * Bu ayrım kritik: yalnızca istatistiğe bakan ilk sürüm "yedek yok, tek
+ * kaynak mackolik" alarmı üretiyordu. Kaynaklar izole çalıştırıldığında
+ * goal 89 maç, espn 17 maç döndürdü — yani İKİ gerçek yedek vardı ve alarm
+ * yanlıştı. Artık yedek sayımı gerçek yoklama sonucundan gelir.
+ */
+const PROBE_TTL_MS = Number(process.env.SKORLIG_PROBE_TTL_H || 24) * 3600000;
 
 // Cache bu süredir tazelenmediyse sorun var. Scraper 2dk'da bir çalışıyor;
 // eşik ona göre geniş tutuldu ki geçici bir tur hatası alarm üretmesin.
@@ -39,6 +52,7 @@ const MIN_ATTEMPTS = 5;
 const MIN_HEALTHY_SOURCES = Number(process.env.SKORLIG_SCRAPER_MIN_SOURCES || 2);
 
 let _timer = null;
+let _probeTimer = null;
 
 async function readJson(file, fb) {
   try {
@@ -59,27 +73,85 @@ async function cacheAgeMs() {
 }
 
 /**
+ * Kaynakları TEK TEK, şelaleden bağımsız çalıştırır ve sonucu diske yazar.
+ * Pahalıdır (her tarayıcı kaynağı için Chrome açılır) — bu yüzden seyrek
+ * çalışır. Yedek sayımının tek güvenilir kaynağı budur.
+ */
+async function probeSources(names) {
+  const scraper = require("./livescore-scraper.cjs");
+  const list = names && names.length ? names : scraper.SOURCE_NAMES;
+
+  const results = {};
+  for (const name of list) {
+    const t0 = Date.now();
+    try {
+      const r = await scraper.scrapeOne(name);
+      results[name] = { ok: r.count > 0, count: r.count, ms: Date.now() - t0, error: null };
+    } catch (e) {
+      results[name] = {
+        ok: false,
+        count: 0,
+        ms: Date.now() - t0,
+        error: String(e?.message || e).slice(0, 200),
+      };
+    }
+  }
+
+  const doc = { checkedAt: new Date().toISOString(), results };
+  try {
+    await fsp.writeFile(PROBE_FILE, JSON.stringify(doc, null, 2), "utf8");
+  } catch (e) {
+    console.error("[scraper-health] yoklama yazilamadi:", e.message || e);
+  }
+  return doc;
+}
+
+/**
  * Sağlık raporu üretir. Yan etkisizdir — hem zamanlayıcı hem HTTP ucu kullanır.
  */
 async function report() {
   const stats = (await readJson(STATS_FILE, {})) || {};
+  const probe = (await readJson(PROBE_FILE, null)) || null;
   const ageMs = await cacheAgeMs();
 
-  const sources = Object.entries(stats).map(([name, s]) => {
+  const probeAgeMs = probe?.checkedAt
+    ? Date.now() - new Date(probe.checkedAt).getTime()
+    : Infinity;
+  const probeFresh = probeAgeMs < PROBE_TTL_MS;
+
+  // Kaynak listesi İKİ kaynağın birleşimi olmalı: şelalede hiç denenmemiş bir
+  // kaynak livescore-stats'ta bulunmaz (espn böyleydi) ve yalnızca istatistiğe
+  // bakılırsa yoklamada çalıştığı halde sayılmadan atlanır.
+  const names = new Set([
+    ...Object.keys(stats),
+    ...Object.keys(probe?.results || {}),
+  ]);
+
+  const sources = [...names].map((name) => {
+    const s = stats[name] || {};
     const attempts = Number(s?.attempts || 0);
     const success = Number(s?.success || 0);
     const rate = attempts ? success / attempts : 0;
+    const p = probe?.results?.[name];
+
     return {
       name,
       attempts,
       success,
       rate: Math.round(rate * 100),
       lastSuccess: s?.lastSuccess || null,
-      healthy: attempts >= MIN_ATTEMPTS && rate >= HEALTHY_RATE,
+      // Şelale istatistiği: "denendiğinde başardı mı". Nadiren denenen
+      // kaynaklarda anlamsızdır, o yüzden tek başına sağlık ölçütü DEĞİL.
+      waterfallHealthy: attempts >= MIN_ATTEMPTS && rate >= HEALTHY_RATE,
+      probe: p ? { ok: p.ok, count: p.count, error: p.error } : null,
     };
   });
 
-  const healthy = sources.filter((s) => s.healthy);
+  // Yedek sayımı: taze yoklama varsa ONA güvenilir (şelale istatistiği
+  // sonraki kaynakları neredeyse hiç denemediği için yanıltıcıdır).
+  const healthy = probeFresh
+    ? sources.filter((s) => s.probe?.ok)
+    : sources.filter((s) => s.waterfallHealthy);
 
   let status = "ok";
   const problems = [];
@@ -96,7 +168,14 @@ async function report() {
     );
   }
 
-  if (healthy.length === 0) {
+  // Yoklama hiç yapılmamış/bayatsa yedek sayısı hakkında iddiada bulunma —
+  // yanlış "yedek yok" alarmı üretmektense sessiz kalmak doğrudur.
+  if (!probeFresh) {
+    problems.push(
+      "Kaynak yoklamasi bayat/yok — yedek sayisi dogrulanamiyor (POST /api/admin/scraper-probe)"
+    );
+    if (status === "ok") status = "warn";
+  } else if (healthy.length === 0) {
     status = "critical";
     problems.push("Calisan hicbir veri kaynagi yok");
   } else if (healthy.length < MIN_HEALTHY_SOURCES) {
@@ -115,6 +194,11 @@ async function report() {
       ageMinutes: Number.isFinite(ageMs) ? Math.round(ageMs / 60000) : null,
       staleWarnMinutes: Math.round(STALE_WARN_MS / 60000),
       staleCriticalMinutes: Math.round(STALE_CRIT_MS / 60000),
+    },
+    probe: {
+      fresh: probeFresh,
+      checkedAt: probe?.checkedAt || null,
+      ageHours: Number.isFinite(probeAgeMs) ? Math.round(probeAgeMs / 3600000) : null,
     },
     healthySources: healthy.map((s) => s.name),
     sources: sources.sort((a, b) => b.rate - a.rate),
@@ -147,6 +231,27 @@ async function tick() {
   }
 }
 
+/** Yoklama bayatladıysa yenile. Pahalı olduğu için TTL'e uyar. */
+async function probeIfStale() {
+  try {
+    const probe = await readJson(PROBE_FILE, null);
+    const age = probe?.checkedAt
+      ? Date.now() - new Date(probe.checkedAt).getTime()
+      : Infinity;
+    if (age < PROBE_TTL_MS) return;
+
+    console.log("[scraper-health] kaynak yoklamasi basliyor...");
+    const doc = await probeSources();
+    const ok = Object.entries(doc.results).filter(([, r]) => r.ok);
+    console.log(
+      `[scraper-health] yoklama bitti · calisan ${ok.length}/${Object.keys(doc.results).length}: ` +
+        ok.map(([n, r]) => `${n}(${r.count})`).join(", ")
+    );
+  } catch (e) {
+    console.error("[scraper-health] yoklama hatasi:", e.message || e);
+  }
+}
+
 function start(intervalMs = 10 * 60 * 1000) {
   if (_timer) return;
   // İlk kontrol hemen değil: scraper'ın ilk turunu tamamlamasına fırsat ver,
@@ -154,15 +259,25 @@ function start(intervalMs = 10 * 60 * 1000) {
   setTimeout(tick, 2 * 60 * 1000).unref?.();
   _timer = setInterval(tick, intervalMs);
   _timer.unref?.();
+
+  // Yoklama ayrı ve çok daha seyrek: her kaynak için Chrome açtığından
+  // pahalı. TTL dolmadıysa hiçbir şey yapmaz.
+  setTimeout(probeIfStale, 5 * 60 * 1000).unref?.();
+  _probeTimer = setInterval(probeIfStale, 60 * 60 * 1000);
+  _probeTimer.unref?.();
+
   console.log(
     `[scraper-health] basladi · her ${Math.round(intervalMs / 60000)}dk · ` +
-      `bayat esigi ${Math.round(STALE_WARN_MS / 60000)}dk`
+      `bayat esigi ${Math.round(STALE_WARN_MS / 60000)}dk · ` +
+      `yoklama TTL ${Math.round(PROBE_TTL_MS / 3600000)}sa`
   );
 }
 
 function stop() {
   if (_timer) clearInterval(_timer);
+  if (_probeTimer) clearInterval(_probeTimer);
   _timer = null;
+  _probeTimer = null;
 }
 
-module.exports = { start, stop, report, tick };
+module.exports = { start, stop, report, tick, probeSources, probeIfStale };
