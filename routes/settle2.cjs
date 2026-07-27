@@ -23,6 +23,24 @@ const BUILD = "settle2-2026-07-16-penalty20pct"; // ✅ ceza %20 orantılı
 // izole bir dizine yönlendirilebilmesi bunu sağlar. Üretimde tanımsızdır ve
 // davranış birebir aynıdır.
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
+
+/**
+ * Cüzdan/kullanıcı dosya aynası.
+ *
+ * Ödül dağıtımı bugüne kadar lc-wallet.json ve users.json'ı KOŞULSUZ baştan
+ * yazıyordu — Mongo kurulu olsa bile. Bu iki dosya kullanıcı sayısıyla
+ * doğrusal büyür ve her settle tam dosyayı okuyup yazar:
+ *
+ *   500k kullanıcıda tek settle ≈ 1.5 GB dosya I/O
+ *   JSON.parse + stringify SENKRON → olay döngüsü ~2.2 sn TAMAMEN bloke
+ *
+ * Mongo yazımları dosyadan bağımsızdır (`$inc` ile göreli artış + upsert),
+ * bu yüzden ayna kapatıldığında ödüller eksiksiz Mongo'ya işlenmeye devam eder.
+ *
+ * Geçiş: bir süre 1'de izleyip Mongo'nun doğru yazdığından emin olduktan sonra 0.
+ * Bkz. preds tarafındaki eşdeğeri: SKORLIG_PREDS_FILE_MIRROR
+ */
+const WALLET_FILE_MIRROR = String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0";
 const LIVE_DIR = path.join(DATA_DIR, "live");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 const TOTALS_FILE = path.join(DATA_DIR, "totals.json");
@@ -410,6 +428,14 @@ function computeLcRewardFromDetail(detail) {
  */
 async function awardLcForRows(rows, db) {
   if (!rows || !rows.length) return;
+
+  // Ayna kapalı + Mongo varken hiç dosya açılmaz; kilit tutmak yalnızca tüm
+  // settle'ları gereksiz yere seri hale getirir. Mongo tarafında güvenlik
+  // zaten `$inc` (atomik göreli artış) ile sağlanır, kilide ihtiyaç yoktur.
+  if (db && !WALLET_FILE_MIRROR) {
+    return _awardLcForRowsUnlocked(rows, db);
+  }
+
   return withFileLock(WALLET_FILE, () =>
     withFileLock(USERS_FILE, () => _awardLcForRowsUnlocked(rows, db))
   );
@@ -418,7 +444,12 @@ async function awardLcForRows(rows, db) {
 async function _awardLcForRowsUnlocked(rows, db) {
   const nowISO = new Date().toISOString();
 
-  const usersDataRaw = await readJson(USERS_FILE, { users: [], items: [] });
+  // Mongo yoksa dosya TEK kaynaktır — ayna bayrağına bakılmaksızın yazılır.
+  const needFile = !db || WALLET_FILE_MIRROR;
+
+  const usersDataRaw = needFile
+    ? await readJson(USERS_FILE, { users: [], items: [] })
+    : { users: [], items: [] };
 
   // users.json: array | {users:[]} | {items:[]} toleransı
   let usersContainer = usersDataRaw;
@@ -441,7 +472,10 @@ async function _awardLcForRowsUnlocked(rows, db) {
     usersContainer.items = usersContainer.users;
   }
 
-  const walletState = (await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })) || {};
+  const walletState =
+    (needFile
+      ? await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })
+      : { users: [], ledger: [], updatedAt: null }) || {};
   const walletUsers = Array.isArray(walletState.users) ? walletState.users : [];
   if (!Array.isArray(walletState.ledger)) walletState.ledger = [];
 
@@ -501,28 +535,32 @@ async function _awardLcForRowsUnlocked(rows, db) {
     const totalGain = reward + refund;
     if (totalGain <= 0) continue;
 
-    let u = usersItems.find((x) => String(x.userId) === uid);
-    if (!u) {
-      u = { userId: uid, mainTeam: null, createdAt: nowISO, lc: LC_START + totalGain, lcLastDaily: null };
-      usersItems.push(u);
-    } else {
-      if (typeof u.lc !== "number") u.lc = LC_START;
-      u.lc = Number(u.lc || 0) + totalGain;
-      u.lcUpdatedAt = nowISO;
-      u.lcLastReason = refund > 0 ? "match_reward+entry_refund" : "match_reward";
-      u.lcLastAmount = totalGain;
-    }
+    // Dosya tarafı mutasyonları: ayna kapalıysa hiç kurulmaz (boş yapı
+    // üzerinde çalışıp sonucu atmak hem gereksiz hem yanıltıcı olurdu).
+    if (needFile) {
+      let u = usersItems.find((x) => String(x.userId) === uid);
+      if (!u) {
+        u = { userId: uid, mainTeam: null, createdAt: nowISO, lc: LC_START + totalGain, lcLastDaily: null };
+        usersItems.push(u);
+      } else {
+        if (typeof u.lc !== "number") u.lc = LC_START;
+        u.lc = Number(u.lc || 0) + totalGain;
+        u.lcUpdatedAt = nowISO;
+        u.lcLastReason = refund > 0 ? "match_reward+entry_refund" : "match_reward";
+        u.lcLastAmount = totalGain;
+      }
 
-    const wu = ensureWalletUserRecord(uid);
-    wu.balance += totalGain;
-    wu.totalEarned += totalGain;
-    wu.updatedAt = nowISO;
+      const wu = ensureWalletUserRecord(uid);
+      wu.balance += totalGain;
+      wu.totalEarned += totalGain;
+      wu.updatedAt = nowISO;
 
-    if (reward > 0) {
-      addLedgerEntryFile({ userId: uid, amount: reward, reason: "match_reward", fixtureId: r.fixtureId });
-    }
-    if (refund > 0) {
-      addLedgerEntryFile({ userId: uid, amount: refund, reason: "entry_refund", fixtureId: r.fixtureId });
+      if (reward > 0) {
+        addLedgerEntryFile({ userId: uid, amount: reward, reason: "match_reward", fixtureId: r.fixtureId });
+      }
+      if (refund > 0) {
+        addLedgerEntryFile({ userId: uid, amount: refund, reason: "entry_refund", fixtureId: r.fixtureId });
+      }
     }
 
     if (usersCol) {
@@ -556,14 +594,16 @@ async function _awardLcForRowsUnlocked(rows, db) {
     }
   }
 
-  await writeJson(USERS_FILE, {
-    ...usersContainer,
-    users: usersItems,
-    items: usersItems,
-  });
-  walletState.users = walletUsers;
-  walletState.updatedAt = nowISO;
-  await writeJson(WALLET_FILE, walletState);
+  if (needFile) {
+    await writeJson(USERS_FILE, {
+      ...usersContainer,
+      users: usersItems,
+      items: usersItems,
+    });
+    walletState.users = walletUsers;
+    walletState.updatedAt = nowISO;
+    await writeJson(WALLET_FILE, walletState);
+  }
 
   if (usersCol && mongoUserOps.length) {
     try {
@@ -588,6 +628,12 @@ async function _awardLcForRowsUnlocked(rows, db) {
  */
 async function awardStreakBonuses(bonusMap, fixtureId, db) {
   if (!bonusMap || bonusMap.size === 0) return [];
+
+  // Ayna kapalı + Mongo varken dosya açılmaz, kilit gereksiz (bkz. awardLcForRows).
+  if (db && !WALLET_FILE_MIRROR) {
+    return _awardStreakBonusesUnlocked(bonusMap, fixtureId, db);
+  }
+
   return withFileLock(WALLET_FILE, () =>
     withFileLock(USERS_FILE, () =>
       _awardStreakBonusesUnlocked(bonusMap, fixtureId, db)
@@ -599,11 +645,20 @@ async function _awardStreakBonusesUnlocked(bonusMap, fixtureId, db) {
   const nowISO = new Date().toISOString();
   const awarded = [];
 
-  const walletState = (await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })) || {};
+  // Bkz. _awardLcForRowsUnlocked: Mongo tarafı `$inc` + upsert ile dosyadan
+  // bağımsız çalışır, ayna kapalıyken dosya hiç açılmaz.
+  const needFile = !db || WALLET_FILE_MIRROR;
+
+  const walletState =
+    (needFile
+      ? await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })
+      : { users: [], ledger: [], updatedAt: null }) || {};
   if (!Array.isArray(walletState.users)) walletState.users = [];
   if (!Array.isArray(walletState.ledger)) walletState.ledger = [];
 
-  const usersRaw = await readJson(USERS_FILE, { users: [], items: [] });
+  const usersRaw = needFile
+    ? await readJson(USERS_FILE, { users: [], items: [] })
+    : { users: [], items: [] };
   const usersItems = Array.isArray(usersRaw)
     ? usersRaw
     : Array.isArray(usersRaw.users) ? usersRaw.users
@@ -613,25 +668,27 @@ async function _awardStreakBonusesUnlocked(bonusMap, fixtureId, db) {
     const bonus = Number(info && info.bonusLC) || 0;
     if (bonus <= 0) continue;
 
-    let wu = walletState.users.find((x) => String(x.userId || "").toLowerCase() === uid.toLowerCase());
-    if (!wu) {
-      wu = { userId: uid, balance: 0, createdAt: nowISO, updatedAt: nowISO, lastDailyAt: null, totalEarned: 0, totalSpent: 0 };
-      walletState.users.push(wu);
+    if (needFile) {
+      let wu = walletState.users.find((x) => String(x.userId || "").toLowerCase() === uid.toLowerCase());
+      if (!wu) {
+        wu = { userId: uid, balance: 0, createdAt: nowISO, updatedAt: nowISO, lastDailyAt: null, totalEarned: 0, totalSpent: 0 };
+        walletState.users.push(wu);
+      }
+      wu.balance = Number(wu.balance || 0) + bonus;
+      wu.totalEarned = Number(wu.totalEarned || 0) + bonus;
+      wu.updatedAt = nowISO;
+
+      walletState.ledger.push({
+        id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
+        userId: uid, kind: "reward", amount: bonus,
+        reason: "streak_bonus", fixtureId,
+        meta: info.tier ? { tier: info.tier.label } : null,
+        createdAt: nowISO,
+      });
+
+      let u = usersItems.find((x) => String(x.userId) === uid);
+      if (u) { u.lc = Number(u.lc || 0) + bonus; u.lcUpdatedAt = nowISO; u.lcLastReason = "streak_bonus"; u.lcLastAmount = bonus; }
     }
-    wu.balance = Number(wu.balance || 0) + bonus;
-    wu.totalEarned = Number(wu.totalEarned || 0) + bonus;
-    wu.updatedAt = nowISO;
-
-    walletState.ledger.push({
-      id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
-      userId: uid, kind: "reward", amount: bonus,
-      reason: "streak_bonus", fixtureId,
-      meta: info.tier ? { tier: info.tier.label } : null,
-      createdAt: nowISO,
-    });
-
-    let u = usersItems.find((x) => String(x.userId) === uid);
-    if (u) { u.lc = Number(u.lc || 0) + bonus; u.lcUpdatedAt = nowISO; u.lcLastReason = "streak_bonus"; u.lcLastAmount = bonus; }
 
     awarded.push({ userId: uid, bonus, tier: info.tier ? info.tier.label : null });
 
@@ -654,10 +711,12 @@ async function _awardStreakBonusesUnlocked(bonusMap, fixtureId, db) {
     }
   }
 
-  walletState.updatedAt = nowISO;
-  await writeJson(WALLET_FILE, walletState);
-  if (Array.isArray(usersRaw)) await writeJson(USERS_FILE, usersItems);
-  else await writeJson(USERS_FILE, { ...usersRaw, users: usersItems, items: usersItems });
+  if (needFile) {
+    walletState.updatedAt = nowISO;
+    await writeJson(WALLET_FILE, walletState);
+    if (Array.isArray(usersRaw)) await writeJson(USERS_FILE, usersItems);
+    else await writeJson(USERS_FILE, { ...usersRaw, users: usersItems, items: usersItems });
+  }
 
   return awarded;
 }
@@ -1228,9 +1287,14 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
       t.status = "settled";
       t.settledAt = nowISO;
 
-      // Credit winners' wallets — WALLET kilidi altında (lost update önlenir)
-      await withFileLock(WALLET_FILE, async () => {
-      const walletState = (await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })) || {};
+      // Credit winners' wallets. Ayna kapalı + Mongo varken dosya hiç
+      // açılmaz; kilit de gereksizdir (bkz. awardLcForRows).
+      const payoutNeedFile = !db || WALLET_FILE_MIRROR;
+      const runPayouts = async () => {
+      const walletState =
+        (payoutNeedFile
+          ? await readJson(WALLET_FILE, { users: [], ledger: [], updatedAt: null })
+          : { users: [], ledger: [], updatedAt: null }) || {};
       if (!Array.isArray(walletState.users)) walletState.users = [];
       if (!Array.isArray(walletState.ledger)) walletState.ledger = [];
 
@@ -1238,20 +1302,22 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
         if (!payout.lcWon || payout.lcWon <= 0) continue;
         const uid = payout.userId;
         const uidLower = uid.toLowerCase();
-        let wu = walletState.users.find(x => String(x.userId || "").toLowerCase() === uidLower);
-        if (!wu) {
-          wu = { userId: uid, balance: 0, createdAt: nowISO, updatedAt: nowISO, lastDailyAt: null, totalEarned: 0, totalSpent: 0 };
-          walletState.users.push(wu);
+        if (payoutNeedFile) {
+          let wu = walletState.users.find(x => String(x.userId || "").toLowerCase() === uidLower);
+          if (!wu) {
+            wu = { userId: uid, balance: 0, createdAt: nowISO, updatedAt: nowISO, lastDailyAt: null, totalEarned: 0, totalSpent: 0 };
+            walletState.users.push(wu);
+          }
+          wu.balance = (wu.balance || 0) + payout.lcWon;
+          wu.totalEarned = (wu.totalEarned || 0) + payout.lcWon;
+          wu.updatedAt = nowISO;
+          walletState.ledger.push({
+            id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
+            userId: uid, kind: "reward", amount: payout.lcWon,
+            reason: "tournament_payout", meta: { tournamentCode: t.code, rank: payout.rank },
+            createdAt: nowISO,
+          });
         }
-        wu.balance = (wu.balance || 0) + payout.lcWon;
-        wu.totalEarned = (wu.totalEarned || 0) + payout.lcWon;
-        wu.updatedAt = nowISO;
-        walletState.ledger.push({
-          id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8),
-          userId: uid, kind: "reward", amount: payout.lcWon,
-          reason: "tournament_payout", meta: { tournamentCode: t.code, rank: payout.rank },
-          createdAt: nowISO,
-        });
 
         if (db) {
           try {
@@ -1269,9 +1335,14 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
         }
       }
 
-      walletState.updatedAt = nowISO;
-      await writeJson(WALLET_FILE, walletState);
-      }); // withFileLock(WALLET_FILE)
+      if (payoutNeedFile) {
+        walletState.updatedAt = nowISO;
+        await writeJson(WALLET_FILE, walletState);
+      }
+      }; // runPayouts
+
+      if (payoutNeedFile) await withFileLock(WALLET_FILE, runPayouts);
+      else await runPayouts();
       console.log(`[settle2] auto-settled tournament ${t.code}: ${t.payouts.length} payouts`);
     }
 

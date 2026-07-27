@@ -89,6 +89,53 @@ tahminler kaybolur — Mongo'da durdukları için kayıp değil, sadece dosya ek
 
 ---
 
+## A2. Cüzdan dosya aynasını kapat
+
+Ödül dağıtımı `lc-wallet.json` ve `users.json`'ı **her settle'da baştan yazar**.
+Bu iki dosya kullanıcı sayısıyla doğrusal büyür ve `JSON.parse`/`stringify`
+senkron olduğu için olay döngüsünü bloklar — yani sunucu o süre boyunca
+hiçbir isteği işleyemez.
+
+Ölçülen (40 tahmincili tek settle):
+
+| cüzdan | dosya | ayna=1 | ayna=0 |
+|---|---|---|---|
+| 10.000 | 4.4 MB | 429 ms | 191 ms |
+| 50.000 | 22 MB | 1087 ms | 205 ms |
+| 100.000 | 44 MB | **2238 ms** | **267 ms** |
+
+Ayna kapalıyken süre kullanıcı sayısından neredeyse bağımsız kalır.
+
+### Ön koşul
+
+Cüzdan verisinin Mongo'da olması gerekir. Ödüller `$inc` ile göreli işlendiği
+için ayna kapalıyken **yeni** ödüller sorunsuz gider; ama mevcut bakiyeler
+Mongo'da yoksa kullanıcılar bakiyelerini kaybolmuş görür.
+
+```bash
+# Mongo'daki cüzdan kaydı sayısı, dosyadakiyle karşılaştır
+node -e "require('./lib/mongo.cjs').getDb().then(async d=>{console.log('mongo cuzdan:', await d.collection('lc_wallet_users').countDocuments());process.exit(0)})"
+node -e "console.log('dosya cuzdan:', JSON.parse(require('fs').readFileSync('data/lc-wallet.json','utf8')).users.length)"
+```
+
+Sayılar yakın değilse **kapatma** — önce cüzdanı Mongo'ya taşı.
+
+### Kapat
+
+```
+SKORLIG_WALLET_FILE_MIRROR=0
+```
+
+⚠️ `MONGODB_URI` tanımlı değilse bu bayrak **yok sayılır** ve dosya yazılmaya
+devam eder — yanlışlıkla 0 yapmak veri kaybına yol açmaz (test edildi).
+
+### Geri alma
+
+`SKORLIG_WALLET_FILE_MIRROR=1` + yeniden başlat. Ayna kapalıyken verilen
+ödüller dosyada yoktur (Mongo'da durur); dosya o aralık için eksik kalır.
+
+---
+
 ## B. Redis (hız sınırı)
 
 Şu an `REDIS_URL` tanımsız ve sayaç **bellekte** tutuluyor. Tek instance'ta
