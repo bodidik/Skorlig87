@@ -1127,10 +1127,13 @@ async function readFixtureMeta(fixtureId) {
 }
 
 // ---- 1987GS Nostalji Bot Davranış Motoru ----
-function apply1987Logic(botId, rng, homeTeam, awayTeam, country) {
+function apply1987Logic(botId, rng, homeTeam, awayTeam, country, segment) {
   const id = String(botId || "").toLowerCase();
 
-  const is1987 =
+  // Kimlikte 1987/GS efsanelerine gönderme var mı?
+  // "87" tek başına çok geniş: rastgele numara aralığı 17-99 olduğu için
+  // Liverpool/Barcelona/Bayern botlarına da denk geliyordu.
+  const nostalgicName =
     id.includes("87") ||
     id.includes("1987") ||
     id.includes("prekazi") ||
@@ -1140,7 +1143,14 @@ function apply1987Logic(botId, rng, homeTeam, awayTeam, country) {
     id.includes("sami") ||
     id.includes("metin");
 
-  if (!is1987) return null;
+  // ⚠️ Segment şartı ŞART: bu mantık skor tahminini Galatasaray lehine büker.
+  // Tek başına ada bakmak YNWA87 (Liverpool), CampNou87 (Barcelona),
+  // Bayern87, Interista87, LaBanda87 (River Plate) gibi botları da
+  // "1987 GS romantiği" sayıyordu — rakip takım taraftarı botlar GS lehine
+  // tahmin ediyordu. Nostalji kadrosu yalnızca GS segmentinden çıkabilir.
+  const isGsBot = String(segment || "").toUpperCase() === "GS";
+
+  if (!isGsBot || !nostalgicName) return null;
 
   const lowerHome = String(homeTeam || "").toLowerCase();
   const lowerAway = String(awayTeam || "").toLowerCase();
@@ -1253,13 +1263,15 @@ function buildBotPrediction({
 }) {
   const nowISO = new Date().toISOString();
 
-  // 1987GS özel mantığı
+  // 1987GS özel mantığı — segment de geçilir, yoksa rakip takım botları da
+  // GS lehine tahmin eder (bkz. apply1987Logic içindeki not).
   const special = apply1987Logic(
     bot.userId,
     rng,
     homeTeam,
     awayTeam,
-    country
+    country,
+    bot.segment
   );
   if (special && special.score) {
     // Eski settle2 şemasına uyacak alanlar
