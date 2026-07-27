@@ -1,0 +1,134 @@
+# Production Geçiş Kılavuzu
+
+İki iş var ve **bağımsızdırlar** — ayrı ayrı, farklı günlerde yapılabilir:
+
+- **A. MongoDB migration** (tahminler dosyadan Mongo'ya) — geri alması zor, dikkatli sırayla
+- **B. Redis** (hız sınırı sayacı) — düşük riskli, istediğin zaman
+
+> Buradaki komutlar `api/` dizininden çalıştırılır.
+
+---
+
+## A. MongoDB migration
+
+Bugün tahminler hem `data/preds.json`'a hem MongoDB'ye yazılıyor (ayna modu).
+Amaç: aynayı kapatıp Mongo'yu tek kaynak yapmak.
+
+**Neden dikkat:** `SKORLIG_PREDS_FILE_MIRROR=0` yapıldığı anda `preds.json` artık
+yazılmaz. Migration eksikse bu fark edilmeyen kalıcı veri kaybına döner.
+Bu yüzden bayrak, doğrulama "GO" demeden çevrilmez.
+
+### A1. Yedek al (production dosyası)
+
+Migration'ı geri almanın tek yolu bu yedek. Render'da Shell'den:
+
+```bash
+cp data/preds.json data/preds.backup-$(date +%Y%m%d-%H%M%S).json
+```
+
+### A2. Ortam değişkenlerini doğrula
+
+```bash
+node -e "console.log('URI var mi:', !!process.env.MONGODB_URI, '| DB:', process.env.MONGODB_DB||'skorlig')"
+```
+
+⚠️ Değişkenin adı **`MONGODB_URI`**. Eski `MONGO_URI` yalnızca geriye uyumluluk
+için kabul edilir; yeni kurulumda `MONGODB_URI` kullan.
+
+### A3. Migration'ı çalıştır
+
+İdempotenttir — yarıda kalırsa tekrar çalıştırılabilir, mevcut kayıtlar `$set`
+ile güncellenir, çift kayıt oluşmaz.
+
+```bash
+node scripts/migrate-preds-to-mongo.cjs
+```
+
+Beklenen son satır: `[migrate] Tamamlandı. <N> tahmin MongoDB'ye aktarıldı.`
+
+### A4. Doğrula — bu adım atlanamaz
+
+```bash
+node scripts/verify-migration.cjs
+```
+
+Kontrol ettikleri: kayıt sayısı, zorunlu indeksler, örneklem üzerinde alan alan
+karşılaştırma, bot/insan dağılımı.
+
+- `SONUC: GO` + çıkış kodu 0 → devam et
+- `SONUC: NO-GO` + çıkış kodu 1 → **bayrağı çevirme**, raporlanan eksiği gider
+
+### A5. Aynayı kapat
+
+Önce bir süre (birkaç gün) ayna açıkken izlemek en güvenlisi: Mongo'ya yazım
+sorunsuzsa dosya zaten yedek görevi görür.
+
+Hazır olunca Render → Environment:
+
+```
+SKORLIG_PREDS_FILE_MIRROR=0
+```
+
+Servisi yeniden başlat.
+
+### A6. Kapattıktan sonra kontrol
+
+```bash
+# Tahmin gönderimi Mongo'ya yazıyor mu (sayı artmalı)
+node -e "require('./lib/mongo.cjs').getDb().then(async d=>{console.log('predictions:', await d.collection('predictions').countDocuments());process.exit(0)})"
+```
+
+Uygulamadan bir tahmin gönder, sayının arttığını gör. `preds.json`'ın
+değişmediğini de doğrula (artık yazılmıyor olmalı).
+
+### Geri alma
+
+`SKORLIG_PREDS_FILE_MIRROR=1` yap ve servisi yeniden başlat. Ayna kapalıyken
+gelen tahminler dosyada yoktur; dosyayı A1 yedeğinden geri yüklersen o aradaki
+tahminler kaybolur — Mongo'da durdukları için kayıp değil, sadece dosya eksik kalır.
+
+---
+
+## B. Redis (hız sınırı)
+
+Şu an `REDIS_URL` tanımsız ve sayaç **bellekte** tutuluyor. Tek instance'ta
+doğru çalışır; birden fazla instance varsa limit her instance'ta ayrı işler,
+yani fiilen N katına çıkar.
+
+### B1. Redis sağla
+
+Render Redis ya da Upstash. Ücretsiz kademeler bu iş için yeterli — hız sınırı
+sayaçları küçük ve TTL'li.
+
+### B2. Ortam değişkeni
+
+Render → Environment:
+
+```
+REDIS_URL=rediss://default:PAROLA@host:port
+```
+
+Kod değişikliği gerekmez; `REDIS_URL` görülünce Redis moduna geçilir.
+
+### B3. Doğrula
+
+```bash
+node -e "const s=require('./lib/rate-store.cjs'); s.hit('deploy-test',60000).then(r=>{console.log('mod:', s.stats().mode, '| sayac:', r.count); process.exit(0)})"
+```
+
+`mod: redis` görmelisin. `mod: memory` çıkıyorsa `REDIS_URL` okunmamış ya da
+bağlantı kurulamamıştır (log'da `[rate-store] Redis hatasi` aranır).
+
+**Arıza duruşu:** Redis düşerse istekler **engellenmez** (fail-open). Hız sınırı
+bir koruma katmanıdır; Redis kesintisinin tüm API'yi kapatması daha kötü olurdu.
+
+---
+
+## Geçiş sonrası sağlık kontrolü
+
+```bash
+curl -s https://<host>/api/admin/scraper-health -H "x-admin-token: $SKORLIG_ADMIN_TOKEN"
+```
+
+`status` alanı `ok` olmalı. `critical` durumunda uç HTTP 503 döner — harici
+izleme aracına bunu bağlamak işe yarar.

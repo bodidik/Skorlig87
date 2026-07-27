@@ -4,9 +4,14 @@
  * Tek seferlik migration: preds.json → MongoDB predictions koleksiyonu.
  *
  * Kullanım:
- *   MONGO_URI=mongodb+srv://... node api/scripts/migrate-preds-to-mongo.cjs
+ *   MONGODB_URI=mongodb+srv://... node api/scripts/migrate-preds-to-mongo.cjs
+ *
+ * ⚠️ Değişken adı MONGODB_URI (MONGO_URI DEĞİL): bu script lib/mongo.cjs
+ * kullanır, yani uygulamayla AYNI bağlantı. Yanlış ad verilirse bağlantı
+ * kurulamaz ve script "MongoDB bağlantısı yok" deyip çıkar.
  *
  * İdempotent: mevcut kayıtlar $set ile güncellenir, tekrar çalıştırılabilir.
+ * Migration sonrası doğrulama: node scripts/verify-migration.cjs
  */
 
 const path = require("path");
