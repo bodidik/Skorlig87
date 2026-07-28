@@ -649,6 +649,10 @@ router.post("/fixtures/add", requireAdminToken, express.json(), async (req, res)
     fxStore.list.push(fx);
     await saveFixturesStore(fxStore.raw, fxStore.list);
 
+    // KALICI YAZ: fixtures.json her deploy'da siliniyor (Render'da kalıcı disk
+    // yok). FDO maçları kendini onarır, elle girilen maç GERİ GELMEZ.
+    await require("../lib/manual-fixtures.cjs").save(fx, req.app?.locals?.db || null);
+
     if (note) {
       const store = await loadNotesStore();
       store.notes[fixtureId] = { note, home, away, updatedAt: nowISO, updatedBy: fx.updatedBy };
@@ -672,6 +676,8 @@ router.post("/fixtures/delete", requireAdminToken, express.json(), async (req, r
     fxStore.list = fxStore.list.filter((x) => normId(x?.fixtureId) !== fixtureId);
     if (fxStore.list.length === before) return res.status(404).json({ ok: false, error: "FIXTURE_NOT_FOUND" });
     await saveFixturesStore(fxStore.raw, fxStore.list);
+    // Kalıcı depodan da sil, yoksa açılışta geri yüklenir.
+    await require("../lib/manual-fixtures.cjs").remove(fixtureId, req.app?.locals?.db || null);
     // notu da temizle
     try {
       const store = await loadNotesStore();

@@ -38,7 +38,10 @@ const fsp = require("fs").promises;
 
 const { withFileLock } = require("../lib/fileLock.cjs");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// Testlerde izole dizine yönlendirilebilir. Bu olmadan readFixtures/
+// writeFixtures GERÇEK data/fixtures.json'a dokunur — bir test bu yüzden
+// üretim-dışı da olsa 216 kayıtlık yerel fikstür dosyasını 2 kayda düşürdü.
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 
 const FDO_BASE = "https://api.football-data.org/v4";

@@ -293,6 +293,15 @@ const server = app.listen(PORT, HOST, () => {
     safeMount("push-scheduler", () => require("./services/push-scheduler.cjs").start(5 * 60 * 1000));
   }
 
+  /* 🔁 Elle eklenen maçları geri yükle.
+     fixtures.json her deploy'da siliniyor (kalıcı disk yok). Sağlayıcı
+     maçları API'den yeniden gelir; ELLE girilenlerin başka kaynağı yok.
+     Fikstür senkronundan ÖNCE mount edilir — merge() MANUAL kayıtlara
+     dokunmadığı için önce geri yüklenirlerse korunurlar. */
+  safeMount("manual-fixtures-restore", () =>
+    require("./services/manual-fixtures-restore.cjs").start(app)
+  );
+
   /* 📅 Fikstür senkronu: football-data.org → fixtures.json
      Ülke sıralaması için maç programı gerekli — Portekizli/Brezilyalı oyuncunun
      tahmin edecek maçı olmalı. Manuel girilen maçlara dokunmaz.
