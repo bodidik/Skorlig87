@@ -170,6 +170,32 @@ function slugPart(s) {
  *   - takım/tarih eksik
  *   - kickoff geçmişte (yayınlanma gecikmesi + timezone tuzağı için toleransla)
  */
+/**
+ * Eleme sebebini de döndüren sürüm.
+ *
+ * NEDEN: `normalize()` null döndüğünde sebep kayboluyordu ve syncOnce hepsini
+ * "NO_MATCHING_COUNTRIES" diye raporluyordu — oysa maç ülke yüzünden değil,
+ * BİTMİŞ olduğu ya da tarihi geçtiği için de elenebiliyor. Üretimde 49 maçın
+ * tamamı elendi ve etiket bizi günlerce yanlış yere baktırdı.
+ */
+function normalizeWithReason(m) {
+  const country = resolveCountry(m?.country);
+  if (!country) return { fixture: null, reason: "ulke:" + (r2(m?.country) || "(bos)") };
+
+  const home = r2(m?.homeTeam);
+  const away = r2(m?.awayTeam);
+  if (!home || !away) return { fixture: null, reason: "takim_eksik" };
+  if (m?.isFinished) return { fixture: null, reason: "bitmis" };
+
+  const kickoffISO = toIso(r2(m?.matchDate));
+  if (!kickoffISO) return { fixture: null, reason: "tarih_yok:" + (r2(m?.matchDate) || "(bos)") };
+  const ko = Date.parse(kickoffISO);
+  if (!Number.isFinite(ko)) return { fixture: null, reason: "tarih_bozuk:" + kickoffISO };
+  if (ko < Date.now() - 30 * 60 * 1000) return { fixture: null, reason: "gecmis" };
+
+  return { fixture: normalize(m), reason: null };
+}
+
 function normalize(m) {
   const country = resolveCountry(m?.country);
   if (!country) return null;
@@ -237,14 +263,27 @@ async function syncOnce({ dryRun = false } = {}) {
   // aynı maçı iki koleksiyonda gösteriyor — hazırlık + turnuva gibi).
   // Son kazanır: turnuva bilgisi hazırlık etiketini geçebilir.
   const byId = new Map();
+  const elenme = {}; // sebep → adet (teşhis için)
   for (const m of matches) {
-    const n = normalize(m);
-    if (n) byId.set(n.fixtureId, n);
+    const { fixture, reason } = normalizeWithReason(m);
+    if (fixture) byId.set(fixture.fixtureId, fixture);
+    else {
+      // Ülke sebeplerinde tek tek ülke adını tutuyoruz; diğerleri sabit.
+      const k = reason.startsWith("ulke:") || reason.startsWith("tarih")
+        ? reason.split(":")[0] + ":" + reason.split(":").slice(1).join(":").slice(0, 24)
+        : reason;
+      elenme[k] = (elenme[k] || 0) + 1;
+    }
   }
   const items = Array.from(byId.values());
 
   if (!items.length) {
-    return { ok: false, reason: "NO_MATCHING_COUNTRIES", cacheMatches: matches.length, leagues, ms: Date.now() - t0 };
+    // Sebep dökümü olmadan bu durum "ülke eşleşmedi" sanılıyordu; gerçekte
+    // maçlar bitmiş/geçmiş de olabilir. Log artık hangisi olduğunu söylüyor.
+    return {
+      ok: false, reason: "NO_MATCHING_COUNTRIES", elenme,
+      cacheMatches: matches.length, leagues, ms: Date.now() - t0,
+    };
   }
 
   const result = await withFileLock(FIXTURES_FILE, async () => {
@@ -276,7 +315,10 @@ function start(intervalMs = 3 * 60 * 1000) {
         ilkBasariOldu = true;
         console.log(`[mk-fixture-sync] ${r.total} maç (+${r.added} yeni, ~${r.updated} güncel, ${r.other} diğer kaynak) · ${r.ms}ms`);
       } else {
-        console.warn(`[mk-fixture-sync] atlandı: ${r.reason}`);
+        const detay = r.elenme
+          ? ` · cache ${r.cacheMatches} mac · eleme: ${JSON.stringify(r.elenme)}`
+          : "";
+        console.warn(`[mk-fixture-sync] atlandı: ${r.reason}${detay}`);
         // AÇILIŞ YARIŞI (loglarla doğrulandı): ilk tur 20. saniyede atılıyor
         // ama ilk şelale ~37 saniyede bitiyor — cache o an HENÜZ YOK ve tur
         // CACHE_UNREADABLE ile düşüyordu. Sonraki tur 3 dakika sonra geldiği

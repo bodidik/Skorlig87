@@ -6,6 +6,27 @@ const path = require("path");
 // Testlerde izole dizine yönlendirilebilir — yoksa cache/istatistik yazımları
 // GERÇEK data/ klasörüne düşer (bu tuzağa bu projede birkaç kez düşüldü).
 const DATA_DIR   = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
+
+/**
+ * Date → "YYYY-MM-DD HH:mm" — İSTANBUL saatiyle, süreç hangi dilimde çalışırsa
+ * çalışsın. matchDate tüketicileri (mackolik-fixture-sync.toIso, livescore-sync)
+ * bu değeri İstanbul yereli sayıp +03:00 yapıştırıyor.
+ *
+ * NEDEN ŞART: getHours() süreç dilimini kullanır. Yerelde (TR) doğru çalışıp
+ * Render'da (UTC) her maçı 3 saat erken gösteriyordu — akşam maçları
+ * "başlamış" sayılıp elendi, goal'un 49 maçından fikstüre SIFIR düştü
+ * (NO_MATCHING_COUNTRIES diye loglandı ki o da ayrı bir yanılgıydı).
+ */
+function toIstanbulMatchDate(d) {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d);
+  const g = (t) => p.find((x) => x.type === t)?.value || "";
+  const hh = g("hour") === "24" ? "00" : g("hour"); // en-CA tuhaflığı
+  return { matchDate: `${g("year")}-${g("month")}-${g("day")} ${hh}:${g("minute")}`, startTime: `${hh}:${g("minute")}` };
+}
 const CACHE_FILE = path.join(DATA_DIR, "livescore-cache.json");
 
 const CHROME_PATH = process.env.LOCAL_CHROME_PATH
@@ -507,14 +528,35 @@ function fromGoal() {
           const homeScore = hasScore && !(st === "FIXTURE") ? String(m.score.teamA) : null;
           const awayScore = hasScore && !(st === "FIXTURE") ? String(m.score.teamB) : null;
 
-          // matchDate — livescore-sync kickoff toleransı için "YYYY-MM-DD HH:mm" bekler
+          // matchDate — livescore-sync kickoff toleransı için "YYYY-MM-DD HH:mm"
+          // bekler ve tüketiciler bu değeri İSTANBUL saati sayar (toIso +03:00
+          // yapıştırır). Bu yüzden tarayıcının saat dilimi NE OLURSA OLSUN
+          // Europe/Istanbul'a çevirerek üretilmeli. Eski kod d.getHours() ile
+          // tarayıcı yerelini kullanıyordu: yerelde (TR) doğru çalışıp
+          // Render'da (UTC) her maçı 3 saat erken gösteriyordu — akşam maçları
+          // "başlamış" sayılıp elendi ve fikstüre TEK maç dönüşmedi.
           let matchDate = "";
           let startTime = "";
           if (m?.startDate) {
             const d = new Date(m.startDate);
             if (!isNaN(d)) {
-              startTime = `${two(d.getHours())}:${two(d.getMinutes())}`;
-              matchDate = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${startTime}`;
+              try {
+                const p = new Intl.DateTimeFormat("en-CA", {
+                  timeZone: "Europe/Istanbul",
+                  year: "numeric", month: "2-digit", day: "2-digit",
+                  hour: "2-digit", minute: "2-digit", hour12: false,
+                }).formatToParts(d);
+                const g = (t) => p.find((x) => x.type === t)?.value || "";
+                // en-CA + hour12:false bazen "24:xx" üretir — 00'a çevir.
+                const hh = g("hour") === "24" ? "00" : g("hour");
+                startTime = `${hh}:${g("minute")}`;
+                matchDate = `${g("year")}-${g("month")}-${g("day")} ${startTime}`;
+              } catch {
+                // Intl yoksa (olmamalı) eski davranışa düş — yanlış dilim,
+                // hiç veri olmamasından iyidir.
+                startTime = `${two(d.getHours())}:${two(d.getMinutes())}`;
+                matchDate = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${startTime}`;
+              }
             }
           }
 
@@ -606,8 +648,9 @@ function fromESPN() {
       if (ev?.date) {
         const d = new Date(ev.date);
         if (!isNaN(d)) {
-          startTime = `${two(d.getHours())}:${two(d.getMinutes())}`;
-          matchDate = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${startTime}`;
+          // İstanbul saatiyle — getHours() Render'da UTC verir, maç 3 saat
+          // erken görünürdü (bkz. toIstanbulMatchDate).
+          ({ matchDate, startTime } = toIstanbulMatchDate(d));
         }
       }
 
@@ -810,17 +853,26 @@ function fromSoccersAPI() {
         const isFinished = sid === "3" || status === "FT";
 
         // data-datetime UTC'dir (11:00 → sayfada 14:00 TRT görünüyor).
-        // Diğer ayrıştırıcılarla (goal/espn) aynı kural: sunucu yerel saatine
-        // çevrilip "HH:MM" ve "YYYY-MM-DD HH:MM" üretilir.
+        // İSTANBUL saatine çevrilir — "sunucu yerel saati" DEĞİL: tarayıcı
+        // Render'da UTC dilimindedir ve getHours() maçı 3 saat erken
+        // gösterirdi (goal'da yaşandı, tüm akşam maçları elendi).
+        // Bu fonksiyon sayfa bağlamında çalıştığı için dış kapsamdaki
+        // yardımcıya erişemez — Intl burada tekrarlanmak zorunda.
         const dtRaw = row.getAttribute("data-datetime") || "";
-        const two = (n) => String(n).padStart(2, "0");
         let startTime = "";
         let matchDate = "";
         if (dtRaw) {
           const d = new Date(dtRaw.replace(" ", "T") + "Z");
           if (!isNaN(d.getTime())) {
-            startTime = `${two(d.getHours())}:${two(d.getMinutes())}`;
-            matchDate = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${startTime}`;
+            const p = new Intl.DateTimeFormat("en-CA", {
+              timeZone: "Europe/Istanbul",
+              year: "numeric", month: "2-digit", day: "2-digit",
+              hour: "2-digit", minute: "2-digit", hour12: false,
+            }).formatToParts(d);
+            const g = (t) => p.find((x) => x.type === t)?.value || "";
+            const hh = g("hour") === "24" ? "00" : g("hour");
+            startTime = `${hh}:${g("minute")}`;
+            matchDate = `${g("year")}-${g("month")}-${g("day")} ${startTime}`;
           }
         }
 
@@ -1071,4 +1123,7 @@ module.exports = {
   // yarısı kayması, sessizce yanlış çalıştığında sıfır maçla sonuçlanan
   // türden hatalar — testle tutulmaları gerekiyor.
   enrichNesine, nesineCountryFromTitle, istanbulToday,
+  // Saat dilimi dönüşümü testle tutulmalı: bozulması "yanlış saat" değil,
+  // "akşam maçlarının tamamen kaybolması" olarak görünüyor.
+  toIstanbulMatchDate,
 };

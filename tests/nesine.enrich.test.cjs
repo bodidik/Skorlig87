@@ -129,6 +129,33 @@ describe("enrichNesine", () => {
   });
 });
 
+describe("toIstanbulMatchDate", () => {
+  const { toIstanbulMatchDate } = require("../services/livescore-scraper.cjs");
+
+  test("UTC girdi İstanbul'a çevrilir (+3)", () => {
+    // Render'da süreç UTC — getHours() ile maçlar 3 saat erken görünüyordu
+    // ve akşam maçlarının TAMAMI 'başlamış' sayılıp eleniyordu (yaşandı:
+    // goal'un 49 maçından fikstüre sıfır düştü).
+    const r = toIstanbulMatchDate(new Date("2026-07-28T19:00:00Z"));
+    assert.equal(r.matchDate, "2026-07-28 22:00");
+    assert.equal(r.startTime, "22:00");
+  });
+
+  test("gece yarısı sınırı: gün İstanbul'a göre atlar", () => {
+    // 22:30 UTC = ertesi gün 01:30 İstanbul
+    const r = toIstanbulMatchDate(new Date("2026-07-28T22:30:00Z"));
+    assert.equal(r.matchDate, "2026-07-29 01:30");
+  });
+
+  test("İstanbul gece yarısı '24:00' değil '00:00' üretir", () => {
+    // en-CA + hour12:false bazı ortamlarda '24' verir — ham bırakılırsa
+    // Date.parse yine NaN'a düşer.
+    const r = toIstanbulMatchDate(new Date("2026-07-28T21:00:00Z"));
+    assert.equal(r.startTime, "00:00");
+    assert.equal(r.matchDate, "2026-07-29 00:00");
+  });
+});
+
 describe("istanbulToday", () => {
   test("UTC günü henüz dönmemişken İstanbul'da dönmüş olabilir", () => {
     // 22:30 UTC = ertesi gün 01:30 İstanbul (UTC+3)
