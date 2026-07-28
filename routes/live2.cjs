@@ -316,6 +316,33 @@ function canonicalCountry(input) {
 }
 
 // extraLeagues: virgülle ayrılmış ülke kodu/adı listesi ("GB,FR" veya "England,France")
+/**
+ * Ülke süzgeci SONUÇSUZ kalırsa dünya listesine geri düş.
+ *
+ * NEDEN (ölçüldü 2026-07-28): Türk kullanıcı için en yakın maç 14 GÜN sonraydı
+ * — Süper Lig sezonu başlamamış ve FDO Türkiye'yi kapsamıyor. Aynı anda
+ * önümüzdeki 7 günde 12 maç vardı (Brezilya Série A, Arjantin Primera) ama
+ * ülke süzgeci hepsini eliyordu. Sonuç: uygulama iki hafta boyunca BOŞ.
+ *
+ * Boş ekran, ilgisiz maçtan kötüdür: kullanıcı tahmin oynayamaz, uygulamayı
+ * kullanamaz, geri dönmez. Bu yüzden ülkesinde maç bulunmayan kullanıcıya
+ * dünya listesi gösterilir ve yanıtta `countryFallback: true` işaretlenir —
+ * arayüz "ülkenizde maç yok, dünyadan maçlar" diyebilsin.
+ *
+ * Sessiz DEĞİL: bayrak olmadan kullanıcı neden Brezilya maçı gördüğünü
+ * anlamaz ve bu bir hata gibi görünür.
+ */
+function localizeWithFallback(list, country, extraLeagues) {
+  const suzulmus = localizeForCountry(list, country, extraLeagues);
+  const canon = canonicalCountry(country);
+
+  // Ülke verilmemişse zaten süzülmedi — geri düşüş kavramı yok.
+  if (!canon) return { list: suzulmus, fallback: false };
+  if (suzulmus.length) return { list: suzulmus, fallback: false };
+
+  return { list, fallback: true };
+}
+
 function localizeForCountry(list, country, extraLeagues) {
   const canon = canonicalCountry(country);
   const extras = String(extraLeagues || "")
@@ -1187,7 +1214,10 @@ router.get("/schedule", async (req, res) => {
     let merged = mergeWithManualFixtures(filtered, manualFiltered);
 
     // Kullanıcının yereli: ?country= verildiyse o ülkenin ligi + global yarışlar
-    merged = localizeForCountry(merged, req.query.country, req.query.extraLeagues);
+    // Ülkede maç yoksa dünya listesine geri düş (bkz. localizeWithFallback).
+    const _loc = localizeWithFallback(merged, req.query.country, req.query.extraLeagues);
+    merged = _loc.list;
+    const countryFallback = _loc.fallback;
 
     // Takım önceliklendirmesi: ?team= verildiyse kullanıcının takımı en üste
     const userTeam = String(req.query.team || "").trim().toLowerCase();
@@ -1246,6 +1276,9 @@ router.get("/schedule", async (req, res) => {
       runtimeMode,
       cap,
       windowDays: { backDays, fwdDays, fromISO, toISO },
+      // Kullanıcının ülkesinde maç bulunamadığı için dünya listesi döndü.
+      // Arayüz bunu belirtmeli, yoksa Brezilya maçı görmek hata gibi görünür.
+      countryFallback,
     });
   } catch (e) {
     res.status(500).json({
@@ -1289,7 +1322,10 @@ router.get("/open", async (req, res) => {
     let merged = mergeWithManualFixtures(baseFiltered, manualFiltered);
 
     // Kullanıcının yereli: ?country= verildiyse o ülkenin ligi + global yarışlar
-    merged = localizeForCountry(merged, req.query.country, req.query.extraLeagues);
+    // Ülkede maç yoksa dünya listesine geri düş (bkz. localizeWithFallback).
+    const _loc = localizeWithFallback(merged, req.query.country, req.query.extraLeagues);
+    merged = _loc.list;
+    const countryFallback = _loc.fallback;
 
     // lock + pencere + (kilitli olmayan)
     const windowed = [];
@@ -1339,6 +1375,7 @@ router.get("/open", async (req, res) => {
       lockBeforeMin: LOCK_BEFORE_MIN,
       runtimeMode,
       cap,
+      countryFallback,
     });
   } catch (e) {
     res.status(500).json({
@@ -1526,4 +1563,7 @@ module.exports = router;
 module.exports.fixturesByDate = fixturesByDate;
 // users.cjs set-country kanonik ad saklayabilsin
 module.exports.canonicalCountry = canonicalCountry;
+// Ülke süzgeci + geri düşüş: sessizce yanlış çalışması "boş ekran" ya da
+// "alakasız maçlar" demek — ikisi de testle tutuluyor.
+module.exports.localizeWithFallback = localizeWithFallback;
 
