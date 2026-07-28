@@ -1150,6 +1150,16 @@ router.get("/rate-store", requireAdminToken, async (req, res) => {
       // henüz "redis" görünür ve yanıltır (ölçüldü). Olay döngüsüne fırsat ver.
       await new Promise((r) => setTimeout(r, 200));
       out.modeAfterProbe = store.stats().mode;
+
+      // Sayaç işlenmediyse SEBEBİ göster. hit() fail-open olduğu için hatayı
+      // yutuyor; sebebi görmeden "neden çalışmıyor" sorusuna cevap yok.
+      if (!saydi && out.redisConfigured) {
+        try {
+          out.diagnose = await store.diagnose();
+        } catch (e) {
+          out.diagnose = { error: String(e?.message || e).slice(0, 300) };
+        }
+      }
     }
 
     // Karar: mod "redis" OLMALI ve probe yapıldıysa gerçekten saymalı.
