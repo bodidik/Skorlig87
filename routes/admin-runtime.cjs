@@ -822,6 +822,24 @@ router.get("/alerts", requireAdminToken, async (req, res) => {
 });
 
 /* =========================================================
+   GET /api/admin/mongo-health   — SALT OKUNUR
+   Bağlantı durumu + son hata + risk uyarısı. `?check=1` verilirse
+   zamanlayıcıyı beklemeden HEMEN bir kontrol turu çalıştırır (ping atar,
+   gerekirse app.locals.db'yi canlı onarır).
+   ========================================================= */
+router.get("/mongo-health", requireAdminToken, async (req, res) => {
+  try {
+    const mh = require("../services/mongo-health.cjs");
+    if (String(req.query.check || "") === "1") await mh.tick();
+    const r = mh.report();
+    // Bağlantı yoksa 503: harici izleme aracı bunu yakalayabilsin.
+    return res.status(r.configured && !r.connected ? 503 : 200).json({ ok: true, ...r });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+/* =========================================================
    GET /api/admin/migration-status   — SALT OKUNUR
    Production'da Shell yoksa (Render free kademe) geçiş durumunu görmenin
    tek yolu. Hiçbir şey yazmaz.

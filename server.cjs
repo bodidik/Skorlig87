@@ -276,6 +276,17 @@ const server = app.listen(PORT, HOST, () => {
     safeMount("livescore-sync", () => require("./services/livescore-sync.cjs").start(30 * 1000, PORT));
   }
 
+  /* 🗄️ Mongo sağlık izleme + otomatik toparlanma
+     app.locals.db YALNIZCA açılışta atanır; o an Mongo düşükse uygulama
+     yeniden başlatılana kadar dosya modunda kalır (2026-07-28'de yaşandı:
+     Atlas M0 duraklatılmıştı, kimse fark etmedi, deploy'lar veri sildi).
+     Bu servis bağlantı geri geldiğinde app.locals.db'yi CANLI günceller,
+     düştüğünde alarm üretir ve düzenli ping'le kümeyi uyanık tutar.
+     Kapatmak için: SKORLIG_MONGO_HEALTH=0 */
+  safeMount("mongo-health", () =>
+    require("./services/mongo-health.cjs").start(app)
+  );
+
   /* 🔔 Push bildirim zamanlayıcı: maç başlangıcı + sonuç duyurusu
      Kapatmak için: SKORLIG_PUSH_SCHED=0 (gönderimin tamamı: SKORLIG_PUSH=0) */
   if (process.env.SKORLIG_PUSH_SCHED !== "0") {
