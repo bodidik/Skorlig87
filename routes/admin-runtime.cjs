@@ -1115,19 +1115,36 @@ router.get("/rate-store", requireAdminToken, async (req, res) => {
     let saydi = null; // probe gerçekten saydı mı
 
     if (String(req.query.probe || "") === "1") {
-      const anahtar = `admin-probe:${Date.now()}`;
       const t0 = Date.now();
-      try {
-        const r = await store.hit(anahtar, 10000);
-        // hit() arıza durumunda FIRLATMAZ (fail-open: hız sınırı kesintisi
-        // tüm API'yi kapatmasın diye). Bu yüzden "hata yok" yeterli kanıt
-        // değil — asıl kanıt sayacın gerçekten artmış olması.
-        saydi = Number(r?.count ?? 0) >= 1;
-        out.probe = { ok: true, counted: saydi, count: r?.count ?? null, ms: Date.now() - t0 };
-      } catch (e) {
-        saydi = false;
-        out.probe = { ok: false, error: String(e?.message || e).slice(0, 200) };
+      let son = null;
+      let deneme = 0;
+
+      // SOĞUK BAŞLANGIÇ: rate-store `enableOfflineQueue: false` ile çalışıyor
+      // (hız sınırı isteğin önünde durduğu için Redis yavaşken beklemek yerine
+      // fail-open davranır). Bunun yan etkisi: bağlantı `ready` olmadan giden
+      // ilk komut ağa ÇIKMADAN reddedilir (~2ms). Probe o ilk çağrı olursa
+      // sağlıklı bir Redis'e "calismiyor" der — yaşandı. Birkaç kez dene.
+      for (deneme = 1; deneme <= 3; deneme++) {
+        try {
+          const r = await store.hit(`admin-probe:${Date.now()}`, 10000);
+          // hit() arızada FIRLATMAZ (fail-open) ve bellek moduna DÜŞER.
+          // Dolayısıyla "sayıldı" tek başına Redis kanıtı değil — sayımın
+          // hangi modda gerçekleştiğini de sormak gerekiyor, yoksa bellek
+          // sayacı Redis başarısı gibi raporlanır (ölçüldü).
+          const modu = store.stats().mode;
+          son = { ok: true, count: r?.count ?? null, countedIn: modu };
+          if (Number(r?.count ?? 0) >= 1 && modu === "redis") break;
+        } catch (e) {
+          son = { ok: false, error: String(e?.message || e).slice(0, 200) };
+        }
+        if (deneme < 3) await new Promise((r) => setTimeout(r, 400));
       }
+
+      saydi =
+        son?.ok === true &&
+        Number(son.count ?? 0) >= 1 &&
+        son.countedIn === "redis";
+      out.probe = { ...son, counted: saydi, attempts: deneme, ms: Date.now() - t0 };
 
       // ioredis hata olayı ASENKRON gelir: probe'un hemen ardından okunan mod
       // henüz "redis" görünür ve yanıltır (ölçüldü). Olay döngüsüne fırsat ver.
