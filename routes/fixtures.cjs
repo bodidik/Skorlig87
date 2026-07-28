@@ -82,17 +82,11 @@ const ALLOWED = {
   ],
 };
 
-const GLOBAL_LEAGUES = [
-  /champions\s*league/i,
-  /uefa\s*champions/i,
-  /europa\s*league/i,
-  /conference\s*league/i,
-];
+// Küresel lig listesi ve gençlik/kadın elemesi lib/global-leagues.cjs'de —
+// burada ayrı bir kopya vardı ve live2.cjs'dekinden 11 desen eksikti; aynı
+// maç bir rotada küresel sayılıp diğerinde ülke filtresine takılıyordu.
+const { isGlobalLeagueName, isExcludedLeague } = require("../lib/global-leagues.cjs");
 
-function isGlobalLeagueName(league) {
-  const n = String(league || "");
-  return GLOBAL_LEAGUES.some((rx) => rx.test(n));
-}
 function allowedCountry(c) {
   return !!ALLOWED[c];
 }
@@ -100,6 +94,7 @@ function isTopLeague(country, league) {
   const pats = ALLOWED[country];
   if (!pats) return false;
   const n = String(league || "");
+  if (isExcludedLeague(n)) return false;
   return pats.some((rx) => rx.test(n));
 }
 

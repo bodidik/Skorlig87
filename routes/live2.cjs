@@ -104,6 +104,9 @@ const ALLOWED = {
     /champions\s*league/i, /europa\s*league/i, /conference\s*league/i, /uefa/i,
     /world\s*cup/i, /euro\s*20\d{2}/i, /european\s*championship/i,
     /copa\s*america/i, /nations\s*league/i, /africa\s*cup/i,
+    // CONMEBOL kulüp turnuvaları — sağlayıcılar bunları country:"World" ya da
+    // "International" ile gönderiyor.
+    /libertadores/i, /sudamericana/i, /recopa/i,
   ],
   Europe: [/champions\s*league/i, /europa\s*league/i, /conference\s*league/i, /uefa/i, /euro\s*20\d{2}/i, /european\s*championship/i],
   International: [
@@ -116,49 +119,11 @@ const ALLOWED = {
   ],
 };
 
-// Global kupalar (ülke filtresine bakmadan geçecek ligler)
-const GLOBAL_LEAGUES = [
-  /champions\s*league/i,
-  /uefa\s*champions/i,
-  /europa\s*league/i,
-  /conference\s*league/i,
-  // Uluslararası turnuvalar (AF bunları country:"World" ile gönderir)
-  /world\s*cup/i,
-  /euro\s*20\d{2}/i,
-  /european\s*championship/i,
-  /copa\s*america/i,
-  /nations\s*league/i,
-  /africa\s*cup/i,
-  // Hazırlık maçları: lig-öncesi dönemde herkesin maç görmesi için
-  /haz[ıi]rl[ıi]k/i,
-  /friendl/i,
-  /pre[- ]?season/i,
-];
-
-// Gençlik / kadın / yedek / alt ligler: ana oyuna girmesin
-// (örn. "UEFA U19 Championship", "World Cup - Women U20", "MLS Next Pro")
-const EXCLUDED_LEAGUES = [
-  /\bU-?1\d\b/i,          // U15..U19
-  /\bU-?2[0-3]\b/i,       // U20..U23
-  /youth/i,
-  /\bwomen\b/i,
-  /\bw\.?league\b/i,
-  /kad[ıi]nlar/i,         // Maçkolik Türkçe: "Kadınlar"
-  /next\s*pro/i,
-  /\breserve/i,
-  /\bacademy\b/i,
-];
-
-function isExcludedLeague(league) {
-  const n = String(league || "");
-  return EXCLUDED_LEAGUES.some((rx) => rx.test(n));
-}
-
-function isGlobalLeagueName(league) {
-  const n = String(league || "");
-  if (isExcludedLeague(n)) return false;
-  return GLOBAL_LEAGUES.some((rx) => rx.test(n));
-}
+// Küresel kupalar + gençlik/kadın elemesi: tek kaynak lib/global-leagues.cjs.
+// Aynı liste routes/fixtures.cjs içinde de vardı ve ayrışmıştı.
+const {
+  GLOBAL_LEAGUES, EXCLUDED_LEAGUES, isGlobalLeagueName, isExcludedLeague,
+} = require("../lib/global-leagues.cjs");
 
 function allowedCountry(c) {
   return !!ALLOWED[c];

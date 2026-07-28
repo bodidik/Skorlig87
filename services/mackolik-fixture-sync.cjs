@@ -267,13 +267,27 @@ async function syncOnce({ dryRun = false } = {}) {
  * varsayılan 3 dakika. Daha sık çağrı boşuna dosya kilidi tutar.
  */
 function start(intervalMs = 3 * 60 * 1000) {
+  let ilkBasariOldu = false;
+
   const run = async () => {
     try {
       const r = await syncOnce();
       if (r.ok) {
+        ilkBasariOldu = true;
         console.log(`[mk-fixture-sync] ${r.total} maç (+${r.added} yeni, ~${r.updated} güncel, ${r.other} diğer kaynak) · ${r.ms}ms`);
       } else {
         console.warn(`[mk-fixture-sync] atlandı: ${r.reason}`);
+        // AÇILIŞ YARIŞI (loglarla doğrulandı): ilk tur 20. saniyede atılıyor
+        // ama ilk şelale ~37 saniyede bitiyor — cache o an HENÜZ YOK ve tur
+        // CACHE_UNREADABLE ile düşüyordu. Sonraki tur 3 dakika sonra geldiği
+        // için her yeniden başlatmada "ilk 3 dakika maç yok" penceresi
+        // oluşuyordu; Render ücretsiz katman servisi sık uyutup uyandırdığı
+        // için bu pencere sık yaşanıyor. İlk başarıya kadar 30 saniyede bir
+        // yeniden dene; başarıdan sonra normal aralık yeter.
+        if (!ilkBasariOldu && r.reason === "CACHE_UNREADABLE") {
+          const t = setTimeout(run, 30_000);
+          if (t.unref) t.unref();
+        }
       }
     } catch (e) {
       console.warn("[mk-fixture-sync] hata:", e.message);
