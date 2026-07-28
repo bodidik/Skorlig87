@@ -35,7 +35,8 @@ const fsp = require("fs").promises;
 const { withFileLock } = require("../lib/fileLock.cjs");
 const { readFixtures, writeFixtures, merge } = require("./fixture-sync.cjs");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// Testlerde izole dizine yönlendirilebilir (bkz. fixture-sync, livescore-scraper).
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const CACHE_FILE = path.join(DATA_DIR, "livescore-cache.json");
 const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 const SOURCE = "MK";

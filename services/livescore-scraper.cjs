@@ -3,7 +3,9 @@
 const fs   = require("fs");
 const path = require("path");
 
-const DATA_DIR   = path.join(__dirname, "..", "data");
+// Testlerde izole dizine yönlendirilebilir — yoksa cache/istatistik yazımları
+// GERÇEK data/ klasörüne düşer (bu tuzağa bu projede birkaç kez düşüldü).
+const DATA_DIR   = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const CACHE_FILE = path.join(DATA_DIR, "livescore-cache.json");
 
 const CHROME_PATH = process.env.LOCAL_CHROME_PATH
