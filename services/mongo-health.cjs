@@ -26,7 +26,7 @@
  * Kapatmak için: SKORLIG_MONGO_HEALTH=0
  */
 
-const { getDb, close } = require("../lib/mongo.cjs");
+const { getDb, close, status: mongoStatus } = require("../lib/mongo.cjs");
 const { appendAlert } = require("../lib/admin-alerts.cjs");
 
 const ENABLED = () => process.env.SKORLIG_MONGO_HEALTH !== "0";
@@ -70,10 +70,16 @@ async function tick() {
 
   let db = null;
   try {
-    db = await getDb();
+    // force: lib/mongo.cjs başarısızlıktan sonra kısa bir soğuma uygular
+    // (istekler beklemesin diye). Sağlık kontrolünün görevi tam da o pencerede
+    // yeniden denemek — soğumaya uyarsa toparlanmayı hiç fark etmezdi.
+    db = await getDb({ force: true });
     if (db) {
       // Asıl canlılık sınavı — önbellekli nesne yanıltıcı olabilir.
       await db.command({ ping: 1 });
+    } else {
+      // Bağlantı katmanının kendi hatası, buradaki genel mesajdan daha açık.
+      state.lastError = mongoStatus().lastError || "baglanti kurulamadi";
     }
   } catch (e) {
     state.lastError = String(e?.message || e).slice(0, 200);

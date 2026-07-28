@@ -832,8 +832,14 @@ router.get("/mongo-health", requireAdminToken, async (req, res) => {
     const mh = require("../services/mongo-health.cjs");
     if (String(req.query.check || "") === "1") await mh.tick();
     const r = mh.report();
+    // Bağlantı katmanının kendi sayaçları: kaç deneme yapıldı, açılıştaki
+    // asıl hata neydi, soğuma penceresi açık mı. İzleme servisinin gördüğü
+    // özet, başarısızlığın SEBEBİNİ göstermiyordu.
+    const conn = require("../lib/mongo.cjs").status();
     // Bağlantı yoksa 503: harici izleme aracı bunu yakalayabilsin.
-    return res.status(r.configured && !r.connected ? 503 : 200).json({ ok: true, ...r });
+    return res
+      .status(r.configured && !r.connected ? 503 : 200)
+      .json({ ok: true, ...r, connection: conn });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
