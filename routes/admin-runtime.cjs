@@ -821,4 +821,136 @@ router.get("/alerts", requireAdminToken, async (req, res) => {
   }
 });
 
+/* =========================================================
+   GET /api/admin/migration-status   — SALT OKUNUR
+   Production'da Shell yoksa (Render free kademe) geçiş durumunu görmenin
+   tek yolu. Hiçbir şey yazmaz.
+
+   Dosya sayıları vs Mongo koleksiyon sayıları + ayna bayrakları.
+   ⚠️ Render free kademede kalıcı disk YOKTUR: data/*.json her deploy'da
+   sıfırlanır, yani "dosya" sütunu yalnızca son deploy'dan beri birikeni
+   gösterir. Asıl doğruluk kaynağı Mongo sütunudur.
+   ========================================================= */
+router.get("/migration-status", requireAdminToken, async (req, res) => {
+  const fs = require("fs");
+  const path = require("path");
+  const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
+
+  const fileCount = (name, pick) => {
+    try {
+      const p = path.join(DATA_DIR, name);
+      const st = fs.statSync(p);
+      const raw = JSON.parse(fs.readFileSync(p, "utf8"));
+      return { exists: true, kb: Math.round(st.size / 1024), count: pick(raw) };
+    } catch {
+      return { exists: false, kb: 0, count: 0 };
+    }
+  };
+
+  const arrLen = (r) => (Array.isArray(r) ? r.length : (r?.items || []).length);
+
+  const files = {
+    preds: fileCount("preds.json", arrLen),
+    wallet: fileCount("lc-wallet.json", (r) => (r?.users || []).length),
+    walletLedger: fileCount("lc-wallet.json", (r) => (r?.ledger || []).length),
+    users: fileCount("users.json", (r) => (r?.items || r?.users || []).length),
+    matchResults: fileCount("match-results.json", arrLen),
+  };
+
+  const mirrors = {
+    preds: String(process.env.SKORLIG_PREDS_FILE_MIRROR ?? "1") !== "0",
+    wallet: String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0",
+    matchResults: String(process.env.SKORLIG_MATCHRESULTS_FILE_MIRROR ?? "1") !== "0",
+  };
+
+  const db = req.app?.locals?.db || null;
+  const mongo = { connected: !!db, collections: {} };
+  if (db) {
+    for (const c of ["predictions", "lc_wallet_users", "lc_wallet_ledger", "match_results"]) {
+      try {
+        mongo.collections[c] = await db.collection(c).countDocuments();
+      } catch (e) {
+        mongo.collections[c] = `hata: ${e.message}`;
+      }
+    }
+  }
+
+  // Karar yardımı: her ayna için kapatılabilir mi?
+  const verdict = {};
+  if (db) {
+    const m = mongo.collections;
+    verdict.preds =
+      m.predictions >= files.preds.count ? "KAPATILABILIR" : `BEKLE (mongo ${m.predictions} < dosya ${files.preds.count})`;
+    verdict.wallet =
+      m.lc_wallet_users >= files.wallet.count ? "KAPATILABILIR" : `BEKLE (mongo ${m.lc_wallet_users} < dosya ${files.wallet.count})`;
+    verdict.matchResults =
+      m.match_results >= files.matchResults.count ? "KAPATILABILIR" : `BEKLE (mongo ${m.match_results} < dosya ${files.matchResults.count})`;
+  } else {
+    verdict.hepsi = "MONGO YOK — hicbir ayna kapatilamaz (bayraklar zaten yok sayilir)";
+  }
+
+  res.json({
+    ok: true,
+    checkedAt: new Date().toISOString(),
+    not: "Render free kademede kalici disk yok; dosya sayilari son deploy'dan beri birikeni gosterir.",
+    mongo,
+    files,
+    mirrors,
+    verdict,
+    redis: process.env.REDIS_URL ? "TANIMLI" : "YOK",
+  });
+});
+
+/* =========================================================
+   POST /api/admin/run-migration   — YAZAR
+   Shell olmadan migration çalıştırmanın yolu. Gövde:
+     { "target": "preds" | "match-results", "confirm": true }
+
+   `confirm` olmadan yalnızca DOĞRULAMA yapar (dry-run) — kazara
+   tetiklenmesin diye. Her iki script de idempotenttir.
+   ========================================================= */
+router.post("/run-migration", requireAdminToken, express.json(), async (req, res) => {
+  const { execFile } = require("child_process");
+  const path = require("path");
+
+  const target = String(req.body?.target || "").trim();
+  const confirm = req.body?.confirm === true;
+
+  const SCRIPTS = {
+    preds: { file: "migrate-preds-to-mongo.cjs", verify: "verify-migration.cjs" },
+    "match-results": { file: "migrate-match-results.cjs", verify: null }, // kendi doğrulamasını yapar
+  };
+  const spec = SCRIPTS[target];
+  if (!spec) {
+    return res.status(400).json({
+      ok: false,
+      error: "TARGET_INVALID",
+      kabul: Object.keys(SCRIPTS),
+    });
+  }
+
+  // confirm yoksa: yalnızca doğrulama çalıştır (hiçbir şey yazmaz)
+  const script = confirm ? spec.file : spec.verify || spec.file;
+  const args = confirm ? [] : spec.verify ? [] : ["--verify"];
+
+  const scriptPath = path.join(__dirname, "..", "scripts", script);
+
+  execFile(
+    process.execPath,
+    [scriptPath, ...args],
+    { cwd: path.join(__dirname, ".."), timeout: 10 * 60 * 1000, env: process.env },
+    (err, stdout, stderr) => {
+      const out = String(stdout || "") + String(stderr || "");
+      res.json({
+        ok: !err,
+        mode: confirm ? "MIGRATION (yazdi)" : "DOGRULAMA (yazmadi)",
+        target,
+        script,
+        exitCode: err ? err.code ?? 1 : 0,
+        output: out.split("\n").filter(Boolean).slice(-40),
+      });
+    }
+  );
+});
+
 module.exports = router;
