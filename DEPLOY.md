@@ -224,12 +224,20 @@ Kod değişikliği gerekmez; `REDIS_URL` görülünce Redis moduna geçilir.
 
 ### B3. Doğrula
 
+⚠️ Render ücretsiz katmanda **Shell yok**; doğrulama HTTP ucundan yapılır:
+
 ```bash
-node -e "const s=require('./lib/rate-store.cjs'); s.hit('deploy-test',60000).then(r=>{console.log('mod:', s.stats().mode, '| sayac:', r.count); process.exit(0)})"
+curl -s "https://<host>/api/admin/rate-store?probe=1" -H "x-admin-token: $SKORLIG_ADMIN_TOKEN"
 ```
 
-`mod: redis` görmelisin. `mod: memory` çıkıyorsa `REDIS_URL` okunmamış ya da
-bağlantı kurulamamıştır (log'da `[rate-store] Redis hatasi` aranır).
+`verdict: "REDIS AKTIF"` görmelisin (HTTP 200).
+
+`?probe=1` gerçek bir sayaç yazar. Bu şart: `hit()` arıza durumunda **hata
+fırlatmaz** (fail-open), dolayısıyla "hata gelmedi" Redis'in çalıştığını
+göstermez. Asıl kanıt `probe.counted: true` — sayacın gerçekten artmış olması.
+
+`REDIS_URL` tanımlıyken uç **HTTP 503** dönerse bağlantı kurulamıyor ve sessizce
+bellek moduna düşülmüş demektir; harici izleme aracına bu kodu bağlamak işe yarar.
 
 **Arıza duruşu:** Redis düşerse istekler **engellenmez** (fail-open). Hız sınırı
 bir koruma katmanıdır; Redis kesintisinin tüm API'yi kapatması daha kötü olurdu.

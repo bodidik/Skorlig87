@@ -1094,4 +1094,66 @@ router.get("/mongo-diagnose", requireAdminToken, async (req, res) => {
   res.json({ ok: true, verdict, ...rapor });
 });
 
+/* =========================================================
+   GET /api/admin/rate-store   — hız sınırı deposunun gerçek modu
+
+   NEDEN VAR: DEPLOY.md doğrulamayı Shell'den bir node komutuyla yaptırıyordu;
+   Render ücretsiz katmanda Shell YOK. Yani REDIS_URL eklendikten sonra
+   gerçekten Redis'e mi yazıldığı, yoksa sessizce bellek moduna mı düşüldüğü
+   görülemiyordu. İkisi tek instance'ta aynı davranır — fark ancak instance
+   sayısı artınca ve limitler N katına çıkınca ortaya çıkar ki o noktada
+   sebebi bulmak zordur.
+
+   `?probe=1` GERÇEK bir sayaç yazar (kısa TTL'li, ayrı anahtar alanı):
+   yapılandırma doğru ama bağlantı kurulamıyorsa fark burada anlaşılır.
+   ========================================================= */
+router.get("/rate-store", requireAdminToken, async (req, res) => {
+  try {
+    const store = require("../lib/rate-store.cjs");
+    const out = { ok: true, ...store.stats() };
+
+    let saydi = null; // probe gerçekten saydı mı
+
+    if (String(req.query.probe || "") === "1") {
+      const anahtar = `admin-probe:${Date.now()}`;
+      const t0 = Date.now();
+      try {
+        const r = await store.hit(anahtar, 10000);
+        // hit() arıza durumunda FIRLATMAZ (fail-open: hız sınırı kesintisi
+        // tüm API'yi kapatmasın diye). Bu yüzden "hata yok" yeterli kanıt
+        // değil — asıl kanıt sayacın gerçekten artmış olması.
+        saydi = Number(r?.count ?? 0) >= 1;
+        out.probe = { ok: true, counted: saydi, count: r?.count ?? null, ms: Date.now() - t0 };
+      } catch (e) {
+        saydi = false;
+        out.probe = { ok: false, error: String(e?.message || e).slice(0, 200) };
+      }
+
+      // ioredis hata olayı ASENKRON gelir: probe'un hemen ardından okunan mod
+      // henüz "redis" görünür ve yanıltır (ölçüldü). Olay döngüsüne fırsat ver.
+      await new Promise((r) => setTimeout(r, 200));
+      out.modeAfterProbe = store.stats().mode;
+    }
+
+    // Karar: mod "redis" OLMALI ve probe yapıldıysa gerçekten saymalı.
+    const calisiyor =
+      (out.modeAfterProbe || out.mode) === "redis" && (saydi === null || saydi);
+
+    out.verdict =
+      !out.redisConfigured
+        ? "BELLEK MODU — REDIS_URL tanimsiz. Tek instance'ta dogru calisir; " +
+          "birden fazla instance'ta limit her birinde ayri isler."
+        : calisiyor
+          ? "REDIS AKTIF"
+          : "UYARI: REDIS_URL tanimli ama sayac Redis'e islenmiyor — " +
+            "baglanti kurulamiyor, bellek moduna dusuldu";
+
+    // Yapılandırılmış ama çalışmıyorsa 503: sessizce yanlış modda kalmasın.
+    const bozuk = out.redisConfigured && !calisiyor;
+    return res.status(bozuk ? 503 : 200).json(out);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 module.exports = router;
