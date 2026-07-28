@@ -225,6 +225,90 @@ function fromBilyoner() {
 // ─── Source 3: Nesine ─────────────────────────────────────────────────────────
 
 /**
+ * Nesine lig başlığı → Türkçe ülke adı.
+ *
+ * NEDEN GEREKLİ: Nesine'de ülke için ayrı bir alan yok; başlığın BAŞINA gömülü
+ * geliyor ("Brezilya Serie B", "Arjantin Primera Nacional"). Ülke boş kalırsa
+ * cache'e `country: ""` yazılır ve fikstür senkronu (TR_TO_COUNTRY[""]) tüm
+ * maçları SESSİZCE eler — hata değil, sadece sıfır maç.
+ *
+ * Çıktı Türkçe: mackolik-fixture-sync'in beklediği biçim bu. Aynı şekli
+ * üretince nesine, Maçkolik'in yerine hiçbir değişiklik olmadan geçebiliyor.
+ * Buradaki anahtarlar TR_TO_COUNTRY anahtarlarıyla birebir olmalı.
+ */
+const NESINE_COUNTRY_PREFIXES = [
+  "Türkiye", "İngiltere", "İspanya", "Almanya", "İtalya", "Fransa", "Hollanda",
+  "Portekiz", "Brezilya", "Arjantin", "Meksika", "Japonya", "ABD",
+  "Suudi Arabistan", "Yunanistan", "Rusya", "Ukrayna", "Polonya", "Avusturya",
+  "İsviçre", "Belçika", "Çekya", "Sırbistan", "Hırvatistan", "Slovakya",
+  "Bulgaristan", "Romanya", "Macaristan",
+];
+
+function nesineCountryFromTitle(title) {
+  const t = String(title || "").trim();
+  if (!t) return "";
+
+  // UEFA turnuvaları ülkeye değil kıtaya ait ("Uefa Şampiyonlar Ligi Elemeleri")
+  if (/^uefa\b/i.test(t)) return "Avrupa";
+
+  const tl = t.toLocaleLowerCase("tr-TR");
+  for (const c of NESINE_COUNTRY_PREFIXES) {
+    // Yalnızca BAŞTA ara: "Kolombiya Kupası" ülke, ama bir takım adının içinde
+    // geçen ülke kelimesi (varsa) ligi yanlış ülkeye yazardı.
+    if (tl.startsWith(c.toLocaleLowerCase("tr-TR"))) return c;
+  }
+  return ""; // kapsam dışı ülke → fikstür senkronunda atlanır
+}
+
+/** Europe/Istanbul'a göre bugünün YYYY-MM-DD'si. */
+function istanbulToday(nowMs = Date.now()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(nowMs));
+}
+
+/**
+ * Nesine satırlarını Maçkolik'in ürettiği şekle tamamlar.
+ *
+ * İki eksik doldurulur:
+ *   compCountry — lig başlığından (yukarı bak)
+ *   matchDate   — nesine yalnızca SAAT veriyor ("20:00"), tarih yok. Canlı skor
+ *                 sayfası günün programı olduğu için tarih = İstanbul'da bugün.
+ *
+ * GECE YARISI KAYMASI: 00:30'luk bir maç, akşam saatlerinde hâlâ "bugünün"
+ * sayfasında listelenebilir. Ham hesap onu geçmişte gösterir ve fikstür
+ * senkronu (geçmiş maçları atar) sessizce düşürür. Hesaplanan saat belirgin
+ * şekilde geçmişteyse ertesi güne alıyoruz — yanılırsak maç zaten atılacaktı,
+ * yani bu değişiklik yalnızca kaybedilecek maçları kurtarabilir.
+ */
+const NESINE_ROLLOVER_MS = 6 * 3600 * 1000;
+
+function enrichNesine(rows, nowMs = Date.now()) {
+  const today = istanbulToday(nowMs);
+
+  return (Array.isArray(rows) ? rows : []).map((m) => {
+    const compCountry = nesineCountryFromTitle(m.compTitle);
+
+    // Saat yalnızca başlamamış maçlarda var; canlı/bitmiş olanın tarihine
+    // fikstür tarafında zaten ihtiyaç yok.
+    let matchDate = m.matchDate || "";
+    const hhmm = String(m.startTime || "").trim();
+    if (!matchDate && /^\d{1,2}:\d{2}$/.test(hhmm)) {
+      const padded = hhmm.padStart(5, "0");
+      let day = today;
+      const ko = Date.parse(`${today}T${padded}:00+03:00`);
+      if (Number.isFinite(ko) && ko < nowMs - NESINE_ROLLOVER_MS) {
+        day = istanbulToday(nowMs + 24 * 3600 * 1000);
+      }
+      matchDate = `${day} ${padded}`;
+    }
+
+    return { ...m, compCountry, matchDate };
+  });
+}
+
+/**
  * Nesine — canlı skor sayfası.
  *
  * ÖNCEKİ SÜRÜM ÖLÜ ADRESİ KAZIYORDU: iddaa.nesine.com/canli artık 404
@@ -237,8 +321,8 @@ function fromBilyoner() {
  *
  * Ayrıca yalnızca canlı değil, günün tamamı gelir (biten + başlamamış dahil).
  */
-function fromNesine() {
-  return scrapeWithBrowser(
+async function fromNesine() {
+  const rows = await scrapeWithBrowser(
     "https://www.nesine.com/iddaa/canli-skor/futbol",
     () => {
       const results = [];
@@ -289,8 +373,9 @@ function fromNesine() {
           isHT: status === "HT" || status === "DA",
           isFinished,
           compTitle: league || "",
-          // Ülke lig adının içinde gömülü geliyor ("BREZİLYA SERİE A");
-          // ayrı bir alan yok, matchLeague() anahtar kelimeyle eşleştirir.
+          // Ülke lig adının içinde gömülü geliyor ("Brezilya Serie B"); sayfada
+          // ayrı bir alan yok. Tarayıcı içinde çözemeyiz (bu fonksiyon sayfa
+          // bağlamında çalışır, dış kapsama erişemez) — enrichNesine() dolduruyor.
           compCountry: "",
         });
       });
@@ -299,6 +384,8 @@ function fromNesine() {
     },
     "[data-test-id='ClassicMatchLine']"
   );
+
+  return enrichNesine(rows);
 }
 
 // ─── Source 4: BBC Sport ──────────────────────────────────────────────────────
@@ -821,6 +908,29 @@ const SOURCES = [
   // { name: "api-football", fn: fromApiFootball },
 ];
 
+/**
+ * Production'da denenmeyecek kaynaklar.
+ *
+ * mackolik yerelde en iyi kaynak (666 maç) ama Render'da sayfası
+ * `domcontentloaded`'a 15 saniyede ulaşamıyor — yoklamada ölçüldü:
+ * "Navigation timeout of 15000 ms exceeded". Şelalenin BAŞINDA olduğu için
+ * her tur, ücretsiz katmanın kısa ömürlü kabı içinde, bir Chromium başlatma +
+ * 15 saniyeyi kesin kayba harcıyordu. Servis çoğu turda SIGTERM ile
+ * uyutulduğundan sıra ikinci kaynağa hiç gelmiyor, cache hiç yazılmıyordu.
+ *
+ * Yerelde dokunulmuyor: orada çalışıyor ve kapsamı en geniş olan o.
+ */
+const PROD_SKIP = new Set(["mackolik"]);
+
+/** Ortama göre kaynak sırası. */
+function orderedSources() {
+  if (!IS_PROD) return SOURCES;
+  const skipped = SOURCES.filter((s) => PROD_SKIP.has(s.name));
+  // Tamamen çıkarmıyoruz: sona alınıyor ki site düzelirse yine yakalansın,
+  // ama hızlı kaynaklar bir sonuç üretemezse diye.
+  return SOURCES.filter((s) => !PROD_SKIP.has(s.name)).concat(skipped);
+}
+
 // ─── Main scrape ──────────────────────────────────────────────────────────────
 
 async function scrape() {
@@ -834,12 +944,17 @@ async function scrape() {
   let rawMatches = null;
   let usedSource = null;
 
-  for (const { name, fn } of SOURCES) {
+  for (const { name, fn } of orderedSources()) {
     try {
       console.log(`[livescore] ${name} deneniyor...`);
       const result = await fn();
       const ok = result && result.length > 0;
       recordAttempt(stats, name, ok);
+      // HER denemeden sonra yaz. Eskiden yalnızca döngü bitince yazılıyordu ve
+      // süreç ortada ölürse (Render ücretsiz katmanda SIGTERM ile uyutuluyor)
+      // hiçbir iz kalmıyordu: tüm kaynaklar `attempts: 0` görünüyor, yani
+      // "hiç denenmedi" ile "denendi ama yazamadan öldük" ayırt edilemiyordu.
+      saveStats(stats);
       if (ok) {
         rawMatches = result;
         usedSource = name;
@@ -849,11 +964,11 @@ async function scrape() {
       console.log(`[livescore] ${name}: 0 maç — sonraki kaynak`);
     } catch (e) {
       recordAttempt(stats, name, false);
+      saveStats(stats);
       console.warn(`[livescore] ${name} hata: ${e.message}`);
     }
   }
 
-  saveStats(stats);
   checkAndWarnStats(stats); // düşük performanslı kaynakları logla
 
   if (!rawMatches) {
@@ -950,4 +1065,8 @@ async function scrapeOne(name) {
 module.exports = {
   scrape, getCache, getStats, start, stop, LEAGUES,
   scrapeOne, SOURCE_NAMES: SOURCES.map((s) => s.name),
+  // Nesine zenginleştirmesi ağ olmadan sınanabilsin: ülke ayrıştırma ve gece
+  // yarısı kayması, sessizce yanlış çalıştığında sıfır maçla sonuçlanan
+  // türden hatalar — testle tutulmaları gerekiyor.
+  enrichNesine, nesineCountryFromTitle, istanbulToday,
 };

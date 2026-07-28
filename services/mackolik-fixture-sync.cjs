@@ -1,17 +1,24 @@
 "use strict";
 
 /**
- * MAÇKOLİK FİKSTÜR SENKRONU — livescore-cache.json → fixtures.json
+ * CACHE FİKSTÜR SENKRONU — livescore-cache.json → fixtures.json
  *
  * NEDEN VAR: FDO 8 ülke veriyor (Brezilya, İngiltere, İspanya, İtalya,
  * Almanya, Fransa, Hollanda, Portekiz). Ülke sıralaması ise Japonya, Meksika,
  * S.Arabistan, ABD, Rusya, Polonya, Yunanistan için de kuruldu — bu ülkelerin
- * botu ve listesi var ama tahmin edecekleri maç yoktu.
+ * botu ve listesi var ama tahmin edecekleri maç yoktu. TÜRKİYE de FDO kapsamı
+ * dışında; Türk kullanıcıya maç gösteren tek yol burası.
  *
- * Maçkolik'in `canli-sonuclar` sayfası 25+ ülkeden 500-700 maç veriyor (bugün
- * + yarın penceresi). livescore-scraper.cjs zaten bu sayfayı 2 dakikada bir
- * kazıyıp `data/livescore-cache.json`'a yazıyordu — burası o cache'i okuyup
- * gelecek maçları fixtures.json'a çeviriyor.
+ * KAYNAK-BAĞIMSIZ: Adı tarihsel ("mackolik"), ama bu dosya cache'i KİMİN
+ * ürettiğine bakmaz — livescore-scraper'ın şelalesi hangi kaynakta başarılı
+ * olursa onun çıktısını okur. Maçkolik Render'da Puppeteer zaman aşımına
+ * uğradığından sıra pratikte nesine'ye düşüyor; nesine'nin çıktısı
+ * enrichNesine() ile aynı şekle (Türkçe ülke adı + "YYYY-MM-DD HH:MM")
+ * tamamlandığı için buradaki kod değişmeden çalışır.
+ *
+ * source ETİKETİ "MK" KALIYOR: merge() bu etikete sahip kayıtları "sahiplenir"
+ * ve tazelenmeyenleri temizler. Etiketi kaynağa göre değiştirmek, eski MK
+ * kayıtlarını sahipsiz bırakıp dosyada sonsuza kadar bırakırdı.
  *
  * PENCERE: Sadece bugün + yarın. 30 gün ilerisi için FDO. İki kaynak
  * birbirini kesmez: farklı `source` etiketi ile aynı dosyada yaşarlar
@@ -91,7 +98,41 @@ const ALLOWED_COUNTRIES = new Set([
   "Slovakia", "Bulgaria", "World", "Europe",
 ]);
 
+/**
+ * İngilizce ülke adı → kanonik ad. Yalnızca İngilizcesi kanoniğinden FARKLI
+ * olanlar; "Brazil" gibi zaten eşit olanlar ALLOWED_COUNTRIES'te yakalanır.
+ *
+ * NEDEN GEREKLİ: Şelalenin hangi kaynakta durduğu ülke adının DİLİNİ belirliyor.
+ * Maçkolik/nesine Türkçe ("Brezilya"), goal/espn İngilizce ("Brazil") üretiyor.
+ * Yalnızca Türkçe tablosuna bakmak, goal kazandığında bütün maçların sessizce
+ * elenmesi demekti — kaynak sağlıklı görünürken fikstür sıfır kalıyordu.
+ */
+const EN_TO_COUNTRY = {
+  "Turkey": "Türkiye",
+  "Turkiye": "Türkiye",
+  "International": "World",
+  "United States": "USA",
+  "Czechia": "Czech Republic",
+  "Korea Republic": "South Korea", // ALLOWED'da yok → yine atlanır, kasıtlı
+};
+
 const r2 = (s) => String(s || "").trim();
+
+/**
+ * Ham ülke adını (Türkçe ya da İngilizce) kanonik ada çevirir.
+ * ALLOWED dışındaysa null — o maç atlanır. ALLOWED dışı bir ad yazmak ülke
+ * sıralamasını ve lig filtresini bozar, kimse o maçları göremezdi.
+ */
+function resolveCountry(raw) {
+  const s = r2(raw);
+  if (!s) return null;
+
+  const tr = TR_TO_COUNTRY[s];
+  if (tr) return ALLOWED_COUNTRIES.has(tr) ? tr : null;
+
+  const en = EN_TO_COUNTRY[s] || s;
+  return ALLOWED_COUNTRIES.has(en) ? en : null;
+}
 
 /**
  * "2026-07-27 21:00" (Maçkolik yerel = Europe/Istanbul, UTC+3) → ISO 8601.
@@ -129,9 +170,8 @@ function slugPart(s) {
  *   - kickoff geçmişte (yayınlanma gecikmesi + timezone tuzağı için toleransla)
  */
 function normalize(m) {
-  const trCountry = r2(m?.country);
-  const country = TR_TO_COUNTRY[trCountry];
-  if (!country || !ALLOWED_COUNTRIES.has(country)) return null;
+  const country = resolveCountry(m?.country);
+  if (!country) return null;
 
   const home = r2(m?.homeTeam);
   const away = r2(m?.awayTeam);
@@ -245,4 +285,7 @@ function start(intervalMs = 3 * 60 * 1000) {
   return timer;
 }
 
-module.exports = { syncOnce, normalize, readCache, start, TR_TO_COUNTRY, ALLOWED_COUNTRIES };
+module.exports = {
+  syncOnce, normalize, readCache, start,
+  TR_TO_COUNTRY, EN_TO_COUNTRY, ALLOWED_COUNTRIES, resolveCountry,
+};
