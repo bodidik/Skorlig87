@@ -7,7 +7,7 @@ const fsp     = fs.promises;
 const path    = require("path");
 
 const DATA_DIR       = path.join(__dirname, "..", "data");
-const USERS_FILE     = path.join(DATA_DIR, "users.json");
+const UsersStore = require("../lib/users-store.cjs");
 const LEADER_FILE    = path.join(DATA_DIR, "leaderboard.json");
 const FIXTURES_FILE  = path.join(DATA_DIR, "fixtures.json");
 
@@ -67,18 +67,18 @@ router.get("/members", async (req,res)=>{
     return res.json({ ok:true, team, members:[] });
   }
 
-  const users   = await readJson(USERS_FILE, []);
+  // İndeksli takım sorgusu — eskiden tüm kullanıcı dosyası okunup JS'te
+  // süzülüyordu (bir takım kadrosu için 500.000 kaydın tamamı).
+  const arr     = await UsersStore.listByTeam(team, req.app?.locals?.db || null);
   const board   = await readJson(LEADER_FILE, { items:[], totals:{} });
 
   const totals  = board.totals || {};
   const list = [];
 
-  const arr = Array.isArray(users) ? users : (Array.isArray(users?.items)? users.items:[]);
   for(const u of arr){
     const uid  = u.userId || u.id || null;
     const main = u.mainTeam || u.team || null;
     if(!uid || !main) continue;
-    if(String(main).toLowerCase() !== team.toLowerCase()) continue;
 
     const t = totals[uid] || { total:0, played:0 };
     const isBot = /^bot_/i.test(uid);

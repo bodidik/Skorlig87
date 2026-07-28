@@ -73,38 +73,9 @@ function pairKey(a,b){
   return [x,y].sort().join("::");
 }
 
-// users.json'u normalize ederek ortak liste çıkar
-async function loadUsersList() {
-  const raw = (await readJson(USERS, { users: [], items: [] })) || {};
-  const list = [];
-  const pushUser = (u, forcedId) => {
-    if (!u) return;
-    const id = String(forcedId || u.userId || u.id || "").trim();
-    if (!id) return;
-    list.push({ ...u, userId: id });
-  };
-
-  if (Array.isArray(raw.users)) raw.users.forEach(u => pushUser(u));
-  if (Array.isArray(raw.items)) raw.items.forEach(u => pushUser(u));
-
-  // Map formatını da destekle ( { userId: {...}, ... } )
-  if (!Array.isArray(raw.users) && !Array.isArray(raw.items)) {
-    Object.entries(raw).forEach(([id, u]) => {
-      if (u && typeof u === "object") pushUser(u, id);
-    });
-  }
-
-  // de-dup (case-insensitive)
-  const seen = new Set();
-  const out = [];
-  for (const u of list) {
-    const k = normLower(u.userId);
-    if (!k || seen.has(k)) continue;
-    seen.add(k);
-    out.push(u);
-  }
-  return out;
-}
+// loadUsersList() kaldırıldı: tüm kullanıcı dosyasını belleğe alıyordu.
+// Arkadaş listesi artık yalnızca ilgili kimlikleri (getUsersByIdsLower),
+// arama ise sınırlı sorgu (searchUsers) kullanıyor.
 
 async function loadTotalsItems() {
   const totals = await readJson(TOTALS, { items: [] });
@@ -130,9 +101,14 @@ router.post("/request", verifyToken, express.json(), async (req,res)=>{
     if (!from || !to)   return res.status(400).json({ ok:false, error:"USERS_REQUIRED" });
     if (from === to)    return res.status(400).json({ ok:false, error:"SELF_NOT_ALLOWED" });
 
-    const usersList = await loadUsersList();
-    const hasFrom = usersList.some(u => String(u.userId).trim().toLowerCase() === from.toLowerCase());
-    const hasTo   = usersList.some(u => String(u.userId).trim().toLowerCase() === to.toLowerCase());
+    // Hedefli sorgu — eskiden yalnızca iki kimliğin varlığını doğrulamak için
+    // tüm kullanıcı listesi yükleniyordu.
+    const varMi = await UsersStore.getUsersByIdsLower(
+      [from, to],
+      req.app?.locals?.db || null
+    );
+    const hasFrom = !!varMi[from.toLowerCase()];
+    const hasTo   = !!varMi[to.toLowerCase()];
 
     if (!hasFrom) return res.status(400).json({ ok:false, error:"FROM_NOT_REGISTERED" });
     if (!hasTo)   return res.status(400).json({ ok:false, error:"TO_NOT_REGISTERED" });
@@ -339,13 +315,20 @@ router.get("/list/:userId", async (req,res)=>{
     if (!userId) return res.status(400).json({ ok:false, error:"USER_REQUIRED" });
 
     const m           = await loadFriends();
-    const usersList   = await loadUsersList();
     const totalsItems = await loadTotalsItems();
 
-    const findUser = (uid) =>
-      usersList.find(
-        u => String(u.userId || "").trim().toLowerCase() === String(uid || "").trim().toLowerCase()
-      ) || {};
+    // Yalnızca bu kullanıcının arkadaşları çekilir — eskiden tüm kullanıcı
+    // listesi yüklenip her isim için doğrusal aranıyordu.
+    const iliskiliIds = [];
+    for (const l of m.links) {
+      if (l.a === userId) iliskiliIds.push(l.b);
+      else if (l.b === userId) iliskiliIds.push(l.a);
+    }
+    const usersMap = await UsersStore.getUsersByIdsLower(
+      iliskiliIds,
+      req.app?.locals?.db || null
+    );
+    const findUser = (uid) => usersMap[String(uid || "").trim().toLowerCase()] || {};
 
     const friends = [];
     for (const l of m.links){
@@ -408,13 +391,7 @@ router.get("/board/:userId", async (req,res)=>{
     if (!userId) return res.status(400).json({ ok:false, error:"USER_REQUIRED" });
 
     const m           = await loadFriends();
-    const usersList   = await loadUsersList();
     const totalsItems = await loadTotalsItems();
-
-    const findUser = (uid) =>
-      usersList.find(
-        u => String(u.userId || "").trim().toLowerCase() === String(uid || "").trim().toLowerCase()
-      ) || {};
 
     const ids = new Set();
     ids.add(userId);
@@ -422,6 +399,14 @@ router.get("/board/:userId", async (req,res)=>{
       if (l.a === userId) ids.add(l.b);
       if (l.b === userId) ids.add(l.a);
     }
+
+    // Yalnızca tablodaki kimlikler çekilir — eskiden tüm kullanıcı listesi
+    // yüklenip her satır için doğrusal aranıyordu.
+    const usersMap = await UsersStore.getUsersByIdsLower(
+      Array.from(ids),
+      req.app?.locals?.db || null
+    );
+    const findUser = (uid) => usersMap[String(uid || "").trim().toLowerCase()] || {};
 
     // ✅ BLOCK enforcement: board'dan blocklananları çıkar
     const filteredIds = Array.from(ids).filter(uid => !isBlockedEither(m, userId, uid));
@@ -459,7 +444,14 @@ router.get("/search", async (req, res) => {
 
     const ql = q.toLowerCase();
 
-    const usersList   = await loadUsersList();
+    // Depoda arama — eskiden TÜM kullanıcılar belleğe alınıp JS'te süzülüyordu.
+    // Sonuç sayısı sınırlı; aşağıdaki döngü ayrıca engelli/kendisi elemesi
+    // yaptığı için biraz fazlasını çekiyoruz.
+    const usersList = await UsersStore.searchUsers(
+      q,
+      Math.min(50, limit * 3),
+      req.app?.locals?.db || null
+    );
     const totalsItems = await loadTotalsItems();
 
     // totals map (hız)

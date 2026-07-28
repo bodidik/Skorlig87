@@ -17,7 +17,7 @@ function requireAdminToken(req, res, next) {
   return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
 }
 const GROUPS = path.join(DATA,"groups.json");  // { CODE: { name, ownerId, members:[userId], opts:{ userId:{ includeInTotal } } } }
-const USERS  = path.join(DATA,"users.json");   // { userId: { name, flag, ... } }  (map)
+const UsersStore = require("../lib/users-store.cjs");
 const TOTALS = path.join(DATA,"totals.json");  // { items: [ { userId, totalPoints, ...}, ... ], updatedAt }
 
 async function readJson(file, fb){ try{ return JSON.parse(await fsp.readFile(file,"utf8")); }catch{ return fb; } }
@@ -83,11 +83,17 @@ async function handleBoard(req,res){
   try{
     const code = String(req.params.code || "").toUpperCase();
     const store  = await readJson(GROUPS, {});
-    const users  = await readJson(USERS, {});
     const totals = await readJson(TOTALS, { items:[] });
 
     const g = store[code];
     if (!g) return res.status(404).json({ ok:false, error:"GROUP_NOT_FOUND" });
+
+    // Yalnızca grubun ÜYELERİ çekilir — eskiden tüm kullanıcı dosyası
+    // yükleniyordu (20 kişilik tablo için 500.000 kaydın tamamı).
+    const users = await UsersStore.getUsersByIds(
+      g.members || [],
+      req.app?.locals?.db || null
+    );
 
     const itemsTotals = Array.isArray(totals.items) ? totals.items : [];
 

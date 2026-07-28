@@ -31,11 +31,15 @@ const MIN_FIXTURES = 2;
 const MAX_FIXTURES = 10;
 const MAX_MEMBERS = 50;
 
-// Turnuva birincisine LC (LigCoin) ödülü — settle2'nin match_reward
-// mekanizmasıyla aynı dosyalara yazar (users.json + lc-wallet.json ledger).
+// Turnuva birincisine LC (LigCoin) ödülü. Mongo varsa cüzdana `$inc` ile
+// yazılır (lib/wallet-credit.cjs); dosya yalnızca ayna açıkken güncellenir.
 const MINI_WIN_LC = Math.max(0, Number(process.env.SKORLIG_MINI_WIN_LC || 20));
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
+const { creditLc } = require("../lib/wallet-credit.cjs");
+// settle2 ile AYNI bayrak: cüzdan dosyası aynası.
+const WALLET_FILE_MIRROR =
+  String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0";
 
 async function readJson(file, fb) {
   try {
@@ -89,11 +93,30 @@ function isBotUser(uid) {
   return String(uid || "").toLowerCase().startsWith("bot_");
 }
 
-async function awardMiniWinLc(userIds, tournament) {
+/**
+ * Mini turnuva ödülü.
+ *
+ * ⚠️ MONGO ŞUBESİ ŞART: bakiye SKORLIG_WALLET_FILE_MIRROR=0 iken Mongo'dan
+ * (`lc_wallet_users`) okunuyor. Bu fonksiyon bir süre YALNIZCA dosyalara
+ * yazıyordu — kullanıcı turnuvayı kazanıyor, ödül kimsenin okumadığı bir
+ * dosyaya düşüyor, bakiyesi hiç artmıyordu. Hata da üretilmiyordu.
+ */
+async function awardMiniWinLc(userIds, tournament, db) {
   const winners = (userIds || []).filter((u) => u && !isBotUser(u));
   if (!winners.length || MINI_WIN_LC <= 0) return 0;
 
   const nowISO = new Date().toISOString();
+
+  // Mongo tarafı: $inc göreli olduğu için dosyadan bağımsız ve doğru.
+  for (const uid of winners) {
+    await creditLc(db, uid, MINI_WIN_LC, "mini_tournament_win", {
+      tournamentId: tournament.id,
+      tournamentName: tournament.name,
+    });
+  }
+
+  // Mongo varsa ve ayna kapalıysa dosyaya hiç dokunma.
+  if (db && !WALLET_FILE_MIRROR) return winners.length;
 
   // users.json ({items:[]} formatı)
   const usersRaw = await readJson(USERS_FILE, { items: [] });
@@ -159,7 +182,7 @@ async function awardMiniWinLc(userIds, tournament) {
 const _finalizing = new Set();
 
 /** Tüm maçlar settle olduysa turnuvayı bitir: kazananları yaz, LC ödülünü ver. */
-async function finalizeIfDone(t, board, settledCount, fixtureCount) {
+async function finalizeIfDone(t, board, settledCount, fixtureCount, db) {
   if (t.finishedAt) return t;
   if (!fixtureCount || settledCount < fixtureCount) return t;
   if (_finalizing.has(t.id)) return t;
@@ -181,7 +204,7 @@ async function finalizeIfDone(t, board, settledCount, fixtureCount) {
     await saveAll(items);
 
     if (winners.length) {
-      const awarded = await awardMiniWinLc(winners, cur);
+      const awarded = await awardMiniWinLc(winners, cur, db);
       console.log(
         `[mini] turnuva bitti: "${cur.name}" (${cur.id}) | kazanan: ${winners.join(", ")} | LC ödülü: ${MINI_WIN_LC} x ${awarded}`
       );
@@ -452,7 +475,7 @@ router.get("/board", async (req, res) => {
       .sort((a, b) => b.points - a.points || a.userId.localeCompare(b.userId));
 
     // Tüm maçlar bittiyse turnuvayı sonlandır (kazanan + LC ödülü, bir kez)
-    const finalT = await finalizeIfDone(t, board, settledCount, fixtureIds.length);
+    const finalT = await finalizeIfDone(t, board, settledCount, fixtureIds.length, req.app?.locals?.db || null);
 
     return res.json({
       ok: true,

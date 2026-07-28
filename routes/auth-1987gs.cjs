@@ -16,7 +16,7 @@ function requireAdminToken(req, res, next) {
   if (got && got === token) return next();
   return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
 }
-const USERS_FILE  = path.join(DATA_DIR, "users.json");  // 1987 üyeleri burada tutulacak
+const UsersStore = require("../lib/users-store.cjs");
 
 async function readJson(file, fb = null) {
   try {
@@ -49,50 +49,33 @@ async function writeJson(file, data) {
  *   "updatedAt": "..."
  * }
  */
-async function markUser1987(userId, code) {
+/**
+ * 1987 üyeliğini işaretler.
+ *
+ * ⚠️ DEPOYA yazılır. Eskiden doğrudan users.json'a yazılıyordu; premium.cjs ve
+ * listSegment1987 depodan okuduğu için o yazım hiçbir yere ulaşmıyordu —
+ * kullanıcı kodu doğruluyor ama üyeliğini (ve premium ayrıcalığını) hiç
+ * alamıyordu.
+ */
+async function markUser1987(userId, code, db) {
   if (!userId) return;
 
-  const data =
-    (await readJson(USERS_FILE, { users: [], updatedAt: null })) || {};
-  const users = Array.isArray(data.users) ? data.users : [];
-
-  const idNorm = String(userId).trim().toLowerCase();
   const nowISO = new Date().toISOString();
+  const mevcut = await UsersStore.getUser(userId, db);
 
-  let idx = users.findIndex(
-    (u) =>
-      String(u.id || u.userId || "")
-        .trim()
-        .toLowerCase() === idNorm
+  await UsersStore.updateUser(
+    userId,
+    {
+      is1987: true,
+      // İlk doğrulama tarihi korunur; her doğrulamada sıfırlanmamalı.
+      since1987: mevcut?.since1987 || nowISO,
+      lastCode: code || mevcut?.lastCode || null,
+      lastVerifiedAt: nowISO,
+      active: mevcut?.active !== false,
+    },
+    { mainTeam: null, lc: 0, lcLastDaily: null },
+    db
   );
-
-  if (idx === -1) {
-    // yeni kullanıcı
-    users.push({
-      id: userId,
-      is1987: true,
-      since1987: nowISO,
-      lastCode: code || null,
-      lastVerifiedAt: nowISO,
-      active: true
-    });
-  } else {
-    // mevcut kullanıcıyı güncelle
-    const u = users[idx];
-    users[idx] = {
-      ...u,
-      id: u.id || u.userId || userId,
-      is1987: true,
-      since1987: u.since1987 || nowISO,
-      lastCode: code || u.lastCode || null,
-      lastVerifiedAt: nowISO,
-      active: u.active !== false,  // default true
-    };
-  }
-
-  data.users = users;
-  data.updatedAt = nowISO;
-  await writeJson(USERS_FILE, data);
 }
 
 /**
@@ -144,7 +127,7 @@ router.post("/verify", express.json(), async (req, res) => {
 
   // ✅ Kullanıcıyı 1987 üyesi olarak işaretle (userId verilmişse)
   if (userId) {
-    await markUser1987(userId, codeNorm);
+    await markUser1987(userId, codeNorm, req.app?.locals?.db || null);
   }
 
   return res.json({
@@ -224,9 +207,8 @@ router.get("/diag", requireAdminToken, async (req, res) => {
  *   }
  */
 router.get("/members", requireAdminToken, async (req, res) => {
-  const data =
-    (await readJson(USERS_FILE, { users: [], updatedAt: null })) || {};
-  const users = Array.isArray(data.users) ? data.users : [];
+  // İndeksli segment sorgusu — eskiden tüm kullanıcı dosyası okunuyordu.
+  const users = await UsersStore.listSegment1987(req.app?.locals?.db || null);
 
   const members = users
     .filter((u) => u.is1987)
@@ -241,7 +223,10 @@ router.get("/members", requireAdminToken, async (req, res) => {
 
   res.json({
     ok: true,
-    updatedAt: data.updatedAt || null,
+    // Depo tek bir "son güncelleme" tutmuyor; en yeni doğrulama tarihi
+    // aynı bilgiyi veriyor. (Eskiden users.json'un updatedAt alanıydı.)
+    updatedAt:
+      members.map((m) => m.lastVerifiedAt).filter(Boolean).sort().pop() || null,
     total: members.length,
     items: members,
   });

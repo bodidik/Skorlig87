@@ -29,6 +29,10 @@ const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR = path.join(DATA_DIR, "live");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
+const { creditLc } = require("../lib/wallet-credit.cjs");
+// settle2 ile AYNI bayrak: cüzdan dosyası aynası.
+const WALLET_FILE_MIRROR =
+  String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0";
 const STATE_FILE = path.join(DATA_DIR, "tr-league.json"); // sonuçlanmış haftalar + ödül kayıtları
 
 const SUPER_LIG_ID = 203;
@@ -242,12 +246,26 @@ async function buildWeekBoard(weekFixtures, db = null) {
 }
 
 // ---------- LC ödülü (settle2/mini ile aynı çift-yazım deseni) ----------
-async function awardWeeklyLc(awards, weekKey) {
+/**
+ * Haftalık TR-Lig ödülü.
+ *
+ * ⚠️ MONGO ŞUBESİ ŞART: bakiye SKORLIG_WALLET_FILE_MIRROR=0 iken Mongo'dan
+ * okunuyor. Bu fonksiyon bir süre yalnızca dosyalara yazıyordu — ödül
+ * kimsenin okumadığı dosyaya düşüyor, kullanıcının bakiyesi artmıyordu.
+ */
+async function awardWeeklyLc(awards, weekKey, db) {
   // awards: [{ userId, amount }]
   const real = awards.filter((a) => a.userId && !String(a.userId).toLowerCase().startsWith("bot_") && a.amount > 0);
   if (!real.length) return;
 
   const nowISO = new Date().toISOString();
+
+  for (const { userId: uid, amount } of real) {
+    await creditLc(db, uid, amount, "tr_league_weekly", { weekKey });
+  }
+
+  if (db && !WALLET_FILE_MIRROR) return;
+
   const usersRaw = await readJson(USERS_FILE, { items: [] });
   const usersItems = Array.isArray(usersRaw) ? usersRaw : usersRaw.items || [];
   const wallet = (await readJson(WALLET_FILE, { users: [], ledger: [] })) || {};
@@ -295,7 +313,7 @@ async function awardWeeklyLc(awards, weekKey) {
 const _finalizingWeek = new Set();
 
 /** Hafta bittiyse (tüm maçlar settle + hafta geçmiş) ilk 3'e ödül ver (bir kez). */
-async function finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount) {
+async function finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount, db) {
   if (!fixtureCount || settledCount < fixtureCount) return null;
 
   const { toMs } = weekRange(weekKey);
@@ -332,7 +350,7 @@ async function finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount) {
       }
     }
 
-    await awardWeeklyLc(awards, weekKey);
+    await awardWeeklyLc(awards, weekKey, db);
 
     const record = {
       weekKey,
@@ -396,7 +414,7 @@ router.get("/current", async (req, res) => {
       (a, b) => new Date(a.kickoffISO) - new Date(b.kickoffISO)
     );
     const { board, fixtureViews, settledCount, fixtureCount } = await buildWeekBoard(wkFixtures, req.app?.locals?.db || null);
-    const finalized = await finalizeWeekIfDone(targetWk, board, settledCount, fixtureCount);
+    const finalized = await finalizeWeekIfDone(targetWk, board, settledCount, fixtureCount, req.app?.locals?.db || null);
 
     const myRank = userId
       ? (() => {
@@ -483,7 +501,7 @@ router.get("/week/:weekKey", async (req, res) => {
     fixtures.sort((a, b) => new Date(a.kickoffISO) - new Date(b.kickoffISO));
 
     const { board, fixtureViews, settledCount, fixtureCount } = await buildWeekBoard(fixtures, req.app?.locals?.db || null);
-    const finalized = await finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount);
+    const finalized = await finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount, req.app?.locals?.db || null);
 
     const myRank = userId
       ? (() => {

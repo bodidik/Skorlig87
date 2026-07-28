@@ -19,6 +19,7 @@ const DATA_DIR           = path.join(__dirname, "..", "data");
 const FIXTURES_FILE      = path.join(DATA_DIR, "fixtures.json");
 const PREDS_FILE         = path.join(DATA_DIR, "preds.json");
 const USERS_FILE         = path.join(DATA_DIR, "users.json");
+const UsersStore = require("../lib/users-store.cjs");
 const WALLET_FILE        = path.join(DATA_DIR, "lc-wallet.json");
 const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
@@ -38,11 +39,12 @@ async function getLiveState(fixtureId) {
   catch { return null; }
 }
 
-async function is1987User(userId) {
-  const uid  = String(userId || "").trim().toLowerCase();
-  const raw  = await readJson(USERS_FILE, { items: [] });
-  const list = Array.isArray(raw.items) ? raw.items : [];
-  const u    = list.find(x => String(x.userId || x.id || "").toLowerCase() === uid);
+async function is1987User(userId, db) {
+  const uid = String(userId || "").trim().toLowerCase();
+  if (!uid) return false;
+  // Küçük harfli sorgu: kimlikler karışık harfli, tam eşleşme kaçırırdı.
+  const map = await UsersStore.getUsersByIdsLower([uid], db);
+  const u = map[uid];
   return !!(u && (u.is1987 || String(u.segment || "").toLowerCase() === "1987"));
 }
 
@@ -175,7 +177,7 @@ router.post("/predict", verifyToken, async (req, res) => {
     }
 
     const existing = await getUserPred(uid, fixtureId);
-    const free     = await is1987User(uid);
+    const free     = await is1987User(uid, req.app?.locals?.db || null);
     let lc         = 0;
     let lcCharged  = 0;
 
@@ -233,12 +235,11 @@ router.get("/leaderboard", async (req, res) => {
     const now    = Date.now();
     const weekAgo = now - WEEK_MS;
 
-    // 1987 kullanıcıları
-    const usersRaw = await readJson(USERS_FILE, { items: [] });
-    const userList = Array.isArray(usersRaw.items) ? usersRaw.items : [];
+    // 1987 kullanıcıları — indeksli segment sorgusu (eskiden tüm kullanıcı
+    // dosyası okunup JS'te süzülüyordu).
+    const userList = await UsersStore.listSegment1987(req.app?.locals?.db || null);
     const is1987Set = new Set(
       userList
-        .filter(u => u.is1987 || String(u.segment || "").toLowerCase() === "1987")
         .map(u => String(u.userId || u.id || "").toLowerCase())
         .filter(Boolean)
     );
@@ -350,20 +351,16 @@ router.post("/verify-code", verifyToken, async (req, res) => {
       return res.status(400).json({ ok: false, error: "WRONG_CODE" });
     }
 
-    await withFileLock(USERS_FILE, async () => {
-      const raw   = await readJson(USERS_FILE, { items: [] });
-      const items = Array.isArray(raw.items) ? raw.items : [];
-      const uidL  = uid.toLowerCase();
-      let u = items.find(x => String(x.userId || x.id || "").toLowerCase() === uidL);
-      if (!u) {
-        u = { userId: uid, is1987: true, createdAt: new Date().toISOString() };
-        items.push(u);
-      } else {
-        u.is1987   = true;
-        u.is1987At = new Date().toISOString();
-      }
-      await writeJsonAtomic(USERS_FILE, { ...raw, items });
-    });
+    // 1987 üyeliği DEPOYA yazılır. Eskiden doğrudan users.json'a yazılıyordu;
+    // premium.cjs ve listSegment1987 depodan okuduğu için o yazım hiçbir yere
+    // ulaşmıyordu — kullanıcı kodu giriyor, üyeliği (ve premium ayrıcalığını)
+    // hiç alamıyordu.
+    await UsersStore.updateUser(
+      uid,
+      { is1987: true, is1987At: new Date().toISOString() },
+      { mainTeam: null, lc: 0, lcLastDaily: null },
+      req.app?.locals?.db || null
+    );
 
     res.json({ ok: true, is1987: true });
   } catch (e) {

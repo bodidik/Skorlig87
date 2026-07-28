@@ -13,6 +13,7 @@ const path = require("path");
 // Global kilit sırası: PREDS → WALLET → USERS (döngü yok).
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const MatchResults = require("../lib/match-results.cjs");
+const UsersStore = require("../lib/users-store.cjs");
 
 const BUILD = "settle2-2026-07-16-penalty20pct"; // ✅ ceza %20 orantılı
 // NOT: Puanlama/ödül herkes için eşittir — premium'un maç başı avantajı YOK
@@ -1457,9 +1458,15 @@ router.get("/match-race", async (req, res) => {
       // Maç henüz başlamadı — pre-match moduna düş
     }
 
-    // Kullanıcı isim haritası: userId → displayName
-    const usersAll = await readJson(USERS_FILE, { items: [] });
-    const usersItems = Array.isArray(usersAll) ? usersAll : usersAll.items || usersAll.users || [];
+    // Kullanıcı isim haritası: userId → displayName.
+    // Yalnızca BU MAÇIN katılımcıları çekilir — eskiden tüm kullanıcı dosyası
+    // okunup herkesin adı belleğe alınıyordu.
+    const katilimciIds = [
+      ...new Set(fixturePreds.map((p) => String(p.userId || p.user || "")).filter(Boolean)),
+    ];
+    const usersItems = Object.values(
+      await UsersStore.getUsersByIdsLower(katilimciIds, req.app?.locals?.db || null)
+    );
     const nameMap = new Map();
     for (const u of usersItems) {
       const uid = String(u.userId || "");
@@ -1612,12 +1619,9 @@ router.get("/user-profile", async (req, res) => {
       (r) => String(r.userId || "").toLowerCase() === tidLower
     );
 
-    // users.json → üyelik tarihi
-    const usersRaw = await readJson(USERS_FILE, { items: [] });
-    const usersList = Array.isArray(usersRaw) ? usersRaw : usersRaw.items || usersRaw.users || [];
-    const userRow = usersList.find(
-      (u) => String(u.userId || "").toLowerCase() === tidLower
-    );
+    // Üyelik tarihi — tek kullanıcı, indeksli sorgu (eskiden tüm dosya).
+    const userRow =
+      (await UsersStore.getUsersByIdsLower([tidLower], req.app?.locals?.db || null))[tidLower] || null;
 
     // lc-wallet.json → LC bakiye
     const walletRaw = await readJson(WALLET_FILE, { users: [] });

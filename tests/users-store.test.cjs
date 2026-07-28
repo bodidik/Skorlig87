@@ -208,6 +208,64 @@ describe("davet kodu", () => {
   });
 });
 
+describe("listByTeam", () => {
+  test("takimi tutanlar doner, digerleri gelmez", async () => {
+    await sifirla();
+    await Store.updateUser("a", { mainTeam: "Galatasaray" }, VARSAYILAN, null);
+    await Store.updateUser("b", { mainTeam: "Fenerbahçe" }, VARSAYILAN, null);
+    await Store.updateUser("c", { mainTeam: "Galatasaray" }, VARSAYILAN, null);
+
+    const list = await Store.listByTeam("Galatasaray", null);
+    assert.deepEqual(list.map((u) => u.userId).sort(), ["a", "c"]);
+  });
+
+  test("buyuk/kucuk harf duyarsiz (eski davranis)", async () => {
+    await sifirla();
+    await Store.updateUser("a", { mainTeam: "Galatasaray" }, VARSAYILAN, null);
+    assert.equal((await Store.listByTeam("galatasaray", null)).length, 1);
+    assert.equal((await Store.listByTeam("GALATASARAY", null)).length, 1);
+  });
+
+  test("bos takim bos liste", async () => {
+    assert.deepEqual(await Store.listByTeam("", null), []);
+    assert.deepEqual(await Store.listByTeam(null, null), []);
+  });
+});
+
+describe("searchUsers", () => {
+  test("takma ad ve kimlik uzerinde arar", async () => {
+    await sifirla();
+    await Store.updateUser("deniz123", { nickname: "Deniz" }, VARSAYILAN, null);
+    await Store.updateUser("ahmet", { nickname: "Ahmet" }, VARSAYILAN, null);
+
+    assert.equal((await Store.searchUsers("deniz", 20, null)).length, 1);
+    assert.equal((await Store.searchUsers("ahmet", 20, null)).length, 1);
+  });
+
+  test("eski `name` alani da aranir", async () => {
+    // Eski hesaplarda nickname yerine name var; kapsam disi birakmak onlari
+    // aramada gorunmez yapardi.
+    await sifirla();
+    await Store.updateUser("eski1", { name: "Mehmet" }, VARSAYILAN, null);
+    assert.equal((await Store.searchUsers("mehmet", 20, null)).length, 1);
+  });
+
+  test("SINIR uygulanir (sinirsiz sonuc donmez)", async () => {
+    await sifirla();
+    for (let i = 0; i < 30; i++) {
+      await Store.updateUser("kisi" + i, { nickname: "test" + i }, VARSAYILAN, null);
+    }
+    // Sinirsiz donmek 500.000 kullanicida tek istekle tum koleksiyonu
+    // bellege alirdi.
+    assert.equal((await Store.searchUsers("kisi", 5, null)).length, 5);
+  });
+
+  test("bos sorgu bos liste", async () => {
+    assert.deepEqual(await Store.searchUsers("", 20, null), []);
+    assert.deepEqual(await Store.searchUsers(null, 20, null), []);
+  });
+});
+
 describe("dosya bicimleri", () => {
   test("duz dizi bicimi okunabilir", async () => {
     await sifirla();

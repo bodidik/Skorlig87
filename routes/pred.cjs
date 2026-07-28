@@ -18,6 +18,7 @@ const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const { applyRegen } = require("../lib/lc-regen.cjs");
 // 🔹 Premium ayrıcalıkları
 const premium = require("../lib/premium.cjs");
+const UsersStore = require("../lib/users-store.cjs");
 // 🔹 Atomik yazma + dosya kilidi (race önleme)
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
@@ -117,29 +118,17 @@ function addLedgerEntryFile(state, { userId, kind, amount, reason, fixtureId, me
   });
 }
 
-async function isUser1987Member(userId) {
-  const uid = String(userId || "").trim();
+/**
+ * 1987 üyeliği — kullanıcı deposundan (Mongo varsa Mongo).
+ * Dosyadan okumak, profil verisi taşındıktan sonra herkesi "üye değil"
+ * yapardı: 1987 üyesi ücretsiz maç girişini kaybederdi.
+ */
+async function isUser1987Member(userId, db) {
+  const uid = String(userId || "").trim().toLowerCase();
   if (!uid) return false;
 
-  const raw = (await readJson(USERS_FILE, { users: [], items: [] })) || {};
-
-  const list = [];
-  const pushUser = (u) => {
-    if (!u) return;
-    const id = String(u.userId || u.id || "").trim();
-    if (!id) return;
-    list.push({ ...u, userId: id });
-  };
-
-  if (Array.isArray(raw.users)) raw.users.forEach(pushUser);
-  if (Array.isArray(raw.items)) raw.items.forEach(pushUser);
-
-  const u = list.find(
-    (u) =>
-      String(u.userId || "")
-        .trim()
-        .toLowerCase() === uid.toLowerCase()
-  );
+  const map = await UsersStore.getUsersByIdsLower([uid], db);
+  const u = map[uid];
   if (!u) return false;
 
   const seg = String(u.segment || "").toLowerCase();
@@ -160,7 +149,7 @@ async function ensureWalletUserFile(userId) {
   );
 
   if (!u) {
-    const is1987 = await isUser1987Member(uid);
+    const is1987 = await isUser1987Member(uid, null) /* dosya modu */;
     const initialBalance = is1987 ? INITIAL_1987 : INITIAL_DEFAULT;
     const nowISO = new Date().toISOString();
     u = {
@@ -299,7 +288,7 @@ async function ensureWalletUserMongo(db, userId) {
   let user = await col.findOne({ userIdLower: uidLower });
   if (!user) {
     // 1987 üyeliğini şimdilik USERS_FILE üzerinden okuyoruz (lc-wallet.cjs’yle uyumlu).
-    const is1987 = await isUser1987Member(uid);
+    const is1987 = await isUser1987Member(uid, db);
     const initialBalance = is1987 ? INITIAL_1987 : INITIAL_DEFAULT;
     const nowISO = new Date().toISOString();
 
@@ -958,7 +947,7 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
     // 🔹 LC harcaması (maç başı cost, ikinci/üçüncü düzeltmede kesilmez)
     // Premium ayrıcalığı: maç girişi bedava. 1987 üyeleri de bedava.
     const isPrem  = await premium.isPremium(uid, getDb(req));
-    const is1987  = await isUser1987Member(uid);
+    const is1987  = await isUser1987Member(uid, getDb(req));
     const effMatchCost = (isPrem || is1987) ? 0 : LC_MATCH_COST;
     const spendRes = db
       ? await spendLcMatchIfNeededMongo(
@@ -1879,22 +1868,15 @@ router.get("/pred/match-board", async (req, res) => {
       })) || {};
     const items = Array.isArray(lb.items) ? lb.items : [];
 
-    // Kullanıcı bilgileri (1987 üyeleri)
-    const usersData =
-      (await readJson(USERS_FILE, { users: [], updatedAt: null })) ||
-      {};
-    const users = Array.isArray(usersData.users) ? usersData.users : [];
+    // 1987 üyeleri — indeksli segment sorgusu (eskiden tüm kullanıcı dosyası
+    // okunup her satır için doğrusal aranıyordu).
+    const uyeler = await UsersStore.listSegment1987(getDb(req));
+    const uyeSet = new Set(
+      uyeler.map((u) => String(u.id || u.userId || "").trim().toLowerCase())
+    );
 
-    const is1987User = (uid) => {
-      const u = users.find(
-        (x) =>
-          String(x.id || x.userId || "")
-            .trim()
-            .toLowerCase() ===
-          String(uid || "").trim().toLowerCase()
-      );
-      return !!(u && u.is1987);
-    };
+    const is1987User = (uid) =>
+      uyeSet.has(String(uid || "").trim().toLowerCase());
 
     const rowsForFixture = items.filter(
       (r) => String(r.fixtureId || "") === fx

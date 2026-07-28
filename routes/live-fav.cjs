@@ -3,14 +3,20 @@ const express = require("express");
 const router  = express.Router();
 const fs = require("fs"), fsp = fs.promises, path = require("path");
 
+const UsersStore = require("../lib/users-store.cjs");
+
 async function readJson(f, fb){ try{ return JSON.parse(await fsp.readFile(f,"utf8")); }catch{ return fb; } }
 
 router.get("/fav", async (req,res)=>{
   try{
     const userId = String(req.query.userId||"demo1");
     const DATA = path.join(__dirname,"..","data");
-    const users = await readJson(path.join(DATA,"users.json"),{users:{}});
-    const team  = users.users?.[userId]?.team || "Galatasaray";
+    // ⚠️ ESKİ HATA: `users.users?.[userId]?.team` okunuyordu ama dosyanın
+    // şeması `{items:[{userId, mainTeam}]}`. Yani sorgu HER ZAMAN undefined
+    // dönüyor, favori takım sessizce "Galatasaray"a sabitleniyordu — hangi
+    // takımı seçerseniz seçin. Artık depodan gerçek değer okunuyor.
+    const u = await UsersStore.getUser(userId, req.app?.locals?.db || null);
+    const team = u?.mainTeam || u?.team || "Galatasaray";
 
     // kaynak: fixtures.json + live klasörü
     const fixtures = await readJson(path.join(DATA,"fixtures.json"),[]);

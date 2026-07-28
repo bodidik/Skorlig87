@@ -30,6 +30,9 @@ const { applyRegen, regenInfo } = require("../lib/lc-regen.cjs");
 // Premium ayrıcalıkları (tek kaynak)
 const premium = require("../lib/premium.cjs");
 const UsersStore = require("../lib/users-store.cjs");
+// settle2 ile AYNI bayrak: cüzdan dosyası aynası.
+const WALLET_FILE_MIRROR =
+  String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0";
 
 /* =========================
  *  LC MAĞAZASI (ücret karşılığı token)
@@ -83,29 +86,17 @@ async function saveWalletState(state) {
   await writeJson(WALLET_FILE, state);
 }
 
-async function isUser1987MemberFromFile(userId) {
-  const uid = String(userId || "").trim();
+/**
+ * 1987 üyeliği — DEPODAN. Adındaki "FromFile" tarihsel; dosyadan okumak,
+ * profil verisi Mongo'ya taşındıktan sonra herkesi "üye değil" yapardı.
+ * Küçük harfli sorgu: kimlikler karışık harfli.
+ */
+async function isUser1987MemberFromFile(userId, db) {
+  const uid = String(userId || "").trim().toLowerCase();
   if (!uid) return false;
 
-  const raw = (await readJson(USERS_FILE, { users: [], items: [] })) || {};
-
-  const list = [];
-  const pushUser = (u) => {
-    if (!u) return;
-    const id = String(u.userId || u.id || "").trim();
-    if (!id) return;
-    list.push({ ...u, userId: id });
-  };
-
-  if (Array.isArray(raw.users)) raw.users.forEach(pushUser);
-  if (Array.isArray(raw.items)) raw.items.forEach(pushUser);
-
-  const u = list.find(
-    (u) =>
-      String(u.userId || "")
-        .trim()
-        .toLowerCase() === uid.toLowerCase()
-  );
+  const map = await UsersStore.getUsersByIdsLower([uid], db);
+  const u = map[uid];
   if (!u) return false;
 
   const seg = String(u.segment || "").toLowerCase();
@@ -148,7 +139,7 @@ async function ensureWalletUserFile(userId) {
   );
 
   if (!u) {
-    const is1987 = await isUser1987MemberFromFile(uid);
+    const is1987 = await isUser1987MemberFromFile(uid, null); // dosya modu
     const baseBalance = is1987 ? INITIAL_1987 : INITIAL_DEFAULT;
     const nowISO = new Date().toISOString();
 
@@ -203,9 +194,9 @@ function getDb(req) {
   return db || null;
 }
 
-// Şimdilik 1987 üyelik dosyadan okunuyor; ileride Mongo'ya taşınabilir.
+// 1987 üyelik artık kullanıcı deposundan (Mongo varsa Mongo) okunuyor.
 async function isUser1987MemberMongoOrFile(db, userId) {
-  return isUser1987MemberFromFile(userId);
+  return isUser1987MemberFromFile(userId, db);
 }
 
 async function addLedgerEntryMongo(db, { userId, kind, amount, reason, fixtureId, meta }) {
@@ -577,7 +568,7 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
       );
 
       if (!u) {
-        const is1987 = await isUser1987MemberFromFile(userId);
+        const is1987 = await isUser1987MemberFromFile(userId, null); // dosya modu
         const initialBalance = is1987 ? INITIAL_1987 : INITIAL_DEFAULT;
         const nowISO = new Date().toISOString();
         u = {
@@ -836,9 +827,13 @@ router.post("/lc-wallet/purchase", verifyToken, express.json(), async (req, res)
       });
     }
 
-    // users.json lc alanını da senkron tut — ayrı dosya, ayrı kilit
+    // users.json lc alanını da senkron tut — ayrı dosya, ayrı kilit.
+    // Mongo varken ve ayna kapalıyken atlanır: yetkili bakiye cüzdanda
+    // (lc_wallet_users), bu alan yalnızca eski dosya modu için tutuluyor.
+    // Koşulsuz yazmak, kimsenin okumadığı geçici bir dosyayı büyütürdü.
+    const usersLcSenkronGerekli = !getDb(req) || WALLET_FILE_MIRROR;
     try {
-      await withFileLock(USERS_FILE, async () => {
+      if (usersLcSenkronGerekli) await withFileLock(USERS_FILE, async () => {
         const usersRaw = await readJson(USERS_FILE, { items: [] });
         const items = Array.isArray(usersRaw) ? usersRaw : usersRaw.items || [];
         let u = items.find((x) => String(x.userId) === userId);
