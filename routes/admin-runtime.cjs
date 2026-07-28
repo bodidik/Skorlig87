@@ -885,12 +885,13 @@ router.get("/migration-status", requireAdminToken, async (req, res) => {
     preds: String(process.env.SKORLIG_PREDS_FILE_MIRROR ?? "1") !== "0",
     wallet: String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0",
     matchResults: String(process.env.SKORLIG_MATCHRESULTS_FILE_MIRROR ?? "1") !== "0",
+    users: String(process.env.SKORLIG_USERS_FILE_MIRROR ?? "1") !== "0",
   };
 
   const db = req.app?.locals?.db || null;
   const mongo = { connected: !!db, collections: {} };
   if (db) {
-    for (const c of ["predictions", "lc_wallet_users", "lc_wallet_ledger", "match_results"]) {
+    for (const c of ["predictions", "lc_wallet_users", "lc_wallet_ledger", "match_results", "users"]) {
       try {
         mongo.collections[c] = await db.collection(c).countDocuments();
       } catch (e) {
@@ -909,6 +910,10 @@ router.get("/migration-status", requireAdminToken, async (req, res) => {
       m.lc_wallet_users >= files.wallet.count ? "KAPATILABILIR" : `BEKLE (mongo ${m.lc_wallet_users} < dosya ${files.wallet.count})`;
     verdict.matchResults =
       m.match_results >= files.matchResults.count ? "KAPATILABILIR" : `BEKLE (mongo ${m.match_results} < dosya ${files.matchResults.count})`;
+    // ⚠️ Profil verisi (ülke, takım, takma ad, ligler, dil). Kalıcı disk
+    // olmadığı için dosya sayısı yanıltıcı düşük olabilir — asıl kaynak Mongo.
+    verdict.users =
+      m.users >= files.users.count ? "KAPATILABILIR" : `BEKLE (mongo ${m.users} < dosya ${files.users.count})`;
   } else {
     verdict.hepsi = "MONGO YOK — hicbir ayna kapatilamaz (bayraklar zaten yok sayilir)";
   }
@@ -928,7 +933,7 @@ router.get("/migration-status", requireAdminToken, async (req, res) => {
 /* =========================================================
    POST /api/admin/run-migration   — YAZAR
    Shell olmadan migration çalıştırmanın yolu. Gövde:
-     { "target": "preds" | "match-results", "confirm": true }
+     { "target": "preds" | "match-results" | "users", "confirm": true }
 
    `confirm` olmadan yalnızca DOĞRULAMA yapar (dry-run) — kazara
    tetiklenmesin diye. Her iki script de idempotenttir.
@@ -943,6 +948,7 @@ router.post("/run-migration", requireAdminToken, express.json(), async (req, res
   const SCRIPTS = {
     preds: { file: "migrate-preds-to-mongo.cjs", verify: "verify-migration.cjs" },
     "match-results": { file: "migrate-match-results.cjs", verify: null }, // kendi doğrulamasını yapar
+    users: { file: "migrate-users.cjs", verify: null }, // kendi doğrulamasını yapar
   };
   const spec = SCRIPTS[target];
   if (!spec) {

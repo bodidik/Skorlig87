@@ -201,6 +201,75 @@ snapshot'lar dosyada yoktur (Mongo'da durur).
 
 ---
 
+## A4. Kullanıcı profillerini Mongo'ya taşı
+
+⚠️ **Bu madde diğerlerinden farklı: burada kayıp GEÇMİŞTE YAŞANDI, gelecekte
+olası bir risk değil.**
+
+`users.json` ülke, favori takım, takma ad, tercih edilen ligler ve dil bilgisini
+tutuyor ve uzun süre **hiçbir yerde Mongo'ya yazılmıyordu**. Render ücretsiz
+katmanda kalıcı disk olmadığı için her deploy'da tüm profiller siliniyordu.
+Kayıp sessizdi: `ensureUser` kullanıcıyı bulamayınca sıfırdan yaratıyor, hata
+üretmiyor, boş profil dönüyordu.
+
+Ölçülen ikinci sorun — her `/profile` isteği dosyanın tamamını okuyup doğrusal
+arıyordu ve `JSON.parse` **senkron**, yani o süre boyunca sunucu başka hiçbir
+isteği işleyemiyordu:
+
+| kullanıcı | dosya | oku+ara | yazma da varsa |
+|---|---|---|---|
+| 50.000 | 9.3 MB | 131 ms | 254 ms |
+| 200.000 | 37.4 MB | 520 ms | 1058 ms |
+| 500.000 | 93.7 MB | **1340 ms** | **2699 ms** |
+
+Ayrıca setter'larda dosya kilidi yoktu: eşzamanlı `set-country` ve
+`set-nickname` çağrılarından biri sessizce kayboluyordu.
+
+### Taşı
+
+İdempotent, tekrar çalıştırılabilir:
+
+```bash
+node scripts/migrate-users.cjs
+```
+
+Shell yoksa (Render ücretsiz katman):
+
+```bash
+curl -s -X POST "https://<host>/api/admin/run-migration" \
+  -H "x-admin-token: $SKORLIG_ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"target":"users","confirm":true}'
+```
+
+Dosya hiç yoksa script bunu **normal** kabul eder ve yalnızca Mongo tarafını
+doğrular — kalıcı disk olmayan bir ortamda dosyanın yokluğu beklenen durumdur.
+
+### Doğrula
+
+Kontrol ettikleri: kayıt sayısı · zorunlu indeksler · örneklemde alan
+karşılaştırması · **`nicknameNorm` alanı** · ve asıl sorgu yolu.
+
+> Son madde önemli: `nicknameNorm` yazılmazsa takma ad çakışma kontrolü
+> **hata vermeden hiçbir şey bulamaz** — mevcut adlar "boşta" görünür ve iki
+> kullanıcı aynı takma adı alabilir.
+
+- `SONUC: GO` + çıkış kodu 0 → devam et
+- `SONUC: NO-GO` + çıkış kodu 1 → **bayrağı çevirme**
+
+### Kapat
+
+```
+SKORLIG_USERS_FILE_MIRROR=0
+```
+
+`MONGODB_URI` tanımlı değilse bayrak **yok sayılır**, dosya yazılmaya devam eder.
+
+### Geri alma
+
+`SKORLIG_USERS_FILE_MIRROR=1` + yeniden başlat.
+
+---
+
 ## B. Redis (hız sınırı)
 
 Şu an `REDIS_URL` tanımsız ve sayaç **bellekte** tutuluyor. Tek instance'ta

@@ -22,5 +22,8 @@
     "mongodb": "^6.8.0",
     "node-fetch": "^2.7.0",
     "puppeteer-core": "^23.0.0"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.2.0"
   }
 }

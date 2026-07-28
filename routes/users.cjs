@@ -17,7 +17,8 @@ function requireAdminToken(req, res, next) {
 }
 
 const DATA_DIR     = path.join(__dirname, "..", "data");
-const USERS_FILE   = path.join(DATA_DIR, "users.json");
+// users.json artık DOĞRUDAN okunmuyor — profil verisi lib/users-store.cjs
+// üzerinden (Mongo varsa Mongo). Yol bilgisi orada.
 const GROUPS_FILE  = path.join(DATA_DIR, "groups.json");
 const TOTALS_FILE  = path.join(DATA_DIR, "totals.json");
 
@@ -41,44 +42,22 @@ async function writeJsonAtomic(file, data) {
   await fsp.rename(tmp, file);
 }
 
-async function ensureUser(userId) {
-  const uid = String(userId || "").trim();
-  if (!uid) throw new Error("USER_REQUIRED");
+const UsersStore = require("../lib/users-store.cjs");
 
-  const data  = await readJson(USERS_FILE, { items: [] });
-  const items = Array.isArray(data.items) ? data.items : [];
+/** Yeni kullanıcıda kurulacak alanlar (eski kayıtlarda eksikse tamamlanır). */
+const USER_DEFAULTS = { mainTeam: null, lc: LC_START, lcLastDaily: null };
 
-  let u = items.find(x => String(x.userId) === uid);
-  const nowISO = new Date().toISOString();
-  let changed = false;
-
-  if (!u) {
-    // yeni kullanıcı: mainTeam yok, LC başlat
-    u = {
-      userId: uid,
-      mainTeam: null,
-      createdAt: nowISO,
-      lc: LC_START,
-      lcLastDaily: null,
-    };
-    items.push(u);
-    changed = true;
-  } else {
-    // eski kayıtlara LC sütununu ekle
-    if (typeof u.lc !== "number") {
-      u.lc = LC_START;
-      changed = true;
-    }
-    if (!Object.prototype.hasOwnProperty.call(u, "lcLastDaily")) {
-      u.lcLastDaily = null;
-      changed = true;
-    }
-  }
-
-  if (changed) {
-    await writeJson(USERS_FILE, { items });
-  }
-  return u;
+/**
+ * Kullanıcıyı getirir, yoksa yaratır.
+ *
+ * Eskiden users.json'un TAMAMINI okuyup doğrusal arıyor ve değişiklik varsa
+ * tümünü geri yazıyordu — 500.000 kullanıcıda tek profil isteği 1.34sn (yazma
+ * varsa 2.7sn) olay döngüsünü KİLİTLİYORDU (ölçüldü). Ayrıca dosya kilidi
+ * olmadığı için eşzamanlı iki yazımdan biri sessizce kayboluyordu.
+ * Artık depo katmanı hallediyor: Mongo'da indeksli atomik upsert.
+ */
+async function ensureUser(userId, req) {
+  return UsersStore.ensureUser(userId, USER_DEFAULTS, req?.app?.locals?.db || null);
 }
 
 /* =========================================================
@@ -164,28 +143,10 @@ function groupSummary(code, g) {
   };
 }
 
-// users.json’u her formattan map’e normalize et (groups.cjs ile aynı yaklaşım)
-async function loadUsersMap() {
-  const raw = await readJson(USERS_FILE, {});
-  const map = {};
-
-  const push = (u, forcedId) => {
-    if (!u || typeof u !== "object") return;
-    const id = normUserId(forcedId || u.userId || u.id);
-    if (!id) return;
-    if (!map[id]) map[id] = { ...u, userId: id };
-  };
-
-  if (Array.isArray(raw.items)) raw.items.forEach((u) => push(u));
-  if (Array.isArray(raw.users)) raw.users.forEach((u) => push(u));
-
-  // map format { userId: {...} }
-  if (!Array.isArray(raw.items) && !Array.isArray(raw.users)) {
-    for (const [id, u] of Object.entries(raw || {})) push(u, id);
-  }
-
-  return map;
-}
+// loadUsersMap() kaldırıldı: tüm kullanıcı dosyasını yükleyip map kuruyordu.
+// Tek çağıranı grup tablosuydu ve orası artık yalnızca grubun üyelerini
+// çekiyor (UsersStore.getUsersByIds) — 20 kişilik tablo için 500.000 kaydın
+// tamamını okumanın anlamı yoktu.
 
 async function loadTotalsItems() {
   const totals = await readJson(TOTALS_FILE, { items: [] });
@@ -202,7 +163,7 @@ router.get("/profile", async (req, res) => {
     const userId = String(req.query.userId || "").trim();
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
 
-    const u = await ensureUser(userId);
+    const u = await ensureUser(userId, req);
     const profile = {
       userId,
       nickname: u.nickname || null,
@@ -233,22 +194,7 @@ router.post("/set-main-team", verifyToken, express.json(), async (req, res) => {
     const team   = String(req.body?.team || "").trim();
     if (!userId || !team) return res.status(400).json({ ok: false, error: "USER_OR_TEAM_MISSING" });
 
-    const data  = await readJson(USERS_FILE, { items: [] });
-    const items = Array.isArray(data.items) ? data.items : [];
-    const nowISO = new Date().toISOString();
-
-    let u = items.find(x => String(x.userId) === userId);
-    if (!u) {
-      u = { userId, mainTeam: team, createdAt: nowISO, lc: LC_START, lcLastDaily: null };
-      items.push(u);
-    } else {
-      u.mainTeam = team;
-      u.updatedAt = nowISO;
-      if (typeof u.lc !== "number") u.lc = LC_START;
-      if (!Object.prototype.hasOwnProperty.call(u, "lcLastDaily")) u.lcLastDaily = null;
-    }
-
-    await writeJson(USERS_FILE, { items });
+    await UsersStore.updateUser(userId, { mainTeam: team }, USER_DEFAULTS, req.app.locals.db);
     return res.json({ ok: true, userId, mainTeam: team });
   } catch (e) {
     console.error("SET_MAIN_TEAM_ERR", e);
@@ -273,20 +219,7 @@ router.post("/set-country", verifyToken, express.json(), async (req, res) => {
     const country = canonicalCountry(rawCountry);
     if (!country) return res.status(400).json({ ok: false, error: "COUNTRY_NOT_SUPPORTED", detail: rawCountry });
 
-    const data  = await readJson(USERS_FILE, { items: [] });
-    const items = Array.isArray(data.items) ? data.items : [];
-    const nowISO = new Date().toISOString();
-
-    let u = items.find(x => String(x.userId) === userId);
-    if (!u) {
-      u = { userId, mainTeam: null, country, createdAt: nowISO, lc: LC_START, lcLastDaily: null };
-      items.push(u);
-    } else {
-      u.country = country;
-      u.updatedAt = nowISO;
-    }
-
-    await writeJson(USERS_FILE, { items });
+    await UsersStore.updateUser(userId, { country }, USER_DEFAULTS, req.app.locals.db);
 
     // user-country önbelleği 15sn TTL'li — ülke değişince sıralamanın hemen
     // doğru listeye düşmesi için düşür.
@@ -312,14 +245,7 @@ router.post("/set-leagues", verifyToken, express.json(), async (req, res) => {
     // Hem 2-harf kod hem tam isim kabul et; geçersizleri at
     const leagues = raw.map(l => canonicalCountry(String(l).trim())).filter(Boolean).slice(0, 20);
 
-    const data  = await readJson(USERS_FILE, { items: [] });
-    const items = Array.isArray(data.items) ? data.items : [];
-    const nowISO = new Date().toISOString();
-    let u = items.find(x => String(x.userId) === userId);
-    if (!u) { u = { userId, createdAt: nowISO, lc: LC_START, lcLastDaily: null }; items.push(u); }
-    u.preferredLeagues = leagues;
-    u.updatedAt = nowISO;
-    await writeJson(USERS_FILE, { items });
+    await UsersStore.updateUser(userId, { preferredLeagues: leagues }, USER_DEFAULTS, req.app.locals.db);
     return res.json({ ok: true, leagues });
   } catch (e) {
     return res.status(500).json({ ok: false, error: "SET_LEAGUES_ERR", detail: String(e?.message || e) });
@@ -364,23 +290,23 @@ router.post("/set-nickname", verifyToken, express.json(), async (req, res) => {
       return res.status(409).json({ ok: false, error: "NICKNAME_RESERVED", detail: "Bu kullanıcı adı kullanılamaz" });
     }
 
-    const data  = await readJson(USERS_FILE, { items: [] });
-    const items = Array.isArray(data.items) ? data.items : [];
-    const nowISO = new Date().toISOString();
+    // Benzersizlik: başka bir kullanıcının nickname'i VEYA userId'si ile
+    // çakışmasın (userId kontrolü, okunabilir UID'li eski hesapların taklit
+    // edilmesini engeller). Artık indeksli sorgu — eskiden tüm kullanıcılar
+    // üzerinde `.some()` çalışıyordu.
+    const db = req.app.locals.db;
+    if (await UsersStore.isNicknameTaken(normRaw, userId, db)) {
+      return res.status(409).json({ ok: false, error: "NICKNAME_TAKEN", detail: "Bu kullanıcı adı alınmış" });
+    }
 
-    // Benzersizlik: başka bir kullanıcının nickname'i VEYA userId'si ile çakışmasın.
-    // (userId kontrolü, okunabilir UID'li eski hesapların taklit edilmesini engeller)
-    const taken = items.some((x) => {
-      if (String(x.userId) === userId) return false;
-      return normNick(x.nickname) === normRaw || normNick(x.userId) === normRaw;
-    });
-    if (taken) return res.status(409).json({ ok: false, error: "NICKNAME_TAKEN", detail: "Bu kullanıcı adı alınmış" });
-
-    let u = items.find(x => String(x.userId) === userId);
-    if (!u) { u = { userId, createdAt: nowISO, lc: LC_START, lcLastDaily: null }; items.push(u); }
-    u.nickname = raw;
-    u.updatedAt = nowISO;
-    await writeJson(USERS_FILE, { items });
+    // nicknameNorm indekslenip sorgulanıyor; normalize hali YAZILMAZSA
+    // benzersizlik kontrolü sessizce hiçbir şey bulamaz.
+    await UsersStore.updateUser(
+      userId,
+      { nickname: raw, nicknameNorm: normRaw },
+      { ...USER_DEFAULTS, userIdNorm: normNick(userId) },
+      db
+    );
     return res.json({ ok: true, nickname: raw });
   } catch (e) {
     return res.status(500).json({ ok: false, error: "SET_NICKNAME_ERR", detail: String(e?.message || e) });
@@ -394,14 +320,7 @@ router.post("/set-lang", verifyToken, express.json(), async (req, res) => {
     const lang = String(req.body?.lang || "").trim().toLowerCase().slice(0, 5);
     if (!lang) return res.status(400).json({ ok: false, error: "LANG_REQUIRED" });
 
-    const data  = await readJson(USERS_FILE, { items: [] });
-    const items = Array.isArray(data.items) ? data.items : [];
-    const nowISO = new Date().toISOString();
-    let u = items.find(x => String(x.userId) === userId);
-    if (!u) { u = { userId, createdAt: nowISO, lc: LC_START, lcLastDaily: null }; items.push(u); }
-    u.preferredLang = lang;
-    u.updatedAt = nowISO;
-    await writeJson(USERS_FILE, { items });
+    await UsersStore.updateUser(userId, { preferredLang: lang }, USER_DEFAULTS, req.app.locals.db);
     return res.json({ ok: true, lang });
   } catch (e) {
     return res.status(500).json({ ok: false, error: "SET_LANG_ERR", detail: String(e?.message || e) });
@@ -414,10 +333,7 @@ router.get("/favorite", async (req, res) => {
     const userId = String(req.query.userId || "").trim();
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
 
-    const data  = await readJson(USERS_FILE, { items: [] });
-    const items = Array.isArray(data.items) ? data.items : [];
-    const u = items.find(x => String(x.userId) === userId);
-
+    const u = await UsersStore.getUser(userId, req.app.locals.db);
     return res.json({ ok: true, favoriteTeam: u?.mainTeam || null });
   } catch (e) {
     console.error("FAVORITE_ERR", e);
@@ -473,7 +389,7 @@ router.post("/groups/create", verifyToken, express.json(), async (req, res) => {
     const ownerId = req.uid;
     if (!name || !ownerId) return res.status(400).json({ ok: false, error: "NAME_OWNER_REQUIRED" });
 
-    await ensureUser(ownerId);
+    await ensureUser(ownerId, req);
 
     const store = await loadGroupsStoreCompat();
     let code;
@@ -502,7 +418,7 @@ router.post("/groups/join", verifyToken, express.json(), async (req, res) => {
     if (!code) return res.status(400).json({ ok: false, error: "CODE_REQUIRED" });
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
 
-    await ensureUser(userId);
+    await ensureUser(userId, req);
 
     const store = await loadGroupsStoreCompat();
     const g = store[code];
@@ -530,10 +446,13 @@ router.get("/groups/:code/board", async (req, res) => {
     const g = store[code];
     if (!g) return res.status(404).json({ ok: false, error: "GROUP_NOT_FOUND" });
 
-    const usersMap = await loadUsersMap();
-    const totalsItems = await loadTotalsItems();
-
     const members = Array.isArray(g.members) ? g.members.map(normUserId).filter(Boolean) : [];
+
+    // Yalnızca grubun ÜYELERİ çekilir. Eskiden tüm kullanıcı dosyası yüklenip
+    // map kuruluyordu — 20 kişilik bir grup tablosu için 500.000 kaydın
+    // tamamı okunuyordu.
+    const usersMap = await UsersStore.getUsersByIds(members, req.app.locals.db);
+    const totalsItems = await loadTotalsItems();
     const itemsTotals = Array.isArray(totalsItems) ? totalsItems : [];
 
     const items = members.map((uid) => {
@@ -612,30 +531,9 @@ router.get("/groups/diag", requireAdminToken, async (req, res) => {
 // GET /api/users/1987
 router.get("/1987", async (req, res) => {
   try {
-    const raw = await readJson(USERS_FILE, { users: [], items: [] });
-
-    const listUsers = [];
-    const pushUser = (u) => {
-      if (!u) return;
-      const id = String(u.userId || u.id || "").trim();
-      if (!id) return;
-      listUsers.push({ ...u, userId: id });
-    };
-
-    if (Array.isArray(raw.users)) raw.users.forEach(pushUser);
-    if (Array.isArray(raw.items)) raw.items.forEach(pushUser);
-
-    const byId = new Map();
-    for (const u of listUsers) {
-      const id = u.userId;
-      if (!id) continue;
-      if (!byId.has(id)) byId.set(id, u);
-    }
-
-    const members = Array.from(byId.values()).filter((u) => {
-      const seg = String(u.segment || "").toLowerCase();
-      return u && (u.is1987 === true || seg === "1987");
-    });
+    // İndeksli segment sorgusu — eskiden tüm kullanıcı dosyası yüklenip
+    // JS'te süzülüyordu.
+    const members = await UsersStore.listSegment1987(req.app.locals.db);
 
     return res.json({
       ok: true,
@@ -658,141 +556,21 @@ router.get("/1987", async (req, res) => {
   }
 });
 
-/* =========================
-   USERS → GROUPS ALIAS (compat)
-   /api/users/groups/*  ->  /api/groups/*
-   ========================= */
+/* Buradaki iki rota (/groups/join ve /groups/:code/board) İKİNCİ kez
+   tanımlıydı; Express ilk eşleşeni kullandığı için HİÇ ÇALIŞMIYORLARDI.
+   Eski sürümlerdi: grup dosyasını compat katmanı olmadan ham okuyor
+   (legacy {items:[]} formatını göçürmezler) ve join sürümünde verifyToken
+   YOKTU — sıralama değişseydi yetkisiz katılıma dönüşürdü.
+   Çalışan sürümler yukarıda. Kaldırıldı: 2026-07-28. */
 
-// POST /api/users/groups/join  body: { code, userId }
-router.post("/groups/join", express.json(), async (req, res) => {
-  try {
-    const code   = String(req.body?.code || "").trim().toUpperCase();
-    const userId = String(req.body?.userId || "").trim();
-
-    if (!code || !userId) {
-      return res.status(400).json({ ok: false, error: "CODE_USER_REQUIRED" });
-    }
-
-    // groups.json map store
-    const store = await readJson(GROUPS_FILE, {});
-    const g = store[code];
-    if (!g) return res.status(404).json({ ok: false, error: "GROUP_NOT_FOUND" });
-
-    g.members = Array.isArray(g.members) ? g.members.map(String) : [];
-    if (!g.members.includes(userId)) g.members.push(userId);
-
-    if (!g.opts || typeof g.opts !== "object") g.opts = {};
-
-    await writeJson(GROUPS_FILE, store);
-
-    return res.json({
-      ok: true,
-      group: { code, name: g.name || null, size: g.members.length },
-    });
-  } catch (e) {
-    return res.status(500).json({
-      ok: false,
-      error: "GROUP_JOIN_FAILED",
-      detail: String(e && (e.message || e)),
-    });
-  }
-});
-
-// GET /api/users/groups/:code/board
-router.get("/groups/:code/board", async (req, res) => {
-  try {
-    const code = String(req.params.code || "").trim().toUpperCase();
-    if (!code) return res.status(400).json({ ok: false, error: "CODE_REQUIRED" });
-
-    const store = await readJson(GROUPS_FILE, {});
-    const g = store[code];
-    if (!g) return res.status(404).json({ ok: false, error: "GROUP_NOT_FOUND" });
-
-    // users.json normalize (users.cjs içinde ensureUser vs var; ama burada sadece isim/flag için okuyoruz)
-    const usersRaw = await readJson(USERS_FILE, { users: [], items: [] });
-    const usersList = [];
-    const pushUser = (u, forcedId) => {
-      if (!u) return;
-      const id = String(forcedId || u.userId || u.id || "").trim();
-      if (!id) return;
-      usersList.push({ ...u, userId: id });
-    };
-    if (Array.isArray(usersRaw.users)) usersRaw.users.forEach((u) => pushUser(u));
-    if (Array.isArray(usersRaw.items)) usersRaw.items.forEach((u) => pushUser(u));
-    if (!Array.isArray(usersRaw.users) && !Array.isArray(usersRaw.items)) {
-      Object.entries(usersRaw || {}).forEach(([id, u]) => {
-        if (u && typeof u === "object") pushUser(u, id);
-      });
-    }
-
-    const totalsRaw = await readJson(TOTALS_FILE, { items: [] });
-    const totalsItems = Array.isArray(totalsRaw.items) ? totalsRaw.items : [];
-
-    const findUser = (uid) =>
-      usersList.find(
-        (u) =>
-          String(u.userId || "").trim().toLowerCase() ===
-          String(uid || "").trim().toLowerCase()
-      ) || {};
-
-    const members = Array.isArray(g.members) ? g.members.map(String) : [];
-
-    const items = members
-      .map((uid) => {
-        const u = findUser(uid);
-        const t = totalsItems.find((x) => String(x.userId) === String(uid)) || {};
-        const includeInTotal = (g.opts?.[uid]?.includeInTotal ?? u.includeInTotal ?? true);
-
-        return {
-          userId: uid,
-          name: u.name || uid,
-          flag: u.flag || null,
-          includeInTotal,
-          points: Number(t.totalPoints || 0),
-        };
-      })
-      .sort((a, b) => b.points - a.points);
-
-    return res.json({
-      ok: true,
-      code,
-      name: g.name || null,
-      ownerId: g.ownerId || null,
-      size: members.length,
-      items,
-    });
-  } catch (e) {
-    return res.status(500).json({
-      ok: false,
-      error: "GROUP_BOARD_FAILED",
-      detail: String(e && (e.message || e)),
-    });
-  }
-});
 
 // GET /api/users/1987/season
 router.get("/1987/season", async (req, res) => {
   try {
-    const usersRaw  = await readJson(USERS_FILE,  { users: [], items: [] });
+    // İndeksli segment sorgusu — eskiden tüm kullanıcı dosyası yüklenip
+    // JS'te süzülüyordu.
+    const uyeler = await UsersStore.listSegment1987(req.app.locals.db);
     const totalsRaw = await readJson(TOTALS_FILE, { items: [] });
-
-    const listUsers = [];
-    const pushUser = (u) => {
-      if (!u) return;
-      const id = String(u.userId || u.id || "").trim();
-      if (!id) return;
-      listUsers.push({ ...u, userId: id });
-    };
-
-    if (Array.isArray(usersRaw.users)) usersRaw.users.forEach(pushUser);
-    if (Array.isArray(usersRaw.items)) usersRaw.items.forEach(pushUser);
-
-    const byId = new Map();
-    for (const u of listUsers) {
-      const id = u.userId;
-      if (!id) continue;
-      if (!byId.has(id)) byId.set(id, u);
-    }
 
     const totalsItems = Array.isArray(totalsRaw.items) ? totalsRaw.items : [];
     const totalsByUser = new Map();
@@ -803,10 +581,9 @@ router.get("/1987/season", async (req, res) => {
     }
 
     const rows = [];
-    for (const [id, u] of byId.entries()) {
-      const seg = String(u.segment || "").toLowerCase();
-      const is1987 = (u.is1987 === true || seg === "1987");
-      if (!is1987) continue;
+    for (const u of uyeler) {
+      const id = String(u.userId || "").trim();
+      if (!id) continue;
 
       const t = totalsByUser.get(id) || {};
       const totalPoints = Number(t.totalPoints || t.total || 0);
