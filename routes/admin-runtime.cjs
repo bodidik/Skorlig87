@@ -977,4 +977,121 @@ router.post("/run-migration", requireAdminToken, express.json(), async (req, res
   );
 });
 
+/* =========================================================
+   GET /api/admin/mongo-diagnose   — SALT OKUNUR
+
+   NEDEN VAR: Atlas `tlsv1 alert internal error` (alert 80) veriyor ve bu hata
+   SEBEBİ göstermiyor — kimlik doğrulamasına hiç gelinmiyor, el sıkışma
+   sırasında reddediliyor. Aynı bağlantı dizesi geliştirici makinesinden
+   ÇALIŞIYOR, Render'dan çalışmıyordu; yani fark ağ yolunda ya da TLS
+   yığınında. Bunu dışarıdan tahmin etmek yerine Render'ın İÇİNDEN ölçüyoruz.
+
+   Dört ölçüm, sorunu katmanına göre ayırıyor:
+     1) sürümler   — Node/OpenSSL yereldekinden farklı mı
+     2) SRV        — DNS çözümleniyor mu, hangi kabuklara
+     3) kontrol    — dışarıya TLS genel olarak çalışıyor mu (Atlas dışı hedef)
+     4) atlas TLS  — ham el sıkışma; başarısızsa alert burada görünür
+
+   ⚠️ Parola ASLA yazdırılmaz: bağlantı dizesinden yalnızca ana bilgisayar adı
+   ayrıştırılır.
+   ========================================================= */
+router.get("/mongo-diagnose", requireAdminToken, async (req, res) => {
+  const dns = require("dns").promises;
+  const tls = require("tls");
+
+  /** Ham TLS el sıkışması — MongoDB sürücüsünü aradan çıkarır. */
+  function tlsProbe(host, port, timeoutMs = 10000) {
+    return new Promise((resolve) => {
+      const t0 = Date.now();
+      let done = false;
+      const bitir = (r) => {
+        if (done) return;
+        done = true;
+        try { sock.destroy(); } catch {}
+        resolve({ ...r, ms: Date.now() - t0 });
+      };
+      const sock = tls.connect(
+        { host, port, servername: host, timeout: timeoutMs },
+        () => bitir({ ok: true, protocol: sock.getProtocol(), authorized: sock.authorized })
+      );
+      sock.on("error", (e) => bitir({ ok: false, error: String(e?.message || e).slice(0, 300) }));
+      sock.on("timeout", () => bitir({ ok: false, error: `zaman asimi (${timeoutMs}ms)` }));
+    });
+  }
+
+  const rapor = {
+    versions: {
+      node: process.version,
+      openssl: process.versions.openssl,
+      // Sürücü sürümü de farklı olabilir (lockfile / kurulum farkı)
+      mongodb: (() => {
+        try { return require("mongodb/package.json").version; } catch { return "?"; }
+      })(),
+    },
+  };
+
+  // — Bağlantı dizesinden yalnızca host —
+  const uri = process.env.MONGODB_URI || process.env.MONGO_URI || "";
+  if (!uri) return res.status(400).json({ ok: false, error: "MONGODB_URI tanimsiz" });
+
+  let scheme = "", hostname = "";
+  try {
+    const m = uri.match(/^(mongodb(?:\+srv)?):\/\/(?:[^@]*@)?([^/?,]+)/);
+    scheme = m?.[1] || "";
+    hostname = m?.[2] || "";
+  } catch {}
+  rapor.uri = { scheme, hostname, hasCredentials: /:\/\/[^@]+@/.test(uri) };
+
+  if (!hostname) {
+    return res.status(400).json({ ok: false, error: "URI ayristirilamadi", ...rapor });
+  }
+
+  // — SRV çözümlemesi (yalnızca +srv şemasında) —
+  if (scheme === "mongodb+srv") {
+    try {
+      const kayitlar = await dns.resolveSrv(`_mongodb._tcp.${hostname}`);
+      rapor.srv = { ok: true, count: kayitlar.length, hosts: kayitlar.map((r) => `${r.name}:${r.port}`) };
+    } catch (e) {
+      rapor.srv = { ok: false, error: String(e?.message || e).slice(0, 200) };
+    }
+    try {
+      rapor.txt = { ok: true, records: (await dns.resolveTxt(hostname)).flat() };
+    } catch (e) {
+      rapor.txt = { ok: false, error: String(e?.message || e).slice(0, 200) };
+    }
+  }
+
+  // — Kontrol: Atlas DIŞI bir hedefe TLS. Bu da düşerse sorun Atlas'ta değil,
+  //   Render'ın giden bağlantılarında demektir. —
+  rapor.controlTls = await tlsProbe("www.mongodb.com", 443);
+
+  // — Asıl sınav: çözümlenen ilk kabuğa ham TLS —
+  const hedef = rapor.srv?.hosts?.[0];
+  if (hedef) {
+    const [h, p] = hedef.split(":");
+    rapor.atlasTls = await tlsProbe(h, Number(p) || 27017);
+  } else if (scheme === "mongodb") {
+    const [h, p] = hostname.split(":");
+    rapor.atlasTls = await tlsProbe(h, Number(p) || 27017);
+  }
+
+  // — Yorum: hangi katman suçlu —
+  let verdict;
+  if (rapor.srv && rapor.srv.ok === false) {
+    verdict = "DNS: SRV cozumlenemedi — kume duraklatilmis ya da URI yanlis";
+  } else if (rapor.controlTls.ok === false) {
+    verdict = "AG: Render'dan disariya TLS kurulamiyor — sorun Atlas'a ozgu degil";
+  } else if (rapor.atlasTls && rapor.atlasTls.ok === false) {
+    verdict =
+      "ATLAS: DNS ve genel TLS calisiyor ama Atlas el sikismayi REDDEDIYOR — " +
+      "en olasi sebep IP erisim listesi (0.0.0.0/0 eksik ya da henuz Active degil)";
+  } else if (rapor.atlasTls?.ok) {
+    verdict = "TLS SORUNSUZ — hata TLS'ten sonra (kimlik dogrulama / yetki) olmali";
+  } else {
+    verdict = "belirsiz";
+  }
+
+  res.json({ ok: true, verdict, ...rapor });
+});
+
 module.exports = router;
