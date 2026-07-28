@@ -29,6 +29,7 @@ const { applyRegen, regenInfo } = require("../lib/lc-regen.cjs");
 
 // Premium ayrıcalıkları (tek kaynak)
 const premium = require("../lib/premium.cjs");
+const UsersStore = require("../lib/users-store.cjs");
 
 /* =========================
  *  LC MAĞAZASI (ücret karşılığı token)
@@ -303,7 +304,7 @@ router.get("/lc-wallet/summary", async (req, res) => {
       //     KALICI olarak takılı kalıyordu; oyunun ücretsiz döngüsü ölüydü
       // Ayrıca fiyatlar sabitlerden dönüyordu, yani premium indirimi
       // görünmüyordu. Üçü de burada düzeltildi.
-      const isPrem = await premium.isPremium(userId);
+      const isPrem = await premium.isPremium(userId, getDb(req));
       const regenOpts = premium.regenParams(isPrem);
       const col = db.collection("lc_wallet_users");
       const uidLower = userId.toLowerCase();
@@ -383,7 +384,7 @@ router.get("/lc-wallet/summary", async (req, res) => {
     }
 
     // 🟢 Dosya modu — kilitli read-modify-write
-    const isPrem = await premium.isPremium(userId);
+    const isPrem = await premium.isPremium(userId, getDb(req));
     const regenOpts = premium.regenParams(isPrem);
 
     let user, updatedAt;
@@ -561,7 +562,7 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
     }
 
     // 🟢 Dosya modu — kilitli read-modify-write (lost update önlenir)
-    const isPrem = await premium.isPremium(userId);
+    const isPrem = await premium.isPremium(userId, getDb(req));
     const dailyAmount = premium.dailyLc(isPrem);
     const today = todayKey();
 
@@ -768,7 +769,7 @@ router.post("/lc-wallet/purchase", verifyToken, express.json(), async (req, res)
     const nowISO = new Date().toISOString();
 
     // Premium ayrıcalığı: satın alımda bonus LC
-    const isPrem = await premium.isPremium(userId);
+    const isPrem = await premium.isPremium(userId, getDb(req));
     const bonus = isPrem ? Math.round(pkg.lc * premium.PERKS.storeBonusPct) : 0;
     const totalLc = pkg.lc + bonus;
 
@@ -881,7 +882,7 @@ router.get("/lc-wallet/premium/status", async (req, res) => {
   try {
     const userId = String(req.query.userId || "").trim();
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
-    const status = await premium.premiumStatus(userId);
+    const status = await premium.premiumStatus(userId, getDb(req));
     res.json({ ok: true, mode: STORE_MODE, ...status });
   } catch (e) {
     res.status(500).json({ ok: false, error: "PREMIUM_STATUS_ERR", detail: String(e?.message || e) });
@@ -911,29 +912,28 @@ router.post("/lc-wallet/premium/subscribe", verifyToken, express.json(), async (
 
     const nowISO = new Date().toISOString();
 
-    // users.json premium alanlarını kilitli güncelle
-    const until = await withFileLock(USERS_FILE, async () => {
-      const usersRaw = await readJson(USERS_FILE, { items: [] });
-      const items = Array.isArray(usersRaw) ? usersRaw : usersRaw.items || [];
-      let u = items.find((x) => String(x.userId) === userId);
-      if (!u) {
-        u = { userId, mainTeam: null, createdAt: nowISO, lc: 0, lcLastDaily: null };
-        items.push(u);
-      }
-
+    // Premium alanları KULLANICI DEPOSUNA yazılır (Mongo varsa Mongo).
+    // Eskiden doğrudan users.json'a yazılıyordu; premium okuması depoya
+    // geçtikten sonra bu, ödeme yapan kullanıcının premium'unun hiç
+    // görünmemesi demek olurdu — para alınır, ayrıcalık verilmez.
+    const untilStore = await (async () => {
+      const mevcut = await UsersStore.getUser(userId, getDb(req));
       // Mevcut premium süresi varsa üstüne ekle (uzatma), yoksa şimdiden başlat
-      const base = u.premium && u.premiumUntil && new Date(u.premiumUntil).getTime() > Date.now()
-        ? new Date(u.premiumUntil).getTime()
-        : Date.now();
+      const base =
+        mevcut?.premium && mevcut?.premiumUntil && new Date(mevcut.premiumUntil).getTime() > Date.now()
+          ? new Date(mevcut.premiumUntil).getTime()
+          : Date.now();
       const untilISO = new Date(base + plan.days * 86400000).toISOString();
-      u.premium = true;
-      u.premiumUntil = untilISO;
-      u.premiumPlan = plan.id;
-      u.updatedAt = nowISO;
 
-      await writeJson(USERS_FILE, Array.isArray(usersRaw) ? items : { ...usersRaw, items });
+      await UsersStore.updateUser(
+        userId,
+        { premium: true, premiumUntil: untilISO, premiumPlan: plan.id },
+        { mainTeam: null, lc: 0, lcLastDaily: null },
+        getDb(req)
+      );
       return untilISO;
-    });
+    })();
+    const until = untilStore;
 
     // Bu ayın kasasını hemen yatır (abone olur olmaz değer görsün).
     // Purchase ile aynı gerekçe: db varken summary Mongo'dan okur, bu LC

@@ -7,10 +7,14 @@ const fsp     = fs.promises;
 const path    = require("path");
 
 const DATA    = path.join(__dirname,"..","data");
+// users.json yalnızca ARKADAŞ LİSTESİ isimleri için okunuyor (aşağıdaki
+// normalize edici). Profil verisi ve davet kodları lib/users-store.cjs
+// üzerinden gider — orası Mongo varsa Mongo'yu kullanır.
 const USERS   = path.join(DATA,"users.json");
 const TOTALS  = path.join(DATA,"totals.json");
 const FRIENDS = path.join(DATA,"friends.json");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+const UsersStore = require("../lib/users-store.cjs");
 // {
 //   links:    [ { a:"user1", b:"user2", createdAt:"..." } ],
 //   requests: [ { from:"user1", to:"user2", createdAt:"..." } ],
@@ -652,16 +656,10 @@ async function addLc(wallet, userId, amount, reason, meta = {}) {
   });
 }
 
-async function getUsersData() {
-  const raw = await readJson(USERS, { items: [] });
-  const items = Array.isArray(raw) ? raw : (raw.items || raw.users || []);
-  return { raw, items };
-}
-
-function saveUsersData(raw, items) {
-  const out = Array.isArray(raw) ? items : { ...raw, items };
-  return writeJson(USERS, out);
-}
+// getUsersData/saveUsersData kaldırıldı: davet kodları artık
+// lib/users-store.cjs üzerinden okunup yazılıyor. Eski hâlinde bu dosya
+// users.json'a DOĞRUDAN yazan ikinci bir yazardı; profil verisi Mongo'ya
+// taşındıktan sonra iki kaynak ayrışır, kod aramaları tam tarama yapardı.
 
 /**
  * GET /api/friends/invite-code?userId=
@@ -672,22 +670,24 @@ router.get("/invite-code", async (req, res) => {
     const userId = normId(req.query.userId);
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
 
-    const { raw, items } = await getUsersData();
-    let user = items.find((u) => normLower(u.userId) === normLower(userId));
-    if (!user) {
-      user = { userId, createdAt: new Date().toISOString() };
-      items.push(user);
-    }
-    if (!user.inviteCode) {
+    const db = req.app?.locals?.db || null;
+    let user = await UsersStore.getUser(userId, db);
+
+    if (!user?.inviteCode) {
+      // Çakışma kontrolü indeksli sorguyla — eskiden TÜM kullanıcıların
+      // kodları belleğe alınıp Set kuruluyordu.
       const alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      const existing = new Set(items.map((u) => u.inviteCode).filter(Boolean));
       let code = "";
       for (let t = 0; t < 50; t++) {
         code = Array.from({ length: 6 }, () => alpha[crypto.randomInt(alpha.length)]).join("");
-        if (!existing.has(code)) break;
+        if (!(await UsersStore.isInviteCodeTaken(code, db))) break;
       }
-      user.inviteCode = code;
-      await saveUsersData(raw, items);
+      user = await UsersStore.updateUser(
+        userId,
+        { inviteCode: code },
+        { mainTeam: null, lc: 0, lcLastDaily: null },
+        db
+      );
     }
 
     return res.json({ ok: true, userId, inviteCode: user.inviteCode, reward: INVITE_REWARD });
@@ -706,8 +706,8 @@ router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
     const code = String(req.body?.code || "").trim().toUpperCase();
     if (!userId || !code) return res.status(400).json({ ok: false, error: "USER_AND_CODE_REQUIRED" });
 
-    const { raw, items } = await getUsersData();
-    const owner = items.find((u) => String(u.inviteCode || "").toUpperCase() === code);
+    // İndeksli kod araması — eskiden tüm kullanıcılar taranıyordu.
+    const owner = await UsersStore.findByInviteCode(code, req.app?.locals?.db || null);
     if (!owner) return res.status(404).json({ ok: false, error: "INVALID_CODE" });
 
     const ownerId = String(owner.userId);

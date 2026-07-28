@@ -198,7 +198,9 @@ async function spendLcMatchIfNeededFile(userId, fixtureId, cost, alreadyPredicte
   const uid = String(userId || "").trim();
   if (!uid) throw new Error("USER_REQUIRED");
 
-  const isPrem = await premium.isPremium(uid);
+  // Bu fonksiyon DOSYA modudur; yalnızca db yokken çağrılır (Mongo sürümünün
+  // yedeği). Bu yüzden premium sorgusu da dosyadan gider — db burada zaten null.
+  const isPrem = await premium.isPremium(uid, null);
 
   // Cüzdan read-modify-write — kilitli (lost update / çift-harcama önlenir)
   return withFileLock(WALLET_FILE, async () => {
@@ -955,7 +957,7 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
 
     // 🔹 LC harcaması (maç başı cost, ikinci/üçüncü düzeltmede kesilmez)
     // Premium ayrıcalığı: maç girişi bedava. 1987 üyeleri de bedava.
-    const isPrem  = await premium.isPremium(uid);
+    const isPrem  = await premium.isPremium(uid, getDb(req));
     const is1987  = await isUser1987Member(uid);
     const effMatchCost = (isPrem || is1987) ? 0 : LC_MATCH_COST;
     const spendRes = db

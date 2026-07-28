@@ -34,8 +34,8 @@ async function readJson(file, fb=null){
  *
  * @returns {{ rows, scope, country, poolSize }}
  */
-async function scopedRank(rawRows, { scope, country }) {
-  const withCountry = await attachCountries(rawRows);
+async function scopedRank(rawRows, { scope, country }, db) {
+  const withCountry = await attachCountries(rawRows, db);
 
   const wantCountry = scope === "country" ? String(country || "").trim() : null;
   const pool = wantCountry
@@ -60,14 +60,14 @@ async function scopedRank(rawRows, { scope, country }) {
  * düşer ve `requestedScope` alanıyla bunu istemciye bildirir — sessizce boş
  * liste dönmek, ekranda "kimse yok" gibi görünürdü.
  */
-async function resolveScope(req) {
+async function resolveScope(req, db) {
   const scope = String(req.query.scope || "global").trim().toLowerCase();
   if (scope !== "country") return { scope: "global", country: null, fellBack: false };
 
   let country = String(req.query.country || "").trim();
   if (!country) {
     const uid = String(req.query.userId || req.uid || "").trim();
-    if (uid) country = (await countryOfUser(uid)) || "";
+    if (uid) country = (await countryOfUser(uid, db)) || "";
   }
   if (!country) return { scope: "global", country: null, fellBack: true };
   return { scope: "country", country, fellBack: false };
@@ -103,7 +103,7 @@ async function resolveScope(req) {
  */
 router.get("/", async (req,res)=>{
   const db = req.app?.locals?.db || null;
-  const sc = await resolveScope(req);
+  const sc = await resolveScope(req, db);
   const scopeInfo = (r) => ({
     requested: String(req.query.scope || "global").toLowerCase(),
     applied: r.scope,
@@ -131,7 +131,8 @@ router.get("/", async (req,res)=>{
             played: Number(d.matches || 0),
             penalties: Number(d.totalPenalty || 0),
           })),
-          sc
+          sc,
+          db
         );
 
         const updatedAt =
@@ -164,7 +165,8 @@ router.get("/", async (req,res)=>{
         played: Number(t.matches || 0),
         penalties: Number(t.totalPenalty || 0),
       })),
-      sc
+      sc,
+      db
     );
 
     return res.json({
@@ -194,7 +196,7 @@ router.get("/", async (req,res)=>{
     acc.penalties += Number(r.penalty  || 0);
   }
 
-  const r = await scopedRank(Array.from(byUser.values()), sc);
+  const r = await scopedRank(Array.from(byUser.values()), sc, db);
 
   return res.json({
     ok:true,
@@ -227,7 +229,7 @@ router.get("/countries", async (req, res) => {
       }
     }
 
-    const withCountry = await attachCountries(raw);
+    const withCountry = await attachCountries(raw, req.app?.locals?.db || null);
     const counts = new Map();
     for (const r of withCountry) {
       if (!r.country) continue;

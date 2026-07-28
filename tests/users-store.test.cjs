@@ -177,6 +177,37 @@ describe("isNicknameTaken", () => {
   });
 });
 
+describe("davet kodu", () => {
+  test("kodla kullanici bulunur", async () => {
+    await sifirla();
+    await Store.updateUser("sahip", { inviteCode: "AB12CD" }, VARSAYILAN, null);
+    const u = await Store.findByInviteCode("AB12CD", null);
+    assert.equal(u.userId, "sahip");
+  });
+
+  test("kod BUYUK harfe normalize edilir", async () => {
+    // Uretim buyuk harfli; arama kucuk harfle gelirse bulamamak kullaniciya
+    // "gecersiz kod" der.
+    await sifirla();
+    await Store.updateUser("sahip", { inviteCode: "AB12CD" }, VARSAYILAN, null);
+    assert.ok(await Store.findByInviteCode("ab12cd", null));
+    assert.ok(await Store.findByInviteCode(" Ab12Cd ", null));
+  });
+
+  test("olmayan kod null doner", async () => {
+    await sifirla();
+    assert.equal(await Store.findByInviteCode("YOKKOD", null), null);
+    assert.equal(await Store.findByInviteCode("", null), null);
+  });
+
+  test("cakisma kontrolu", async () => {
+    await sifirla();
+    await Store.updateUser("s", { inviteCode: "XYZ999" }, VARSAYILAN, null);
+    assert.equal(await Store.isInviteCodeTaken("XYZ999", null), true);
+    assert.equal(await Store.isInviteCodeTaken("BASKA1", null), false);
+  });
+});
+
 describe("dosya bicimleri", () => {
   test("duz dizi bicimi okunabilir", async () => {
     await sifirla();

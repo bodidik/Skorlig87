@@ -78,9 +78,12 @@ async function dosyadanOku() {
 /** Mongo'ya yazılacak biçim: sorgu alanları normalize edilir. */
 function hazirla(u) {
   const doc = { ...u, userId: normId(u.userId) };
-  // Bu iki alan indeksli ve benzersizlik sorgusu bunlara bakıyor. YAZILMAZSA
-  // set-nickname çakışmaları HATA VERMEDEN kaçırır — mevcut takma adlar
-  // "boşta" görünür ve iki kullanıcı aynı adı alabilir.
+  // Bu alanlar indekslidir ve sorgular bunlara bakar. YAZILMAZLARSA sorgular
+  // HATA VERMEDEN boş döner — en sinsi arıza biçimi.
+  //   userIdLower : sıralamada ülke çözümü (kimlikler karışık harfli)
+  //   userIdNorm  : takma ad çakışma kontrolü (kimlikle taklit engeli)
+  //   nicknameNorm: takma ad çakışma kontrolü
+  doc.userIdLower = doc.userId.toLowerCase();
   doc.userIdNorm = normNick(doc.userId);
   if (doc.nickname) doc.nicknameNorm = normNick(doc.nickname);
   delete doc._id;
@@ -116,6 +119,7 @@ async function indeksler(db) {
   await col.createIndex({ country: 1 }, { background: true });
   await col.createIndex({ nicknameNorm: 1 }, { background: true, sparse: true });
   await col.createIndex({ userIdNorm: 1 }, { background: true, sparse: true });
+  await col.createIndex({ userIdLower: 1 }, { background: true });
 }
 
 /**
@@ -138,7 +142,7 @@ async function dogrula(db, dosyaItems) {
 
   // 2) İndeksler
   const idx = (await col.indexes()).map((i) => JSON.stringify(i.key));
-  for (const gerekli of ['{"userId":1}', '{"country":1}', '{"nicknameNorm":1}', '{"userIdNorm":1}']) {
+  for (const gerekli of ['{"userId":1}', '{"country":1}', '{"nicknameNorm":1}', '{"userIdNorm":1}', '{"userIdLower":1}']) {
     if (!idx.includes(gerekli)) sorunlar.push(`indeks eksik: ${gerekli}`);
   }
   not(`indeks: ${idx.length} tane`);
@@ -177,6 +181,22 @@ async function dogrula(db, dosyaItems) {
   // 6) Ülke alanı — sıralamanın dayandığı veri
   const ulkeli = await col.countDocuments({ country: { $exists: true, $ne: null } });
   not(`ulkesi olan: ${ulkeli}/${mongoSayi}`);
+
+  // 7) userIdLower — SIRALAMANIN ülke sorgusu bu alandan gidiyor.
+  // Eksikse sorgu hata vermeden boş döner ve TÜM insanlar ülkesiz görünür.
+  const lowerVar = await col.countDocuments({ userIdLower: { $exists: true, $ne: null } });
+  not(`userIdLower olan: ${lowerVar}/${mongoSayi}`);
+  if (mongoSayi > 0 && lowerVar < mongoSayi) {
+    sorunlar.push(`userIdLower eksik (${lowerVar} < ${mongoSayi}) — ulke siralamasi bos doner`);
+  }
+
+  // 8) Asıl sorgu yolu: karışık harfli bir kimliği küçük harfle bulabiliyor muyuz
+  const ornekKullanici = dosyaItems[0];
+  if (ornekKullanici) {
+    const bulundu = await col.findOne({ userIdLower: normId(ornekKullanici.userId).toLowerCase() });
+    not(`ulke sorgu sinavi: ${bulundu ? "bulundu" : "BULUNAMADI"}`);
+    if (!bulundu) sorunlar.push("userIdLower sorgusu calismiyor — siralama ulke gosteremez");
+  }
 
   console.log("");
   if (sorunlar.length) {
