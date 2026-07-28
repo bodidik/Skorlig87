@@ -120,6 +120,13 @@ async function indeksler(db) {
   await col.createIndex({ nicknameNorm: 1 }, { background: true, sparse: true });
   await col.createIndex({ userIdNorm: 1 }, { background: true, sparse: true });
   await col.createIndex({ userIdLower: 1 }, { background: true });
+  // Aşağıdakiler lib/users-store.cjs ensureIndexes ile AYNI olmalı. Eskiden
+  // burada eksiklerdi ve yalnızca ilk trafikte oluşuyorlardı — taze bir
+  // deploy'un ilk istekleri indekssiz çalışıyordu.
+  await col.createIndex({ mainTeam: 1 }, { background: true, sparse: true });
+  await col.createIndex({ is1987: 1 }, { background: true, sparse: true });
+  await col.createIndex({ segment: 1 }, { background: true, sparse: true });
+  await col.createIndex({ inviteCode: 1 }, { background: true, sparse: true });
 }
 
 /**
@@ -142,7 +149,11 @@ async function dogrula(db, dosyaItems) {
 
   // 2) İndeksler
   const idx = (await col.indexes()).map((i) => JSON.stringify(i.key));
-  for (const gerekli of ['{"userId":1}', '{"country":1}', '{"nicknameNorm":1}', '{"userIdNorm":1}', '{"userIdLower":1}']) {
+  for (const gerekli of [
+    '{"userId":1}', '{"country":1}', '{"nicknameNorm":1}', '{"userIdNorm":1}',
+    '{"userIdLower":1}', '{"mainTeam":1}', '{"is1987":1}', '{"segment":1}',
+    '{"inviteCode":1}',
+  ]) {
     if (!idx.includes(gerekli)) sorunlar.push(`indeks eksik: ${gerekli}`);
   }
   not(`indeks: ${idx.length} tane`);

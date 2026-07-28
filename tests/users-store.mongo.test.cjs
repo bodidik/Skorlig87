@@ -157,6 +157,39 @@ describe("Mongo modu — sorgular", () => {
     assert.equal(u._id, undefined, "Mongo _id'si profil yanitina karismamali");
   });
 
+  test("aktarim scripti ile depo AYNI indeksleri kurar", { skip: atla() && sebep }, async () => {
+    // İkisi ayrı yerde tanımlı ve kayması kolay. Script eksik kalırsa taze bir
+    // deploy'un ilk istekleri indekssiz çalışır (yaşandı: script 5, depo 9).
+    const { execFileSync } = require("child_process");
+    const dbAdi = "idx_karsilastirma";
+
+    execFileSync(
+      process.execPath,
+      [require("path").join(__dirname, "..", "scripts", "migrate-users.cjs")],
+      {
+        env: {
+          ...process.env,
+          MONGODB_URI: _srv.getUri(),
+          MONGODB_DB: dbAdi,
+          SKORLIG_DATA_DIR: KUM,
+        },
+        encoding: "utf8",
+      }
+    );
+
+    const anahtar = (idx) => new Set(idx.map((i) => Object.keys(i.key)[0]));
+    const scriptIdx = anahtar(await _cli.db(dbAdi).collection(Store.COLL).indexes());
+
+    await Store.getUser("tetikle", db); // depo tarafını kurdur
+    const depoIdx = anahtar(await db.collection(Store.COLL).indexes());
+
+    const scriptteEksik = [...depoIdx].filter((k) => !scriptIdx.has(k));
+    const depodaEksik = [...scriptIdx].filter((k) => !depoIdx.has(k));
+
+    assert.deepEqual(scriptteEksik, [], "aktarim scriptinde eksik indeks");
+    assert.deepEqual(depodaEksik, [], "depoda eksik indeks");
+  });
+
   test("gerekli indeksler kurulur", { skip: atla() && sebep }, async () => {
     await Store.getUser("herhangi", db); // ensureIndexes tetikle
     const anahtarlar = (await db.collection(Store.COLL).indexes()).map((i) => Object.keys(i.key)[0]);
