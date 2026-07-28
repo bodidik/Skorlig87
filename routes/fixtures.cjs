@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const { tsdbKickoffISO } = require("../lib/tsdb-time.cjs");
 const router = express.Router();
 
 const fs = require("fs");
@@ -394,7 +395,9 @@ function normalizeAF(x) {
 function normalizeTS(e) {
   return {
     fixtureId: e.idEvent,
-    kickoffISO: e.dateEvent && e.strTime ? `${e.dateEvent}T${e.strTime}:00Z` : e.dateEvent || null,
+    // bkz. lib/tsdb-time.cjs — strTime saniyeli gelince eski satır
+    // "22:00:00:00Z" gibi geçersiz ISO üretiyordu.
+    kickoffISO: tsdbKickoffISO(e.dateEvent, e.strTime),
     league: e.strLeague || null,
     country: e.strCountry || null,
     home: e.strHomeTeam,
