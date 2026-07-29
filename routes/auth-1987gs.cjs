@@ -8,6 +8,7 @@ const path    = require("path");
 
 const DATA_DIR    = path.join(__dirname, "..", "data");
 const CODES_FILE  = path.join(DATA_DIR, "gs1987-codes.json");
+const InviteStore = require("../lib/invite-store.cjs");
 
 function requireAdminToken(req, res, next) {
   const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
@@ -98,32 +99,20 @@ router.post("/verify", express.json(), async (req, res) => {
 
   const codeNorm = rawCode.toUpperCase();
 
-  const data  = (await readJson(CODES_FILE, { codes: [], updatedAt: null })) || {};
-  const codes = Array.isArray(data.codes) ? data.codes : [];
-
-  const idx = codes.findIndex(
-    (c) => String(c.code || "").toUpperCase() === codeNorm
-  );
-  if (idx === -1) {
-    return res.status(400).json({ ok: false, error: "INVALID_CODE" });
+  // ⚠️ ATOMİK KULLANIM. Eski akış "dosyayı oku → kotayı kontrol et → used+1
+  // yaz" idi; kontrol ile yazma ayrı olduğu için son kontenjan için gelen iki
+  // eşzamanlı istek İKİSİ de geçip kotayı aşıyordu. Ayrıca sayaçlar yalnızca
+  // dosyada tutulduğu için her deploy'da sıfırlanıyor, dolmuş kodlar yeniden
+  // kullanılabilir hâle geliyordu — 1987 üyeliği bedava değil (açılış bakiyesi
+  // 60 LC, haftalık seçimler ücretsiz), yani sınırsız kod = sınırsız LC.
+  // bkz. lib/invite-store.cjs
+  const sonuc = await InviteStore.redeem(codeNorm, req.app?.locals?.db || null);
+  if (!sonuc.ok) {
+    return res.status(400).json({ ok: false, error: sonuc.reason });
   }
-
-  const item    = codes[idx];
+  const item = sonuc.code;
+  // `maxUses` kaldırılan blokta tanımlıydı; artık güncel kayıttan türetiliyor.
   const maxUses = Number(item.maxUses || 0) || 0;
-  const used    = Number(item.used || 0) || 0;
-
-  if (maxUses > 0 && used >= maxUses) {
-    return res.status(400).json({ ok: false, error: "CODE_EXHAUSTED" });
-  }
-
-  item.used       = used + 1;
-  item.lastUsedAt = new Date().toISOString();
-
-  codes[idx]     = item;
-  data.codes     = codes;
-  data.updatedAt = new Date().toISOString();
-
-  await writeJson(CODES_FILE, data);
 
   // ✅ Kullanıcıyı 1987 üyesi olarak işaretle (userId verilmişse)
   if (userId) {
@@ -147,8 +136,7 @@ router.post("/verify", express.json(), async (req, res) => {
  *  - Kodların kullanım durumunu gösterir (eski diag aynen dursun)
  */
 router.get("/diag", requireAdminToken, async (req, res) => {
-  const data  = (await readJson(CODES_FILE, { codes: [], updatedAt: null })) || {};
-  const codes = Array.isArray(data.codes) ? data.codes : [];
+  const codes = await InviteStore.listCodes(req.app?.locals?.db || null);
 
   const items = codes.map((c) => {
     const used    = Number(c.used || 0);
@@ -178,7 +166,9 @@ router.get("/diag", requireAdminToken, async (req, res) => {
 
   res.json({
     ok: true,
-    updatedAt: data.updatedAt || null,
+    // `data` sarmalı kaldırıldı (depo düz kod listesi döndürüyor); en yeni
+    // kullanım zamanı kodlardan türetiliyor.
+    updatedAt: codes.reduce((en, c) => (c.lastUsedAt && c.lastUsedAt > en ? c.lastUsedAt : en), "") || null,
     totalCodes: items.length,
     codes: items,
   });

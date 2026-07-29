@@ -34,6 +34,7 @@ const { creditLc } = require("../lib/wallet-credit.cjs");
 const WALLET_FILE_MIRROR =
   String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0";
 const STATE_FILE = path.join(DATA_DIR, "tr-league.json"); // sonuçlanmış haftalar + ödül kayıtları
+const TrLeagueStore = require("../lib/tr-league-store.cjs");
 
 const SUPER_LIG_ID = 203;
 
@@ -310,7 +311,6 @@ async function awardWeeklyLc(awards, weekKey, db) {
   await writeJson(WALLET_FILE, wallet);
 }
 
-const _finalizingWeek = new Set();
 
 /** Hafta bittiyse (tüm maçlar settle + hafta geçmiş) ilk 3'e ödül ver (bir kez). */
 async function finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount, db) {
@@ -319,18 +319,10 @@ async function finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount, db
   const { toMs } = weekRange(weekKey);
   if (Date.now() < toMs) return null; // hafta henüz bitmedi
 
-  const state = await readJson(STATE_FILE, { settledWeeks: {} });
-  state.settledWeeks = state.settledWeeks || {};
-  if (state.settledWeeks[weekKey]) return state.settledWeeks[weekKey]; // zaten ödüllendi
+  const mevcut = await TrLeagueStore.getWeek(weekKey, db);
+  if (mevcut) return mevcut; // zaten ödüllendi
 
-  if (_finalizingWeek.has(weekKey)) return null;
-  _finalizingWeek.add(weekKey);
-  try {
-    // tekrar oku (yarış)
-    const fresh = await readJson(STATE_FILE, { settledWeeks: {} });
-    fresh.settledWeeks = fresh.settledWeeks || {};
-    if (fresh.settledWeeks[weekKey]) return fresh.settledWeeks[weekKey];
-
+  {
     // sıralamaya göre ödül dağıt (beraberlikte aynı sıradakiler tam ödül)
     const awards = [];
     const winners = [];
@@ -350,8 +342,6 @@ async function finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount, db
       }
     }
 
-    await awardWeeklyLc(awards, weekKey, db);
-
     const record = {
       weekKey,
       finishedAt: new Date().toISOString(),
@@ -359,12 +349,22 @@ async function finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount, db
       rewards: awards,
       top: board.slice(0, 5),
     };
-    fresh.settledWeeks[weekKey] = record;
-    await writeJson(STATE_FILE, fresh);
+
+    // ⚠️ PARA KORUMASI — KAYIT ÖDÜLDEN ÖNCE, ATOMİK.
+    // Eski koruma `_finalizingWeek` adlı SÜREÇ-İÇİ bir Set idi: tek instance'ta
+    // işe yarar, çok instance'ta hiçbir şey yapmaz. Üstelik sıra "kontrol et →
+    // ÖDÜLÜ DAĞIT → kaydı yaz" idi; iki instance aynı anda haftayı kapatırsa
+    // ikisi de kontrolü geçip haftalık LC'yi dağıtıyordu.
+    // claimWeek koşulu yazmanın içinde tutuyor (benzersiz weekKey).
+    const bizimki = await TrLeagueStore.claimWeek(weekKey, record, db);
+    if (!bizimki) {
+      console.log(`[tr-league] hafta ${weekKey} baska bir cagri tarafindan odullendi — atlaniyor`);
+      return (await TrLeagueStore.getWeek(weekKey, db)) || null;
+    }
+
+    await awardWeeklyLc(awards, weekKey, db);
     console.log(`[tr-league] hafta bitti ${weekKey} | kazanan: ${winners.join(", ") || "yok"} | ödül alan: ${awards.length}`);
     return record;
-  } finally {
-    _finalizingWeek.delete(weekKey);
   }
 }
 
@@ -449,7 +449,7 @@ router.get("/weeks", async (req, res) => {
     // Kota yakmamak için sadece cache'ten oku (taze fetch yok)
     const fixtures = await collectFixturesFromCache();
     const weeks = groupByWeek(fixtures);
-    const state = await readJson(STATE_FILE, { settledWeeks: {} });
+    const state = { settledWeeks: await TrLeagueStore.loadWeeks(req.app?.locals?.db || null) };
 
     const out = [...weeks.keys()]
       .sort()

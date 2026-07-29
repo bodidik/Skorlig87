@@ -71,7 +71,12 @@ const { getDb } = require("../lib/mongo.cjs");
   await db.collection("tournaments").createIndex({ id: 1 }, { unique: true, background: true });
   await db.collection("duels").createIndex({ id: 1 }, { unique: true, background: true });
   await db.collection("streaks").createIndex({ userIdLower: 1 }, { unique: true, background: true });
-  console.log("indexes: social + duels + streaks OK");
+  // ⚠️ Bu ikisi de "bir kez ver" garantisinin dayanağı:
+  //   tr_league_weeks → hafta ödülü tekrar dağıtılmasın
+  //   invite_codes_1987 → kod kotası aşılmasın (1987 üyeliği LC değeri taşıyor)
+  await db.collection("tr_league_weeks").createIndex({ weekKey: 1 }, { unique: true, background: true });
+  await db.collection("invite_codes_1987").createIndex({ codeNorm: 1 }, { unique: true, background: true });
+  console.log("indexes: social + duels + streaks + tr-league + invite OK");
 
   console.log(`veritabani: ${db.databaseName}`);
   process.exit(0);

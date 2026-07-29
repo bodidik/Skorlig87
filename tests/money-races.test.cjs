@@ -285,3 +285,97 @@ describe("seri deposu (streak) — bonus tekrarını önler", () => {
     assert.equal("userIdLower" in m.k, false);
   });
 });
+
+describe("TR-Lig haftalık ödülü", () => {
+  const TrLeague = require("../lib/tr-league-store.cjs");
+  const kayit = (wk) => ({ weekKey: wk, finishedAt: "2026-07-29T12:00:00Z", winners: ["u1"], rewards: [] });
+
+  test("10 eşzamanlı hafta kapanışı, ödülü yalnızca BİRİ dağıtır", async () => {
+    // Eski koruma `_finalizingWeek` adlı SÜREÇ-İÇİ Set idi: tek instance'ta
+    // işe yarar, çok instance'ta hiçbir şey yapmaz. Üstelik ödül kayıttan
+    // ÖNCE dağıtılıyordu.
+    await db.collection(TrLeague.COLL).deleteMany({});
+    const r = await Promise.all(
+      Array.from({ length: 10 }, () => TrLeague.claimWeek("2026-W31", kayit("2026-W31"), db))
+    );
+    assert.equal(r.filter(Boolean).length, 1, "haftalık LC bir kez dağıtılmalı");
+  });
+
+  test("kayıt kalıcı — hafta ikinci kez ödüllendirilmez", async () => {
+    await db.collection(TrLeague.COLL).deleteMany({});
+    assert.equal(await TrLeague.claimWeek("2026-W32", kayit("2026-W32"), db), true);
+    assert.equal(await TrLeague.claimWeek("2026-W32", kayit("2026-W32"), db), false);
+    const w = await TrLeague.getWeek("2026-W32", db);
+    assert.deepEqual(w.winners, ["u1"]);
+  });
+
+  test("farklı haftalar birbirini engellemez", async () => {
+    await db.collection(TrLeague.COLL).deleteMany({});
+    const r = await Promise.all([
+      TrLeague.claimWeek("2026-W40", kayit("2026-W40"), db),
+      TrLeague.claimWeek("2026-W41", kayit("2026-W41"), db),
+    ]);
+    assert.deepEqual(r, [true, true]);
+    assert.equal(Object.keys(await TrLeague.loadWeeks(db)).length, 2);
+  });
+
+  test("geçersiz hafta anahtarı false — ödül dağıtılmaz", async () => {
+    assert.equal(await TrLeague.claimWeek("", {}, db), false);
+  });
+});
+
+describe("1987 davet kodları", () => {
+  const Invite = require("../lib/invite-store.cjs");
+
+  async function kodKur(kodlar) {
+    await db.collection(Invite.COLL).deleteMany({});
+    await db.collection(Invite.COLL).insertMany(
+      kodlar.map((k) => ({ ...k, codeNorm: String(k.code).toUpperCase() }))
+    );
+  }
+
+  test("KOTA eşzamanlılıkta AŞILMAZ — asıl kusur buydu", async () => {
+    // Eski akış: oku → `used >= maxUses` kontrol et → used+1 yaz. Son kontenjan
+    // için iki istek İKİSİ de kontrolü geçiyordu.
+    await kodKur([{ code: "GS1987", maxUses: 5, used: 0 }]);
+    const r = await Promise.all(
+      Array.from({ length: 20 }, () => Invite.redeem("GS1987", db))
+    );
+    assert.equal(r.filter((x) => x.ok).length, 5, "tam 5 kullanım geçmeli");
+    const d = await db.collection(Invite.COLL).findOne({ codeNorm: "GS1987" });
+    assert.equal(d.used, 5, "sayaç kotayı aşmamalı");
+  });
+
+  test("kota dolunca CODE_EXHAUSTED", async () => {
+    await kodKur([{ code: "DOLU", maxUses: 1, used: 1 }]);
+    const r = await Invite.redeem("DOLU", db);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "CODE_EXHAUSTED");
+  });
+
+  test("olmayan kod INVALID_CODE — ayrı sebep", async () => {
+    await kodKur([{ code: "VAR", maxUses: 5, used: 0 }]);
+    const r = await Invite.redeem("YOKKOD", db);
+    assert.equal(r.reason, "INVALID_CODE");
+  });
+
+  test("maxUses 0 = SINIRSIZ", async () => {
+    await kodKur([{ code: "SINIRSIZ", maxUses: 0, used: 0 }]);
+    const r = await Promise.all(Array.from({ length: 12 }, () => Invite.redeem("SINIRSIZ", db)));
+    assert.equal(r.filter((x) => x.ok).length, 12);
+  });
+
+  test("kod büyük/küçük harfe duyarsız", async () => {
+    await kodKur([{ code: "GS1987", maxUses: 3, used: 0 }]);
+    assert.equal((await Invite.redeem("gs1987", db)).ok, true);
+    assert.equal((await Invite.redeem("Gs1987", db)).ok, true);
+    const d = await db.collection(Invite.COLL).findOne({ codeNorm: "GS1987" });
+    assert.equal(d.used, 2, "aynı koda sayılmalı");
+  });
+
+  test("iç alan codeNorm sızmaz", async () => {
+    await kodKur([{ code: "TEMIZ", maxUses: 5, used: 0 }]);
+    const r = await Invite.redeem("TEMIZ", db);
+    assert.equal("codeNorm" in r.code, false);
+  });
+});
