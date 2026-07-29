@@ -153,9 +153,11 @@ router.get("/", async (req,res)=>{
         const r = await scopedRank(
           docs.map(d => ({
             userId: d.userId || d.userIdLower || "anon",
-            total: Number(d.totalPoints || 0),
+            // Kesirli puanlar $inc ile birikince kayan nokta artığı
+            // bırakıyor (10.700000000000001) — bkz. lib/season-totals.cjs
+            total: Math.round(Number(d.totalPoints || 0)),
             played: Number(d.matches || 0),
-            penalties: Number(d.totalPenalty || 0),
+            penalties: Math.round(Number(d.totalPenalty || 0)),
           })),
           sc,
           db
