@@ -108,6 +108,41 @@ describe("öncelik sınıfları", () => {
   });
 });
 
+describe("grup etiketleri", () => {
+  const { priorityGroupOf } = require("../lib/fixture-priority.cjs");
+
+  test("her sınıf için makine-okunur etiket", () => {
+    // Arayüz grup başlıklarını buna göre basıyor; etiketler SUNUCUDAN gelir
+    // çünkü istemcide yeniden hesaplamak iki ayrı tanım demek olurdu.
+    assert.equal(priorityGroupOf(mac("Türkiye", "Süper Lig"), "Türkiye"), "country");
+    assert.equal(priorityGroupOf(mac("World", "UEFA Champions League"), "Türkiye"), "global");
+    assert.equal(priorityGroupOf(mac("England", "Premier League"), "Türkiye"), "big");
+    assert.equal(priorityGroupOf(mac("Uzbekistan", "Super League"), "Türkiye"), "other");
+    assert.equal(priorityGroupOf(mac("World", "Hazırlık Maçları"), "Türkiye"), "friendly");
+  });
+
+  test("bilinmeyen girdi 'other'a düşer, patlamaz", () => {
+    assert.equal(priorityGroupOf({}, "Türkiye"), "other");
+    assert.equal(priorityGroupOf(null, ""), "other");
+  });
+
+  test("etiket sırası sıralamayla TUTARLI", () => {
+    // Başlıklar sıra değiştiğinde basılıyor; etiket sırası bozulursa aynı grup
+    // listede iki kez başlık alır.
+    const liste = [
+      mac("World", "Hazırlık Maçları", "2026-08-01T09:00:00Z"),
+      mac("Uzbekistan", "X", "2026-08-01T10:00:00Z"),
+      mac("England", "Premier League", "2026-08-01T11:00:00Z"),
+      mac("World", "UEFA Champions League", "2026-08-01T12:00:00Z"),
+      mac("Türkiye", "Süper Lig", "2026-08-01T13:00:00Z"),
+    ];
+    const gruplar = sortByPriority(liste, "Türkiye").map((x) => priorityGroupOf(x, "Türkiye"));
+    assert.deepEqual(gruplar, ["country", "global", "big", "other", "friendly"]);
+    // Aynı etiket bitişik olmayan yerlerde tekrarlanmamalı
+    assert.equal(new Set(gruplar).size, gruplar.length);
+  });
+});
+
 describe("sıralama", () => {
   const liste = [
     mac("Uzbekistan", "Super League", "2026-08-01T12:00:00Z"),

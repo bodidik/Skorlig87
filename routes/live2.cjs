@@ -128,7 +128,7 @@ const {
 // Ülke = sıralama ölçütü, eleme ölçütü DEĞİL. Kabul kuralı neredeyse her maça
 // "evet" der; yalnızca kadın/gençlik/yedek ligler ve eksik veri elenir.
 const {
-  isAcceptableFixture, sortByPriority, sameCountry,
+  isAcceptableFixture, sortByPriority, sameCountry, priorityGroupOf,
 } = require("../lib/fixture-priority.cjs");
 
 /**
@@ -1274,7 +1274,12 @@ router.get("/schedule", async (req, res) => {
     const capped = [];
     for (const it of secilen) {
       const effStatus = await effectiveStatusForFixture(it);
-      capped.push(finalizeFixtureForOutput({ ...it, status: effStatus }));
+      capped.push({
+        ...finalizeFixtureForOutput({ ...it, status: effStatus }),
+        // Grup başlığı için — arayüz sıra değiştiğinde başlık basar.
+        // Sunucu üretiyor: istemcide yeniden hesaplamak iki ayrı tanım demek.
+        priorityGroup: priorityGroupOf(it, userCountry),
+      });
     }
 
     res.json({
@@ -1393,7 +1398,10 @@ router.get("/open", async (req, res) => {
       if (secilen.length >= MIN_FIXTURES) break;
       secilen.push(it);
     }
-    const capped = secilen.map(finalizeFixtureForOutput);
+    const capped = secilen.map((it) => ({
+      ...finalizeFixtureForOutput(it),
+      priorityGroup: priorityGroupOf(it, userCountry),
+    }));
 
     res.json({
       ok: true,
