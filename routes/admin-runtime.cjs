@@ -790,6 +790,53 @@ router.get("/scraper-health", requireAdminToken, async (req, res) => {
 });
 
 /* =========================================================
+   GET /api/admin/fixture-sync-probe
+   Fikstür senkronunu KURU çalıştırır (hiçbir şey yazmaz) ve neden maç
+   üretmediğini sebep dökümüyle döndürür.
+
+   NEDEN VAR: canlı skor önbelleği taze, Maçkolik yoklaması 201 maç görüyor,
+   ama /api/fixtures 0 dönüyordu. Bu üçünün arasındaki halkayı — cache'ten
+   fixtures'a dönüşümü — dışarıdan görmenin hiçbir yolu yoktu; yalnızca
+   sunucu logu vardı, Render'da ona bakmak da zor.
+
+   Bu oturumun en pahalı dersi buydu: birden çok düşme sebebini tek etikete
+   toplamak, hatanın kendisinden daha çok vakit aldırıyor. syncOnce zaten
+   sebep sayıyor (`elenme`); eksik olan onu dışarı veren uçtu.
+
+   Dönüş anahtarları:
+     reason=CACHE_UNREADABLE    → livescore-cache.json yok/bozuk
+     reason=NO_MATCHES_IN_CACHE → cache var ama leagues boş (kaynak yazmıyor)
+     reason=NO_MATCHING_COUNTRIES + elenme → maçlar var, hepsi eleniyor
+     ok=true                    → dönüşüm çalışıyor, sorun başka yerde
+   ========================================================= */
+router.get("/fixture-sync-probe", requireAdminToken, async (req, res) => {
+  try {
+    const mk = require("../services/mackolik-fixture-sync.cjs");
+    const cache = await mk.readCache();
+    const sonuc = await mk.syncOnce({ dryRun: true });
+    return res.json({
+      ok: true,
+      cache: {
+        leagues: cache.leagues,
+        matches: cache.matches.length,
+        updatedAt: cache.updatedAt || null,
+        reason: cache.reason || null,
+        // İlk birkaç ham kayıt: ülke/lig/tarih alanları beklenen biçimde mi?
+        ornek: cache.matches.slice(0, 3).map((m) => ({
+          country: m.country, league: m.league,
+          home: m.home, away: m.away,
+          date: m.date || m.kickoffISO || m.time || null,
+          status: m.status || null,
+        })),
+      },
+      sync: sonuc,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+/* =========================================================
    POST /api/admin/scraper-probe
    Kaynakları tek tek, şelaleden bağımsız dener ve sonucu kaydeder.
    Yedek sayımının tek güvenilir ölçüsü budur: şelale ilk başarıda durduğu
