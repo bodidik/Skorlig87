@@ -46,19 +46,14 @@ async function handleCreate(req,res){
       return res.status(400).json({ ok:false, error:"NAME_OWNER_REQUIRED" });
     }
 
-    const store = await SocialStore.loadGroups(req.app?.locals?.db || null);
-    let code;
-    do { code = code6(); } while (store[code]);
-
-    store[code] = {
-      name:   String(name),
-      ownerId:String(ownerId),
-      members:[ String(ownerId) ],
-      opts: {}
-    };
-
-    await SocialStore.saveGroups(store, req.app?.locals?.db || null);
-    res.json({ ok:true, code, group: store[code] });
+    // Atomik: kod çakışmasına benzersiz indeks karar verir. Eski
+    // `do{code=code6()}while(store[code])` kendisi yarışlıydı — iki eşzamanlı
+    // kurulum aynı kodu boş görüp ikisi de alabilirdi.
+    const { code, group } = await SocialStore.createGroup(
+      { name, ownerId },
+      req.app?.locals?.db || null
+    );
+    res.json({ ok:true, code, group });
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_CREATE_FAILED", detail:String(e && (e.message||e)) });
   }
@@ -67,17 +62,12 @@ async function handleCreate(req,res){
 async function handleJoin(req,res){
   try{
     const { code, userId } = req.body || {};
-    const store = await SocialStore.loadGroups(req.app?.locals?.db || null);
-    const g = store[String(code||"").toUpperCase()];
-    if (!g) return res.status(404).json({ ok:false, error:"GROUP_NOT_FOUND" });
-
     const uid = String(userId||"").trim();
     if (!uid) return res.status(400).json({ ok:false, error:"USER_REQUIRED" });
 
-    if (!Array.isArray(g.members)) g.members = [];
-    if (!g.members.includes(uid)) g.members.push(uid);
-
-    await SocialStore.saveGroups(store, req.app?.locals?.db || null);
+    // Atomik: $addToSet hem yarışı hem mükerrer üyeliği kendisi engelliyor.
+    const g = await SocialStore.joinGroup(code, uid, req.app?.locals?.db || null);
+    if (!g) return res.status(404).json({ ok:false, error:"GROUP_NOT_FOUND" });
     res.json({ ok:true, group:{ code:String(code||"").toUpperCase(), name:g.name, size:g.members.length } });
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_JOIN_FAILED", detail:String(e && (e.message||e)) });
@@ -136,14 +126,13 @@ async function handleOpt(req,res){
       return res.status(400).json({ ok:false, error:"REQ" });
     }
 
-    const store = await SocialStore.loadGroups(req.app?.locals?.db || null);
-    const g = store[code];
-    if (!g) return res.status(404).json({ ok:false, error:"GROUP_NOT_FOUND" });
-
-    g.opts = g.opts || {};
-    g.opts[String(userId)] = { includeInTotal: !!includeInTotal };
-
-    await SocialStore.saveGroups(store, req.app?.locals?.db || null);
+    // Atomik: nokta yolu ile yalnızca bu üyenin seçeneği yazılır, tüm
+    // grup belgesi yeniden yazılmaz — başka üyenin eşzamanlı değişikliği
+    // ezilmez.
+    const oldu = await SocialStore.setGroupOpt(
+      code, userId, includeInTotal, req.app?.locals?.db || null
+    );
+    if (!oldu) return res.status(404).json({ ok:false, error:"GROUP_NOT_FOUND" });
     res.json({ ok:true });
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_OPT_FAILED", detail:String(e && (e.message||e)) });

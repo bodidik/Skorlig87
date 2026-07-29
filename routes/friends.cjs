@@ -136,17 +136,17 @@ router.post("/request", verifyToken, express.json(), async (req,res)=>{
     const idxOpp = m.requests.findIndex(r => r.from===to && r.to===from);
     if (idxOpp >= 0){
       // karşılıklı oldu → arkadaş yap, pending'i sil
-      m.requests.splice(idxOpp,1);
-      m.links.push({ a: from, b: to, createdAt: new Date().toISOString() });
-      await saveFriends(m);
+      // Atomik: iki ayrı belge işlemi; tüm dosya yeniden yazılmıyor.
+      await SocialStore.removeRequest(to, from, req.app?.locals?.db || null);
+      await SocialStore.addLink(from, to, req.app?.locals?.db || null);
       return res.json({ ok:true, matched:true });
     }
 
     // aynı tarafa ait mevcut pending var mı?
     const alreadyReq = m.requests.find(r => r.from===from && r.to===to);
     if (!alreadyReq){
-      m.requests.push({ from, to, createdAt: new Date().toISOString() });
-      await saveFriends(m);
+      // addRequest idempotent (yönlü anahtar benzersiz) — yarışta çift kayıt olmaz.
+      await SocialStore.addRequest(from, to, req.app?.locals?.db || null);
     }
 
     return res.json({ ok:true, requested:true });
@@ -189,10 +189,8 @@ router.post("/accept", verifyToken, express.json(), async (req,res)=>{
     }
 
     // 3️⃣ Normal accept
-    m.requests.splice(idx,1);
-    m.links.push({ a: me, b: from, createdAt: new Date().toISOString() });
-
-    await saveFriends(m);
+    await SocialStore.removeRequest(from, me, req.app?.locals?.db || null);
+    await SocialStore.addLink(me, from, req.app?.locals?.db || null);
     return res.json({ ok:true, accepted:true });
 
   }catch(e){
@@ -216,10 +214,8 @@ router.post("/reject", verifyToken, express.json(), async (req,res)=>{
     if (!me || !from) return res.status(400).json({ ok:false, error:"REQ" });
 
     const m = await loadFriends();
-    const before = m.requests.length;
-    m.requests = m.requests.filter(r => !(r.from===from && r.to===me));
-    const changed = m.requests.length !== before;
-    await saveFriends(m);
+    const changed = m.requests.some(r => r.from===from && r.to===me);
+    if (changed) await SocialStore.removeRequest(from, me, req.app?.locals?.db || null);
     return res.json({ ok:true, rejected: changed });
   }catch(e){
     return res.status(500).json({ ok:false, error:"FRIEND_REJECT_FAILED", detail:String(e && (e.message||e)) });
@@ -243,11 +239,8 @@ router.post("/unfriend", verifyToken, express.json(), async (req, res) => {
     const m = await loadFriends();
     const k = pairKey(a, b);
 
-    const before = (m.links || []).length;
-    m.links = (m.links || []).filter(l => pairKey(l.a, l.b) !== k);
-    const changed = m.links.length !== before;
-
-    await saveFriends(m);
+    const changed = (m.links || []).some(l => pairKey(l.a, l.b) === k);
+    if (changed) await SocialStore.removeLink(a, b, req.app?.locals?.db || null);
     return res.json({ ok: true, removed: changed });
   } catch (e) {
     return res.status(500).json({ ok: false, error: "FRIEND_UNFRIEND_FAILED", detail: String(e && (e.message || e)) });
@@ -269,11 +262,8 @@ router.post("/cancel", verifyToken, express.json(), async (req, res) => {
 
     const m = await loadFriends();
 
-    const before = (m.requests || []).length;
-    m.requests = (m.requests || []).filter(r => !(r.from === from && r.to === to));
-    const changed = m.requests.length !== before;
-
-    await saveFriends(m);
+    const changed = (m.requests || []).some(r => r.from === from && r.to === to);
+    if (changed) await SocialStore.removeRequest(from, to, req.app?.locals?.db || null);
     return res.json({ ok: true, cancelled: changed });
   } catch (e) {
     return res.status(500).json({ ok: false, error: "FRIEND_CANCEL_FAILED", detail: String(e && (e.message || e)) });
@@ -294,14 +284,11 @@ router.post("/remove-request", express.json(), async (req, res) => {
     if (a === b)  return res.status(400).json({ ok: false, error: "SELF_NOT_ALLOWED" });
 
     const m = await loadFriends();
-    const before = (m.requests || []).length;
-
-    m.requests = (m.requests || []).filter(r =>
-      !((r.from === a && r.to === b) || (r.from === b && r.to === a))
+    const changed = (m.requests || []).some(r =>
+      (r.from === a && r.to === b) || (r.from === b && r.to === a)
     );
-
-    const changed = m.requests.length !== before;
-    await saveFriends(m);
+    // ciftYonlu: iki yönü tek çağrıda siler.
+    if (changed) await SocialStore.removeRequest(a, b, req.app?.locals?.db || null, true);
 
     return res.json({ ok: true, removed: changed });
   } catch (e) {
@@ -559,18 +546,11 @@ router.post("/block", verifyToken, express.json(), async (req,res)=>{
     const m = await loadFriends();
     ensureBlocks(m);
 
-    if (!isBlockedBy(m, by, target)) {
-      m.blocks.push({ by, target, createdAt: new Date().toISOString() });
-    }
-
-    // temizlik: link + requests kaldır
-    const k = pairKey(by, target);
-    m.links = (m.links || []).filter(l => pairKey(l.a,l.b) !== k);
-    m.requests = (m.requests || []).filter(r =>
-      !((r.from===by && r.to===target) || (r.from===target && r.to===by))
-    );
-
-    await saveFriends(m);
+    // Üç atomik işlem. Sıra önemli: önce engel yazılır, sonra temizlik —
+    // araya sıkışan bir istek de engelden SONRA gelmiş olur ve reddedilir.
+    await SocialStore.addBlock(by, target, req.app?.locals?.db || null);
+    await SocialStore.removeLink(by, target, req.app?.locals?.db || null);
+    await SocialStore.removeRequest(by, target, req.app?.locals?.db || null, true);
     return res.json({ ok:true, blocked:true, by, target });
 
   }catch(e){
@@ -593,11 +573,8 @@ router.post("/unblock", express.json(), async (req,res)=>{
     const m = await loadFriends();
     ensureBlocks(m);
 
-    const before = m.blocks.length;
-    m.blocks = m.blocks.filter(x => !(normId(x.by)===by && normId(x.target)===target));
-    const changed = m.blocks.length !== before;
-
-    await saveFriends(m);
+    const changed = m.blocks.some(x => normId(x.by)===by && normId(x.target)===target);
+    if (changed) await SocialStore.removeBlock(by, target, req.app?.locals?.db || null);
     return res.json({ ok:true, unblocked: changed, by, target });
 
   }catch(e){
@@ -721,13 +698,9 @@ router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
     }
 
     // Arkadaşlık kur
-    m.links.push({ a: ownerId, b: userId, createdAt: new Date().toISOString(), via: "invite_code" });
-    // Bekleyen istek varsa temizle
-    m.requests = (m.requests || []).filter((r) =>
-      !(normLower(r.from) === normLower(userId) && normLower(r.to) === normLower(ownerId)) &&
-      !(normLower(r.from) === normLower(ownerId) && normLower(r.to) === normLower(userId))
-    );
-    await saveFriends(m, req.app?.locals?.db || null);
+    await SocialStore.addLink(ownerId, userId, req.app?.locals?.db || null);
+    // Bekleyen istek varsa temizle (iki yön)
+    await SocialStore.removeRequest(userId, ownerId, req.app?.locals?.db || null, true);
 
     // LC ödülü — ikisine de
     if (INVITE_REWARD > 0) {

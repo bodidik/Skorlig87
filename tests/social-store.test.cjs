@@ -226,3 +226,160 @@ describe("dosya modu", () => {
     assert.ok(raw.updatedAt, "updatedAt yazılmalı");
   });
 });
+
+/* ═══════════════════════ ATOMİK İŞLEMLER / EŞZAMANLILIK ═══════════════════
+ *
+ * Bu bölüm asıl kazancı ölçüyor. loadX/saveX çifti "tümünü oku → birini
+ * değiştir → tümünü yaz" yapıyordu; iki eşzamanlı istek aynı anlık görüntüyü
+ * okuyup ikincisi birincisini siliyordu. Aşağıdaki işlemler koşulu ve yazmayı
+ * tek Mongo çağrısında yapıyor.
+ *
+ * Her testte önce ESKİ desenin kaybettiğini gösteriyoruz, sonra yenisinin
+ * kaybetmediğini — yoksa test "zaten çalışıyordu" sanılabilir.
+ */
+
+describe("atomik işlemler — eşzamanlılık", () => {
+  test("ESKİ DESEN kayıp veriyor (kıyas — örgü açıkça kuruldu)", async () => {
+    // Zamanlamaya bırakılırsa kararsız olur; kaybın oluştuğu ARA DURUM burada
+    // elle kuruluyor: iki istek de aynı anlık görüntüyü okur, ikincinin
+    // yazımı birincininkini siler. Aşağıdaki joinGroup testi aynı senaryoyu
+    // atomik işlemle çalıştırıyor — fark ölçülebilir olsun diye ikisi yan yana.
+    await S.saveGroups({ G: { name: "g", ownerId: "u0", members: ["u0"] } }, db);
+
+    const a = await S.loadGroups(db); // istek A okur
+    const b = await S.loadGroups(db); // istek B aynı anda okur
+    a.G.members.push("uA");
+    b.G.members.push("uB");
+    await S.saveGroups(a, db);
+    await S.saveGroups(b, db);        // A'nın yazdığını siler
+
+    const uyeler = (await S.loadGroups(db)).G.members;
+    assert.deepEqual(uyeler, ["u0", "uB"], "uA kaybolmalı — düzeltilen kusur bu");
+  });
+
+  test("joinGroup: 10 eşzamanlı katılım, HİÇBİRİ kaybolmaz", async () => {
+    await S.saveGroups({ G: { name: "g", ownerId: "u0", members: ["u0"] } }, db);
+    await Promise.all(
+      Array.from({ length: 10 }, (_, i) => S.joinGroup("G", "u" + (i + 1), db))
+    );
+    const uyeler = (await S.loadGroups(db)).G.members;
+    assert.equal(uyeler.length, 11, "sahip + 10 katılımcı");
+  });
+
+  test("joinGroup: aynı kişi 5 kez katılsa da tek kayıt ($addToSet)", async () => {
+    await S.saveGroups({ G: { name: "g", ownerId: "u0", members: ["u0"] } }, db);
+    await Promise.all(Array.from({ length: 5 }, () => S.joinGroup("G", "ayni", db)));
+    const uyeler = (await S.loadGroups(db)).G.members;
+    assert.equal(uyeler.filter((x) => x === "ayni").length, 1);
+  });
+
+  test("joinGroup: olmayan grup null döner", async () => {
+    assert.equal(await S.joinGroup("YOKKK", "u1", db), null);
+  });
+
+  test("createGroup: 20 eşzamanlı kurulum, 20 FARKLI kod", async () => {
+    // Eski `do{code=code6()}while(store[code])` kendisi yarışlıydı: iki istek
+    // aynı kodu boş görüp ikisi de alabilirdi. Benzersiz indeks karar veriyor.
+    const r = await Promise.all(
+      Array.from({ length: 20 }, (_, i) => S.createGroup({ name: "g" + i, ownerId: "u" + i }, db))
+    );
+    const kodlar = new Set(r.map((x) => x.code));
+    assert.equal(kodlar.size, 20, "kodlar benzersiz olmalı");
+    assert.equal(Object.keys(await S.loadGroups(db)).length, 20);
+  });
+
+  test("setGroupOpt: iki üye aynı anda ayar değiştirir, ikisi de kalır", async () => {
+    await S.saveGroups({ G: { name: "g", ownerId: "u1", members: ["u1", "u2"], opts: {} } }, db);
+    await Promise.all([
+      S.setGroupOpt("G", "u1", false, db),
+      S.setGroupOpt("G", "u2", true, db),
+    ]);
+    const opts = (await S.loadGroups(db)).G.opts;
+    assert.equal(opts.u1.includeInTotal, false);
+    assert.equal(opts.u2.includeInTotal, true, "ikinci ayar birinciyi ezmemeli");
+  });
+
+  test("addLink: aynı çift 5 kez eklense de tek bağlantı", async () => {
+    await Promise.all(Array.from({ length: 5 }, () => S.addLink("u1", "u2", db)));
+    assert.equal((await S.loadFriends(db)).links.length, 1);
+  });
+
+  test("addLink: ters yön de aynı bağlantı sayılır", async () => {
+    await Promise.all([S.addLink("u1", "u2", db), S.addLink("u2", "u1", db)]);
+    assert.equal((await S.loadFriends(db)).links.length, 1);
+  });
+
+  test("removeRequest çift yönlü: iki yönü de siler", async () => {
+    await S.addRequest("u1", "u2", db);
+    await S.addRequest("u2", "u1", db);
+    await S.removeRequest("u1", "u2", db, true);
+    assert.equal((await S.loadFriends(db)).requests.length, 0);
+  });
+
+  test("removeRequest tek yönlü: yalnızca o yönü siler", async () => {
+    await S.addRequest("u1", "u2", db);
+    await S.addRequest("u2", "u1", db);
+    await S.removeRequest("u1", "u2", db);
+    const r = (await S.loadFriends(db)).requests;
+    assert.equal(r.length, 1);
+    assert.equal(r[0].from, "u2");
+  });
+
+  test("engelleme: farklı bölümlere eşzamanlı yazım birbirini bozmaz", async () => {
+    await S.addLink("u1", "u2", db);
+    await S.addRequest("u1", "u2", db);
+    await Promise.all([
+      S.addBlock("u1", "u2", db),
+      S.removeLink("u1", "u2", db),
+      S.removeRequest("u1", "u2", db, true),
+    ]);
+    const m = await S.loadFriends(db);
+    assert.equal(m.blocks.length, 1, "engel yazılmalı");
+    assert.equal(m.links.length, 0);
+    assert.equal(m.requests.length, 0);
+  });
+
+  test("addMiniMember: kapasite tavanı eşzamanlılıkta AŞILMAZ", async () => {
+    // Asıl kusur: `if (len >= MAX) reddet; push(...)` kontrol ile yazma
+    // arasında boşluk bırakıyordu.
+    await S.saveMini([{ id: "m1", code: "K1", members: ["u0"] }], db);
+    const sonuclar = await Promise.all(
+      Array.from({ length: 20 }, (_, i) => S.addMiniMember("m1", "u" + (i + 1), 5, db))
+    );
+    const uyeler = (await S.loadMini(db))[0].members;
+    assert.equal(uyeler.length, 5, "tavan tam 5'te durmalı");
+    assert.equal(sonuclar.filter((x) => x === "ok").length, 4, "sahip dışı 4 kişi girebilir");
+    assert.ok(sonuclar.includes("FULL"), "fazlası FULL almalı");
+  });
+
+  test("addMiniMember: sebepler ayırt edilir", async () => {
+    await S.saveMini([{ id: "m1", code: "K1", members: ["u0"] }], db);
+    assert.equal(await S.addMiniMember("yok", "u1", 5, db), "NOT_FOUND");
+    assert.equal(await S.addMiniMember("m1", "u0", 5, db), "ALREADY");
+    assert.equal(await S.addMiniMember("m1", "u1", 5, db), "ok");
+  });
+
+  test("finishMini: PARA KORUMASI — 10 eşzamanlı bitirme, yalnızca BİRİ true", async () => {
+    // Ödül bu dönüşe bağlı; iki true iki kez LC dağıtmak demekti.
+    await S.saveMini([{ id: "m1", code: "K1", members: ["u1"], finishedAt: null }], db);
+    const r = await Promise.all(
+      Array.from({ length: 10 }, () =>
+        S.finishMini("m1", { finishedAt: "2026-07-29T12:00:00Z", winners: ["u1"], rewardLc: 50 }, db)
+      )
+    );
+    assert.equal(r.filter(Boolean).length, 1, "tam bir çağrı ödülü dağıtmalı");
+  });
+
+  test("finishMini: bitmiş turnuva ikinci kez bitirilemez", async () => {
+    await S.saveMini([{ id: "m1", code: "K1", finishedAt: "2026-01-01T00:00:00Z" }], db);
+    assert.equal(await S.finishMini("m1", { winners: ["x"] }, db), false);
+    assert.deepEqual((await S.loadMini(db))[0].winners, undefined, "kazanan yazılmamalı");
+  });
+
+  test("createMini: eşzamanlı kurulumların hepsi kaydedilir", async () => {
+    await Promise.all(
+      Array.from({ length: 10 }, (_, i) => S.createMini({ id: "m" + i, code: "K" + i, members: [] }, db))
+    );
+    assert.equal((await S.loadMini(db)).length, 10);
+  });
+});

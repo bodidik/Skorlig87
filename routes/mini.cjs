@@ -193,7 +193,7 @@ async function finalizeIfDone(t, board, settledCount, fixtureCount, db) {
 
   try {
     // Dosyadan taze oku (yarış koşullarına karşı) ve tekrar kontrol et
-    const items = await loadAll();
+    const items = await loadAll(db);
     const cur = items.find((x) => x.id === t.id);
     if (!cur || cur.finishedAt) return cur || t;
 
@@ -201,10 +201,19 @@ async function finalizeIfDone(t, board, settledCount, fixtureCount, db) {
     // Kimse puan alamadıysa kazanan yok (hükümsüz biter, ödül dağıtılmaz)
     const winners = top > 0 ? board.filter((r) => r.points === top).map((r) => r.userId) : [];
 
-    cur.finishedAt = new Date().toISOString();
-    cur.winners = winners;
-    cur.rewardLc = winners.length ? MINI_WIN_LC : 0;
-    await saveAll(items);
+    const alanlar = {
+      finishedAt: new Date().toISOString(),
+      winners,
+      rewardLc: winners.length ? MINI_WIN_LC : 0,
+    };
+
+    // ⚠️ PARA KORUMASI: koşul (finishedAt boş mu) yazmanın İÇİNDE. Eskiden
+    // yukarıdaki `if (cur.finishedAt) return` ile kontrol edilip sonra ödül
+    // dağıtılıyordu; iki eşzamanlı çağrı ikisi de kontrolü geçip ödülü İKİ KEZ
+    // verebilirdi. Artık yalnızca kazanan çağrı true alır.
+    const bitirdi = await SocialStore.finishMini(t.id, alanlar, db);
+    if (!bitirdi) return cur;
+    Object.assign(cur, alanlar);
 
     if (winners.length) {
       const awarded = await awardMiniWinLc(winners, cur, db);
@@ -223,6 +232,7 @@ async function finalizeIfDone(t, board, settledCount, fixtureCount, db) {
 // ---- POST /api/mini/create ----
 router.post("/create", express.json(), async (req, res) => {
   try {
+    const db = req.app?.locals?.db || null;
     const userId = String(req.body?.userId || "").trim();
     const name = String(req.body?.name || "").trim().slice(0, 60);
     const fixtures = Array.isArray(req.body?.fixtures) ? req.body.fixtures : [];
@@ -266,8 +276,7 @@ router.post("/create", express.json(), async (req, res) => {
       members: [userId],
       createdAt: new Date().toISOString(),
     };
-    items.push(t);
-    await saveAll(items);
+    await SocialStore.createMini(t, db);
 
     return res.json({ ok: true, tournament: publicView(t) });
   } catch (e) {
@@ -279,23 +288,24 @@ router.post("/create", express.json(), async (req, res) => {
 // ---- POST /api/mini/join ----
 router.post("/join", express.json(), async (req, res) => {
   try {
+    const db = req.app?.locals?.db || null;
     const userId = String(req.body?.userId || "").trim();
     const code = String(req.body?.code || "").trim().toUpperCase();
     if (!userId || !code) return res.status(400).json({ ok: false, error: "USER_OR_CODE_MISSING" });
 
-    const items = await loadAll();
+    const items = await loadAll(db);
     const t = items.find((x) => String(x.code).toUpperCase() === code);
     if (!t) return res.status(404).json({ ok: false, error: "TOURNAMENT_NOT_FOUND" });
 
+    // Kapasite koşulu sorgunun İÇİNDE ($expr + $size): eskiden kontrol ile
+    // yazma arasında boşluk vardı, iki eşzamanlı katılım tavanı aşabilirdi.
+    const sonuc = await SocialStore.addMiniMember(t.id, userId, MAX_MEMBERS, db);
+    if (sonuc === "NOT_FOUND") return res.status(404).json({ ok: false, error: "TOURNAMENT_NOT_FOUND" });
+    if (sonuc === "FULL")      return res.status(400).json({ ok: false, error: "TOURNAMENT_FULL" });
+
     t.members = Array.isArray(t.members) ? t.members : [];
-    if (t.members.includes(userId)) {
-      return res.json({ ok: true, tournament: publicView(t), already: true });
-    }
-    if (t.members.length >= MAX_MEMBERS) {
-      return res.status(400).json({ ok: false, error: "TOURNAMENT_FULL" });
-    }
-    t.members.push(userId);
-    await saveAll(items);
+    if (sonuc === "ALREADY") return res.json({ ok: true, tournament: publicView(t), already: true });
+    if (!t.members.includes(userId)) t.members.push(userId);
 
     return res.json({ ok: true, tournament: publicView(t) });
   } catch (e) {
@@ -332,6 +342,7 @@ async function areFriends(u1, u2) {
 
 router.post("/invite", express.json(), async (req, res) => {
   try {
+    const db = req.app?.locals?.db || null;
     const userId = String(req.body?.userId || "").trim();
     const id = String(req.body?.id || "").trim();
     const friendUserId = String(req.body?.friendUserId || "").trim();
@@ -356,12 +367,12 @@ router.post("/invite", express.json(), async (req, res) => {
     if (!(await areFriends(userId, friendUserId))) {
       return res.status(403).json({ ok: false, error: "NOT_FRIENDS" });
     }
-    if (t.members.length >= MAX_MEMBERS) {
-      return res.status(400).json({ ok: false, error: "TOURNAMENT_FULL" });
-    }
+    const sonuc = await SocialStore.addMiniMember(t.id, friendUserId, MAX_MEMBERS, db);
+    if (sonuc === "NOT_FOUND") return res.status(404).json({ ok: false, error: "TOURNAMENT_NOT_FOUND" });
+    if (sonuc === "FULL")      return res.status(400).json({ ok: false, error: "TOURNAMENT_FULL" });
+    if (sonuc === "ALREADY")   return res.json({ ok: true, tournament: publicView(t), already: true });
 
     t.members.push(friendUserId);
-    await saveAll(items);
     return res.json({ ok: true, tournament: publicView(t), invited: friendUserId });
   } catch (e) {
     console.error("[mini] invite error:", e);
