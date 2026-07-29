@@ -360,10 +360,37 @@ Sıralamada ayrıca **güven tavanı** eklendi (`SKORLIG_RANK_MAX_PLAYED=60`): d
 ortalamalı oyuncular 20/60/120 maçla 3./2./1. sıraya çıkıyordu; yetenek aynı,
 sıra farklıydı.
 
-## Karar bekleyen (tek kaldı)
+### Premium: 300 LC → 60 LC **tabanı** + erişim ayrıcalıkları
 
-**Premium 300 LC/ay:** kalsın mı, düşürülüp ayrıcalığa mı çevrilsin.
+**Karar verildi.** Aylık koşulsuz 300 LC kaldırıldı.
 
-Bu bir gelir/ürün kararı, teknik değil — o yüzden verilmedi. Not: sıralama
-tavanı geldiği için 300 LC artık **sıra satın almıyor**, yalnızca daha çok
-oynama imkânı veriyor. Bu, kararı daha az acil hâle getiriyor.
+Eski hâlin sorunu miktar değil, **koşulsuzluğu** idi: bakiyesi 500 olan da her
+ay 300 daha alıyordu, yani arz sınırsız birikiyordu. Premium aylık tavanı
+660 LC'ydi (ücretsiz 180 → 3.7 kat).
+
+| | eski | yeni |
+|---|---|---|
+| Aylık | **+300 koşulsuz** | **60 LC tabanına tamamlama** (zengine 0) |
+| Günlük | 12 taban | 12 taban (değişmedi) |
+| Aylık tavan | 660 LC | **420 LC** (ücretsiz 180 → 2.3 kat) |
+
+Yeni ayrıcalıklar **LC üretmiyor**, erişim/kapasite veriyor:
+
+| Ayrıcalık | Ücretsiz | Premium |
+|---|---|---|
+| Aynı anda açık düello | 3 | **10** |
+| Mini turnuvada maç sayısı | 5 | **20** |
+| Sezon arşivi derinliği | 1 sezon | **12 sezon** |
+
+**Giriş bedeli indirimi bilerek verilmedi.** Ölçüldü: giriş 3→2 LC, premium'un
+maç başına ortalamasını −0.66'dan **+0.15**'e çeviriyor — premium net LC
+üreticisi olurdu. Kasayı küçültüp indirimle geri vermek, enflasyonu adı
+değişmiş hâlde geri getirirdi.
+
+> Sıralama tavanı (`RANK_MAX_PLAYED=60`) zaten devrede: premium ne kadar çok
+> oynarsa oynasın **sıra satın alamıyor**. Ayrıcalıklar bu yüzden güvenle
+> "daha çok oyna" yönünde büyütülebilir.
+
+## Karar bekleyen
+
+Yok — belgedeki tüm sorular karara bağlandı.

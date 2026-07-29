@@ -12,6 +12,7 @@ const { verifyToken } = require("../middleware/verifyToken.cjs");
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const DUELS_FILE = path.join(DATA_DIR, "duels.json");
 const SocialStore = require("../lib/social-store.cjs");
+const premium = require("../lib/premium.cjs");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 
@@ -429,6 +430,23 @@ router.post("/duels/create", verifyToken, async (req, res) => {
     const lock = await isFixtureLocked(fx);
     if (lock.locked) {
       return res.status(409).json({ ok: false, error: lock.reason, fixtureId: fx, lockAtISO: lock.lockAtISO || null });
+    }
+
+    // 🔒 Açık düello sınırı — premium ayrıcalığı (erişim/kapasite grubu).
+    //
+    // LC AKIŞINA DOKUNMAZ: bahis yine tam ödeniyor, kesinti aynı. Premium'un
+    // değeri "daha çok LC" değil "daha çok oynayabilme" olsun diye buradan
+    // veriliyor. bkz. lib/premium.cjs — PERKS'in iki grubu.
+    const isPrem = await premium.isPremium(creatorId, db);
+    const acikSinir = premium.maxOpenDuels(isPrem);
+    const mevcutAcik = (await loadDuels(db)).filter(
+      (d) => String(d.creatorId || "").toLowerCase() === creatorId.toLowerCase() && d.status === "open"
+    ).length;
+    if (mevcutAcik >= acikSinir) {
+      return res.status(400).json({
+        ok: false, error: "TOO_MANY_OPEN_DUELS",
+        open: mevcutAcik, limit: acikSinir, isPremium: isPrem,
+      });
     }
 
     // Deduct stake from creator

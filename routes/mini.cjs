@@ -24,6 +24,7 @@ const crypto = require("crypto");
 const DATA_DIR = path.join(__dirname, "..", "data");
 const MINI_FILE = path.join(DATA_DIR, "mini-tournaments.json");
 const SocialStore = require("../lib/social-store.cjs");
+const premium = require("../lib/premium.cjs");
 const RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR = path.join(DATA_DIR, "live");
@@ -239,11 +240,15 @@ router.post("/create", express.json(), async (req, res) => {
 
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
     if (!name) return res.status(400).json({ ok: false, error: "NAME_REQUIRED" });
-    if (fixtures.length < MIN_FIXTURES || fixtures.length > MAX_FIXTURES) {
+    // Turnuva başına maç sayısı üst sınırı premium'da daha yüksek
+    // (erişim/kapasite ayrıcalığı — LC akışına dokunmaz).
+    const isPrem = await premium.isPremium(userId, db);
+    const maxFx = Math.max(MAX_FIXTURES, premium.miniMaxFixtures(isPrem));
+    if (fixtures.length < MIN_FIXTURES || fixtures.length > maxFx) {
       return res.status(400).json({
         ok: false,
         error: "FIXTURE_COUNT_INVALID",
-        detail: `${MIN_FIXTURES}-${MAX_FIXTURES} maç seçilmeli`,
+        detail: `${MIN_FIXTURES}-${maxFx} maç seçilmeli`,
       });
     }
 

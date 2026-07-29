@@ -1010,9 +1010,16 @@ router.post("/lc-wallet/premium/subscribe", verifyToken, express.json(), async (
         const col = db.collection("lc_wallet_users");
         const uidLower = userId.toLowerCase();
         const mk = premium.monthKey();
-        const amount = premium.PERKS.monthlyLc;
+        const taban = premium.PERKS.monthlyFloor;
 
-        await ensureWalletUserMongo(db, userId);
+        const u = await ensureWalletUserMongo(db, userId);
+
+        // ⚠️ TABANA TAMAMLAMA — koşulsuz EKLEME DEĞİL.
+        // Eski hâli sabit 300 LC ekliyordu; bakiyesi zaten yüksek olan da
+        // her ay 300 daha alıyordu ve arz sınırsız birikiyordu. Artık
+        // yalnızca tabanın altındaki fark veriliyor (zengine 0).
+        const bakiye = Number(u?.balance || 0);
+        const amount = bakiye >= taban ? 0 : Math.round((taban - bakiye) * 10) / 10;
 
         if (amount > 0) {
           // Koşullu güncelleme dosya sürümünden DAHA güvenli: filtre
@@ -1035,6 +1042,13 @@ router.post("/lc-wallet/premium/subscribe", verifyToken, express.json(), async (
               meta: { month: mk },
             });
           }
+        } else {
+          // Taban zaten aşılmış: LC verilmez ama ay MÜHÜRLENİR, yoksa
+          // bakiye düştükçe aynı ay içinde tekrar tamamlama yapılırdı.
+          await col.updateOne(
+            { userIdLower: uidLower, lastMonthlyAt: { $ne: mk } },
+            { $set: { lastMonthlyAt: mk, updatedAt: nowISO } }
+          );
         }
       } else {
         monthlyGranted = await withFileLock(WALLET_FILE, async () => {

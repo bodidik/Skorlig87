@@ -105,7 +105,7 @@ describe("premiumStatus", () => {
     assert.equal(s.active, true);
     assert.equal(s.premiumUntil, until);
     assert.equal(s.via, "premium");
-    assert.ok(s.perks.monthlyLc > 0, "ayricalik ozeti gelmeli");
+    assert.ok(s.perks.monthlyFloor > 0, "ayricalik ozeti gelmeli");
     assert.ok(Array.isArray(s.plans) && s.plans.length, "paketler gelmeli");
   });
 
@@ -159,11 +159,42 @@ describe("aylik kasa", () => {
     assert.equal(w.balance, ilk, "bakiye ikinci kez artmamali");
   });
 
-  test("sonraki ay tekrar verilir", () => {
+  test("sonraki ay TABAN ALTINDAYSA tekrar tamamlanir", () => {
     const w = { balance: 0, totalEarned: 0 };
     premium.grantMonthlyIfDue(w, true, new Date("2026-07-15T00:00:00Z"));
-    const b1 = w.balance;
+    const taban = w.balance;
+    // Oyuncu ay boyunca oynayip bakiyesini tuketti.
+    w.balance = 5;
     premium.grantMonthlyIfDue(w, true, new Date("2026-08-01T00:00:00Z"));
-    assert.ok(w.balance > b1, "yeni ayda kasa yenilenmeli");
+    assert.equal(w.balance, taban, "yeni ayda tabana tamamlanmali");
+  });
+
+  test("ZENGIN OYUNCUYA HICBIR SEY VERILMEZ — duzeltmenin ozu", () => {
+    // Eski hal kosulsuz +300 idi: bakiyesi 500 olan da her ay 300 daha
+    // aliyordu, yani arz sinirsiz birikiyordu.
+    const w = { balance: 500, totalEarned: 0 };
+    const v = premium.grantMonthlyIfDue(w, true, new Date("2026-07-15T00:00:00Z"));
+    assert.equal(v, 0);
+    assert.equal(w.balance, 500, "bakiye artmamali");
+    assert.equal(w.lastMonthlyAt, "2026-07", "yine de ay muhurlenmeli");
+  });
+
+  test("muhur 0 verildiginde de basilir — ay icinde tekrar tamamlanmaz", () => {
+    // Muhur basilmasaydi: bakiye 60'in ustundeyken atlanir, gun icinde
+    // oyuncu 10'a duser ve ayni ay icinde tekrar 60'a tamamlanirdi.
+    const w = { balance: 500, totalEarned: 0 };
+    premium.grantMonthlyIfDue(w, true, new Date("2026-07-15T00:00:00Z"));
+    w.balance = 10; // ay icinde harcadi
+    const v = premium.grantMonthlyIfDue(w, true, new Date("2026-07-20T00:00:00Z"));
+    assert.equal(v, 0, "ayni ay icinde ikinci tamamlama olmamali");
+    assert.equal(w.balance, 10);
+  });
+
+  test("aylik taban, gunluk oyun bedelinin cok ustunde OLMAMALI", () => {
+    // Ayni gerekce gunluk tabanda da vardi: taban cok yuksek olursa
+    // kaybetmek bedava olur ve iade esigi duzeltmesi anlamsizlasir.
+    const GIRIS = 3;
+    const taban = premium.PERKS.monthlyFloor;
+    assert.ok(taban / GIRIS <= 30, "aylik taban 30 mactan fazlasini karsilamamali");
   });
 });

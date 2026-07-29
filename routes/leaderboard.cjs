@@ -16,6 +16,7 @@ const { rankRows, rankingMeta } = require("../lib/ranking.cjs");
 const { BOT_PROFILE_MAP } = require("../lib/botIds.cjs");
 const { attachCountries, countryOfUser } = require("../lib/user-country.cjs");
 const Season = require("../lib/season.cjs");
+const premium = require("../lib/premium.cjs");
 
 async function readJson(file, fb=null){
   try{
@@ -131,7 +132,26 @@ router.get("/", async (req,res)=>{
   // Geçersiz sezon anahtarı sessizce güncel sezona düşer — istemci hatası
   // yüzünden boş tablo göstermek, kullanıcıya "kimse yok" demek olurdu.
   const istenen = String(req.query.season || "").trim();
-  const sezon = Season.isValidKey(istenen) ? istenen : Season.seasonKey();
+  let sezon = Season.isValidKey(istenen) ? istenen : Season.seasonKey();
+
+  // ARŞİV DERİNLİĞİ — premium ayrıcalığı (erişim grubu; LC akışına dokunmaz).
+  // Ücretsiz kullanıcı 1 sezon geriye bakabilir, premium 12. Sınırın ötesi
+  // sessizce güncel sezona düşürülür ve `archiveLimited` ile bildirilir —
+  // boş tablo göstermek "o sezonda kimse yok" gibi görünürdü.
+  let arsivKisitli = false;
+  if (sezon !== Season.seasonKey()) {
+    const uid = String(req.query.userId || req.uid || "").trim();
+    const isPrem = uid ? await premium.isPremium(uid, db) : false;
+    const derinlik = premium.seasonArchiveDepth(isPrem);
+    let k = Season.seasonKey();
+    let bulundu = false;
+    for (let i = 0; i < derinlik; i++) {
+      k = Season.previousKey(k);
+      if (!k) break;
+      if (k === sezon) { bulundu = true; break; }
+    }
+    if (!bulundu) { sezon = Season.seasonKey(); arsivKisitli = true; }
+  }
   const scopeInfo = (r) => ({
     requested: String(req.query.scope || "global").toLowerCase(),
     applied: r.scope,
@@ -142,6 +162,7 @@ router.get("/", async (req,res)=>{
     seasonLabel: Season.label(sezon),
     isCurrentSeason: sezon === Season.seasonKey(),
     previousSeason: Season.previousKey(sezon),
+    ...(arsivKisitli ? { archiveLimited: true } : {}),
     // Kullanıcı kiminle yarıştığını görmeli: kaçı bot, kaçı gerçek.
     humansOnly: r.humansOnly,
     botCount: r.botCount,
