@@ -41,12 +41,23 @@ describe("resolveCountry", () => {
     assert.equal(resolveCountry("Czechia"), "Czech Republic");
   });
 
-  test("kapsam dışı ülke null döner", () => {
-    // Sıralaması olmayan ülkeyi kabul etmek lig filtresini bozar.
-    assert.equal(resolveCountry("Ecuador"), null);
-    assert.equal(resolveCountry("Iceland"), null);
-    assert.equal(resolveCountry("Uzbekistan"), null);
-    assert.equal(resolveCountry("South Korea"), null);
+  test("tanınmayan ülke OLDUĞU GİBİ kabul edilir", () => {
+    // DAVRANIŞ DEĞİŞTİ (2026-07-28). Eskiden bunlar null dönüyor ve maç havuza
+    // hiç girmiyordu; günde ~17 maç bu yüzden kayboluyordu ve Süper Lig sezon
+    // arasındayken ekran tamamen boşalıyordu. Artık ülke ELEME değil SIRALAMA
+    // ölçütü (bkz. lib/fixture-priority.cjs) — tanımadığımız ülke "diğer"
+    // grubuna düşer, listenin sonunda görünür ama GÖRÜNÜR.
+    assert.equal(resolveCountry("Ecuador"), "Ecuador");
+    assert.equal(resolveCountry("Iceland"), "Iceland");
+    assert.equal(resolveCountry("Uzbekistan"), "Uzbekistan");
+  });
+
+  test("bilinen ad yine kanonikleşir", () => {
+    // Kanonikleştirme kaybolmamalı: "Turkey" ve "Türkiye" tek ülke olmalı,
+    // yoksa kullanıcı kendi ülkesinin maçını üstte göremez.
+    assert.equal(resolveCountry("Turkey"), "Türkiye");
+    assert.equal(resolveCountry("International"), "World");
+    assert.equal(resolveCountry("Czechia"), "Czech Republic");
   });
 
   test("boş / bozuk girdi null döner", () => {
@@ -97,7 +108,18 @@ describe("normalize — kaynak bağımsızlığı", () => {
     assert.equal(normalize({ ...mac("Brazil"), matchDate: "" }), null);
   });
 
-  test("kapsam dışı ülke fikstür olmaz", () => {
-    assert.equal(normalize(mac("Ecuador")), null);
+  test("tanınmayan ülkenin maçı da fikstür olur", () => {
+    // Asıl regresyon koruması: bu satır null dönerse ekran yine boşalır.
+    const n = normalize(mac("Ecuador"));
+    assert.ok(n, "Ekvador maçı havuza girmeli");
+    assert.equal(n.country, "Ecuador");
+  });
+
+  test("kadın/gençlik ligi yine elenir", () => {
+    // Ülke elemesi kalktığı için bu süzgeç artık bu katmanda şart.
+    assert.equal(
+      normalize({ ...mac("Brazil"), league: "Brasileiro A1 Kadınlar" }),
+      null
+    );
   });
 });

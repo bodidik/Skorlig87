@@ -34,6 +34,7 @@ const fsp = require("fs").promises;
 
 const { withFileLock } = require("../lib/fileLock.cjs");
 const { readFixtures, writeFixtures, merge } = require("./fixture-sync.cjs");
+const { isExcludedLeague } = require("../lib/global-leagues.cjs");
 
 // Testlerde izole dizine yönlendirilebilir (bkz. fixture-sync, livescore-scraper).
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
@@ -128,11 +129,21 @@ function resolveCountry(raw) {
   const s = r2(raw);
   if (!s) return null;
 
+  // Bilinen adı kanonik hâle çevir.
   const tr = TR_TO_COUNTRY[s];
-  if (tr) return ALLOWED_COUNTRIES.has(tr) ? tr : null;
+  if (tr) return tr;
 
   const en = EN_TO_COUNTRY[s] || s;
-  return ALLOWED_COUNTRIES.has(en) ? en : null;
+
+  // ⚠️ ESKİDEN BURADA ELEME VARDI: ALLOWED_COUNTRIES dışındaki her ülke null
+  // dönüyordu ve maç havuza HİÇ girmiyordu. Günde ~17 maç bu yüzden
+  // kayboluyordu (Şili, Kolombiya, Danimarka, İsveç, Özbekistan…) ve Süper Lig
+  // sezon arasındayken ekran tamamen boşalıyordu.
+  //
+  // Artık ülke yalnızca SIRALAMA için kullanılıyor (lib/fixture-priority.cjs),
+  // o yüzden tanımadığımız ülkeyi de olduğu gibi kabul ediyoruz. Sıralamada
+  // "diğer" grubuna düşer, listenin sonunda görünür — ama GÖRÜNÜR.
+  return en;
 }
 
 /**
@@ -182,6 +193,11 @@ function normalizeWithReason(m) {
   const country = resolveCountry(m?.country);
   if (!country) return { fixture: null, reason: "ulke:" + (r2(m?.country) || "(bos)") };
 
+  // Kadın/gençlik/yedek ligler ana listeye girmez (ürün kararı). Ülke elemesi
+  // kaldırıldığı için bu süzgeç artık BU katmanda gerekli — eskiden ALLOWED
+  // dolaylı olarak çoğunu zaten dışarıda bırakıyordu.
+  if (isExcludedLeague(m?.league)) return { fixture: null, reason: "alt_lig" };
+
   const home = r2(m?.homeTeam);
   const away = r2(m?.awayTeam);
   if (!home || !away) return { fixture: null, reason: "takim_eksik" };
@@ -199,6 +215,11 @@ function normalizeWithReason(m) {
 function normalize(m) {
   const country = resolveCountry(m?.country);
   if (!country) return null;
+
+  // Kadın/gençlik/yedek ligler ana listeye girmez. normalizeWithReason da
+  // aynı kontrolü yapıyor (etiket üretmek için); burada da olmalı, yoksa
+  // fonksiyon doğrudan çağrıldığında boru hattından FARKLI davranır.
+  if (isExcludedLeague(m?.league)) return null;
 
   const home = r2(m?.homeTeam);
   const away = r2(m?.awayTeam);

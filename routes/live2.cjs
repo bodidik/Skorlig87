@@ -125,6 +125,19 @@ const {
   GLOBAL_LEAGUES, EXCLUDED_LEAGUES, isGlobalLeagueName, isExcludedLeague,
 } = require("../lib/global-leagues.cjs");
 
+// Ülke = sıralama ölçütü, eleme ölçütü DEĞİL. Kabul kuralı neredeyse her maça
+// "evet" der; yalnızca kadın/gençlik/yedek ligler ve eksik veri elenir.
+const {
+  isAcceptableFixture, sortByPriority, sameCountry,
+} = require("../lib/fixture-priority.cjs");
+
+/**
+ * "Maçlar" ekranında en az bu kadar maç gösterilmeye çalışılır.
+ * Ülke tavanı yüzünden liste bunun altına düşerse kalanlardan tamamlanır —
+ * boş/az dolu ekran uygulamayı kullanılamaz yapıyordu.
+ */
+const MIN_FIXTURES = Number(process.env.SKORLIG_MIN_FIXTURES || 20);
+
 function allowedCountry(c) {
   return !!ALLOWED[c];
 }
@@ -316,33 +329,6 @@ function canonicalCountry(input) {
 }
 
 // extraLeagues: virgülle ayrılmış ülke kodu/adı listesi ("GB,FR" veya "England,France")
-/**
- * Ülke süzgeci SONUÇSUZ kalırsa dünya listesine geri düş.
- *
- * NEDEN (ölçüldü 2026-07-28): Türk kullanıcı için en yakın maç 14 GÜN sonraydı
- * — Süper Lig sezonu başlamamış ve FDO Türkiye'yi kapsamıyor. Aynı anda
- * önümüzdeki 7 günde 12 maç vardı (Brezilya Série A, Arjantin Primera) ama
- * ülke süzgeci hepsini eliyordu. Sonuç: uygulama iki hafta boyunca BOŞ.
- *
- * Boş ekran, ilgisiz maçtan kötüdür: kullanıcı tahmin oynayamaz, uygulamayı
- * kullanamaz, geri dönmez. Bu yüzden ülkesinde maç bulunmayan kullanıcıya
- * dünya listesi gösterilir ve yanıtta `countryFallback: true` işaretlenir —
- * arayüz "ülkenizde maç yok, dünyadan maçlar" diyebilsin.
- *
- * Sessiz DEĞİL: bayrak olmadan kullanıcı neden Brezilya maçı gördüğünü
- * anlamaz ve bu bir hata gibi görünür.
- */
-function localizeWithFallback(list, country, extraLeagues) {
-  const suzulmus = localizeForCountry(list, country, extraLeagues);
-  const canon = canonicalCountry(country);
-
-  // Ülke verilmemişse zaten süzülmedi — geri düşüş kavramı yok.
-  if (!canon) return { list: suzulmus, fallback: false };
-  if (suzulmus.length) return { list: suzulmus, fallback: false };
-
-  return { list, fallback: true };
-}
-
 function localizeForCountry(list, country, extraLeagues) {
   const canon = canonicalCountry(country);
   const extras = String(extraLeagues || "")
@@ -633,10 +619,10 @@ async function afByDate(isoDate) {
     const arr = Array.isArray(j?.response) ? j.response : [];
     const out = arr
       .map(normalizeAF)
-      .filter((it) => {
-        if (isGlobalLeagueName(it.league)) return true;
-        return it.country && allowedCountry(it.country) && isTopLeague(it.country, it.league);
-      });
+      // Ülke artık ELEME ölçütü değil, SIRALAMA ölçütü (lib/fixture-priority).
+      // Eskiden ALLOWED dışı her ülkenin maçı burada düşüyordu; Süper Lig
+      // sezon arasındayken Türk kullanıcının ekranı 14 gün boyunca boş kaldı.
+      .filter(isAcceptableFixture);
     await bumpProv("AF", true, Date.now() - t0);
     return out;
   } catch (e) {
@@ -663,10 +649,8 @@ async function tsdbByDate(isoDate) {
     const arr = Array.isArray(j?.events) ? j.events : [];
     const out = arr
       .map(normalizeTS)
-      .filter((it) => {
-        if (isGlobalLeagueName(it.league)) return true;
-        return it.country && allowedCountry(it.country) && isTopLeague(it.country, it.league);
-      });
+      // Ülke elemesi kaldırıldı — bkz. lib/fixture-priority.cjs
+      .filter(isAcceptableFixture);
 
     await bumpProv("TSDB", true, Date.now() - t0);
     return out;
@@ -776,13 +760,8 @@ async function tsdbNextFixturesByTeamName(teamName, limit = 10) {
   return arr
     .slice(0, limit)
     .map(normalizeTS)
-    .filter((it) =>
-      isGlobalLeagueName(it.league)
-        ? true
-        : it.country
-        ? allowedCountry(it.country) && isTopLeague(it.country, it.league)
-        : true
-    );
+    // Ülke elemesi kaldırıldı — bkz. lib/fixture-priority.cjs
+    .filter(isAcceptableFixture);
 }
 
 // AF team → fixtures next (Free plan'de next param hatalı olabilir → from/to fallback)
@@ -1214,10 +1193,21 @@ router.get("/schedule", async (req, res) => {
     let merged = mergeWithManualFixtures(filtered, manualFiltered);
 
     // Kullanıcının yereli: ?country= verildiyse o ülkenin ligi + global yarışlar
-    // Ülkede maç yoksa dünya listesine geri düş (bkz. localizeWithFallback).
-    const _loc = localizeWithFallback(merged, req.query.country, req.query.extraLeagues);
-    merged = _loc.list;
-    const countryFallback = _loc.fallback;
+    // ÜLKE ARTIK SÜZMÜYOR — yalnızca sıralıyor.
+    //
+    // Eskiden `localizeForCountry` kullanıcının ülkesi dışındaki her maçı
+    // eliyordu. Süper Lig sezon arasındayken bu, ekranın 14 gün boyunca boş
+    // kalması demekti: aynı anda UCL ön elemeleri, Konferans Ligi elemeleri ve
+    // Brezilya Série A oynanıyordu. Kaygı "maç kalabalığında oyun kurulamaz"
+    // idi; yaşanan tam tersi oldu.
+    //
+    // Kullanıcının ülkesi hâlâ önemli ama SIRA belirliyor: kendi ülkesi üstte,
+    // sonra küresel turnuvalar, sonra büyük ligler, sonra kalan her şey.
+    const userCountry = String(req.query.country || "").trim();
+    // Bilgi amaçlı: kullanıcının ülkesinde hiç maç yok mu? (arayüz şerit gösterir)
+    const countryFallback =
+      !!userCountry && !merged.some((it) => sameCountry(it.country, userCountry));
+    merged = sortByPriority(merged, userCountry);
 
     // Takım önceliklendirmesi: ?team= verildiyse kullanıcının takımı en üste
     const userTeam = String(req.query.team || "").trim().toLowerCase();
@@ -1252,21 +1242,39 @@ router.get("/schedule", async (req, res) => {
       return 0;
     }
 
-    const per = new Map();
-    const capped = [];
-    for (const it of merged.sort((a, b) => {
+    // Takım tercihi önceliği bozmadan uygulanır: aynı öncelik grubu içinde
+    // kullanıcının takımı üste çıkar (sortByPriority zaten grupladı).
+    const sirali = merged.slice().sort((a, b) => {
       const ts = teamScore(b) - teamScore(a);
-      if (ts !== 0) return ts;
-      return (parseKickoffMs(a) ?? 0) - (parseKickoffMs(b) ?? 0);
-    })) {
+      return ts !== 0 ? ts : 0; // kararlı sıralama: grup/zaman sırası korunur
+    });
+
+    // Ülke başına tavan ÇEŞİTLİLİK içindir (tek lig listeyi kaplamasın),
+    // kısıtlama için değil. Tavan yüzünden liste MIN_FIXTURES'ın altına
+    // düşerse kalanlardan tamamlanır — "uygulamaya giren zaman geçirebilsin".
+    const per = new Map();
+    const secilen = [];
+    const artanlar = [];
+    for (const it of sirali) {
       const key = it.country || "Other";
       const c = per.get(key) || 0;
       if (c < cap) {
-        const effStatus = await effectiveStatusForFixture(it);
-        capped.push(finalizeFixtureForOutput({ ...it, status: effStatus }));
-
+        secilen.push(it);
         per.set(key, c + 1);
+      } else {
+        artanlar.push(it);
       }
+    }
+    // Taban: tavan yüzünden elenenlerden sırayla tamamla.
+    for (const it of artanlar) {
+      if (secilen.length >= MIN_FIXTURES) break;
+      secilen.push(it);
+    }
+
+    const capped = [];
+    for (const it of secilen) {
+      const effStatus = await effectiveStatusForFixture(it);
+      capped.push(finalizeFixtureForOutput({ ...it, status: effStatus }));
     }
 
     res.json({
@@ -1322,10 +1330,21 @@ router.get("/open", async (req, res) => {
     let merged = mergeWithManualFixtures(baseFiltered, manualFiltered);
 
     // Kullanıcının yereli: ?country= verildiyse o ülkenin ligi + global yarışlar
-    // Ülkede maç yoksa dünya listesine geri düş (bkz. localizeWithFallback).
-    const _loc = localizeWithFallback(merged, req.query.country, req.query.extraLeagues);
-    merged = _loc.list;
-    const countryFallback = _loc.fallback;
+    // ÜLKE ARTIK SÜZMÜYOR — yalnızca sıralıyor.
+    //
+    // Eskiden `localizeForCountry` kullanıcının ülkesi dışındaki her maçı
+    // eliyordu. Süper Lig sezon arasındayken bu, ekranın 14 gün boyunca boş
+    // kalması demekti: aynı anda UCL ön elemeleri, Konferans Ligi elemeleri ve
+    // Brezilya Série A oynanıyordu. Kaygı "maç kalabalığında oyun kurulamaz"
+    // idi; yaşanan tam tersi oldu.
+    //
+    // Kullanıcının ülkesi hâlâ önemli ama SIRA belirliyor: kendi ülkesi üstte,
+    // sonra küresel turnuvalar, sonra büyük ligler, sonra kalan her şey.
+    const userCountry = String(req.query.country || "").trim();
+    // Bilgi amaçlı: kullanıcının ülkesinde hiç maç yok mu? (arayüz şerit gösterir)
+    const countryFallback =
+      !!userCountry && !merged.some((it) => sameCountry(it.country, userCountry));
+    merged = sortByPriority(merged, userCountry);
 
     // lock + pencere + (kilitli olmayan)
     const windowed = [];
@@ -1355,17 +1374,26 @@ router.get("/open", async (req, res) => {
       }
     }
 
-    // CAP + sıralama
+    // Ülke tavanı ÇEŞİTLİLİK içindir; taban altına düşerse tamamlanır.
+    // (Aynı gerekçe /schedule'da: boş ekran uygulamayı kullanılamaz yapıyordu.)
     const per = new Map();
-    const capped = [];
-    for (const it of windowed.sort((a, b) => (parseKickoffMs(a) ?? 0) - (parseKickoffMs(b) ?? 0))) {
+    const secilen = [];
+    const artanlar = [];
+    for (const it of windowed) {
       const key = it.country || "Other";
       const c = per.get(key) || 0;
       if (c < cap) {
-        capped.push(finalizeFixtureForOutput(it));
+        secilen.push(it);
         per.set(key, c + 1);
+      } else {
+        artanlar.push(it);
       }
     }
+    for (const it of artanlar) {
+      if (secilen.length >= MIN_FIXTURES) break;
+      secilen.push(it);
+    }
+    const capped = secilen.map(finalizeFixtureForOutput);
 
     res.json({
       ok: true,
@@ -1563,7 +1591,4 @@ module.exports = router;
 module.exports.fixturesByDate = fixturesByDate;
 // users.cjs set-country kanonik ad saklayabilsin
 module.exports.canonicalCountry = canonicalCountry;
-// Ülke süzgeci + geri düşüş: sessizce yanlış çalışması "boş ekran" ya da
-// "alakasız maçlar" demek — ikisi de testle tutuluyor.
-module.exports.localizeWithFallback = localizeWithFallback;
 

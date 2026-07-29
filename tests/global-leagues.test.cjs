@@ -15,7 +15,7 @@
 const { test, describe } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { isGlobalLeagueName, isExcludedLeague } = require("../lib/global-leagues.cjs");
+const { isGlobalLeagueName, isExcludedLeague, isFriendlyLeague } = require("../lib/global-leagues.cjs");
 
 describe("küresel sayılanlar", () => {
   const kuresel = [
@@ -35,15 +35,34 @@ describe("küresel sayılanlar", () => {
     "Copa America",
     "UEFA Nations League",
     "Africa Cup of Nations",
-    // Sezon öncesi
-    "Kulüplerarası Hazırlık Maçları",
-    "Club Friendlies",
-    "Pre-Season Cup",
   ];
 
   for (const ad of kuresel) {
     test(ad, () => {
       assert.equal(isGlobalLeagueName(ad), true, `"${ad}" küresel sayılmalı`);
+    });
+  }
+});
+
+describe("hazırlık maçları küresel DEĞİL", () => {
+  // DAVRANIŞ DEĞİŞTİ (2026-07-28): Bu desenler GLOBAL_LEAGUES içindeydi ve tek
+  // sebebi ülke süzgecini atlatmaktı. Süzgeç kaldırılınca yan etkisi görüldü —
+  // hazırlık maçları Şampiyonlar Ligi ile aynı öncelikte sayılıp listenin
+  // tepesini kaplıyordu (ölçüldü: ilk 12 maçın 7'si hazırlık).
+  // Artık ayrı sınıf: elenmiyorlar ama en sonda sıralanıyorlar.
+  const hazirlik = [
+    "Kulüplerarası Hazırlık Maçları",
+    "Club Friendlies",
+    "Pre-Season Cup",
+    "Hazırlık Maçları - Öne Çıkanlar",
+  ];
+
+  for (const ad of hazirlik) {
+    test(ad, () => {
+      assert.equal(isGlobalLeagueName(ad), false, `"${ad}" küresel SAYILMAMALI`);
+      assert.equal(isFriendlyLeague(ad), true, `"${ad}" hazırlık sayılmalı`);
+      // Elenmediğini de doğrula: listede olmalı, sadece sonda.
+      assert.equal(isExcludedLeague(ad), false, `"${ad}" elenmemeli`);
     });
   }
 });
