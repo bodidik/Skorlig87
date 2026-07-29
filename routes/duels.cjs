@@ -11,6 +11,7 @@ const { verifyToken } = require("../middleware/verifyToken.cjs");
 // testlerde izole veri dizinine yönlendirilebilmesi gerekir.
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const DUELS_FILE = path.join(DATA_DIR, "duels.json");
+const SocialStore = require("../lib/social-store.cjs");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 
@@ -42,22 +43,19 @@ async function readJson(file, fb) {
  *
  * Mongo yoksa dosya tek kaynaktır (yerel geliştirme) — davranış korunur.
  */
+// Düellolar Mongo birincil, dosya ayna — bkz. lib/social-store.cjs.
+//
+// ⚠️ ÖNCEKİ HÂL YARIM TAŞIMAYDI: loadDuels Mongo'dan okuyor, saveDuels
+// YALNIZCA dosyaya yazıyordu. Mongo'da kayıt varken yeni kurulan düello
+// görünmez oluyordu — oyuncu bahsini yatırıp düellosunu kaybediyordu.
+// Ayrıca Mongo boş dönünce dosyaya da düşülmüyordu (docs.length kontrolü
+// yoktu), yani boş koleksiyon "hiç düello yok" demek oluyordu.
 async function loadDuels(db) {
-  if (db) {
-    try {
-      const docs = await db.collection("duels").find({}).toArray();
-      return docs.map(({ _id, ...d }) => d);
-    } catch (e) {
-      // Mongo okunamıyorsa dosyaya düş — hizmet durmasın, ama sessiz kalma.
-      console.error("[duels] mongo okunamadi, dosyaya dusuluyor:", e?.message || e);
-    }
-  }
-  const raw = await readJson(DUELS_FILE, []);
-  return Array.isArray(raw) ? raw : [];
+  return SocialStore.loadDuels(db || null);
 }
 
-async function saveDuels(list) {
-  await writeJsonAtomic(DUELS_FILE, list);
+async function saveDuels(list, db) {
+  await SocialStore.saveDuels(list, db || null);
 }
 
 function genId() {
@@ -334,17 +332,27 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
       const cp = getOddsPoints(duel.creatorId);
       const ap = getOddsPoints(duel.acceptorId);
 
-      duel.creatorPoints = Math.round(cp * 100) / 100;
-      duel.acceptorPoints = Math.round(ap * 100) / 100;
-      duel.status = "settled";
-      duel.settledAt = nowISO;
-      duel.winnerId = cp > ap ? duel.creatorId : ap > cp ? duel.acceptorId : null;
+      const alanlar = {
+        creatorPoints: Math.round(cp * 100) / 100,
+        acceptorPoints: Math.round(ap * 100) / 100,
+        settledAt: nowISO,
+        winnerId: cp > ap ? duel.creatorId : ap > cp ? duel.acceptorId : null,
+      };
 
+      // ⚠️ PARA KORUMASI — MÜHÜR ÖDEMEDEN ÖNCE, ATOMİK.
+      // Buradaki `withFileLock` yalnızca TEK SÜRECİ korur; depo Mongo'ya
+      // taşındığı için çok instance'lı ortamda hiçbir şey yapmıyordu. Ödeme
+      // de kilidin DIŞINDA, Mongo'ya durum yazımı ödemeden SONRA idi: ikinci
+      // bir tarama düelloyu hâlâ "accepted" görüp ödülü TEKRAR yatırabilirdi.
+      const bizimki = await SocialStore.claimDuelSettle(duel.id, alanlar, db);
+      if (!bizimki) continue;
+
+      Object.assign(duel, alanlar, { status: "settled" });
       settled.push({ ...duel });
       changed = true;
     }
 
-    if (changed) await saveDuels(list);
+    if (changed) await saveDuels(list, db);
   });
 
   // Credit winners outside lock (different file = safe)
@@ -451,7 +459,7 @@ router.post("/duels/create", verifyToken, async (req, res) => {
     await withFileLock(DUELS_FILE, async () => {
       const list = await loadDuels(db);
       list.push(duel);
-      await saveDuels(list);
+      await saveDuels(list, db);
     });
 
     if (db) {
@@ -508,7 +516,7 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
       duel.acceptorName = acceptorName;
       duel.status = "active";
       duel.acceptedAt = new Date().toISOString();
-      await saveDuels(list);
+      await saveDuels(list, db);
       result = { duel: { ...duel } };
     });
 
@@ -553,7 +561,7 @@ router.post("/duels/cancel", verifyToken, async (req, res) => {
       if (duel.creatorId.toLowerCase() !== uid.toLowerCase()) { result = { err: "NOT_YOUR_DUEL" }; return; }
       duel.status = "cancelled";
       duel.settledAt = new Date().toISOString();
-      await saveDuels(list);
+      await saveDuels(list, db);
       result = { duel: { ...duel } };
     });
 

@@ -9,6 +9,7 @@ const path = require("path");
 // 18 test kullanıcısı üretim dosyasına yazılmıştı). Üretimde tanımsızdır.
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const STREAK_FILE = path.join(DATA_DIR, "streaks.json");
+const StreakStore = require("../lib/streak-store.cjs");
 
 // Odds-bazlı sistemde eşikler yükseltildi:
 // Eski community çarpanı 0.35-4.0 çok gürültülüydü, gerçek odds 1.05-4.0
@@ -22,18 +23,21 @@ const TIERS = [
   { threshold: 40,  bonus: 25, label: "Durdurulamıyor",   badge: "unstoppable" },
 ];
 
-async function loadStreaks() {
-  try {
-    const txt = await fsp.readFile(STREAK_FILE, "utf8");
-    return JSON.parse(txt);
-  } catch {
-    return {};
-  }
+// Seriler Mongo birincil, kullanıcı başına belge — bkz. lib/streak-store.cjs.
+//
+// ⚠️ Dosyada tutulurken her deploy siliyordu ve seriler PARA dağıtıyor
+// (eşik bonusları). Bonusun tek kez verilmesini `lastTier` sağlıyor; dosya
+// kaybolunca -1'e dönüyor ve aynı bonuslar TEKRAR ödeniyordu.
+//
+// `userIds` verilirse yalnızca o kullanıcılar okunur: eski kod tüm haritayı
+// okuyup tümünü geri yazıyordu (kilitsiz), yani iki maç aynı anda
+// sonuçlandığında biri diğerinin seri güncellemesini siliyordu.
+async function loadStreaks(userIds) {
+  return StreakStore.loadMany(userIds || null, null);
 }
 
 async function saveStreaks(data) {
-  await fsp.mkdir(DATA_DIR, { recursive: true });
-  await fsp.writeFile(STREAK_FILE, JSON.stringify(data, null, 2), "utf8");
+  await StreakStore.saveMany(data, null);
 }
 
 function getUserStreak(streaks, userId) {
@@ -62,7 +66,7 @@ function currentTier(cumOdds) {
 }
 
 async function recordCorrect(userId, fixtureId, odds) {
-  const streaks = await loadStreaks();
+  const streaks = await loadStreaks([userId]);
   const s = getUserStreak(streaks, userId);
 
   // Genel birikim (hiç sıfırlanmaz)
@@ -102,7 +106,7 @@ async function recordCorrect(userId, fixtureId, odds) {
 }
 
 async function recordWrong(userId, fixtureId) {
-  const streaks = await loadStreaks();
+  const streaks = await loadStreaks([userId]);
   const s = getUserStreak(streaks, userId);
 
   s.history.push({ fixtureId, odds: 0, at: new Date().toISOString(), correct: false });
@@ -133,7 +137,7 @@ async function recordBatch(entries) {
   const out = new Map();
   if (!Array.isArray(entries) || entries.length === 0) return out;
 
-  const streaks = await loadStreaks();
+  const streaks = await loadStreaks(entries.map((e) => e && e.userId).filter(Boolean));
   let dirty = false;
 
   for (const e of entries) {
@@ -189,7 +193,7 @@ async function recordBatch(entries) {
 }
 
 async function getStreak(userId) {
-  const streaks = await loadStreaks();
+  const streaks = await loadStreaks([userId]);
   const s = getUserStreak(streaks, userId);
   return {
     cumOdds: s.cumOdds, count: s.count,

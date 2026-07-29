@@ -57,6 +57,22 @@ const { getDb } = require("../lib/mongo.cjs");
   await db.collection("fixtures").createIndex({ kickoffISO: 1 }, { background: true });
   console.log("indexes: fixtures OK");
 
+  // Sosyal + oyun depoları. Hepsi lib/social-store.cjs ve lib/streak-store.cjs
+  // üzerinden yazılıyor; oradaki ensureIndexes de aynılarını kurar — bu script
+  // yalnızca "hepsi baştan hazır olsun" içindir.
+  await db.collection("groups").createIndex({ code: 1 }, { unique: true, background: true });
+  await db.collection("mini_tournaments").createIndex({ id: 1 }, { unique: true, background: true });
+  await db.collection("friend_links").createIndex({ pair: 1 }, { unique: true, background: true });
+  await db.collection("friend_requests").createIndex({ pair: 1 }, { unique: true, background: true });
+  await db.collection("friend_blocks").createIndex({ pair: 1 }, { unique: true, background: true });
+  // ⚠️ Bu ikisi PARA korumasının dayanağı: benzersizlik olmazsa kopya belge
+  // oluşur ve claimTournamentSettle/claimDuelSettle birden fazla çağrıya
+  // "kazandın" der (çift ödeme).
+  await db.collection("tournaments").createIndex({ id: 1 }, { unique: true, background: true });
+  await db.collection("duels").createIndex({ id: 1 }, { unique: true, background: true });
+  await db.collection("streaks").createIndex({ userIdLower: 1 }, { unique: true, background: true });
+  console.log("indexes: social + duels + streaks OK");
+
   console.log(`veritabani: ${db.databaseName}`);
   process.exit(0);
 })().catch((e) => {

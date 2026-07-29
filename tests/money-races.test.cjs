@@ -48,7 +48,7 @@ after(async () => {
 });
 
 beforeEach(async () => {
-  for (const c of [S.COLL_TOURNAMENTS, COLL_USERS, MatchResults.COLL]) {
+  for (const c of [S.COLL_TOURNAMENTS, S.COLL_DUELS, COLL_USERS, MatchResults.COLL]) {
     await db.collection(c).deleteMany({});
   }
 });
@@ -174,5 +174,114 @@ describe("göreli yazma kuralı (regen)", () => {
     );
     const iyi = await db.collection(COLL_USERS).findOne({ userIdLower: "goreli" });
     assert.equal(iyi.balance, 9, "10 - 3 + 2 = 9");
+  });
+});
+
+describe("düello ödemesi mührü", () => {
+  const duello = (id, st = "accepted") => ({
+    id, status: st, fixtureId: "fx", stake: 10, pot: 20,
+    creatorId: "u1", acceptorId: "u2",
+  });
+
+  test("10 eşzamanlı sonuçlandırma, yalnızca BİRİ öder", async () => {
+    // Eski koruma `withFileLock` idi: yalnızca TEK süreci korur. Depo Mongo'ya
+    // taşındığı için çok instance'ta hiçbir şey yapmıyordu; ödeme de kilidin
+    // dışındaydı ve Mongo'ya durum yazımı ödemeden SONRA yapılıyordu.
+    await S.saveDuels([duello("d1")], db);
+    const r = await Promise.all(
+      Array.from({ length: 10 }, () => S.claimDuelSettle("d1", { winnerId: "u1" }, db))
+    );
+    assert.equal(r.filter(Boolean).length, 1, "ödül bir kez yatmalı");
+  });
+
+  test("mühür durumu ve alanları yazar", async () => {
+    await S.saveDuels([duello("d2")], db);
+    await S.claimDuelSettle("d2", { winnerId: "u2", settledAt: "2026-07-29T12:00:00Z" }, db);
+    const d = (await S.loadDuels(db)).find((x) => x.id === "d2");
+    assert.equal(d.status, "settled");
+    assert.equal(d.winnerId, "u2");
+  });
+
+  test("zaten ödenmiş düello ikinci kez üstlenilmez", async () => {
+    await S.saveDuels([duello("d3", "settled")], db);
+    assert.equal(await S.claimDuelSettle("d3", { winnerId: "x" }, db), false);
+  });
+});
+
+describe("düello deposu — yarım taşımanın açtığı delik", () => {
+  test("KAYDEDİLEN düello OKUNABİLİR (Mongo'da başka kayıt varken bile)", async () => {
+    // Kusur buydu: loadDuels Mongo'dan okuyor, saveDuels yalnızca dosyaya
+    // yazıyordu. Mongo'da bir kayıt varken yeni düello görünmez oluyordu —
+    // oyuncu bahsini yatırıp düellosunu kaybediyordu.
+    await S.saveDuels([{ id: "eski", status: "settled" }], db);
+    const list = await S.loadDuels(db);
+    list.push({ id: "yeni", status: "open", stake: 10 });
+    await S.saveDuels(list, db);
+
+    const sonra = await S.loadDuels(db);
+    assert.equal(sonra.length, 2);
+    assert.ok(sonra.find((d) => d.id === "yeni"), "yeni düello görünmeli");
+  });
+
+  test("Mongo boşsa dosyaya düşülür (eski kayıtlar kaybolmaz)", async () => {
+    // Eski loadDuels `docs.length` kontrolü yapmıyordu: boş koleksiyon
+    // doğrudan [] dönüyor, dosya hiç okunmuyordu.
+    await db.collection(S.COLL_DUELS).deleteMany({});
+    await S.saveDuels([{ id: "dosyada", status: "open" }], null);
+    const list = await S.loadDuels(db);
+    assert.equal(list.length, 1);
+    assert.equal(list[0].id, "dosyada");
+  });
+});
+
+describe("seri deposu (streak) — bonus tekrarını önler", () => {
+  const StreakStore = require("../lib/streak-store.cjs");
+
+  test("FARKLI kullanıcıların eşzamanlı güncellemeleri birbirini silmez", async () => {
+    // Eski kod tüm haritayı okuyup tümünü geri yazıyordu (kilitsiz): iki maç
+    // aynı anda sonuçlandığında biri diğerinin serisini siliyordu.
+    await db.collection(StreakStore.COLL).deleteMany({});
+    await Promise.all(
+      Array.from({ length: 10 }, (_, i) =>
+        StreakStore.saveMany({ ["u" + i]: { count: i, lastTier: 0 } }, db)
+      )
+    );
+    const hepsi = await StreakStore.loadMany(null, db);
+    assert.equal(Object.keys(hepsi).length, 10, "10 kullanıcının hepsi durmalı");
+  });
+
+  test("lastTier korunur — bonus tekrar ödenmez", async () => {
+    // Bonusun tek kez verilmesini sağlayan alan bu. Kaybolursa oyuncu aynı
+    // eşikleri yeniden geçer ve LC'yi TEKRAR alır (sessiz enflasyon).
+    await db.collection(StreakStore.COLL).deleteMany({});
+    await StreakStore.saveMany({ oyuncu: { cumOdds: 25, count: 20, lastTier: 1 } }, db);
+    const m = await StreakStore.loadMany(["oyuncu"], db);
+    assert.equal(m.oyuncu.lastTier, 1);
+  });
+
+  test("saveMany SİLMEZ — kısmi liste diğerlerini korur", async () => {
+    // Diğer depoların "tam değiştirme" semantiğinin TERSİ: burada kısmi liste
+    // normaldir (yalnızca değişen kullanıcılar yazılır).
+    await db.collection(StreakStore.COLL).deleteMany({});
+    await StreakStore.saveMany({ a: { count: 1 }, b: { count: 2 } }, db);
+    await StreakStore.saveMany({ a: { count: 5 } }, db);
+    const m = await StreakStore.loadMany(null, db);
+    assert.equal(Object.keys(m).length, 2, "b silinmemeli");
+    assert.equal(m.a.count, 5);
+    assert.equal(m.b.count, 2);
+  });
+
+  test("yalnızca istenen kullanıcılar okunur (sıcak yol maliyeti)", async () => {
+    await db.collection(StreakStore.COLL).deleteMany({});
+    await StreakStore.saveMany({ x: { count: 1 }, y: { count: 2 }, z: { count: 3 } }, db);
+    const m = await StreakStore.loadMany(["x", "z"], db);
+    assert.deepEqual(Object.keys(m).sort(), ["x", "z"]);
+  });
+
+  test("iç alan userIdLower sızmaz", async () => {
+    await db.collection(StreakStore.COLL).deleteMany({});
+    await StreakStore.saveMany({ k: { count: 1 } }, db);
+    const m = await StreakStore.loadMany(["k"], db);
+    assert.equal("userIdLower" in m.k, false);
   });
 });
