@@ -38,8 +38,16 @@ router.get("/leagues", (_req, res) => {
 router.get("/source-stats", (_req, res) => {
   try {
     const report = scraper.getStats();
-    const eliminate = report.filter(r => r.suggestion === "ELE");
-    res.json({ ok: true, report, eliminateSuggestions: eliminate.map(r => r.name) });
+    // "ELE" değil "INCELE": şelalede sırası geç olan kaynak yalnızca öncekiler
+    // düştüğünde denenir; düşük oranı bozukluk değil, nadir-deneme göstergesi
+    // olabilir. Karar --probe ölçümüyle verilmeli (bkz. livescore-scraper).
+    const incele = report.filter((r) => r.suggestion === "INCELE");
+    res.json({
+      ok: true,
+      report,
+      reviewSuggestions: incele.map((r) => r.name),
+      not: "Düşük oran tek başına eleme sebebi değildir; şelale sırası ve --probe sonucu birlikte değerlendirilmeli.",
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

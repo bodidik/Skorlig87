@@ -86,16 +86,41 @@ function recordAttempt(stats, name, success) {
   if (success) { s.success++; s.lastSuccess = s.lastAttempt; }
 }
 
+/**
+ * Düşük başarılı kaynakları uyarır.
+ *
+ * ⚠️ "ELEME ÖNERİLİR" DEMİYORUZ — şu tuzağa iki kez düşüldü: şelale sırayla
+ * çalışır ve ÖNCEKİ kaynak başarılı olunca sonrakiler HİÇ denenmez. Bir kaynağın
+ * düşük oranı çoğu zaman "bozuk" değil, "yalnızca kötü koşullarda sıra ona
+ * geliyor" demektir. Üstelik sıra ortama göre değişiyor: yerelde mackolik
+ * kazanıyor, Render'da mackolik zaman aşımına uğrayıp goal kazanıyor.
+ *
+ * Bu uyarıya bakıp kaynak elemek, YANLIŞ kaynağı silmeye yol açar. O yüzden
+ * artık şelaledeki sıra da yazılıyor ve karar yoklamaya (--probe) havale
+ * ediliyor — yoklama kaynağı şelaleden BAĞIMSIZ dener, tek güvenilir ölçüm o.
+ */
 function checkAndWarnStats(stats) {
+  const sira = new Map(orderedSources().map((s, i) => [s.name, i + 1]));
   const poor = [];
   for (const [name, s] of Object.entries(stats)) {
     if (s.attempts >= MIN_ATTEMPTS && s.success / s.attempts < WARN_RATE) {
-      poor.push({ name, rate: Math.round(s.success / s.attempts * 100), attempts: s.attempts });
+      poor.push({
+        name,
+        rate: Math.round((s.success / s.attempts) * 100),
+        attempts: s.attempts,
+        pos: sira.get(name) ?? "?",
+      });
     }
   }
   if (poor.length) {
-    console.warn("[livescore] ⚠️  Düşük başarı oranlı kaynaklar (eleme önerilir):");
-    poor.forEach(p => console.warn(`   → ${p.name}: %${p.rate} başarı (${p.attempts} deneme)`));
+    console.warn(
+      "[livescore] ⚠️  Düşük başarı oranlı kaynaklar " +
+        "(şelalede sırası geç olan kaynak zaten nadiren denenir — " +
+        "eleme kararı için --probe kullanın):"
+    );
+    poor.forEach((p) =>
+      console.warn(`   → ${p.name}: %${p.rate} başarı (${p.attempts} deneme · şelalede ${p.pos}. sırada)`)
+    );
   }
   return poor;
 }
@@ -1074,16 +1099,28 @@ function getCache() {
   return _cache;
 }
 
-// Kaynak başarı istatistiklerini döner + eleme önerisi üretir
+/**
+ * Kaynak başarı istatistikleri.
+ *
+ * `suggestion` alanı "ELE" DEMİYOR — bkz. checkAndWarnStats: şelalede sırası
+ * geç olan kaynak yalnızca öncekiler düştüğünde denenir, yani düşük oranı
+ * bozukluk değil nadir-deneme göstergesi olabilir. Alan artık "İNCELE" diyor
+ * ve şelaledeki sırayı da veriyor; karar --probe ölçümüyle verilmeli.
+ */
 function getStats() {
   const stats = readStats();
+  const sira = new Map(orderedSources().map((s, i) => [s.name, i + 1]));
   const report = Object.entries(stats).map(([name, s]) => ({
     name,
     attempts: s.attempts,
     success:  s.success,
     rate:     s.attempts ? Math.round(s.success / s.attempts * 100) : null,
     lastSuccess: s.lastSuccess,
-    suggestion: s.attempts >= MIN_ATTEMPTS && s.success / s.attempts < WARN_RATE ? "ELE" : "TUT",
+    waterfallPos: sira.get(name) ?? null,
+    suggestion:
+      s.attempts >= MIN_ATTEMPTS && s.success / s.attempts < WARN_RATE
+        ? "INCELE"
+        : "TUT",
   }));
   report.sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
   return report;
