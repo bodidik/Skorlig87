@@ -14,6 +14,7 @@ const path = require("path");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const SETTINGS = path.join(DATA_DIR, "settings.json");
+const SettingsStore = require("../lib/settings-store.cjs");
 
 // 🔹 Runtime mode entegrasyonu (4 takım / 30 takım / global vb.)
 const { getRuntimeMode, setRuntimeMode } = require("../lib/runtime-mode.cjs");
@@ -73,7 +74,9 @@ router.get("/", async (req, res) => {
     },
   };
 
-  const s = await readJson(SETTINGS, null);
+  // Ayarlar Mongo birincil — bkz. lib/settings-store.cjs. Dosyada tutulurken
+  // her deploy siliniyor ve admin ayarları sessizce varsayılana dönüyordu.
+  const s = await SettingsStore.load(req.app?.locals?.db || null);
   const out = s
     ? {
         features: s.features || def.features,
@@ -125,8 +128,8 @@ router.post("/update", _adminAuth, express.json(), async (req, res) => {
       },
     };
 
-    await writeJson(SETTINGS, out);
-    return res.json({ ok: true, saved: out, file: "data/settings.json" });
+    await SettingsStore.save(out, req.app?.locals?.db || null);
+    return res.json({ ok: true, saved: out, store: "mongo+file" });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e) });
   }

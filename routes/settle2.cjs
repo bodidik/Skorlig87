@@ -66,6 +66,14 @@ const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const RESULTS_FILE = path.join(DATA_DIR, "results.json");
 const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 const FixturesStore = require("../lib/fixtures-store.cjs");
+// ⚠️ Bu iki import BİR TUR ATLANMIŞTI: koşullu ekleme kullanılmıştı
+// ("dosyada 'social-store' geçmiyorsa ekle") ama eklediğim YORUM satırı o
+// metni zaten içerdiği için koşul yanlış çalıştı. Sonuç: turnuva
+// sonuçlandırmada ReferenceError — testler o yolu hiç çalıştırmadığı için
+// sessiz kaldı. Ders: import eklemeyi metin varlığına bağlama.
+const SocialStore = require("../lib/social-store.cjs");
+const Season = require("../lib/season.cjs");
+const PoolStore = require("../lib/pool-store.cjs");
 const RT_LIVE_GS_FILE = path.join(DATA_DIR, "rt-live-gs.json");
 
 // ✅ maç bazlı puan defteri (kalıcı history)
@@ -1104,6 +1112,23 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
 
   await awardLcForRows(rows, db);
 
+  // ── Maç havuzu ödemesi (bkz. lib/pool-store.cjs) ──────────────────────
+  // Kendi `settledAt` mührü var; settle2 defalarca çağrılsa da bir kez öder.
+  // Havuz SIRALAMAYI ETKİLEMEZ — burada yalnızca LC dağıtılır, `rows`a
+  // dokunulmaz (puan = beceri, LC = para).
+  try {
+    const havuz = await PoolStore.settlePool(fid, outcome, db);
+    if (havuz.ok && havuz.players) {
+      console.log(
+        `[settle2] havuz ${fid}: ${havuz.players} oyuncu | havuz ${havuz.pool} LC | ` +
+        `carpan ${havuz.multiplier}x | odenen ${havuz.paid} | yakilan ${havuz.burned}`
+      );
+    }
+  } catch (e) {
+    // Havuz ödemesi maç ödülünü DURDURMAMALI: ikisi ayrı ekonomiler.
+    console.error("[settle2] havuz odemesi basarisiz:", e?.message || e);
+  }
+
   // ── Seri (streak) sistemi: 1X2 tahmini olan insan oyuncular için ─────────────
   // Doğru sonuç → seriye eklenir (odds = contrarian çarpan, min 1.0),
   // yanlış → seri kırılır. Tier atlanınca (Isınıyor/Ateşte/Durdurulamıyor)
@@ -1190,6 +1215,7 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
   // tarafındaki read-modify-write ise kullanıcı sayısıyla büyür.
   if (db) {
     try {
+      const sezon = Season.seasonKey();
       const ops = rows.map((r) => {
         const uid = String(r.userId);
         const ceza =
@@ -1198,7 +1224,10 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
           Number(r.detail?.penaltySidePenalty || 0);
         return {
           updateOne: {
-            filter: { userIdLower: uid.toLowerCase() },
+            // Sezon anahtarı bileşik anahtarın parçası: aynı oyuncunun her
+            // sezonu AYRI belge, geçmiş sezonlar arşiv olarak duruyor.
+            // bkz. lib/season.cjs
+            filter: { season: sezon, userIdLower: uid.toLowerCase() },
             update: {
               $inc: {
                 totalPoints: Number(r.points || 0),
@@ -1206,7 +1235,7 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
                 matches: 1,
               },
               $set: { userId: uid, lastAt: nowISO, updatedAt: nowISO },
-              $setOnInsert: { userIdLower: uid.toLowerCase(), createdAt: nowISO },
+              $setOnInsert: { season: sezon, userIdLower: uid.toLowerCase(), createdAt: nowISO },
             },
             upsert: true,
           },

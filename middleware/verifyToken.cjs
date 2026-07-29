@@ -9,17 +9,24 @@ const fsp  = require("fs").promises;
 
 // ─── Ban cache (60 sn TTL, her restart'ta sıfırlanır) ────────────────────────
 const BANNED_FILE = path.join(__dirname, "..", "data", "banned-users.json");
+const Moderation = require("../lib/moderation-store.cjs");
 let _bannedCache  = new Set();
 let _bannedAt     = 0;
 
 async function isBanned(uid) {
   if (Date.now() - _bannedAt > 60_000) {
     try {
-      const raw = JSON.parse(await fsp.readFile(BANNED_FILE, "utf8"));
-      _bannedCache = new Set(
-        (raw.items || []).map(x => String(x.userId || x).toLowerCase()).filter(Boolean)
-      );
-    } catch { _bannedCache = new Set(); }
+      // ⚠️ Yasak listesi Mongo birincil — bkz. lib/moderation-store.cjs.
+      // Eskiden doğrudan banned-users.json okunuyordu ve dosya yoksa
+      // `catch { new Set() }` çalışıyordu: "kimse yasaklı değil". Render'da
+      // disk kalıcı olmadığı için o dosya HER DEPLOY'DA siliniyordu, yani
+      // tüm yasaklar sessizce kalkıyordu. Fail-open bir güvenlik kontrolü,
+      // hiç olmamasından daha kötü: koruyor sanılıyor.
+      _bannedCache = await Moderation.bannedSet(null);
+    } catch (e) {
+      // Okunamadıysa ESKİ ÖNBELLEĞİ KORU — boş kümeye düşmek yasakları kaldırır.
+      console.error("[verifyToken] yasak listesi okunamadi, onceki liste korunuyor:", e?.message || e);
+    }
     _bannedAt = Date.now();
   }
   return _bannedCache.has(String(uid || "").toLowerCase());

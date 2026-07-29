@@ -9,6 +9,7 @@ const fsp = fs.promises;
 const DATA_DIR    = path.join(__dirname, "..", "data");
 const FILE        = path.join(DATA_DIR, "admin-users.json");
 const BANNED_FILE = path.join(DATA_DIR, "banned-users.json");
+const Moderation = require("../lib/moderation-store.cjs");
 
 function normUserId(v) {
   return String(v || "").trim().toLowerCase();
@@ -30,12 +31,13 @@ async function writeJsonAtomic(file, obj) {
   await fsp.rename(tmp, file);
 }
 
-async function getList() {
-  const j = await readJson(FILE, { items: [], updatedAt: null });
-  const items = Array.isArray(j.items) ? j.items : [];
-  const clean = items.map(normUserId).filter(Boolean);
-  const uniq = Array.from(new Set(clean));
-  return { items: uniq, updatedAt: j.updatedAt || null };
+// Admin ve yasak listeleri Mongo birincil — bkz. lib/moderation-store.cjs.
+// Dosyada tutulurken her deploy siliniyordu: yönetici hakları sıfırlanıyor,
+// YASAKLAR SESSİZCE KALKIYORDU (verifyToken dosya okunamayınca boş küme
+// kullanıyor, yani fail-open bir güvenlik kontrolü).
+async function getList(db) {
+  const items = await Moderation.listAdmins(db || null);
+  return { items, updatedAt: null };
 }
 
 function requireAdminToken(req, res) {
@@ -72,8 +74,8 @@ router.get("/is-admin", async (req, res) => {
     return res.json({ ok: true, userId: uid, isAdmin: true, source: "builtin" });
   }
 
-  const { items } = await getList();
-  return res.json({ ok: true, userId: uid, isAdmin: items.includes(uid), source: "file" });
+  const { items } = await getList(req.app?.locals?.db || null);
+  return res.json({ ok: true, userId: uid, isAdmin: items.includes(uid), source: "store" });
 });
 
 /**
@@ -82,8 +84,8 @@ router.get("/is-admin", async (req, res) => {
  */
 router.get("/admin-users", async (req, res) => {
   if (!requireAdminToken(req, res)) return;
-  const j = await getList();
-  res.json({ ok: true, ...j, source: "file" });
+  const j = await getList(req.app?.locals?.db || null);
+  res.json({ ok: true, ...j, source: "store" });
 });
 
 /**
@@ -95,12 +97,9 @@ router.post("/admin-users/add", async (req, res) => {
   const uid = normUserId(req.body && req.body.userId);
   if (!uid) return res.status(400).json({ ok: false, error: "BAD_USERID" });
 
-  const cur = await getList();
-  const next = Array.from(new Set([...(cur.items || []), uid]));
-
-  const out = { items: next, updatedAt: new Date().toISOString() };
-  await writeJsonAtomic(FILE, out);
-  res.json({ ok: true, ...out });
+  await Moderation.addAdmin(uid, req.app?.locals?.db || null);
+  const next = await Moderation.listAdmins(req.app?.locals?.db || null);
+  res.json({ ok: true, items: next, updatedAt: new Date().toISOString() });
 });
 
 /**
@@ -112,19 +111,15 @@ router.post("/admin-users/remove", async (req, res) => {
   const uid = normUserId(req.body && req.body.userId);
   if (!uid) return res.status(400).json({ ok: false, error: "BAD_USERID" });
 
-  const cur = await getList();
-  const next = (cur.items || []).filter((x) => x !== uid);
-
-  const out = { items: next, updatedAt: new Date().toISOString() };
-  await writeJsonAtomic(FILE, out);
-  res.json({ ok: true, ...out });
+  await Moderation.removeAdmin(uid, req.app?.locals?.db || null);
+  const next = await Moderation.listAdmins(req.app?.locals?.db || null);
+  res.json({ ok: true, items: next, updatedAt: new Date().toISOString() });
 });
 
 // ─── Ban yönetimi ────────────────────────────────────────────────────────────
 
-async function getBanned() {
-  const j = await readJson(BANNED_FILE, { items: [] });
-  return Array.isArray(j.items) ? j.items : [];
+async function getBanned(db) {
+  return Moderation.listBanned(db || null);
 }
 
 /**
@@ -133,7 +128,7 @@ async function getBanned() {
  */
 router.get("/banned", async (req, res) => {
   if (!requireAdminToken(req, res)) return;
-  const items = await getBanned();
+  const items = await getBanned(req.app?.locals?.db || null);
   res.json({ ok: true, count: items.length, items });
 });
 
@@ -147,13 +142,12 @@ router.post("/ban", async (req, res) => {
   const reason = String(req.body?.reason || "").trim() || null;
   if (!userId) return res.status(400).json({ ok: false, error: "BAD_USERID" });
 
-  const items = await getBanned();
-  const already = items.find(x => String(x.userId || "").toLowerCase() === userId.toLowerCase());
-  if (!already) {
-    items.push({ userId, reason, bannedAt: new Date().toISOString() });
-    await writeJsonAtomic(BANNED_FILE, { items, updatedAt: new Date().toISOString() });
-  }
-  res.json({ ok: true, userId, already: !!already, count: items.length });
+  const oncekiler = await getBanned(req.app?.locals?.db || null);
+  const already = oncekiler.some(x => String(x.userId || "").toLowerCase() === userId.toLowerCase());
+  // upsert idempotent: zaten yasaklıysa yalnızca sebep güncellenir.
+  await Moderation.ban(userId, { reason }, req.app?.locals?.db || null);
+  const items = await getBanned(req.app?.locals?.db || null);
+  res.json({ ok: true, userId, already, count: items.length });
 });
 
 /**
@@ -165,10 +159,10 @@ router.post("/unban", async (req, res) => {
   const userId = String(req.body?.userId || "").trim();
   if (!userId) return res.status(400).json({ ok: false, error: "BAD_USERID" });
 
-  const items = await getBanned();
-  const next  = items.filter(x => String(x.userId || "").toLowerCase() !== userId.toLowerCase());
-  await writeJsonAtomic(BANNED_FILE, { items: next, updatedAt: new Date().toISOString() });
-  res.json({ ok: true, userId, removed: items.length - next.length, count: next.length });
+  const oncekiler = await getBanned(req.app?.locals?.db || null);
+  await Moderation.unban(userId, req.app?.locals?.db || null);
+  const next = await getBanned(req.app?.locals?.db || null);
+  res.json({ ok: true, userId, removed: oncekiler.length - next.length, count: next.length });
 });
 
 module.exports = router;

@@ -183,6 +183,7 @@ safeMount("users-friends-compat", () => app.use("/api/users/friends", require(".
 );
 safeMount("users",            () => app.use("/api/users",      require("./routes/users.cjs")));
 safeMount("duels",            () => app.use("/api",            require("./routes/duels.cjs")));
+safeMount("pool",             () => app.use("/api/pool",      require("./routes/pool.cjs")));
 safeMount("presets",          () => app.use("/api",            require("./routes/presets.cjs")));
 safeMount("leaderboard",      () => app.use("/api/leaderboard",require("./routes/leaderboard.cjs")));
 safeMount("groups",           () => app.use("/api/groups",     require("./routes/groups.cjs")));

@@ -15,6 +15,7 @@ const { rankRows, rankingMeta } = require("../lib/ranking.cjs");
 // Bot ayrimi: kullanici kiminle yaristigini gormeli (bkz. scopedRank).
 const { BOT_PROFILE_MAP } = require("../lib/botIds.cjs");
 const { attachCountries, countryOfUser } = require("../lib/user-country.cjs");
+const Season = require("../lib/season.cjs");
 
 async function readJson(file, fb=null){
   try{
@@ -126,11 +127,21 @@ async function resolveScope(req, db) {
 router.get("/", async (req,res)=>{
   const db = req.app?.locals?.db || null;
   const sc = await resolveScope(req, db);
+
+  // Geçersiz sezon anahtarı sessizce güncel sezona düşer — istemci hatası
+  // yüzünden boş tablo göstermek, kullanıcıya "kimse yok" demek olurdu.
+  const istenen = String(req.query.season || "").trim();
+  const sezon = Season.isValidKey(istenen) ? istenen : Season.seasonKey();
   const scopeInfo = (r) => ({
     requested: String(req.query.scope || "global").toLowerCase(),
     applied: r.scope,
     country: r.country,
     poolSize: r.poolSize,
+    // Hangi sezonun tablosuna bakıldığı görünür olmalı.
+    season: sezon,
+    seasonLabel: Season.label(sezon),
+    isCurrentSeason: sezon === Season.seasonKey(),
+    previousSeason: Season.previousKey(sezon),
     // Kullanıcı kiminle yarıştığını görmeli: kaçı bot, kaçı gerçek.
     humansOnly: r.humansOnly,
     botCount: r.botCount,
@@ -144,8 +155,15 @@ router.get("/", async (req,res)=>{
       const col = db.collection("season_totals");
       // Sıralama uygulama tarafında (rating) yapılır; Mongo sort'u sadece
       // deterministik bir okuma sırası için.
+      //
+      // SEZON: varsayılan içinde bulunulan sezon. `?season=2026-06` ile arşiv.
+      // Sezon alanı eklenmeden önceki kayıtlarda `season` yok — geçiş
+      // döneminde onlar da güncel sezona sayılır (bkz. lib/season-totals.cjs).
+      const suzgec = sezon === Season.seasonKey()
+        ? { $or: [{ season: sezon }, { season: { $exists: false } }] }
+        : { season: sezon };
       const docs = await col
-        .find({})
+        .find(suzgec)
         .sort({ totalPoints: -1 })
         .toArray();
 

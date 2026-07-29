@@ -47,7 +47,10 @@ const { getDb } = require("../lib/mongo.cjs");
   // leaderboard tüm koleksiyonu okur. userIdLower BENZERSİZ olmalı — aksi
   // halde yarış koşulunda aynı oyuncu için iki kayıt oluşur ve tabloda
   // iki kez görünür (puanı da bölünür).
-  await db.collection("season_totals").createIndex({ userIdLower: 1 }, { unique: true });
+  // ⚠️ BİLEŞİK: sıralama sezona bölündü (bkz. lib/season.cjs). Yalnızca
+  // `userIdLower` benzersiz olsaydı aynı oyuncunun İKİNCİ sezonu yazılamazdı.
+  // Eski tekil indeksi düşürmek için: node scripts/migrate-season-field.cjs
+  await db.collection("season_totals").createIndex({ season: 1, userIdLower: 1 }, { unique: true, background: true });
   console.log("indexes: season_totals OK");
 
   // Fikstürler: senkron her turda tam listeyi upsert eder (fixtureId benzersiz
@@ -77,6 +80,20 @@ const { getDb } = require("../lib/mongo.cjs");
   await db.collection("tr_league_weeks").createIndex({ weekKey: 1 }, { unique: true, background: true });
   await db.collection("invite_codes_1987").createIndex({ codeNorm: 1 }, { unique: true, background: true });
   console.log("indexes: social + duels + streaks + tr-league + invite OK");
+
+  // ⚠️ GÜVENLİK: yasak listesi her isteği süzüyor. Kopya kayıt, "kaldırıldı
+  // sanılan ama duran" yasak demek.
+  await db.collection("admin_users").createIndex({ userId: 1 }, { unique: true, background: true });
+  await db.collection("banned_users").createIndex({ userId: 1 }, { unique: true, background: true });
+  console.log("indexes: moderation OK");
+
+  // Maç havuzu (bkz. lib/pool-store.cjs). Bir oyuncu bir maçta TEK bahis
+  // tutar; benzersizlik olmazsa aynı kişi için iki kayıt oluşur ve ödeme
+  // iki kez yapılır.
+  await db.collection("pool_bets").createIndex({ fixtureId: 1, userIdLower: 1 }, { unique: true, background: true });
+  await db.collection("pool_bets").createIndex({ fixtureId: 1 }, { background: true });
+  await db.collection("pools").createIndex({ fixtureId: 1 }, { unique: true, background: true });
+  console.log("indexes: pool OK");
 
   console.log(`veritabani: ${db.databaseName}`);
   process.exit(0);
