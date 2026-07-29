@@ -27,7 +27,31 @@ async function readJson(file, fb) {
   catch { return fb; }
 }
 
-async function loadDuels() {
+/**
+ * Düellolar. Mongo varsa YETKİLİ KAYNAK ODUR.
+ *
+ * ⚠️ NEDEN (para kaybı, sessiz): Eskiden yalnızca dosyadan okunuyordu ve Mongo
+ * salt yazma aynasıydı. Render'da kalıcı disk YOK — `data/duels.json` her
+ * deploy'da siliniyor. Akış şuydu:
+ *
+ *   kullanıcı LC yatırır (deductLc) → düello dosyaya yazılır → deploy →
+ *   dosya silinir → düello yok, LC de yok
+ *
+ * Hata üretilmiyordu; ne kullanıcı ne biz fark ediyorduk. Bugün ~10 deploy
+ * yapıldı, yani bu pencere sık açılıyor.
+ *
+ * Mongo yoksa dosya tek kaynaktır (yerel geliştirme) — davranış korunur.
+ */
+async function loadDuels(db) {
+  if (db) {
+    try {
+      const docs = await db.collection("duels").find({}).toArray();
+      return docs.map(({ _id, ...d }) => d);
+    } catch (e) {
+      // Mongo okunamıyorsa dosyaya düş — hizmet durmasın, ama sessiz kalma.
+      console.error("[duels] mongo okunamadi, dosyaya dusuluyor:", e?.message || e);
+    }
+  }
   const raw = await readJson(DUELS_FILE, []);
   return Array.isArray(raw) ? raw : [];
 }
@@ -273,7 +297,7 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
   const settled = [];
 
   await withFileLock(DUELS_FILE, async () => {
-    const list = await loadDuels();
+    const list = await loadDuels(db);
     const nowISO = new Date().toISOString();
     let changed = false;
 
@@ -425,7 +449,7 @@ router.post("/duels/create", verifyToken, async (req, res) => {
     };
 
     await withFileLock(DUELS_FILE, async () => {
-      const list = await loadDuels();
+      const list = await loadDuels(db);
       list.push(duel);
       await saveDuels(list);
     });
@@ -462,7 +486,7 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
     let result = null;
 
     await withFileLock(DUELS_FILE, async () => {
-      const list = await loadDuels();
+      const list = await loadDuels(db);
       const duel = list.find(d => d.id === did);
 
       if (!duel) { result = { err: "DUEL_NOT_FOUND" }; return; }
@@ -522,7 +546,7 @@ router.post("/duels/cancel", verifyToken, async (req, res) => {
     let result = null;
 
     await withFileLock(DUELS_FILE, async () => {
-      const list = await loadDuels();
+      const list = await loadDuels(db);
       const duel = list.find(d => d.id === did);
       if (!duel) { result = { err: "DUEL_NOT_FOUND" }; return; }
       if (duel.status !== "open") { result = { err: "NOT_OPEN" }; return; }
@@ -556,7 +580,7 @@ router.get("/duels/open", async (req, res) => {
     const uid = String(req.query.userId || "").trim();
     if (!fx) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
 
-    const list = await loadDuels();
+    const list = await loadDuels(getDb(req));
     const uidL = uid.toLowerCase();
     const open = list.filter(d => {
       if (d.fixtureId !== fx || d.status !== "open") return false;
@@ -579,7 +603,7 @@ router.get("/duels/my", async (req, res) => {
     if (!uid) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
 
     const uidL = uid.toLowerCase();
-    const list = await loadDuels();
+    const list = await loadDuels(getDb(req));
     const mine = list
       .filter(d => {
         const isMe = d.creatorId.toLowerCase() === uidL || (d.acceptorId && d.acceptorId.toLowerCase() === uidL);
@@ -600,7 +624,7 @@ router.get("/duels/arena", async (req, res) => {
   try {
     const uid = String(req.query.userId || "").trim();
     const uidL = uid.toLowerCase();
-    const list = await loadDuels();
+    const list = await loadDuels(getDb(req));
 
     const matchMap = new Map();
     for (const d of list) {
@@ -652,7 +676,7 @@ router.get("/duels/fixture-board", async (req, res) => {
   try {
     const fx = String(req.query.fixtureId || "").trim();
     if (!fx) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
-    const list = await loadDuels();
+    const list = await loadDuels(getDb(req));
     const items = list.filter(d => d.fixtureId === fx);
     return res.json({ ok: true, count: items.length, items });
   } catch (e) {
@@ -661,4 +685,6 @@ router.get("/duels/fixture-board", async (req, res) => {
 });
 
 module.exports = router;
+// Kalıcılık testi için: düello kaybı PARA kaybı demek, testsiz bırakılamaz.
+module.exports._loadDuels = loadDuels;
 module.exports.settleDuelsForFixture = settleDuelsForFixture;
