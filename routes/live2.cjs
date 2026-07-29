@@ -134,6 +134,11 @@ const {
   isAcceptableFixture, sortByPriority, sameCountry, priorityGroupOf,
 } = require("../lib/fixture-priority.cjs");
 
+// Ülke adı / bayrak / seçilebilir liste: tek kaynak.
+const {
+  normalizeCountry, isKnownCountry, flagOf, selectableCountries,
+} = require("../lib/countries.cjs");
+
 /**
  * "Maçlar" ekranında en az bu kadar maç gösterilmeye çalışılır.
  * Ülke tavanı yüzünden liste bunun altına düşerse kalanlardan tamamlanır —
@@ -277,58 +282,31 @@ const COUNTRY_ALIASES = {
   "Turkey": ["Türkiye", "Turkey"],
 };
 
-const COUNTRY_FLAGS = {
-  "Türkiye": "🇹🇷", Turkey: "🇹🇷", England: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", Spain: "🇪🇸", Germany: "🇩🇪",
-  Italy: "🇮🇹", France: "🇫🇷", Netherlands: "🇳🇱", Belgium: "🇧🇪", Greece: "🇬🇷",
-  Portugal: "🇵🇹", Brazil: "🇧🇷", Argentina: "🇦🇷", Japan: "🇯🇵", Russia: "🇷🇺",
-  Ukraine: "🇺🇦", USA: "🇺🇸", "Saudi Arabia": "🇸🇦",
-  Austria: "🇦🇹", Switzerland: "🇨🇭", Poland: "🇵🇱", Mexico: "🇲🇽",
-  Croatia: "🇭🇷", Serbia: "🇷🇸", "Czech Republic": "🇨🇿",
-  Romania: "🇷🇴", Hungary: "🇭🇺", Slovakia: "🇸🇰", Bulgaria: "🇧🇬",
-};
-
-// UI'da gösterilecek seçilebilir ülkeler (World/Europe/International meta anahtarları hariç,
-// Turkey/Türkiye tekilleştirilmiş)
-const SELECTABLE_COUNTRIES = Object.keys(ALLOWED)
-  .filter((c) => !["World", "Europe", "International", "Turkey"].includes(c));
-
-// ISO 3166-1 alpha-2 kodu → ALLOWED kanonik isim
-const ISO2_TO_COUNTRY = {
-  TR: "Türkiye", GB: "England", ES: "Spain",  DE: "Germany",  IT: "Italy",
-  FR: "France",  NL: "Netherlands", BE: "Belgium", GR: "Greece", PT: "Portugal",
-  BR: "Brazil",  AR: "Argentina",   JP: "Japan",   RU: "Russia", UA: "Ukraine",
-  US: "USA",     SA: "Saudi Arabia", AT: "Austria", CH: "Switzerland",
-  PL: "Poland",  MX: "Mexico",
-  HR: "Croatia", RS: "Serbia", CZ: "Czech Republic",
-  RO: "Romania", HU: "Hungary", SK: "Slovakia", BG: "Bulgaria",
-};
+// Ülke bayrağı, seçilebilir liste ve ISO eşlemesi TEK KAYNAKTAN gelir:
+// lib/countries.cjs. Burada üç ayrı tablo vardı (COUNTRY_FLAGS,
+// SELECTABLE_COUNTRIES, ISO2_TO_COUNTRY) ve hepsi ALLOWED'a bağlıydı — yani
+// "kullanıcı hangi ülkeyi seçebilir" ile "hangi ligler üst lig" aynı tabloya
+// bağlanmıştı. Ülke elemesi kaldırıldıktan sonra bu bağ anlamsız kaldı.
+const COUNTRY_FLAGS = new Proxy({}, { get: (_t, k) => flagOf(String(k)) });
+const SELECTABLE_COUNTRIES = selectableCountries();
 
 // Aksan/büyük-küçük/bozuk-bayt farklarına dayanıklı kanonik ülke adı.
 // "GR", "greece", "TÜRKİYE", "T?rkiye" hepsini doğru ALLOWED anahtarına çevirir.
+/**
+ * Kanonik ülke adı — TEK KAYNAK: lib/countries.cjs.
+ *
+ * Eski hâli yalnızca ALLOWED anahtarlarıyla eşleşiyordu (30 ülke) ve Türkçe
+ * adları hiç tanımıyordu. Kaynaklar Türkçe gönderdiğinde ("İzlanda", "Ekvador")
+ * `null` dönüyor, ülke eşleşmesi kuruluyordu. Ayrıca "USA" ile
+ * "United States" ayrı sayılıyordu — ölçüldü, aynı ülke iki listeye bölünmüştü.
+ *
+ * Tanınmayan ad için `null` döner: kullanıcı ülkesi olarak kabul edilmez ama
+ * MAÇ ELENMEZ (eleme lib/fixture-priority.cjs'te kaldırıldı).
+ */
 function canonicalCountry(input) {
   const s = String(input || "").trim();
   if (!s) return null;
-
-  // ISO 2-harf kod (yeni seçiciden gelen format)
-  const upper = s.toUpperCase();
-  if (ISO2_TO_COUNTRY[upper]) return ISO2_TO_COUNTRY[upper];
-
-  const norm = (x) =>
-    String(x || "")
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .replace(/[^a-z0-9 ]/gi, "")
-      .toLowerCase()
-      .trim();
-
-  const n = norm(s);
-  if (!n) return null;
-  if (n === "turkiye" || n === "turkey" || n === "trkiye") return "Türkiye";
-  for (const c of Object.keys(ALLOWED)) {
-    if (["World", "Europe", "International"].includes(c)) continue;
-    if (norm(c) === n) return c === "Turkey" ? "Türkiye" : c;
-  }
-  return null;
+  return isKnownCountry(s) ? normalizeCountry(s) : null;
 }
 
 // extraLeagues: virgülle ayrılmış ülke kodu/adı listesi ("GB,FR" veya "England,France")

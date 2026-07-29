@@ -12,6 +12,8 @@ const TOTALS_FILE      = path.join(DATA_DIR, "totals.json");
 
 // Sıralama: kümülatif puan değil, güven ağırlıklı ortalama (bkz. lib/ranking.cjs)
 const { rankRows, rankingMeta } = require("../lib/ranking.cjs");
+// Bot ayrimi: kullanici kiminle yaristigini gormeli (bkz. scopedRank).
+const { BOT_PROFILE_MAP } = require("../lib/botIds.cjs");
 const { attachCountries, countryOfUser } = require("../lib/user-country.cjs");
 
 async function readJson(file, fb=null){
@@ -34,19 +36,35 @@ async function readJson(file, fb=null){
  *
  * @returns {{ rows, scope, country, poolSize }}
  */
-async function scopedRank(rawRows, { scope, country }, db) {
+async function scopedRank(rawRows, { scope, country, humansOnly }, db) {
   const withCountry = await attachCountries(rawRows, db);
+
+  // BOT İŞARETİ — ölçüldü (2026-07-29): tablodaki 1589 kaydın TAMAMI bot ve
+  // yanıt bunu hiçbir yerde söylemiyordu. Kullanıcı 1589 kişiyle yarıştığını
+  // sanıyor, ilk 20 sıranın tamamı bot. Bot listeyi canlı gösteriyor ama
+  // kiminle yarıştığını gizlemek dürüst değil.
+  const isaretli = withCountry.map((r) => ({
+    ...r,
+    isBot: BOT_PROFILE_MAP.has(String(r.userId || "").toLowerCase()),
+  }));
+
+  // ?humans=1 → yalnızca gerçek oyuncular. Botlar maç doldurmak için var,
+  // sıralamada rakip olmak için değil.
+  const insanFiltreli = humansOnly ? isaretli.filter((r) => !r.isBot) : isaretli;
 
   const wantCountry = scope === "country" ? String(country || "").trim() : null;
   const pool = wantCountry
-    ? withCountry.filter((r) => r.country === wantCountry)
-    : withCountry;
+    ? insanFiltreli.filter((r) => r.country === wantCountry)
+    : insanFiltreli;
 
   return {
     rows: rankRows(pool),
     scope: wantCountry ? "country" : "global",
     country: wantCountry || null,
     poolSize: pool.length,
+    humansOnly: !!humansOnly,
+    botCount: isaretli.filter((r) => r.isBot).length,
+    humanCount: isaretli.filter((r) => !r.isBot).length,
   };
 }
 
@@ -61,16 +79,20 @@ async function scopedRank(rawRows, { scope, country }, db) {
  * liste dönmek, ekranda "kimse yok" gibi görünürdü.
  */
 async function resolveScope(req, db) {
+  // ?humans=1 → botları sıralamadan çıkar. Bot kadrosu maçları doldurmak için
+  // var; sıralamada rakip olmak için değil.
+  const humansOnly = String(req.query.humans || "") === "1";
+
   const scope = String(req.query.scope || "global").trim().toLowerCase();
-  if (scope !== "country") return { scope: "global", country: null, fellBack: false };
+  if (scope !== "country") return { scope: "global", country: null, fellBack: false, humansOnly };
 
   let country = String(req.query.country || "").trim();
   if (!country) {
     const uid = String(req.query.userId || req.uid || "").trim();
     if (uid) country = (await countryOfUser(uid, db)) || "";
   }
-  if (!country) return { scope: "global", country: null, fellBack: true };
-  return { scope: "country", country, fellBack: false };
+  if (!country) return { scope: "global", country: null, fellBack: true, humansOnly };
+  return { scope: "country", country, fellBack: false, humansOnly };
 }
 
 /**
@@ -109,6 +131,10 @@ router.get("/", async (req,res)=>{
     applied: r.scope,
     country: r.country,
     poolSize: r.poolSize,
+    // Kullanıcı kiminle yarıştığını görmeli: kaçı bot, kaçı gerçek.
+    humansOnly: r.humansOnly,
+    botCount: r.botCount,
+    humanCount: r.humanCount,
     ...(sc.fellBack ? { fellBackReason: "COUNTRY_UNKNOWN" } : {}),
   });
 

@@ -23,6 +23,8 @@ const UsersStore = require("../lib/users-store.cjs");
 const WALLET_FILE        = path.join(DATA_DIR, "lc-wallet.json");
 const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
+// LC harcama: bakiye Mongo'da tutuluyor, dosyaya yazmak parayı kaybettirir.
+const WalletCredit = require("../lib/wallet-credit.cjs");
 const LIVE_DIR           = path.join(DATA_DIR, "live");
 
 const WINDOW_BEFORE_MS = 24 * 60 * 60 * 1000;  // 24 saat önce açılır
@@ -48,17 +50,55 @@ async function is1987User(userId, db) {
   return !!(u && (u.is1987 || String(u.segment || "").toLowerCase() === "1987"));
 }
 
-async function getUserPred(userId, fixtureId) {
+/**
+ * Kullanıcının bu maça verdiği tahmin (varsa).
+ *
+ * ⚠️ ÖNCE MONGO: bu fonksiyon "ikinci kez ücret alma" korumasının kendisi
+ * (çağıran `!existing` ise 3 LC düşüyor). Yalnızca dosyaya bakarken
+ * SKORLIG_PREDS_FILE_MIRROR=0 ile tahmin Mongo'da olup dosyada olmuyordu →
+ * kullanıcı aynı maç için TEKRAR ücretlendiriliyordu.
+ */
+async function getUserPred(userId, fixtureId, db) {
+  const uid = String(userId || "").toLowerCase();
+
+  if (db) {
+    try {
+      const doc = await db.collection("predictions").findOne({
+        fixtureId: String(fixtureId),
+        userIdLower: uid,
+      });
+      if (doc) return doc;
+    } catch (e) {
+      console.error("[weekly-picks] mongo pred okunamadi:", e?.message || e);
+    }
+  }
+
   const raw  = await readJson(PREDS_FILE, []);
   const list = Array.isArray(raw) ? raw : (raw?.items ?? []);
-  const uid  = String(userId || "").toLowerCase();
   return list.find(p =>
     String(p.fixtureId || "") === fixtureId &&
     String(p.userId    || "").toLowerCase() === uid
   ) || null;
 }
 
-async function spendLc(userId, amount) {
+/**
+ * LC düşer. Mongo varsa ORASI tek kaynaktır (atomik, bakiyeyi eksiye
+ * düşürmez); yoksa dosyaya düşülür.
+ *
+ * NEDEN: bakiye Mongo'dan (`lc_wallet_users`) okunuyor. Harcama yalnızca
+ * dosyaya yazılınca kullanıcı ÜCRETSİZ oynuyordu — mini/TR-Lig'de ödül
+ * yönünde bulduğumuz hatanın harcama yönündeki eşi.
+ */
+async function spendLc(db, userId, amount) {
+  if (db) {
+    const r = await WalletCredit.spendLc(db, userId, amount, "weekly_pick_1987", {
+      source: "weekly_picks",
+    });
+    if (r.ok) return { ok: true, lc: r.lc };
+    if (r.reason === "INSUFFICIENT") return { ok: false, lc: r.lc, needed: amount };
+    // NO_DB / ERROR → dosyaya düşmeyi dene (aşağısı)
+  }
+
   const uid = String(userId || "").trim();
   return withFileLock(WALLET_FILE, async () => {
     const state = await readJson(WALLET_FILE, { users: [], ledger: [] });
@@ -90,6 +130,7 @@ async function spendLc(userId, amount) {
 router.get("/", async (req, res) => {
   try {
     const userId = String(req.query.userId || "").trim();
+    const db     = req.app?.locals?.db || null;
     const now    = Date.now();
 
     const raw = await readJson(FIXTURES_FILE, { fixtures: [] });
@@ -108,7 +149,7 @@ router.get("/", async (req, res) => {
       const open   = now >= ko - WINDOW_BEFORE_MS && status !== "FT";
 
       let pred = null;
-      if (userId) pred = await getUserPred(userId, fx.fixtureId);
+      if (userId) pred = await getUserPred(userId, fx.fixtureId, db);
 
       picks.push({
         fixtureId:    fx.fixtureId,
@@ -176,16 +217,50 @@ router.post("/predict", verifyToken, async (req, res) => {
       return res.status(400).json({ ok: false, error: "MATCH_ALREADY_STARTED" });
     }
 
-    const existing = await getUserPred(uid, fixtureId);
-    const free     = await is1987User(uid, req.app?.locals?.db || null);
+    const db       = req.app?.locals?.db || null;
+    const existing = await getUserPred(uid, fixtureId, db);
+    const free     = await is1987User(uid, db);
     let lc         = 0;
     let lcCharged  = 0;
 
     if (!free && !existing) {
-      const spend = await spendLc(uid, LC_COST_NORMAL);
+      const spend = await spendLc(db, uid, LC_COST_NORMAL);
       if (!spend.ok) return res.status(400).json({ ok: false, error: "LC_NOT_ENOUGH", lc: spend.lc, needed: spend.needed });
       lc        = spend.lc;
       lcCharged = LC_COST_NORMAL;
+    }
+
+    // ⚠️ ÖNCE MONGO: settle2 tahminleri `preds` koleksiyonundan okur. Yalnızca
+    // dosyaya yazmak, oyuncunun 3 LC ödeyip tahmininin hiç sonuçlanmaması
+    // demekti (ayna kapalıyken dosya zaten okunmuyor).
+    // upsert: aynı maça ikinci tahmin ESKİSİNİ EZER — dosya tarafındaki
+    // "filtrele + yeniden ekle" davranışının birebir karşılığı.
+    if (db) {
+      try {
+        await db.collection("predictions").updateOne(
+          { fixtureId: String(fixtureId), userIdLower: uid.toLowerCase() },
+          {
+            $set: {
+              fixtureId: String(fixtureId),
+              userId: uid,
+              userIdLower: uid.toLowerCase(),
+              outcome,
+              firstGoal:  firstGoal  || null,
+              firstHalf:  firstHalf  || null,
+              redAny:     typeof redAny     === "boolean" ? redAny     : null,
+              penaltyAny: typeof penaltyAny === "boolean" ? penaltyAny : null,
+              home: null, away: null,
+              at: new Date().toISOString(),
+              source: "weekly_pick_1987",
+              is1987Free: free,
+            },
+          },
+          { upsert: true }
+        );
+      } catch (e) {
+        // Sessiz kalmıyoruz: bu, ödenmiş ama sonuçlanmayacak bir tahmin demek.
+        console.error("[weekly-picks] mongo pred yazilamadi:", e?.message || e);
+      }
     }
 
     await withFileLock(PREDS_FILE, async () => {

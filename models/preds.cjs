@@ -1,5 +1,26 @@
 "use strict";
 
+/**
+ * Tahmin okuma — canlı maç ekranının kaynağı (routes/realtime.cjs).
+ *
+ * ⚠️ KOLEKSİYON ADI: `predictions`. Bu dosya uzun süre `preds` yazıyordu —
+ * VAR OLMAYAN bir koleksiyon. Gerçek tahminleri `predictions`'a settle2,
+ * pred.cjs, duels ve migration script'i yazıyor.
+ *
+ * Hata neden sessiz kaldı: yanlış koleksiyon HATA VERMEZ, boş dizi döner.
+ * Boş dizi de "dosyaya düş" koluna giriyordu, o da yerelde doluydu. Yani
+ * geliştirmede her şey çalışıyor görünüyordu. Production'da ise
+ * SKORLIG_PREDS_FILE_MIRROR=0 ile preds.json da yazılmıyor → canlı ekran
+ * havuzda yüzlerce tahmin varken "kimse tahmin vermemiş" gösteriyordu.
+ *
+ * DERS: yanlış koleksiyon adı, yanlış alan adı ve boş sonuç Mongo'da aynı
+ * şeye benzer. Fallback'i olan bir okuma yolunda bu üçü ayırt edilemez —
+ * bu yüzden koleksiyon adları tek yerde tutulmalı.
+ *
+ * NOT: `savePred` hiçbir yerden ÇAĞRILMIYOR (yazma yolu routes/pred.cjs).
+ * Silinmedi ama yeni yazma yolu için buraya değil, oraya bakılmalı.
+ */
+
 const fs   = require("fs");
 const fsp  = fs.promises;
 const path = require("path");
@@ -45,7 +66,7 @@ async function savePred(pred) {
   // 1) Mongo
   try {
     const db = await getDb();
-    await db.collection("preds").insertOne(doc);
+    await db.collection("predictions").insertOne(doc);
   } catch (e) {
     console.error("MONGO_SAVE_PRED_FAILED", e);
   }
@@ -75,7 +96,7 @@ async function getPredsForFixture(fixtureId) {
   try {
     const db = await getDb();
     const arr = await db
-      .collection("preds")
+      .collection("predictions")
       .find({ fixtureId: fid })
       .sort({ at: 1 })
       .toArray();
@@ -102,8 +123,8 @@ async function getMyLatestPred(fixtureId, userId) {
   try {
     const db = await getDb();
     const doc = await db
-      .collection("preds")
-      .find({ fixtureId: fid, userId: uid })
+      .collection("predictions")
+      .find({ fixtureId: fid, userIdLower: uid.toLowerCase() })
       .sort({ at: -1 })
       .limit(1)
       .next();

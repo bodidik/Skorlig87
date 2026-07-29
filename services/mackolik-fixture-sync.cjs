@@ -35,6 +35,7 @@ const fsp = require("fs").promises;
 const { withFileLock } = require("../lib/fileLock.cjs");
 const { readFixtures, writeFixtures, merge } = require("./fixture-sync.cjs");
 const { isExcludedLeague } = require("../lib/global-leagues.cjs");
+const { normalizeCountry } = require("../lib/countries.cjs");
 
 // Testlerde izole dizine yönlendirilebilir (bkz. fixture-sync, livescore-scraper).
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
@@ -42,81 +43,10 @@ const CACHE_FILE = path.join(DATA_DIR, "livescore-cache.json");
 const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 const SOURCE = "MK";
 
-/**
- * Maçkolik ülke adı → routes/live2.cjs ALLOWED anahtarı.
- *
- * Neden burada, canonicalCountry'de değil: canonicalCountry Türkçe ülke
- * isimlerini çevirmiyor (test edildi — 53 isimden sadece "Türkiye"
- * eşleşiyor). O fonksiyon zaten iki-harf ISO ve İngilizce isim kabul ediyor;
- * Türkçe bir katmanı oraya sokmak istemedim, kapsamı burada tutuyorum.
- *
- * Listede olmayan ülke sessizce ATLANIR — ALLOWED dışı bir ülke adı yazmak
- * ülke sıralamasını ve lig filtresini bozardı (kimse bu maçları göremezdi).
- * Eğer bir gün Estonya sıralaması eklenirse, ALLOWED'a eklendikten sonra
- * buraya da bir satır girer.
- */
-const TR_TO_COUNTRY = {
-  "Türkiye": "Türkiye",
-  "Dünya": "World",
-  "Avrupa": "Europe",
-  "İngiltere": "England",
-  "İspanya": "Spain",
-  "Almanya": "Germany",
-  "İtalya": "Italy",
-  "Fransa": "France",
-  "Hollanda": "Netherlands",
-  "Portekiz": "Portugal",
-  "Brezilya": "Brazil",
-  "Arjantin": "Argentina",
-  "Meksika": "Mexico",
-  "Japonya": "Japan",
-  "Güney Kore": "South Korea", // ALLOWED'da yok; countryOfSegment'te de yok — sessiz atlanır (aşağıda süz)
-  "Çin": "China",              // aynı
-  "ABD": "USA",
-  "Suudi Arabistan": "Saudi Arabia",
-  "Yunanistan": "Greece",
-  "Rusya": "Russia",
-  "Ukrayna": "Ukraine",
-  "Polonya": "Poland",
-  "Avusturya": "Austria",
-  "İsviçre": "Switzerland",
-  "Belçika": "Belgium",
-  "Çekya": "Czech Republic",
-  "Sırbistan": "Serbia",
-  "Hırvatistan": "Croatia",
-  "Slovakya": "Slovakia",
-  "Bulgaristan": "Bulgaria",
-  "Romanya": "Romania",
-  "Macaristan": "Hungary",
-};
-
-// ALLOWED anahtarları — TR_TO_COUNTRY'de olsalar bile ALLOWED'da yoksa atlanır.
-// Küçük sabit liste, koda gömmek çevrimsel bağımlılıktan güvenli.
-const ALLOWED_COUNTRIES = new Set([
-  "Türkiye", "England", "Spain", "Germany", "Italy", "France", "Netherlands",
-  "Belgium", "Greece", "Portugal", "Brazil", "Argentina", "Japan", "Russia",
-  "Ukraine", "USA", "Saudi Arabia", "Austria", "Switzerland", "Poland",
-  "Mexico", "Croatia", "Serbia", "Czech Republic", "Romania", "Hungary",
-  "Slovakia", "Bulgaria", "World", "Europe",
-]);
-
-/**
- * İngilizce ülke adı → kanonik ad. Yalnızca İngilizcesi kanoniğinden FARKLI
- * olanlar; "Brazil" gibi zaten eşit olanlar ALLOWED_COUNTRIES'te yakalanır.
- *
- * NEDEN GEREKLİ: Şelalenin hangi kaynakta durduğu ülke adının DİLİNİ belirliyor.
- * Maçkolik/nesine Türkçe ("Brezilya"), goal/espn İngilizce ("Brazil") üretiyor.
- * Yalnızca Türkçe tablosuna bakmak, goal kazandığında bütün maçların sessizce
- * elenmesi demekti — kaynak sağlıklı görünürken fikstür sıfır kalıyordu.
- */
-const EN_TO_COUNTRY = {
-  "Turkey": "Türkiye",
-  "Turkiye": "Türkiye",
-  "International": "World",
-  "United States": "USA",
-  "Czechia": "Czech Republic",
-  "Korea Republic": "South Korea", // ALLOWED'da yok → yine atlanır, kasıtlı
-};
+// Ülke adı kanonikleştirme lib/countries.cjs'te. Burada TR_TO_COUNTRY,
+// EN_TO_COUNTRY ve ALLOWED_COUNTRIES tabloları vardı; eksiklerdi ve aynı
+// ülke kaynağa göre farklı isimle geçiyordu (USA / United States ayrı
+// sayılıyordu). Tek kaynağa taşındı.
 
 const r2 = (s) => String(s || "").trim();
 
@@ -129,21 +59,13 @@ function resolveCountry(raw) {
   const s = r2(raw);
   if (!s) return null;
 
-  // Bilinen adı kanonik hâle çevir.
-  const tr = TR_TO_COUNTRY[s];
-  if (tr) return tr;
-
-  const en = EN_TO_COUNTRY[s] || s;
-
-  // ⚠️ ESKİDEN BURADA ELEME VARDI: ALLOWED_COUNTRIES dışındaki her ülke null
-  // dönüyordu ve maç havuza HİÇ girmiyordu. Günde ~17 maç bu yüzden
-  // kayboluyordu (Şili, Kolombiya, Danimarka, İsveç, Özbekistan…) ve Süper Lig
-  // sezon arasındayken ekran tamamen boşalıyordu.
+  // Kanonikleştirme TEK KAYNAKTAN (lib/countries.cjs). Buradaki eski
+  // TR_TO_COUNTRY / EN_TO_COUNTRY tabloları eksikti ve aynı ülke kaynağa göre
+  // farklı isimle geçiyordu — ÖLÇÜLDÜ: "USA" 4 maç, "United States" 4 maç,
+  // "İzlanda" 10 maç. Ülke sıralaması ikiye bölünüyordu.
   //
-  // Artık ülke yalnızca SIRALAMA için kullanılıyor (lib/fixture-priority.cjs),
-  // o yüzden tanımadığımız ülkeyi de olduğu gibi kabul ediyoruz. Sıralamada
-  // "diğer" grubuna düşer, listenin sonunda görünür — ama GÖRÜNÜR.
-  return en;
+  // ELEME YOK: tanınmayan ad ham hâliyle döner (bkz. lib/fixture-priority.cjs).
+  return normalizeCountry(s);
 }
 
 /**
@@ -365,5 +287,5 @@ function start(intervalMs = 3 * 60 * 1000) {
 
 module.exports = {
   syncOnce, normalize, readCache, start,
-  TR_TO_COUNTRY, EN_TO_COUNTRY, ALLOWED_COUNTRIES, resolveCountry,
+  resolveCountry,
 };
