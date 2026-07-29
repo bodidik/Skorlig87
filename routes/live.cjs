@@ -19,10 +19,23 @@ const path = require("path");
 
 const router = express.Router();
 
-// ---- Yol: data/live/fixtures.json
-const DATA_DIR = path.join(__dirname, "..", "data");
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const LIVE_DIR = path.join(DATA_DIR, "live");
-const LIVE_FIXTURES_FILE = path.join(LIVE_DIR, "fixtures.json");
+
+/**
+ * ⚠️ BU YOL data/live/fixtures.json İDİ — YANLIŞTI.
+ *
+ * Gerçek fikstür deposu data/fixtures.json (124 KB, 200+ maç); iki senkron
+ * servisi de oraya yazıyor. data/live/ ise maç başına canlı durum dosyalarını
+ * (<fixtureId>.json) tutuyor; oradaki fixtures.json artıktı ve 20 bayttı, yani
+ * boş bir dizi.
+ *
+ * Sonuç: GET /api/fixtures HER ZAMAN 0 dönüyordu. Uygulama bu ucu çağırmadığı
+ * (mobil /api/live/schedule ve /api/live/open kullanıyor) için kimse fark
+ * etmemişti — ama teşhis sırasında "üretimde hiç maç yok" gibi görünüp
+ * yanlış alarma yol açtı. Boş dosya ile eksik veri dışarıdan aynı görünüyor.
+ */
+const LIVE_FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 
 // ---- Normalizasyon
 function normalizeLocalFixture(rec) {
