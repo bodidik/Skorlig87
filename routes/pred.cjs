@@ -9,6 +9,8 @@ const path = require("path");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const FixturesStore = require("../lib/fixtures-store.cjs");
+// LC harcama: koşulu sorgunun içinde tutan tek atomik yol.
+const WalletCredit = require("../lib/wallet-credit.cjs");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 const LIVE_DIR = path.join(DATA_DIR, "live"); // fixture state için
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
@@ -334,117 +336,38 @@ async function spendLcMatchIfNeededMongo(db, userId, fixtureId, cost, alreadyPre
   }
 
   const uid = String(userId || "").trim();
-  if (!uid) throw new Error("USER_REQUIRED");
 
-  const col = db.collection("lc_wallet_users");
-  const uidLower = uid.toLowerCase();
+  // Kullanıcı dokümanı garanti olsun (yoksa açılış bakiyesiyle yaratılır)
+  const user = await ensureWalletUserMongo(db, uid);
 
-  // Kullanıcı dokümanı garanti olsun
-  let user = await ensureWalletUserMongo(db, uid);
-
-  // İkinci / üçüncü düzeltmelerde veya cost <= 0’da hiç kesme
+  // İkinci / üçüncü düzeltmelerde veya cost <= 0'da hiç kesme
   if (alreadyPredicted || cost <= 0) {
-    return {
-      ok: true,
-      lc: Number(user.balance || 0),
-      charged: false,
-      matchCost: 0,
-    };
+    return { ok: true, lc: Number(user.balance || 0), charged: false, matchCost: 0 };
   }
 
-  const current = Number(user.balance || 0);
-  if (current < cost) {
-    return {
-      ok: false,
-      error: "LC_NOT_ENOUGH",
-      lc: current,
-      needed: cost,
-    };
-  }
-
-  const nowISO = new Date().toISOString();
-
-  // Optimistic concurrency: mevcut balance'a göre kes
-  const result = await col.updateOne(
-    { userIdLower: uidLower, balance: current },
-    {
-      $inc: {
-        balance: -cost,
-        totalSpent: cost,
-      },
-      $set: {
-        updatedAt: nowISO,
-      },
-    }
-  );
-
-  if (!result.matchedCount) {
-    // Yarış durumu: bakiyeyi taze oku, tekrar değerlendirmeyi dene
-    const fresh = await col.findOne({ userIdLower: uidLower });
-    const freshBalance = Number(fresh?.balance || 0);
-
-    if (freshBalance < cost) {
-      return {
-        ok: false,
-        error: "LC_NOT_ENOUGH",
-        lc: freshBalance,
-        needed: cost,
-      };
-    }
-
-    const now2 = new Date().toISOString();
-    await col.updateOne(
-      { userIdLower: uidLower },
-      {
-        $inc: {
-          balance: -cost,
-          totalSpent: cost,
-        },
-        $set: {
-          updatedAt: now2,
-        },
-      }
-    );
-
-    const finalUser = await col.findOne({ userIdLower: uidLower });
-    const finalBalance = Number(finalUser?.balance || 0);
-
-    await addLedgerEntryMongo(db, {
-      userId: uid,
-      kind: "spend",
-      amount: -cost,
-      reason: "match_pred",
-      fixtureId,
-      meta: { type: "pred_submit" },
-    });
-
-    return {
-      ok: true,
-      lc: finalBalance,
-      charged: true,
-      matchCost: cost,
-    };
-  }
-
-  // İlk deneme başarılı
-  const finalUser = await col.findOne({ userIdLower: uidLower });
-  const finalBalance = Number(finalUser?.balance || current - cost);
-
-  await addLedgerEntryMongo(db, {
-    userId: uid,
-    kind: "spend",
-    amount: -cost,
-    reason: "match_pred",
+  // ⚠️ EL YAZMASI İYİMSER KİLİT KALDIRILDI. Eski akış: bakiyeyi oku →
+  // `{balance: current}` filtresiyle kes → eşleşmezse TAZE OKU ve KOŞULSUZ kes.
+  // O ikinci kesmede bakiye koruması yoktu: taze okuma ile yazma arasına giren
+  // bir istek bakiyeyi boşaltırsa bakiye EKSİYE düşüyordu. Yarışı tespit edip
+  // ardından korumasız yazmak, yarışı çözmek değil geciktirmekti.
+  //
+  // WalletCredit.spendLc koşulu (`balance: { $gte: tutar }`) sorgunun içinde
+  // tutuyor: kontrol ve yazma tek atomik işlem, yeniden denemeye gerek yok.
+  // Defter kaydını da kendisi düşüyor.
+  const r = await WalletCredit.spendLc(db, uid, cost, "match_pred", {
     fixtureId,
-    meta: { type: "pred_submit" },
+    type: "pred_submit",
   });
 
-  return {
-    ok: true,
-    lc: finalBalance,
-    charged: true,
-    matchCost: cost,
-  };
+  if (!r.ok) {
+    if (r.reason === "INSUFFICIENT") {
+      return { ok: false, error: "LC_NOT_ENOUGH", lc: r.lc, needed: cost };
+    }
+    // NO_DB / ERROR — yazılamadı; tahmin ücretsiz geçmesin.
+    return { ok: false, error: "LC_SPEND_FAILED", lc: Number(user.balance || 0), needed: cost };
+  }
+
+  return { ok: true, lc: r.lc, charged: true, matchCost: cost };
 }
 
 // ----------------- BOT PROFİLLERİ + RNG -----------------

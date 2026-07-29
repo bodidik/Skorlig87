@@ -6,6 +6,7 @@ const path = require("path");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const TOURNAMENTS_FILE = path.join(DATA_DIR, "tournaments.json");
+const SocialStore = require("../lib/social-store.cjs");
 
 const PAYOUT_TABLE = {
   2: [0.70, 0.30],
@@ -29,18 +30,16 @@ function genCode() {
   return code;
 }
 
+// Turnuvalar Mongo birincil — bkz. lib/social-store.cjs. Dosyada tutulurken
+// Render'da her deploy siliyordu: giriş ücreti ödenmiş, havuzu birikmiş
+// turnuvalar yok oluyordu ve LC hiçbir yere iade edilmiyordu.
+// Sarmal ({tournaments:[...]}) çağıranlar için korunuyor.
 async function loadAll() {
-  try {
-    const txt = await fsp.readFile(TOURNAMENTS_FILE, "utf8");
-    return JSON.parse(txt);
-  } catch {
-    return { tournaments: [] };
-  }
+  return { tournaments: await SocialStore.loadTournaments() };
 }
 
 async function saveAll(data) {
-  await fsp.mkdir(DATA_DIR, { recursive: true });
-  await fsp.writeFile(TOURNAMENTS_FILE, JSON.stringify(data, null, 2), "utf8");
+  await SocialStore.saveTournaments(data?.tournaments || [], null);
 }
 
 async function create({ creatorId, name, entryLC, fixtureIds, fixtures }) {

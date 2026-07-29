@@ -351,23 +351,34 @@ router.get("/lc-wallet/summary", async (req, res) => {
       // applyRegen/grantMonthlyIfDue düz nesne üzerinde çalışır — Mongo
       // dokümanına uygulanıp değişen alanlar geri yazılır.
       const prevRegenAt = user.lastRegenAt ?? null;
+      const prevBalance = Number(user.balance || 0);
       const monthlyGranted = premium.grantMonthlyIfDue(user, isPrem);
       const regenEarned = applyRegen(user, Date.now(), regenOpts);
+      // Eklenen miktar — aşağıda MUTLAK değil GÖRELİ yazmak için.
+      const eklenen = Number(user.balance || 0) - prevBalance;
 
       if (monthlyGranted > 0 || regenEarned > 0 || (user.lastRegenAt ?? null) !== prevRegenAt) {
         // Koşullu filtre: eşzamanlı iki summary çağrısından yalnızca biri
         // yazabilir, diğerinin hesabı düşer (çift birikim olmaz).
+        // ⚠️ BAKİYE GÖRELİ ($inc) YAZILIR, MUTLAK ($set) DEĞİL.
+        // Eskiden `balance: user.balance` mutlak yazılıyordu. `lastRegenAt`
+        // filtresi yalnızca eşzamanlı BİRİKİMİ engelliyor; araya giren bir
+        // HARCAMA'yı değil. Sıra şuydu: bakiye 10 okundu → tahmin 3 LC harcadı
+        // (bakiye 7) → birikim 12'yi mutlak yazdı. Harcanan 3 LC geri geldi,
+        // yani yoktan para üretildi. $inc okunan değere dayanmaz.
+        // Not: boş `$inc: {}` Mongo tarafından REDDEDİLİR — koşullu kurulur.
+        const guncelleme = {
+          $set: {
+            lastRegenAt: user.lastRegenAt ?? null,
+            lastMonthlyAt: user.lastMonthlyAt ?? null,
+            updatedAt: user.updatedAt || new Date().toISOString(),
+          },
+        };
+        if (eklenen) guncelleme.$inc = { balance: eklenen, totalEarned: eklenen };
+
         const r = await col.updateOne(
           { userIdLower: uidLower, lastRegenAt: prevRegenAt },
-          {
-            $set: {
-              balance: user.balance,
-              totalEarned: user.totalEarned || 0,
-              lastRegenAt: user.lastRegenAt ?? null,
-              lastMonthlyAt: user.lastMonthlyAt ?? null,
-              updatedAt: user.updatedAt || new Date().toISOString(),
-            },
-          }
+          guncelleme
         );
 
         if (r.modifiedCount && monthlyGranted > 0) {

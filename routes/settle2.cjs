@@ -1071,11 +1071,20 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
   // 🔒 Idempotency: aynı fixture için totals/LC ikinci kez yatmasın.
   // livescore-sync + af-sync + manuel çağrılar aynı fixture'ı defalarca
   // settle2'ye gönderebilir. Sentinel: match-results snapshot'ta `awardedAt`.
-  try {
-    // Tek snapshot yeter — eskiden 5.3 MB'lik kitabın tamamı okunuyordu.
-    const existing = await MatchResults.getSnapshot(fid, db);
-    if (existing && existing.awardedAt) {
-      console.log(`[settle2] fixture ${fid} zaten ödüllendirilmiş (${existing.awardedAt}) — tekrar yatırılmayacak`);
+  //
+  // ⚠️ MÜHÜR ÖDÜLDEN ÖNCE ALINIR. Eskiden burada yalnızca OKUMA vardı ve
+  // `awardedAt` ~90 satır sonra, tüm ödül dağıtımının ARDINDAN yazılıyordu.
+  // Kontrol ile mühür arasındaki pencere dağıtımın tamamı kadar genişti;
+  // livescore-sync (30sn), af-sync ve manuel çağrılar aynı fixture'ı
+  // gönderdiğinde iki çağrı da kontrolü geçip ödülü İKİ KEZ dağıtabilirdi.
+  // claimAward koşulu yazmanın içinde tutuyor — yalnızca kazanan devam eder.
+  {
+    // ⚠️ `nowISO` bu fonksiyonda AŞAĞIDA tanımlı (const, TDZ) — burada
+    // kullanmak ReferenceError verirdi. Mühür kendi damgasını üretir.
+    const damga = await MatchResults.claimAward(fid, new Date().toISOString(), db);
+    if (!damga) {
+      const existing = await MatchResults.getSnapshot(fid, db).catch(() => null);
+      console.log(`[settle2] fixture ${fid} zaten ödüllendirilmiş (${existing?.awardedAt || "?"}) — tekrar yatırılmayacak`);
       return {
         fixtureId: fid,
         finalScore: { home: h, away: a },
@@ -1088,11 +1097,9 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
         leaderboard: rows,
         competitionIds,
         alreadySettled: true,
-        awardedAt: existing.awardedAt,
+        awardedAt: existing?.awardedAt || null,
       };
     }
-  } catch (e) {
-    console.error("[settle2] idempotency check failed:", e);
   }
 
   await awardLcForRows(rows, db);
@@ -1286,13 +1293,13 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
 
 const TOURNAMENTS_FILE = path.join(DATA_DIR, "tournaments.json");
 
-async function loadTournaments() {
-  const raw = await readJson(TOURNAMENTS_FILE, { tournaments: [] });
-  return Array.isArray(raw?.tournaments) ? raw.tournaments : [];
+// Turnuvalar Mongo birincil — bkz. lib/social-store.cjs
+async function loadTournaments(db) {
+  return SocialStore.loadTournaments(db || null);
 }
 
-async function saveTournaments(list) {
-  await writeJson(TOURNAMENTS_FILE, { tournaments: list });
+async function saveTournaments(list, db) {
+  await SocialStore.saveTournaments(list, db || null);
 }
 
 async function getFixtureOutcome(fid) {
@@ -1305,7 +1312,7 @@ async function getFixtureOutcome(fid) {
 
 async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
   try {
-    const all = await loadTournaments();
+    const all = await loadTournaments(db);
     const open = all.filter(
       (t) => t.status === "open" && Array.isArray(t.fixtureIds) && t.fixtureIds.includes(settledFixtureId)
     );
@@ -1352,6 +1359,19 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
         if (!user) return null;
         return { rank: i + 1, userId: user.userId, score: user.totalScore, lcWon: Math.round(t.pool * pct), pct: Math.round(pct * 100) };
       }).filter(Boolean);
+
+      // ⚠️ PARA KORUMASI — MÜHÜR ÖDEMEDEN ÖNCE.
+      // Eskiden burada yalnızca bellekteki nesne işaretleniyor, kayıt ise
+      // ~60 satır aşağıda (döngünün TAMAMI bittikten sonra) yapılıyordu.
+      // O pencerede ikinci bir settle çağrısı turnuvayı hâlâ "open" görüp
+      // ödemeyi TEKRAR yapardı; settle2 aynı fixture için livescore-sync,
+      // af-sync ve manuel çağrılardan tetiklenebiliyor.
+      // claimTournamentSettle koşulu (status:"open") yazmanın içinde tutuyor.
+      const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, db);
+      if (!bizimki) {
+        console.log(`[settle2] turnuva ${t.code || t.id} baska bir cagri tarafindan odendi — atlaniyor`);
+        continue;
+      }
 
       t.status = "settled";
       t.settledAt = nowISO;
@@ -1415,7 +1435,7 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
       console.log(`[settle2] auto-settled tournament ${t.code}: ${t.payouts.length} payouts`);
     }
 
-    await saveTournaments(all);
+    await saveTournaments(all, db);
   } catch (e) {
     console.error("[settle2] tryAutoSettleTournaments failed:", e);
   }
