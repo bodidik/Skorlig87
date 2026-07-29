@@ -21,6 +21,7 @@ const DATA_DIR     = path.join(__dirname, "..", "data");
 // üzerinden (Mongo varsa Mongo). Yol bilgisi orada.
 const GROUPS_FILE  = path.join(DATA_DIR, "groups.json");
 const TOTALS_FILE  = path.join(DATA_DIR, "totals.json");
+const SeasonTotals = require("../lib/season-totals.cjs");
 
 // 🔹 LigCoin başlangıç değeri (pred/settle2 ile uyumlu olmalı)
 const LC_START = 30;
@@ -184,8 +185,10 @@ function groupSummary(code, g) {
 // çekiyor (UsersStore.getUsersByIds) — 20 kişilik tablo için 500.000 kaydın
 // tamamını okumanın anlamı yoktu.
 
-async function loadTotalsItems() {
-  const totals = await readJson(TOTALS_FILE, { items: [] });
+// Sezon toplamları Mongo öncelikli: totals.json Render'da her deploy'da
+// siliniyor ve settle2 artık season_totals'a yazıyor. bkz. lib/season-totals.cjs
+async function loadTotalsItems(db) {
+  const totals = await SeasonTotals.loadTotals(db || null);
   return Array.isArray(totals.items) ? totals.items : [];
 }
 
@@ -496,7 +499,7 @@ router.get("/groups/:code/board", async (req, res) => {
     // map kuruluyordu — 20 kişilik bir grup tablosu için 500.000 kaydın
     // tamamı okunuyordu.
     const usersMap = await UsersStore.getUsersByIds(members, req.app.locals.db);
-    const totalsItems = await loadTotalsItems();
+    const totalsItems = await loadTotalsItems(req.app?.locals?.db || null);
     const itemsTotals = Array.isArray(totalsItems) ? totalsItems : [];
 
     const items = members.map((uid) => {
@@ -614,9 +617,7 @@ router.get("/1987/season", async (req, res) => {
     // İndeksli segment sorgusu — eskiden tüm kullanıcı dosyası yüklenip
     // JS'te süzülüyordu.
     const uyeler = await UsersStore.listSegment1987(req.app.locals.db);
-    const totalsRaw = await readJson(TOTALS_FILE, { items: [] });
-
-    const totalsItems = Array.isArray(totalsRaw.items) ? totalsRaw.items : [];
+    const totalsItems = await loadTotalsItems(req.app?.locals?.db || null);
     const totalsByUser = new Map();
     for (const t of totalsItems) {
       const id = String(t.userId || "").trim();

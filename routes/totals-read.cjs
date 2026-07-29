@@ -8,6 +8,7 @@ const path    = require("path");
 const DATA_DIR         = path.join(__dirname, "..", "data");
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const TOTALS_FILE      = path.join(DATA_DIR, "totals.json");
+const SeasonTotals = require("../lib/season-totals.cjs");
 
 async function readJson(file, fb = null) {
   try {
@@ -23,14 +24,16 @@ async function readJson(file, fb = null) {
  *  - Eski formatlara karşı toleranslı
  *  - Puanlara göre azalan sırada döner
  */
-async function loadTotals() {
-  const raw = await readJson(TOTALS_FILE, { items: [], updatedAt: null });
+// Sezon toplamları Mongo öncelikli: totals.json Render'da her deploy'da
+// siliniyor ve settle2 artık season_totals'a yazıyor. bkz. lib/season-totals.cjs
+// Eski tip (düz array) toleransı korundu — dosya yedeği hâlâ devrede.
+async function loadTotals(db) {
+  const raw = await SeasonTotals.loadTotals(db || null);
 
   let items = [];
   if (Array.isArray(raw?.items)) {
     items = raw.items;
   } else if (Array.isArray(raw)) {
-    // Eski tip: direkt array tutulmuşsa
     items = raw;
   }
 
@@ -63,7 +66,7 @@ router.get("/board2", async (req, res) => {
 /** GET /api/rt/totals[?userId=demo1] → totals.json’dan normalize liste */
 router.get("/totals", async (req, res) => {
   const userId = String(req.query.userId || "");
-  const { items, updatedAt } = await loadTotals();
+  const { items, updatedAt } = await loadTotals(req.app?.locals?.db || null);
 
   const out = userId
     ? items.filter((x) => String(x.userId).toLowerCase() === userId.toLowerCase())

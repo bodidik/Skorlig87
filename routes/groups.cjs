@@ -19,6 +19,7 @@ function requireAdminToken(req, res, next) {
 const GROUPS = path.join(DATA,"groups.json");  // { CODE: { name, ownerId, members:[userId], opts:{ userId:{ includeInTotal } } } }
 const UsersStore = require("../lib/users-store.cjs");
 const TOTALS = path.join(DATA,"totals.json");  // { items: [ { userId, totalPoints, ...}, ... ], updatedAt }
+const SeasonTotals = require("../lib/season-totals.cjs");
 
 async function readJson(file, fb){ try{ return JSON.parse(await fsp.readFile(file,"utf8")); }catch{ return fb; } }
 async function writeJson(file, data){
@@ -83,7 +84,9 @@ async function handleBoard(req,res){
   try{
     const code = String(req.params.code || "").toUpperCase();
     const store  = await readJson(GROUPS, {});
-    const totals = await readJson(TOTALS, { items:[] });
+    // Sezon toplamları Mongo öncelikli: totals.json Render'da her deploy'da
+    // siliniyor ve settle2 artık season_totals'a yazıyor. bkz. lib/season-totals.cjs
+    const totals = await SeasonTotals.loadTotals(req.app?.locals?.db || null);
 
     const g = store[code];
     if (!g) return res.status(404).json({ ok:false, error:"GROUP_NOT_FOUND" });

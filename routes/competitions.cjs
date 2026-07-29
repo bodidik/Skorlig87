@@ -539,6 +539,23 @@ router.post(
  *    source: "mongo_competition_totals" | "file_competition_totals"
  *  }
  */
+/**
+ * ⚠️ BU ROTA HER ZAMAN BOŞ DÖNER — kullanmayın.
+ *
+ * Ölçüldü (2026-07-29): `competition_totals` koleksiyonuna HİÇBİR YERDEN
+ * yazılmıyor (settle2 `competitionIds`'i hesaplayıp yalnızca yanıtta döndürüyor),
+ * dosya yedeği `competition-totals.json` ise hiç oluşturulmamış. Yani iki kol da
+ * boş: Mongo boş → dosya yok → boş liste.
+ *
+ * ÇALIŞAN EŞDEĞERİ:  GET /api/rt/competition-totals?competitionId=...
+ * (routes/competition-totals.cjs) — o rota `competition_totals` boşken
+ * `fixture_competitions` + `leaderboard` üzerinden HESAPLAYARAK doğru sonucu
+ * üretiyor. Mobil zaten onu çağırıyor.
+ *
+ * Silinmedi çünkü bilinmeyen bir istemci çağırıyor olabilir; ama yeni iş
+ * buraya bağlanmamalı. `competition_totals` bir gün doldurulursa ikisi de
+ * çalışır — o zaman bu rota kaldırılabilir.
+ */
 router.get("/competitions/totals", async (req, res) => {
   try {
     const competitionId = String(req.query.competitionId || "").trim();

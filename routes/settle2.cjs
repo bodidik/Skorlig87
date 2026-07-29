@@ -43,6 +43,20 @@ const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "dat
  * Bkz. preds tarafındaki eşdeğeri: SKORLIG_PREDS_FILE_MIRROR
  */
 const WALLET_FILE_MIRROR = String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0";
+
+/**
+ * Sezon toplamları (totals.json) dosya aynası.
+ *
+ * Sezon toplamları artık `season_totals` koleksiyonuna $inc ile yazılıyor —
+ * bkz. aşağıdaki blok ve lib/season-totals.cjs. Dosya yazımı read-modify-write
+ * olduğu için kullanıcı sayısıyla büyür ve kilit gerektirir; Mongo tarafı
+ * göreli çalıştığı için ikisine de ihtiyaç duymaz.
+ *
+ * Kapatmadan ÖNCE: node scripts/migrate-season-totals.cjs çalıştırılmalı,
+ * sonra GET /api/leaderboard → source "mongo_season_totals" dönmeli.
+ * ⚠️ MONGODB_URI yoksa bu bayrak YOK SAYILIR (dosya tek kaynaktır).
+ */
+const TOTALS_FILE_MIRROR = String(process.env.SKORLIG_TOTALS_FILE_MIRROR ?? "1") !== "0";
 const LIVE_DIR = path.join(DATA_DIR, "live");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 const TOTALS_FILE = path.join(DATA_DIR, "totals.json");
@@ -1156,48 +1170,101 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
     console.error("[settle2] match-results snapshot write failed:", e);
   }
 
-  // Kümülatif toplamlar: read-modify-write, kilit şart. İki maç aynı anda
-  // sonuçlanırsa (livescore-sync toplu settle) kilitsiz hâlde biri diğerinin
-  // puanını ezer.
-  await withFileLock(TOTALS_FILE, async () => {
-    const totalsRaw = await readJson(TOTALS_FILE, { items: [], updatedAt: null });
-
-    const map = new Map();
-    for (const it of totalsRaw.items || []) {
-      map.set(String(it.userId), {
-        userId: String(it.userId),
-        totalPoints: Number(it.totalPoints || 0),
-        totalPenalty: Number(it.totalPenalty || 0),
-        matches: Number(it.matches || 0),
-        lastAt: it.lastAt || null,
+  // ─── Kümülatif sezon toplamları ───────────────────────────────────────
+  //
+  // ⚠️ ÖNCE MONGO. Bu blok uzun süre YALNIZCA totals.json'a yazıyordu, oysa
+  // routes/leaderboard.cjs birincil kaynak olarak `season_totals` koleksiyonunu
+  // sorguluyor — ki oraya HİÇBİR YERDEN yazılmıyordu. Sonuç zinciri:
+  //   season_totals boş → leaderboard totals.json'a düşüyor → Render'da disk
+  //   kalıcı değil → HER DEPLOY'DA TÜM SEZON PUANLARI SIFIRLANIYOR.
+  // Hata sessizdi: boş koleksiyon hata vermez, fallback de yerelde dolu.
+  //
+  // `$inc` GÖRELİ: dosyadan okunan bir değere dayanmaz, bu yüzden kilit
+  // gerektirmez ve eşzamanlı settle'lar birbirinin puanını ezmez. Dosya
+  // tarafındaki read-modify-write ise kullanıcı sayısıyla büyür.
+  if (db) {
+    try {
+      const ops = rows.map((r) => {
+        const uid = String(r.userId);
+        const ceza =
+          Number(r.detail?.zeroPenalty || 0) +
+          Number(r.detail?.redSidePenalty || 0) +
+          Number(r.detail?.penaltySidePenalty || 0);
+        return {
+          updateOne: {
+            filter: { userIdLower: uid.toLowerCase() },
+            update: {
+              $inc: {
+                totalPoints: Number(r.points || 0),
+                totalPenalty: ceza,
+                matches: 1,
+              },
+              $set: { userId: uid, lastAt: nowISO, updatedAt: nowISO },
+              $setOnInsert: { userIdLower: uid.toLowerCase(), createdAt: nowISO },
+            },
+            upsert: true,
+          },
+        };
       });
+      if (ops.length) {
+        await db.collection("season_totals").bulkWrite(ops, { ordered: false });
+      }
+    } catch (e) {
+      // Sessiz kalmıyoruz: bu, kaybolan SEZON İLERLEMESİ demek.
+      console.error("[settle2] season_totals yazilamadi:", e?.message || e);
     }
+  }
 
-    for (const r of rows) {
-      const key = String(r.userId);
-      const cur = map.get(key) || { userId: key, totalPoints: 0, totalPenalty: 0, matches: 0, lastAt: null };
+  // Kümülatif toplamlar (dosya aynası): read-modify-write, kilit şart. İki maç
+  // aynı anda sonuçlanırsa (livescore-sync toplu settle) kilitsiz hâlde biri
+  // diğerinin puanını ezer.
+  // ⚠️ AYRI BAYRAK: cüzdan aynasına bağlamak yanlıştı. totals.json'ı okuyan
+  // rotalar (groups, friends, users, totals-read) cüzdandan bağımsız; cüzdan
+  // aynası kapatıldığında grup/arkadaş tabloları sessizce boşalırdı.
+  // Hepsi artık lib/season-totals.cjs üzerinden Mongo öncelikli okuyor, ama
+  // bayrak varsayılan AÇIK: geçiş doğrulanana kadar dosya yedeği dursun.
+  const totalsNeedFile = !db || TOTALS_FILE_MIRROR;
+  if (totalsNeedFile) {
+    await withFileLock(TOTALS_FILE, async () => {
+      const totalsRaw = await readJson(TOTALS_FILE, { items: [], updatedAt: null });
 
-      cur.totalPoints += Number(r.points || 0);
-      cur.totalPenalty +=
-        Number(r.detail?.zeroPenalty || 0) +
-        Number(r.detail?.redSidePenalty || 0) +
-        Number(r.detail?.penaltySidePenalty || 0);
+      const map = new Map();
+      for (const it of totalsRaw.items || []) {
+        map.set(String(it.userId), {
+          userId: String(it.userId),
+          totalPoints: Number(it.totalPoints || 0),
+          totalPenalty: Number(it.totalPenalty || 0),
+          matches: Number(it.matches || 0),
+          lastAt: it.lastAt || null,
+        });
+      }
 
-      cur.matches += 1;
-      cur.lastAt = nowISO;
-      map.set(key, cur);
-    }
+      for (const r of rows) {
+        const key = String(r.userId);
+        const cur = map.get(key) || { userId: key, totalPoints: 0, totalPenalty: 0, matches: 0, lastAt: null };
 
-    const outTotals = {
-      items: Array.from(map.values()).map((x) => ({
-        ...x,
-        totalPoints: Math.round(x.totalPoints),
-        totalPenalty: Math.round(x.totalPenalty),
-      })),
-      updatedAt: nowISO,
-    };
-    await writeJson(TOTALS_FILE, outTotals);
-  });
+        cur.totalPoints += Number(r.points || 0);
+        cur.totalPenalty +=
+          Number(r.detail?.zeroPenalty || 0) +
+          Number(r.detail?.redSidePenalty || 0) +
+          Number(r.detail?.penaltySidePenalty || 0);
+
+        cur.matches += 1;
+        cur.lastAt = nowISO;
+        map.set(key, cur);
+      }
+
+      const outTotals = {
+        items: Array.from(map.values()).map((x) => ({
+          ...x,
+          totalPoints: Math.round(x.totalPoints),
+          totalPenalty: Math.round(x.totalPenalty),
+        })),
+        updatedAt: nowISO,
+      };
+      await writeJson(TOTALS_FILE, outTotals);
+    });
+  }
 
   return {
     fixtureId: fid,

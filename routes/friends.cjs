@@ -12,6 +12,7 @@ const DATA    = path.join(__dirname,"..","data");
 // üzerinden gider — orası Mongo varsa Mongo'yu kullanır.
 const USERS   = path.join(DATA,"users.json");
 const TOTALS  = path.join(DATA,"totals.json");
+const SeasonTotals = require("../lib/season-totals.cjs");
 const FRIENDS = path.join(DATA,"friends.json");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
 const UsersStore = require("../lib/users-store.cjs");
@@ -77,8 +78,10 @@ function pairKey(a,b){
 // Arkadaş listesi artık yalnızca ilgili kimlikleri (getUsersByIdsLower),
 // arama ise sınırlı sorgu (searchUsers) kullanıyor.
 
-async function loadTotalsItems() {
-  const totals = await readJson(TOTALS, { items: [] });
+// Sezon toplamları Mongo öncelikli: totals.json Render'da her deploy'da
+// siliniyor ve settle2 artık season_totals'a yazıyor. bkz. lib/season-totals.cjs
+async function loadTotalsItems(db) {
+  const totals = await SeasonTotals.loadTotals(db || null);
   return Array.isArray(totals.items) ? totals.items : [];
 }
 
@@ -315,7 +318,7 @@ router.get("/list/:userId", async (req,res)=>{
     if (!userId) return res.status(400).json({ ok:false, error:"USER_REQUIRED" });
 
     const m           = await loadFriends();
-    const totalsItems = await loadTotalsItems();
+    const totalsItems = await loadTotalsItems(req.app?.locals?.db || null);
 
     // Yalnızca bu kullanıcının arkadaşları çekilir — eskiden tüm kullanıcı
     // listesi yüklenip her isim için doğrusal aranıyordu.
@@ -391,7 +394,7 @@ router.get("/board/:userId", async (req,res)=>{
     if (!userId) return res.status(400).json({ ok:false, error:"USER_REQUIRED" });
 
     const m           = await loadFriends();
-    const totalsItems = await loadTotalsItems();
+    const totalsItems = await loadTotalsItems(req.app?.locals?.db || null);
 
     const ids = new Set();
     ids.add(userId);
@@ -452,7 +455,7 @@ router.get("/search", async (req, res) => {
       Math.min(50, limit * 3),
       req.app?.locals?.db || null
     );
-    const totalsItems = await loadTotalsItems();
+    const totalsItems = await loadTotalsItems(req.app?.locals?.db || null);
 
     // totals map (hız)
     const totalsByUser = new Map();
