@@ -21,6 +21,15 @@ const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const { applyRegen } = require("../lib/lc-regen.cjs");
 // 🔹 Premium ayrıcalıkları
 const premium = require("../lib/premium.cjs");
+
+/** Yönetim ucu koruması — fail-closed: token tanımsızsa uç tamamen kapalı. */
+function requireAdminToken(req, res, next) {
+  const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
+  if (!token) return res.status(503).json({ ok: false, error: "ADMIN_TOKEN_NOT_CONFIGURED" });
+  const got = String(req.headers["x-admin-token"] || "").trim() || String(req.query.token || "").trim();
+  if (got && got === token) return next();
+  return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
+}
 const UsersStore = require("../lib/users-store.cjs");
 // 🔹 Atomik yazma + dosya kilidi (race önleme)
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
@@ -1416,7 +1425,13 @@ function pickBotsForFixture(fixtureId, needed, fixtureCountry) {
  * - bot-profiles.json'daki tüm botlar için deterministik tahmin üretir
  * - preds.json'a yazar
  */
-router.post("/pred/bots-generate", async (req, res) => {
+/**
+ * ⚠️ YÖNETİM UCU — admin token zorunlu.
+ * Bot tahmini üretiyor: sıralamayı ve havuz dağılımını doğrudan etkiliyor.
+ * Yetkisiz bırakıldığında herkes istediği maça istediği kadar bot tahmini
+ * bastırabilirdi.
+ */
+router.post("/pred/bots-generate", requireAdminToken, async (req, res) => {
   try {
     // 🔒 Yönetim ucu: kimlik istemiyordu — herkes herhangi bir maça bot
     // üretebiliyordu. Dosya modunda her çağrı 17MB okuma/yazma demek, yani

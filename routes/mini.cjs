@@ -24,6 +24,11 @@ const crypto = require("crypto");
 const DATA_DIR = path.join(__dirname, "..", "data");
 const MINI_FILE = path.join(DATA_DIR, "mini-tournaments.json");
 const SocialStore = require("../lib/social-store.cjs");
+// ⚠️ Bu import BİR KEZ ATLANMIŞTI: koşullu ekleme ("dosyada 'verifyToken'
+// geçmiyorsa ekle") kullanılmıştı, ama az önce eklenen rota tanımları o
+// metni zaten içerdiği için koşul yanlış çalıştı. Aynı hata settle2'de de
+// olmuştu. Ders: import eklemeyi metin varlığına bağlama.
+const { verifyToken } = require("../middleware/verifyToken.cjs");
 const premium = require("../lib/premium.cjs");
 const RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
@@ -231,10 +236,15 @@ async function finalizeIfDone(t, board, settledCount, fixtureCount, db) {
 }
 
 // ---- POST /api/mini/create ----
-router.post("/create", express.json(), async (req, res) => {
+router.post("/create", verifyToken, express.json(), async (req, res) => {
   try {
     const db = req.app?.locals?.db || null;
-    const userId = String(req.body?.userId || "").trim();
+    // ⚠️ KİMLİK GÖVDEDEN ALINMAZ. Bu üç uç kimlik doğrulamasızdı ve
+    // `userId`'yi istek gövdesinden okuyordu: herkes BAŞKASININ adına turnuva
+    // kurabiliyor, katılabiliyor ve davet edebiliyordu. Mini turnuva kazananı
+    // LC alıyor (MINI_WIN_LC), yani bu doğrudan para yoluna açılan bir kimlik
+    // taklidi açığıydı. Artık kimlik `req.uid`'den geliyor.
+    const userId = String(req.uid || "").trim();
     const name = String(req.body?.name || "").trim().slice(0, 60);
     const fixtures = Array.isArray(req.body?.fixtures) ? req.body.fixtures : [];
 
@@ -291,10 +301,15 @@ router.post("/create", express.json(), async (req, res) => {
 });
 
 // ---- POST /api/mini/join ----
-router.post("/join", express.json(), async (req, res) => {
+router.post("/join", verifyToken, express.json(), async (req, res) => {
   try {
     const db = req.app?.locals?.db || null;
-    const userId = String(req.body?.userId || "").trim();
+    // ⚠️ KİMLİK GÖVDEDEN ALINMAZ. Bu üç uç kimlik doğrulamasızdı ve
+    // `userId`'yi istek gövdesinden okuyordu: herkes BAŞKASININ adına turnuva
+    // kurabiliyor, katılabiliyor ve davet edebiliyordu. Mini turnuva kazananı
+    // LC alıyor (MINI_WIN_LC), yani bu doğrudan para yoluna açılan bir kimlik
+    // taklidi açığıydı. Artık kimlik `req.uid`'den geliyor.
+    const userId = String(req.uid || "").trim();
     const code = String(req.body?.code || "").trim().toUpperCase();
     if (!userId || !code) return res.status(400).json({ ok: false, error: "USER_OR_CODE_MISSING" });
 
@@ -345,10 +360,15 @@ async function areFriends(u1, u2) {
   });
 }
 
-router.post("/invite", express.json(), async (req, res) => {
+router.post("/invite", verifyToken, express.json(), async (req, res) => {
   try {
     const db = req.app?.locals?.db || null;
-    const userId = String(req.body?.userId || "").trim();
+    // ⚠️ KİMLİK GÖVDEDEN ALINMAZ. Bu üç uç kimlik doğrulamasızdı ve
+    // `userId`'yi istek gövdesinden okuyordu: herkes BAŞKASININ adına turnuva
+    // kurabiliyor, katılabiliyor ve davet edebiliyordu. Mini turnuva kazananı
+    // LC alıyor (MINI_WIN_LC), yani bu doğrudan para yoluna açılan bir kimlik
+    // taklidi açığıydı. Artık kimlik `req.uid`'den geliyor.
+    const userId = String(req.uid || "").trim();
     const id = String(req.body?.id || "").trim();
     const friendUserId = String(req.body?.friendUserId || "").trim();
     if (!userId || !id || !friendUserId) {

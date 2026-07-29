@@ -766,6 +766,40 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
       await writeJson(DATA_FILES.totals, totals);
     }
 
+    // 7b. Mongo koleksiyonları — dosya tabanlı adımlar bunları KAPSAMIYOR.
+    //
+    // ⚠️ Play Store hesap silme şartı "kullanıcı verisini sil" diyor; bugün
+    // eklenen depolar (havuz bahsi, düello, seri, sezon toplamı, turnuva)
+    // dosya adımlarının dışında kaldığı için kullanıcı silinse bile verisi
+    // duruyordu. Silme yolunun yeni depolarla birlikte büyümesi gerekiyor —
+    // yeni bir koleksiyon eklendiğinde buraya da eklenmeli.
+    const dbSil = req.app?.locals?.db || null;
+    if (dbSil) {
+      const uidL = uid.toLowerCase();
+      const islemler = [
+        ["pool_bets",      { userIdLower: uidL }],
+        ["season_totals",  { userIdLower: uidL }],
+        ["streaks",        { userIdLower: uidL }],
+        ["lc_wallet_users",{ userIdLower: uidL }],
+        ["lc_wallet_ledger", { userIdLower: uidL }],
+        ["predictions",    { userIdLower: uidL }],
+        // Düello/turnuva: kullanıcı iki alanın herhangi birinde geçebilir.
+        ["duels",          { $or: [{ creatorId: uid }, { acceptorId: uid }] }],
+        ["tournaments",    { creatorId: uid }],
+        ["mini_tournaments", { ownerId: uid }],
+      ];
+      for (const [koleksiyon, filtre] of islemler) {
+        try {
+          const r = await dbSil.collection(koleksiyon).deleteMany(filtre);
+          if (r.deletedCount) console.log(`[delete-account] ${koleksiyon}: ${r.deletedCount} kayit silindi`);
+        } catch (e) {
+          // Tek koleksiyon hatası silmeyi durdurmasın; ama sessiz kalma —
+          // eksik silme bir uyum sorunudur.
+          console.error(`[delete-account] ${koleksiyon} silinemedi:`, e?.message || e);
+        }
+      }
+    }
+
     // 8. Firebase Auth'tan sil
     try {
       const { getAuth } = require("firebase-admin/auth");

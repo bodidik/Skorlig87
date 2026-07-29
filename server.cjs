@@ -133,16 +133,43 @@ app.get("/api/runtime/config", (req, res) => {
 });
 
 /* ===== Safe-mount helper ===== */
+/**
+ * Rota yükleme — bir rota patlarsa uygulama komple düşmesin diye sarmalanmış.
+ *
+ * ⚠️ AMA SESSİZ OLMAMALI. Yaşandı (2026-07-29): mini.cjs'te eksik bir import
+ * yüzünden router hiç yüklenmedi; sunucu normal açıldı, sağlık ucu "iyi" dedi
+ * ve mini turnuva uçları sessizce 404 vermeye başladı. Tek iz, onlarca "OK"
+ * satırının arasındaki bir `console.log` idi.
+ *
+ * İki değişiklik: hata artık console.ERROR (log toplayıcıda görünür) ve
+ * atlanan rotalar /api/health'te listeleniyor — dışarıdan sorulabilir olsun.
+ */
+const MOUNTS = { ok: [], skipped: [] };
+
 function safeMount(name, fn) {
   try {
     fn();
+    MOUNTS.ok.push(name);
     console.log("[mount] " + name + " OK");
   } catch (e) {
-    console.log(
-      "[mount] " + name + " SKIPPED: " + (e && (e.message || e))
-    );
+    MOUNTS.skipped.push({ name, error: String((e && (e.message || e)) || "?") });
+    console.error("[mount] " + name + " SKIPPED: " + (e && (e.message || e)));
   }
 }
+
+/**
+ * GET /api/health — dışarıdan sorulabilir açılış durumu.
+ * Atlanan rota varsa `ok:false` döner: "ayakta" ile "eksiksiz" farklı şeyler.
+ */
+app.get("/api/health", (req, res) => {
+  res.status(MOUNTS.skipped.length ? 503 : 200).json({
+    ok: MOUNTS.skipped.length === 0,
+    mountedCount: MOUNTS.ok.length,
+    skipped: MOUNTS.skipped,
+    mongo: !!req.app?.locals?.db,
+    uptimeSec: Math.round(process.uptime()),
+  });
+});
 
 /* ===== Routers ===== */
 const team = require("./routes/team.cjs");
