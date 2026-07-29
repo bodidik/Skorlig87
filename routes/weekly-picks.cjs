@@ -25,6 +25,7 @@ const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
 // LC harcama: bakiye Mongo'da tutuluyor, dosyaya yazmak parayı kaybettirir.
 const WalletCredit = require("../lib/wallet-credit.cjs");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 const LIVE_DIR           = path.join(DATA_DIR, "live");
 
 const WINDOW_BEFORE_MS = 24 * 60 * 60 * 1000;  // 24 saat önce açılır
@@ -133,8 +134,8 @@ router.get("/", async (req, res) => {
     const db     = req.app?.locals?.db || null;
     const now    = Date.now();
 
-    const raw = await readJson(FIXTURES_FILE, { fixtures: [] });
-    const all = Array.isArray(raw) ? raw : (raw?.fixtures ?? []);
+    // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
+    const all = await FixturesStore.loadAll(db);
 
     const picks = [];
     for (const fx of all) {
@@ -202,8 +203,8 @@ router.post("/predict", verifyToken, async (req, res) => {
       return res.status(400).json({ ok: false, error: "INVALID_INPUT" });
     }
 
-    const raw = await readJson(FIXTURES_FILE, { fixtures: [] });
-    const all = Array.isArray(raw) ? raw : (raw?.fixtures ?? []);
+    // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
+    const all = await FixturesStore.loadAll(db);
     const fx  = all.find(f => f.fixtureId === fixtureId);
     if (!fx) return res.status(404).json({ ok: false, error: "FIXTURE_NOT_FOUND" });
 

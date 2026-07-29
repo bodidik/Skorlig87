@@ -1,5 +1,6 @@
 "use strict";
 const express = require("express");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 const router  = express.Router();
 const fs = require("fs"), fsp = fs.promises, path = require("path");
 
@@ -19,8 +20,8 @@ router.get("/fav", async (req,res)=>{
     const team = u?.mainTeam || u?.team || "Galatasaray";
 
     // kaynak: fixtures.json + live klasörü
-    const fixtures = await readJson(path.join(DATA,"fixtures.json"),[]);
-    const arr = Array.isArray(fixtures)? fixtures : (fixtures.fixtures||[]);
+    // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
+    const arr = await FixturesStore.loadAll(req.app?.locals?.db || null);
     const liveDir = path.join(DATA,"live");
     const now = Date.now(), from = now - 72*3600*1000, to = now + 72*3600*1000;
 

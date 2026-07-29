@@ -65,6 +65,7 @@ const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const RESULTS_FILE = path.join(DATA_DIR, "results.json");
 const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 const RT_LIVE_GS_FILE = path.join(DATA_DIR, "rt-live-gs.json");
 
 // ✅ maç bazlı puan defteri (kalıcı history)
@@ -209,12 +210,10 @@ async function loadResultsList() {
   return [];
 }
 
-async function loadFixturesList() {
-  const raw = await readJson(FIXTURES_FILE, null);
-  if (Array.isArray(raw)) return raw;
-  if (raw && Array.isArray(raw.fixtures)) return raw.fixtures;
-  if (raw && Array.isArray(raw.items)) return raw.items;
-  return [];
+// Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs. Sarmal çözme
+// (düz dizi / {fixtures} / {items}) oraya taşındı.
+async function loadFixturesList(db) {
+  return FixturesStore.loadAll(db || null);
 }
 
 /**
@@ -1531,7 +1530,7 @@ router.get("/match-race", async (req, res) => {
     const fixturePreds = await loadFixturePreds(fixtureId, db);
 
     // Fixture bilgisi (home/away/date)
-    const fixtures = await loadFixturesList();
+    const fixtures = await loadFixturesList(db);
     const fxInfo = fixtures.find((f) => String(f.fixtureId || f.id) === fixtureId);
 
     let result = null;

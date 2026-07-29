@@ -43,6 +43,7 @@ const PROV_FILE = path.join(DATA_DIR, "providers.json"); // provider.js ile ayn�
 // uyuşmuyordu — okuyan biri çıksa yanlış alan adı kullanırdı. Profil verisi
 // artık lib/users-store.cjs üzerinden gider.
 const MANUAL_FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 // admin-alerts.json artık lib/admin-alerts.cjs üzerinden yazılır (kırpma +
 // tekrar bastırma + dosya kilidi). Yol tanımı orada.
 const LIVE_DIR = path.join(DATA_DIR, "live"); // fixture state için (score, status vs.)
@@ -960,8 +961,8 @@ async function effectiveStatusForFixture(it) {
 }
 
 async function loadManualFixtures() {
-  const raw = await readJson(MANUAL_FIXTURES_FILE, { fixtures: [] });
-  const list = Array.isArray(raw?.fixtures) ? raw.fixtures : [];
+  // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
+  const list = await FixturesStore.loadAll();
 
   return list
     .map((f) => {

@@ -58,6 +58,8 @@ async function writeJsonAtomic(file, data) {
    Fixtures store helpers
    - fixtures.json formatı projende bazen {fixtures:[...]} / {items:[...]} / direkt [...]
    ========================================================= */
+const FixturesStore = require("../lib/fixtures-store.cjs");
+
 function pickFixtures(raw) {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw;
@@ -74,14 +76,17 @@ function wrapFixturesLike(raw, list) {
   }
   return { fixtures: list };
 }
+// Fikstürler Mongo birincil (bkz. lib/fixtures-store.cjs). Admin'in elle
+// eklediği/sildiği maçlar da oraya gider; eskiden yalnızca dosyaya yazılıyordu
+// ve Render'da her deploy'da yok oluyordu.
+// `raw` sarmalı geriye uyumluluk için korunuyor — saveAll dosya aynasında
+// sarmalı zaten kendisi koruyor, buradaki rawShape artık kullanılmıyor.
 async function loadFixturesStore() {
-  const raw = await readJson(FIXTURES_FILE, null);
-  const list = pickFixtures(raw);
-  return { raw, list };
+  const list = await FixturesStore.loadAll();
+  return { raw: { fixtures: list }, list };
 }
-async function saveFixturesStore(rawShape, list) {
-  const out = wrapFixturesLike(rawShape, list);
-  await writeJsonAtomic(FIXTURES_FILE, out);
+async function saveFixturesStore(_rawShape, list) {
+  await FixturesStore.saveAll(list);
 }
 
 /* =========================================================

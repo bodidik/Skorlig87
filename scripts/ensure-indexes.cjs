@@ -50,6 +50,13 @@ const { getDb } = require("../lib/mongo.cjs");
   await db.collection("season_totals").createIndex({ userIdLower: 1 }, { unique: true });
   console.log("indexes: season_totals OK");
 
+  // Fikstürler: senkron her turda tam listeyi upsert eder (fixtureId benzersiz
+  // olmazsa aynı maç iki kez listelenir), rotalar zaman penceresiyle sorgular.
+  // bkz. lib/fixtures-store.cjs
+  await db.collection("fixtures").createIndex({ fixtureId: 1 }, { unique: true, background: true });
+  await db.collection("fixtures").createIndex({ kickoffISO: 1 }, { background: true });
+  console.log("indexes: fixtures OK");
+
   console.log(`veritabani: ${db.databaseName}`);
   process.exit(0);
 })().catch((e) => {

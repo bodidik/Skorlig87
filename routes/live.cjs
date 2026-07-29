@@ -36,6 +36,7 @@ const LIVE_DIR = path.join(DATA_DIR, "live");
  * yanlış alarma yol açtı. Boş dosya ile eksik veri dışarıdan aynı görünüyor.
  */
 const LIVE_FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 
 // ---- Normalizasyon
 function normalizeLocalFixture(rec) {
@@ -99,19 +100,9 @@ function matchTeam(rec, team) {
 }
 
 // ---- fixtures.json oku
-async function loadLocalFixturesFile() {
-  try {
-    const txt = await fsp.readFile(LIVE_FIXTURES_FILE, "utf8");
-    const raw = JSON.parse(txt);
-
-    if (Array.isArray(raw)) return raw;
-    if (Array.isArray(raw.fixtures)) return raw.fixtures;
-    if (Array.isArray(raw.items)) return raw.items;
-    return [];
-  } catch {
-    // dosya yoksa veya bozuksa boş dönem
-    return [];
-  }
+// Mongo birincil — bkz. lib/fixtures-store.cjs. Sarmal çözme oraya taşındı.
+async function loadLocalFixturesFile(db) {
+  return FixturesStore.loadAll(db || null);
 }
 
 // ---- Handler: /fixtures, /live/fixtures
@@ -119,7 +110,7 @@ async function fixturesHandler(req, res) {
   try {
     const team = String(req.query.team || "").trim();
 
-    const raw = await loadLocalFixturesFile();
+    const raw = await loadLocalFixturesFile(req.app?.locals?.db || null);
     const all = raw.map((rec) => normalizeLocalFixture(rec));
 
     const filtered = team ? all.filter((f) => matchTeam(f, team)) : all;

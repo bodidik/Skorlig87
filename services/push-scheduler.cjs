@@ -22,6 +22,7 @@ const push = require("./push.cjs");
 
 const DATA_DIR     = path.join(__dirname, "..", "data");
 const FIXTURES     = path.join(DATA_DIR, "fixtures.json");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 const PREDS        = path.join(DATA_DIR, "preds.json");
 const RESULTS      = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
@@ -87,7 +88,8 @@ function fmtMatch(f) {
 /* ===== 1) Maç başlıyor hatırlatması ===== */
 
 async function runKickoffReminders() {
-  const fixtures = asArray(await readJson(FIXTURES, null), "fixtures", "items");
+  // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
+  const fixtures = await FixturesStore.loadAll();
   const preds    = asArray(await readJson(PREDS, null), "items", "preds");
   if (!fixtures.length) return { checked: 0, sent: 0 };
 

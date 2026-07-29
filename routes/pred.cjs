@@ -8,6 +8,7 @@ const fsp = fs.promises;
 const path = require("path");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 const LIVE_DIR = path.join(DATA_DIR, "live"); // fixture state için
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
@@ -1761,11 +1762,8 @@ router.get("/pred/my", async (req, res) => {
     const fidSet = new Set(result.fixtures);
     if (!fidSet.size) return res.json({ ok: true, count: 0, items: [] });
 
-    // 2) fixtures.json'dan maç meta verisi
-    const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
-    let fixturesRaw = { fixtures: [] };
-    try { fixturesRaw = JSON.parse(await fsp.readFile(FIXTURES_FILE, "utf8")); } catch { /* */ }
-    const fxList = Array.isArray(fixturesRaw.fixtures) ? fixturesRaw.fixtures : [];
+    // 2) maç meta verisi — Mongo birincil (bkz. lib/fixtures-store.cjs)
+    const fxList = await FixturesStore.loadAll(req.app?.locals?.db || null);
     const fxMap = new Map(fxList.map((f) => [String(f.fixtureId || ""), f]));
 
     // 3) live state'den skor/status (data/live/<fixtureId>.json)

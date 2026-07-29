@@ -10,6 +10,7 @@ const DATA_DIR       = path.join(__dirname, "..", "data");
 const UsersStore = require("../lib/users-store.cjs");
 const LEADER_FILE    = path.join(DATA_DIR, "leaderboard.json");
 const FIXTURES_FILE  = path.join(DATA_DIR, "fixtures.json");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 
 // 🔹 Runtime mode (4 takım / 30 takım / global vb.)
 const { getRuntimeMode } = require("../lib/runtime-mode.cjs");
@@ -136,8 +137,8 @@ router.get("/fixtures", async (req,res)=>{
     return res.json({ ok:true, team, fixtures:[] });
   }
 
-  const fxData = await readJson(FIXTURES_FILE, []);
-  const arr = Array.isArray(fxData) ? fxData : (Array.isArray(fxData.fixtures)? fxData.fixtures : []);
+  // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
+  const arr = await FixturesStore.loadAll();
 
   const list = arr.filter(fx=>{
     const h = String(fx.home||"").toLowerCase();

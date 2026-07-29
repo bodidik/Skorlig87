@@ -7,6 +7,7 @@ const path = require("path");
 const DATA_DIR   = path.join(__dirname, "..", "data");
 const LIVE_DIR   = path.join(DATA_DIR, "live");
 const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 const RESULTS_FILE  = path.join(DATA_DIR, "results.json");   // settle2'nin okuduğu file
 const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
@@ -253,10 +254,13 @@ async function sync() {
   const nowISO  = new Date().toISOString();
 
   try {
-    const fixturesData = readJsonSync(FIXTURES_FILE);
+    // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs.
+    // Eskiden readJsonSync idi: JSON.parse SENKRON olduğu için 124 KB'lık
+    // dosyayı her turda olay döngüsünü bloklayarak okuyordu.
+    const fixtureList = await FixturesStore.loadAll();
     const lsCache      = livescoreScraper.getCache();
 
-    if (!fixturesData?.fixtures?.length) throw new Error("No fixtures");
+    if (!fixtureList.length) throw new Error("No fixtures");
     if (!lsCache?.leagues) throw new Error("Livescore cache empty");
 
     // Flatten livescore matches
@@ -273,7 +277,7 @@ async function sync() {
     let newLive = 0;
     const settleQueue = [];
 
-    for (const fixture of fixturesData.fixtures) {
+    for (const fixture of fixtureList) {
       const fid      = fixture.fixtureId;
       const liveMatch = findLiveMatch(fixture, allLive);
       if (!liveMatch) continue;

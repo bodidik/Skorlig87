@@ -33,6 +33,7 @@ const { readJson } = require("./store.cjs");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const FIXTURES = path.join(DATA_DIR, "fixtures.json");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 
 // Kickoff'a bu kadar veya daha az kalan maçlar doldurulur.
 const FILL_WINDOW_MS = Number(process.env.SKORLIG_BOT_FILL_WINDOW_H || 24) * 3600 * 1000;
@@ -57,8 +58,8 @@ function asArray(raw, ...keys) {
 
 /** Doldurulacak maçlar: kickoff penceresi içinde ve kilide girmemiş. */
 async function pickFixtures() {
-  const raw = await readJson(FIXTURES, null);
-  const list = asArray(raw, "fixtures", "items");
+  // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
+  const list = await FixturesStore.loadAll();
   const now = Date.now();
 
   const out = [];

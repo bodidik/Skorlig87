@@ -43,6 +43,7 @@ const { withFileLock } = require("../lib/fileLock.cjs");
 // üretim-dışı da olsa 216 kayıtlık yerel fikstür dosyasını 2 kayda düşürdü.
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
+const FixturesStore = require("../lib/fixtures-store.cjs");
 
 const FDO_BASE = "https://api.football-data.org/v4";
 const WINDOW_DAYS = 10;      // FDO sınırı: "period must not exceed 10 days"
@@ -178,30 +179,20 @@ function merge(existing, incoming, ownedSource = SOURCE) {
   };
 }
 
-/** fixtures.json'un sarmalını (düz dizi / {fixtures:[]}) koruyarak yazar. */
+/**
+ * Fikstürleri yazar. Mongo birincil, dosya ayna — bkz. lib/fixtures-store.cjs.
+ *
+ * Dosya sarmalını koruma ve atomik yazma oraya taşındı; buradaki kopyası
+ * silindi ki iki yerde ayrı ayrı değişmesin. mackolik-fixture-sync ve
+ * manual-fixtures-restore de bu fonksiyonu kullanıyor — yani üç senkron
+ * yolunun tamamı tek depodan geçiyor.
+ */
 async function writeFixtures(list) {
-  let raw = null;
-  try {
-    raw = JSON.parse(await fsp.readFile(FIXTURES_FILE, "utf8"));
-  } catch {}
-
-  const out = Array.isArray(raw)
-    ? list
-    : { ...(raw && typeof raw === "object" ? raw : {}), fixtures: list };
-
-  const tmp = FIXTURES_FILE + ".tmp";
-  await fsp.writeFile(tmp, JSON.stringify(out, null, 2) + "\n", "utf8");
-  await fsp.rename(tmp, FIXTURES_FILE);
+  return FixturesStore.saveAll(list);
 }
 
 async function readFixtures() {
-  try {
-    const raw = JSON.parse(await fsp.readFile(FIXTURES_FILE, "utf8"));
-    if (Array.isArray(raw)) return raw;
-    return Array.isArray(raw?.fixtures) ? raw.fixtures : [];
-  } catch {
-    return [];
-  }
+  return FixturesStore.loadAll();
 }
 
 /**
