@@ -23,6 +23,7 @@ const crypto = require("crypto");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const MINI_FILE = path.join(DATA_DIR, "mini-tournaments.json");
+const SocialStore = require("../lib/social-store.cjs");
 const RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR = path.join(DATA_DIR, "live");
@@ -53,12 +54,14 @@ async function writeJson(file, data) {
   await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
 }
 
-async function loadAll() {
-  const raw = await readJson(MINI_FILE, { items: [] });
-  return Array.isArray(raw.items) ? raw.items : [];
+// Mini turnuvalar Mongo birincil — bkz. lib/social-store.cjs. Dosyada
+// tutulurken Render'da her deploy siliyordu; kullanıcının açtığı turnuva
+// hiçbir kaynaktan geri gelmiyordu.
+async function loadAll(db) {
+  return SocialStore.loadMini(db || null);
 }
-async function saveAll(items) {
-  await writeJson(MINI_FILE, { items, updatedAt: new Date().toISOString() });
+async function saveAll(items, db) {
+  await SocialStore.saveMini(items, db || null);
 }
 
 function newCode(existing) {
@@ -308,7 +311,8 @@ router.post("/join", express.json(), async (req, res) => {
 const FRIENDS_FILE = path.join(DATA_DIR, "friends.json");
 
 async function areFriends(u1, u2) {
-  const m = await readJson(FRIENDS_FILE, { links: [], blocks: [] });
+  // Arkadaşlıklar Mongo birincil — bkz. lib/social-store.cjs
+  const m = await SocialStore.loadFriends();
   const a = String(u1).toLowerCase();
   const b = String(u2).toLowerCase();
 

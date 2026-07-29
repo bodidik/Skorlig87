@@ -16,7 +16,11 @@ function requireAdminToken(req, res, next) {
   if (got && got === token) return next();
   return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
 }
-const GROUPS = path.join(DATA,"groups.json");  // { CODE: { name, ownerId, members:[userId], opts:{ userId:{ includeInTotal } } } }
+const GROUPS = path.join(DATA,"groups.json");
+// Gruplar Mongo birincil — bkz. lib/social-store.cjs. Dosyada tutulurken
+// Render'da her deploy siliyordu; kullanıcının kurduğu grup ve üyelikler
+// hiçbir kaynaktan geri gelmiyordu.
+const SocialStore = require("../lib/social-store.cjs");  // { CODE: { name, ownerId, members:[userId], opts:{ userId:{ includeInTotal } } } }
 const UsersStore = require("../lib/users-store.cjs");
 const TOTALS = path.join(DATA,"totals.json");  // { items: [ { userId, totalPoints, ...}, ... ], updatedAt }
 const SeasonTotals = require("../lib/season-totals.cjs");
@@ -42,7 +46,7 @@ async function handleCreate(req,res){
       return res.status(400).json({ ok:false, error:"NAME_OWNER_REQUIRED" });
     }
 
-    const store = await readJson(GROUPS, {});
+    const store = await SocialStore.loadGroups(req.app?.locals?.db || null);
     let code;
     do { code = code6(); } while (store[code]);
 
@@ -53,7 +57,7 @@ async function handleCreate(req,res){
       opts: {}
     };
 
-    await writeJson(GROUPS, store);
+    await SocialStore.saveGroups(store, req.app?.locals?.db || null);
     res.json({ ok:true, code, group: store[code] });
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_CREATE_FAILED", detail:String(e && (e.message||e)) });
@@ -63,7 +67,7 @@ async function handleCreate(req,res){
 async function handleJoin(req,res){
   try{
     const { code, userId } = req.body || {};
-    const store = await readJson(GROUPS, {});
+    const store = await SocialStore.loadGroups(req.app?.locals?.db || null);
     const g = store[String(code||"").toUpperCase()];
     if (!g) return res.status(404).json({ ok:false, error:"GROUP_NOT_FOUND" });
 
@@ -73,7 +77,7 @@ async function handleJoin(req,res){
     if (!Array.isArray(g.members)) g.members = [];
     if (!g.members.includes(uid)) g.members.push(uid);
 
-    await writeJson(GROUPS, store);
+    await SocialStore.saveGroups(store, req.app?.locals?.db || null);
     res.json({ ok:true, group:{ code:String(code||"").toUpperCase(), name:g.name, size:g.members.length } });
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_JOIN_FAILED", detail:String(e && (e.message||e)) });
@@ -83,7 +87,7 @@ async function handleJoin(req,res){
 async function handleBoard(req,res){
   try{
     const code = String(req.params.code || "").toUpperCase();
-    const store  = await readJson(GROUPS, {});
+    const store  = await SocialStore.loadGroups(req.app?.locals?.db || null);
     // Sezon toplamları Mongo öncelikli: totals.json Render'da her deploy'da
     // siliniyor ve settle2 artık season_totals'a yazıyor. bkz. lib/season-totals.cjs
     const totals = await SeasonTotals.loadTotals(req.app?.locals?.db || null);
@@ -132,14 +136,14 @@ async function handleOpt(req,res){
       return res.status(400).json({ ok:false, error:"REQ" });
     }
 
-    const store = await readJson(GROUPS, {});
+    const store = await SocialStore.loadGroups(req.app?.locals?.db || null);
     const g = store[code];
     if (!g) return res.status(404).json({ ok:false, error:"GROUP_NOT_FOUND" });
 
     g.opts = g.opts || {};
     g.opts[String(userId)] = { includeInTotal: !!includeInTotal };
 
-    await writeJson(GROUPS, store);
+    await SocialStore.saveGroups(store, req.app?.locals?.db || null);
     res.json({ ok:true });
   }catch(e){
     res.status(500).json({ ok:false, error:"GROUP_OPT_FAILED", detail:String(e && (e.message||e)) });
@@ -169,7 +173,7 @@ router.post("/:code/opt",        express.json(), handleOpt); // alias
 // DIAG (aynı)
 router.get("/diag", requireAdminToken, async (req,res)=>{
   try{
-    const store = await readJson(GROUPS, {});
+    const store = await SocialStore.loadGroups(req.app?.locals?.db || null);
     const codes = Object.keys(store);
     res.json({ ok:true, codes, groups: store });
   }catch(e){

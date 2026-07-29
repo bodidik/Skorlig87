@@ -14,6 +14,7 @@ const USERS   = path.join(DATA,"users.json");
 const TOTALS  = path.join(DATA,"totals.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
 const FRIENDS = path.join(DATA,"friends.json");
+const SocialStore = require("../lib/social-store.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
 const UsersStore = require("../lib/users-store.cjs");
 // {
@@ -57,15 +58,15 @@ function isBlockedEither(m, a, b){
   );
 }
 
-async function loadFriends(){
-  const m = await readJson(FRIENDS, null);
-  if (!m || typeof m !== "object") return emptyFriends();
-  if (!Array.isArray(m.links))    m.links    = [];
-  if (!Array.isArray(m.requests)) m.requests = [];
+// Arkadaşlıklar Mongo birincil — bkz. lib/social-store.cjs. Dosyada
+// tutulurken Render'da her deploy siliyordu ve arkadaş listesi hiçbir
+// kaynaktan geri gelmiyordu.
+async function loadFriends(db){
+  const m = await SocialStore.loadFriends(db || null);
   ensureBlocks(m);
   return m;
 }
-async function saveFriends(m){ await writeJson(FRIENDS, m); }
+async function saveFriends(m, db){ await SocialStore.saveFriends(m, db || null); }
 
 // iki kullanıcı arasındaki arkadaşlık için canonical key
 function pairKey(a,b){
@@ -726,7 +727,7 @@ router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
       !(normLower(r.from) === normLower(userId) && normLower(r.to) === normLower(ownerId)) &&
       !(normLower(r.from) === normLower(ownerId) && normLower(r.to) === normLower(userId))
     );
-    await writeJson(FRIENDS, m);
+    await saveFriends(m, req.app?.locals?.db || null);
 
     // LC ödülü — ikisine de
     if (INVITE_REWARD > 0) {

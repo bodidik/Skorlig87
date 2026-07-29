@@ -22,6 +22,7 @@ const DATA_DIR     = path.join(__dirname, "..", "data");
 const GROUPS_FILE  = path.join(DATA_DIR, "groups.json");
 const TOTALS_FILE  = path.join(DATA_DIR, "totals.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
+const SocialStore = require("../lib/social-store.cjs");
 
 // 🔹 LigCoin başlangıç değeri (pred/settle2 ile uyumlu olmalı)
 const LC_START = 30;
@@ -121,8 +122,10 @@ function normUserId(userId) {
   return String(userId || "").trim();
 }
 
-async function loadGroupsStoreCompat() {
-  const raw = await readJson(GROUPS_FILE, null);
+async function loadGroupsStoreCompat(db) {
+  // Gruplar Mongo birincil — bkz. lib/social-store.cjs. Aşağıdaki eski biçim
+  // toleransı korundu: dosya yedeğinde hâlâ {items:[...]} sarmalı olabilir.
+  const raw = await SocialStore.loadGroups(db || null);
 
   // 1) Map format (ideal)
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
@@ -723,21 +726,25 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
       await writeJson(DATA_FILES.wallet, wallet);
     }
 
-    // 5. friends.json — tüm arkadaşlık kayıtlarından çıkar
-    const friends = await readJson(DATA_FILES.friends);
-    if (friends && typeof friends === "object") {
-      delete friends[uid];
-      for (const k of Object.keys(friends)) {
-        const f = friends[k];
-        if (f && Array.isArray(f.friends)) f.friends = f.friends.filter(x => x !== uid);
-        if (f && Array.isArray(f.pending)) f.pending = f.pending.filter(x => x !== uid);
-        if (f && Array.isArray(f.blocked)) f.blocked = f.blocked.filter(x => x !== uid);
-      }
-      await writeJson(DATA_FILES.friends, friends);
-    }
+    // 5. Arkadaşlıklar — tüm kayıtlardan çıkar
+    //
+    // ⚠️ BU BLOK ESKİDEN HİÇBİR ŞEY SİLMİYORDU. Şemayı `{uid: {friends,
+    // pending, blocked}}` sanıyordu; gerçek şema `{links, requests, blocks}`.
+    // `delete friends[uid]` üst düzeyde uid anahtarı olmadığı için boşa
+    // gidiyor, döngü de "links"/"requests"/"blocks" DİZİLERİ üzerinde
+    // `f.friends` arıyordu — undefined, yani sessiz no-op. Sonuç: hesabını
+    // silen kullanıcı başkalarının arkadaş listesinde kalmaya devam ediyordu.
+    // Yanlış şema hata vermez, sadece hiçbir şey yapmaz.
+    const friends = await SocialStore.loadFriends(req.app?.locals?.db || null);
+    const esitDegil = (x) => String(x || "").toLowerCase() !== uid.toLowerCase();
+    friends.links    = friends.links.filter(l => esitDegil(l.a) && esitDegil(l.b));
+    friends.requests = friends.requests.filter(r => esitDegil(r.from ?? r.a) && esitDegil(r.to ?? r.b));
+    friends.blocks   = friends.blocks.filter(b => esitDegil(b.by ?? b.a) && esitDegil(b.target ?? b.b));
+    await SocialStore.saveFriends(friends, req.app?.locals?.db || null);
 
-    // 6. groups.json — sahip olduğu grupları sil, üyelikten çıkar
-    const groups = await readJson(DATA_FILES.groups);
+    // 6. Gruplar — sahip olduğu grupları sil, üyelikten çıkar
+    // (şema doğruydu; yalnızca depo Mongo'ya taşındı)
+    const groups = await SocialStore.loadGroups(req.app?.locals?.db || null);
     if (groups && typeof groups === "object") {
       for (const gid of Object.keys(groups)) {
         const g = groups[gid];
@@ -747,7 +754,7 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
           g.members = g.members.filter(m => m !== uid);
         }
       }
-      await writeJson(DATA_FILES.groups, groups);
+      await SocialStore.saveGroups(groups, req.app?.locals?.db || null);
     }
 
     // 7. totals.json
