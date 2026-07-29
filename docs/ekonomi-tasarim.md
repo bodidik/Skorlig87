@@ -1,7 +1,7 @@
 # SkorLig Ekonomisi — Tasarım
 
-**Durum:** Taslak, onay bekliyor. Kod yazılmadı.
-**Tarih:** 2026-07-29
+**Durum:** **Uygulandı** (1–6). Kararlar aşağıda "Verilen kararlar" tablosunda.
+**Tarih:** 2026-07-29 · son güncelleme: uygulama tamamlandı
 **Kapsam:** LC arzı · puan sıralaması · maç havuzu
 
 ---
@@ -101,9 +101,15 @@ tahminlerin çoğu yanlıştır. Denge günlük hakla kuruluyor (aşağıda).
 ### 2.2 Günlük hak: ekleme → **tabana tamamlama**
 
 ```
-Mevcut : bakiye += 5
-Öneri  : bakiye < TABAN ise bakiye = TABAN     (TABAN = 15 LC)
+Mevcut     : bakiye += 5
+Uygulanan  : bakiye < TABAN ise bakiye = TABAN     (TABAN = 6 LC, premium 12)
 ```
+
+> ⚠️ **Taban 15'ten 6'ya düşürüldü.** İlk öneri olan 15 LC, günlük 5 maçlık
+> giriş bedeline (5 × 3 = 15) eşitti — yani her şeyini kaybeden oyuncu ertesi
+> gün tam tamamlanıyordu. Kaybetmek bedava olunca iade eşiği düzeltmesi
+> anlamsızlaşıyordu. 6 LC = 2 maç. Kural testle tutuluyor:
+> `TABAN < GIRIS_BEDELI × 3` (`tests/economy.test.cjs`).
 
 - Zengin oyuncuya **0** verir → birikim kanalı kapanır
 - Parasız oyuncuya can suyu → oyundan kopmaz
@@ -233,12 +239,12 @@ Kalabalıkla gitmek az kazandırır — mekaniğin kendisi bu.
 **%5, yakılır.** (Karar verildi.) Yalnızca kaybeden taraf varsa alınır; herkes
 bildiyse kesinti yok, herkes bahsini geri alır.
 
-### 4.5 Bahis tavanı — **açık soru**
+### 4.5 Bahis tavanı — **karar verildi**
 
 Sabit tavan (100 LC) keyfi: *"adam 120 kazanması gerekiyor, biz 100 mü
 diyeceğiz?"* Tavan yok ise tek kişi çarpanı domine eder.
 
-**Önerim: `max(20 LC, havuzun %25'i)`**
+**Uygulanan: `max(20 LC, havuzun %25'i)`**
 
 - Kendiliğinden ölçeklenir, keyfi sayı yok
 - Tek kişi çarpanı bozamaz
@@ -324,13 +330,40 @@ Bağımlılık zinciri: ekonomi düzeltilmeden havuz eklemek bozukluğu büyüt�
 | 5 | Havuz (depo + uçlar + settle) | orta | Ekonomi dengelendikten sonra |
 | 6 | Havuz mobil ekranı | ayrı | — |
 
+**Durum (2026-07-29): 1–6 tamamlandı.**
+
+| # | Nerede |
+|---|---|
+| 1 | `routes/settle2.cjs` (iade eşiği) · `routes/lc-wallet.cjs` (günlük taban) |
+| 2 | `lib/economy-report.cjs` → `GET /api/admin/economy` |
+| 3 | `lib/ranking.cjs` (güven ağırlıklı ortalama + `RANK_MAX_PLAYED` tavanı) |
+| 4 | `lib/season.cjs` · `scripts/migrate-season-field.cjs` · `?season=` parametresi |
+| 5 | `lib/pool-store.cjs` · `routes/pool.cjs` · settle2 bağlantısı |
+| 6 | `mobile/app/pool/[fixtureId].tsx` |
+
 **1 ve 2 birlikte bir oturumda** çıkar ve etkisi hemen ölçülebilir.
 
 ---
 
-## Karar bekleyenler
+## Verilen kararlar
 
-1. **Bahis tavanı:** havuzun %25'i (önerim) · sabit 100 LC · tavan yok
-2. **Premium 300 LC:** kalsın mı, düşürülüp ayrıcalığa mı çevrilsin
-3. **Sezon uzunluğu:** aylık mı üç aylık mı
-4. **İade eşiği:** `base >= 6` (önerim, ort. −0.23) · `base >= 12` (−0.78) · iade yok (−0.78)
+| Konu | Karar | Nerede |
+|---|---|---|
+| **İade eşiği** | `base >= 6` — maç başına ortalama +2.21 → −0.23 LC | `SKORLIG_REFUND_MIN_BASE` |
+| **Günlük hak** | Koşulsuz ekleme değil, **tabana tamamlama** (6 LC / premium 12) | `SKORLIG_DAILY_FLOOR` |
+| **Sezon uzunluğu** | **Aylık.** Küçük havuzda sık tazelik daha canlı; ayrıca sezonu uzatmak kısaltmaktan kolay (kısaltmak yarım sezonları böler). | `SKORLIG_SEASON_LENGTH` |
+| **Bahis tavanı** | **`max(20, havuzun %25'i)`.** Sabit tavan keyfi ("adam 120 kazanmalı, biz 100 mü diyeceğiz?"); tavansız ise tek kişi çarpanı domine eder. Oransal tavan kendiliğinden ölçeklenir. | `SKORLIG_POOL_CAP_*` |
+| **Kesinti** | %5, **yakılır**, yalnızca kaybeden taraf varsa | `SKORLIG_POOL_CUT_PCT` |
+
+Sıralamada ayrıca **güven tavanı** eklendi (`SKORLIG_RANK_MAX_PLAYED=60`): daha
+çok LC (premium/satın alma) sıra satın alamasın diye. Ölçüldü — üçü de 6.0
+ortalamalı oyuncular 20/60/120 maçla 3./2./1. sıraya çıkıyordu; yetenek aynı,
+sıra farklıydı.
+
+## Karar bekleyen (tek kaldı)
+
+**Premium 300 LC/ay:** kalsın mı, düşürülüp ayrıcalığa mı çevrilsin.
+
+Bu bir gelir/ürün kararı, teknik değil — o yüzden verilmedi. Not: sıralama
+tavanı geldiği için 300 LC artık **sıra satın almıyor**, yalnızca daha çok
+oynama imkânı veriyor. Bu, kararı daha az acil hâle getiriyor.
