@@ -89,13 +89,21 @@ describe("öncelik sınıfları", () => {
     assert.equal(priorityOf(mac("Uzbekistan", "X"), ""), P_OTHER);
   });
 
-  test("hazırlık maçları EN SONDA — kendi ülkenden bile olsa", () => {
+  test("YABANCI hazırlık maçları en sonda", () => {
     // Ölçüldü: hazırlık desenleri GLOBAL_LEAGUES içindeyken ilk 12 maçın 7'si
     // hazırlıktı ve Şampiyonlar Ligi'ni bastırıyordu. O desenler oraya yalnızca
     // ülke süzgecini atlatmak için konmuştu; süzgeç kalkınca yan etki çıktı.
-    assert.equal(priorityOf(mac("Türkiye", "Hazırlık Maçları"), "Türkiye"), P_FRIENDLY);
+    //
+    // DAVRANIŞ İNCELİĞİ: bu indirgeme YABANCI hazırlık maçları içindir.
+    // Kullanıcının KENDİ ülkesinin takımı oynuyorsa maç üste çıkar — sezon
+    // arasında Türk kullanıcının gördüğü tek içerik o (bkz. team-country testi).
     assert.equal(priorityOf(mac("World", "Club Friendlies"), "Türkiye"), P_FRIENDLY);
     assert.equal(priorityOf(mac("England", "Pre-Season Friendly"), ""), P_FRIENDLY);
+  });
+
+  test("kendi ÜLKENDEKİ hazırlık maçı üste çıkar", () => {
+    // Ülke etiketi zaten Türkiye ise takım aramaya gerek yok.
+    assert.equal(priorityOf(mac("Türkiye", "Hazırlık Maçları"), "Türkiye"), P_COUNTRY);
   });
 
   test("hazırlık maçı gerçek turnuvanın ÜSTÜNE çıkamaz", () => {
