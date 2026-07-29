@@ -15,6 +15,52 @@ const USERS_FILE  = path.join(DATA_DIR, "users.json");
 
 // LC ekonomi sabitleri – pred.cjs ve settle2.cjs ile SENKRON
 const DAILY_LC         = 5;
+
+/**
+ * GÜNLÜK HAK: TABANA TAMAMLAMA (koşulsuz ekleme değil).
+ *
+ * NEDEN DEĞİŞTİ (ölçüldü 2026-07-29): Günlük hak koşulsuz ekleniyordu ve
+ * oynamayan kullanıcı bile biriktiriyordu — aylık +143 LC. LC arzının
+ * giriş/çıkış oranı 145:1 ölçüldü; bu iki büyük delikten biriydi.
+ *
+ * Yeni kural: bakiye tabanın ALTINDAYSA tabana tamamlanır, üstündeyse HİÇBİR
+ * ŞEY verilmez.
+ *
+ *   - Zengin oyuncuya 0 → birikim kanalı kapanır
+ *   - Parasız oyuncuya can suyu → oyundan kopmaz
+ *   - Toplam arz oyuncu sayısıyla sınırlı kalır (sonsuz birikmez)
+ *
+ * Premium ayrıcalığı da aynı mantıkla YÜKSEK TABAN olarak işler; koşulsuz
+ * para basmaz.
+ */
+/**
+ * ⚠️ TABAN NEDEN DÜŞÜK: Taban, bir günlük oyun bedelinden AZ olmalı.
+ *
+ * Aksi hâlde kaybetmek bedava olur: taban 15 iken oyuncu 5 tahmin yapıp
+ * (5×3=15 LC) hepsini kaybetse ertesi gün yine 15'e tamamlanır — zararı sistem
+ * karşılar ve iade eşiği düzeltmesiyle kurulan denge (%81 zarar eder)
+ * anlamsızlaşır.
+ *
+ * 6 LC = 2 maç. Oyundan kopmaya yetmeyecek kadar az, kaybı sübvanse
+ * etmeyecek kadar da düşük. Daha fazla oynamak isteyen kazanmak zorunda.
+ *
+ * İlk gün tek seferlik ~3.185 LC basılır (mevcut 838 cüzdanın çoğu taban
+ * altında); sonrası oyuncunun harcamasına bağlı ve üst sınırı 6/gün.
+ */
+const DAILY_FLOOR      = Number(process.env.SKORLIG_DAILY_FLOOR || 6);
+const DAILY_FLOOR_PREM = Number(process.env.SKORLIG_DAILY_FLOOR_PREMIUM || 12);
+
+/**
+ * Bugün verilecek LC miktarı.
+ * @param {number} bakiye  kullanıcının mevcut bakiyesi
+ * @param {boolean} premium
+ * @returns {number} 0 ise verilecek bir şey yok (taban zaten aşılmış)
+ */
+function gunlukMiktar(bakiye, premium) {
+  const taban = premium ? DAILY_FLOOR_PREM : DAILY_FLOOR;
+  const b = Number(bakiye || 0);
+  return b >= taban ? 0 : Math.round((taban - b) * 10) / 10;
+}
 const INITIAL_DEFAULT  = 30;
 const INITIAL_1987     = 60;
 const MATCH_ENTRY_COST = 3; // Maç girişi LC bedeli (bilgi amaçlı)
@@ -481,6 +527,9 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
 
       const nowISO = new Date().toISOString();
 
+      // TABANA TAMAMLAMA — koşulsuz ekleme DEĞİL. Bkz. gunlukMiktar().
+      const verilecek = gunlukMiktar(Number(user.balance || 0), isPrem);
+
       const updateResult = await col.updateOne(
         {
           userIdLower: uidLower,
@@ -488,8 +537,8 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
         },
         {
           $inc: {
-            balance: DAILY_LC,
-            totalEarned: DAILY_LC,
+            balance: verilecek,
+            totalEarned: verilecek,
           },
           $set: {
             lastDailyAt: nowISO,
@@ -527,12 +576,16 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
 
       const updatedUser = await col.findOne({ userIdLower: uidLower });
 
-      await addLedgerEntryMongo(db, {
-        userId,
-        kind: "reward",
-        amount: DAILY_LC,
-        reason: "daily",
-      });
+      // Defter kaydı GERÇEK verilen miktarı yazmalı; sabit DAILY_LC yazmak
+      // ekonomi raporunu (bkz. /api/admin/economy) yalan söyletirdi.
+      if (verilecek > 0) {
+        await addLedgerEntryMongo(db, {
+          userId,
+          kind: "reward",
+          amount: verilecek,
+          reason: "daily",
+        });
+      }
 
       return res.json({
         ok: true,
@@ -546,7 +599,8 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
         },
         daily: {
           today,
-          amount: DAILY_LC,
+          amount: verilecek,
+          floor: isPrem ? DAILY_FLOOR_PREM : DAILY_FLOOR,
           claimed: true,
         },
       });
@@ -554,7 +608,6 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
 
     // 🟢 Dosya modu — kilitli read-modify-write (lost update önlenir)
     const isPrem = await premium.isPremium(userId, getDb(req));
-    const dailyAmount = premium.dailyLc(isPrem);
     const today = todayKey();
 
     const result = await withFileLock(WALLET_FILE, async () => {
@@ -598,17 +651,23 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
         };
       }
 
+      // TABANA TAMAMLAMA — Mongo dalıyla aynı kural (bkz. gunlukMiktar).
+      // İki dal ayrışırsa kullanıcı hangi modda olduğuna göre farklı para alır.
+      const dailyAmount = gunlukMiktar(Number(u.balance || 0), isPrem);
+
       u.balance += dailyAmount;
       u.totalEarned = (u.totalEarned || 0) + dailyAmount;
       u.lastDailyAt = new Date().toISOString();
       u.updatedAt   = u.lastDailyAt;
 
-      addLedgerEntryFile(state, {
-        userId,
-        kind: "reward",
-        amount: dailyAmount,
-        reason: isPrem ? "daily_premium" : "daily",
-      });
+      if (dailyAmount > 0) {
+        addLedgerEntryFile(state, {
+          userId,
+          kind: "reward",
+          amount: dailyAmount,
+          reason: isPrem ? "daily_premium" : "daily",
+        });
+      }
 
       await saveWalletState(state);
 

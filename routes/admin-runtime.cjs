@@ -1195,4 +1195,27 @@ router.get("/rate-store", requireAdminToken, async (req, res) => {
   }
 });
 
+/* =========================================================
+   GET /api/admin/economy?days=7   — SALT OKUNUR
+
+   NEDEN VAR: LC arzı kontrolsüz büyüyordu ve bu ancak elle ölçünce görüldü
+   (2026-07-29: giriş 2.182 / çıkış 15 — oran 145:1). Denge ayarları bu rapor
+   olmadan körlemesine yapılır; bir ayarın etkisi ertesi gün burada görünmeli.
+
+   ⚠️ Defteri tarar, pahalıdır. Yalnızca yönetim; istek yolunda kullanılmaz.
+   ========================================================= */
+router.get("/economy", requireAdminToken, async (req, res) => {
+  try {
+    const gun = Math.max(1, Math.min(90, Number(req.query.days || 7)));
+    const { economyReport } = require("../lib/economy-report.cjs");
+    const rapor = await economyReport(req.app?.locals?.db || null, gun);
+
+    // Gider fiilen yoksa 200 dönmek "her şey yolunda" izlenimi verir; harici
+    // izleme aracı bunu yakalayabilsin diye uyarı varsa 409.
+    return res.status(rapor.uyarilar.length ? 409 : 200).json({ ok: true, ...rapor });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 module.exports = router;

@@ -60,6 +60,24 @@ const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const LC_START = 30;
 const LC_ENTRY_COST = 3;
 
+/**
+ * Giriş bedelinin İADE eşiği (tahmin puanı `base` bunun altındaysa iade yok).
+ *
+ * NEDEN VAR (ölçüldü 2026-07-29): Eşik `base > 0` idi, yani "kıl payı bildim"
+ * bile kârlıydı ve kullanıcı YALNIZCA tamamen yanıldığında kaybediyordu.
+ * 1291 gerçek oyuncunun performansıyla simülasyon:
+ *
+ *     iade base>0  (eski) → maç başına ortalama +2.21 LC · oyuncuların %100'ü kârda
+ *     iade base>=6 (yeni) → maç başına ortalama −0.23 LC · %19 kârda
+ *
+ * Eski hâliyle her maç sisteme net LC basıyordu; LC arzının giriş/çıkış oranı
+ * 145:1 ölçüldü. İade "oynadığın bedeli HAK ETTİN" demek olmalı, "bir şey
+ * bildin" değil — base>=6 gerçek bir isabet eşiği (sonuç + en az bir yan kalem).
+ *
+ * Env ile ayarlanabilir: denge ayarı deploy gerektirmemeli.
+ */
+const REFUND_MIN_BASE = Number(process.env.SKORLIG_REFUND_MIN_BASE || 6);
+
 // 🔹 Puanlama sabitleri
 // Bahisçi marjı artık services/match-weights.cjs'te (MW.BOOKMAKER_MARGIN).
 // İma edilen olasılık hesabı da orada — burada kopyası tutulmuyor.
@@ -517,7 +535,7 @@ async function _awardLcForRowsUnlocked(rows, db) {
 
     const reward = computeLcRewardFromDetail(r.detail);
     const base = Number(r.detail && r.detail.base != null ? r.detail.base : 0);
-    const refund = base > 0 ? LC_ENTRY_COST : 0;
+    const refund = base >= REFUND_MIN_BASE ? LC_ENTRY_COST : 0;
     const totalGain = reward + refund;
     if (totalGain <= 0) continue;
 
