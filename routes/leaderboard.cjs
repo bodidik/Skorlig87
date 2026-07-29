@@ -188,6 +188,23 @@ router.get("/", async (req,res)=>{
         .sort({ totalPoints: -1 })
         .toArray();
 
+      // ⚠️ BOŞ SEZON GEÇERLİ — dosyaya düşülmez. Aksi hâlde 1 Ağustos'ta
+      // yeni sezon boş olduğu için totals.json'daki TEMMUZ verisi AĞUSTOS
+      // etiketiyle gösterilirdi, yani sezon hiç sıfırlanmazdı.
+      // bkz. lib/season-totals.cjs — aynı ayrım orada da yapıldı.
+      if (!docs.length) {
+        const bosR = await scopedRank([], sc, db);
+        return res.json({
+          ok: true,
+          leaderboard: [],
+          ranking: rankingMeta([]),
+          scope: scopeInfo(bosR),
+          updatedAt: null,
+          source: "mongo_season_totals",
+          note: "Bu sezonda henuz sonuclanmis mac yok.",
+        });
+      }
+
       if (docs && docs.length) {
         const r = await scopedRank(
           docs.map(d => ({

@@ -66,3 +66,60 @@ describe("sezon anahtarı", () => {
     assert.equal(Season.seasonKey(new Date("2026-07-15T12:00:00Z")), "2026-07");
   });
 });
+
+/* ─────────────── sezon yalıtımı (Mongo'ya karşı) ─────────────── */
+
+const { before, after, beforeEach } = require("node:test");
+const SeasonTotals = require("../lib/season-totals.cjs");
+
+let mongod = null, client = null, db = null;
+
+before(async () => {
+  const { MongoMemoryServer } = require("mongodb-memory-server");
+  const { MongoClient } = require("mongodb");
+  mongod = await MongoMemoryServer.create();
+  client = await MongoClient.connect(mongod.getUri());
+  db = client.db("test");
+});
+after(async () => {
+  if (client) await client.close();
+  if (mongod) await mongod.stop();
+});
+beforeEach(async () => { await db.collection("season_totals").deleteMany({}); });
+
+describe("sezon yalıtımı", () => {
+  test("BOŞ SEZON dosyaya DÜŞMEZ — sezon gerçekten sıfırlanır", async () => {
+    // Yakalandı sezon dönümüne 2 gün kala: Mongo'da 0 kayıt bulununca dosyaya
+    // düşülüyor ve dosyadaki ÖNCEKİ AY verisi YENİ AY etiketiyle dönüyordu.
+    // Yani 1 Ağustos'ta tablo hiç sıfırlanmayacaktı.
+    const simdi = Season.seasonKey();
+    await db.collection("season_totals").insertOne({
+      season: simdi, userIdLower: "a", userId: "a", totalPoints: 50, matches: 10,
+    });
+
+    const gelecek = "2099-01"; // kesinlikle boş bir sezon
+    const r = await SeasonTotals.loadTotals(db, gelecek);
+    assert.equal(r.items.length, 0, "boş sezon boş dönmeli");
+    assert.equal(r.source, "mongo_season_totals", "dosyaya düşülmemeli");
+  });
+
+  test("her sezon KENDİ kayıtlarını döndürür", async () => {
+    await db.collection("season_totals").insertMany([
+      { season: "2026-07", userIdLower: "a", userId: "a", totalPoints: 50, matches: 10 },
+      { season: "2026-08", userIdLower: "a", userId: "a", totalPoints: 5, matches: 1 },
+    ]);
+    assert.equal((await SeasonTotals.loadTotals(db, "2026-07")).items[0].totalPoints, 50);
+    assert.equal((await SeasonTotals.loadTotals(db, "2026-08")).items[0].totalPoints, 5);
+  });
+
+  test("aynı oyuncu iki sezonda AYRI belge tutabilir", async () => {
+    // Eski tekil `{userIdLower}` benzersiz indeksi kalsaydı ikinci sezon
+    // yazılamazdı — migration bu yüzden indeksi bileşiğe çeviriyor.
+    await db.collection("season_totals").createIndex(
+      { season: 1, userIdLower: 1 }, { unique: true }
+    );
+    await db.collection("season_totals").insertOne({ season: "2026-07", userIdLower: "a" });
+    await db.collection("season_totals").insertOne({ season: "2026-08", userIdLower: "a" });
+    assert.equal(await db.collection("season_totals").countDocuments(), 2);
+  });
+});
