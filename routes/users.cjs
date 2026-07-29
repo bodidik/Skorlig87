@@ -60,6 +60,42 @@ async function ensureUser(userId, req) {
   return UsersStore.ensureUser(userId, USER_DEFAULTS, req?.app?.locals?.db || null);
 }
 
+const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
+
+/**
+ * Kullanıcının GERÇEK LC bakiyesi.
+ *
+ * Sıra: Mongo cüzdanı → cüzdan dosyası → profildeki eski `lc` alanı.
+ * Son basamak yalnızca hiç cüzdan kaydı yoksa (yeni kullanıcı) devreye girer.
+ *
+ * Profildeki `lc` alanına GÜVENİLMEZ: cüzdan dosya aynası kapalıyken hiç
+ * güncellenmiyor ve başlangıç değerinde donuyor.
+ */
+async function lcBakiyesi(userId, req, u) {
+  const uid = String(userId || "").trim();
+  const uidLower = uid.toLowerCase();
+  const db = req?.app?.locals?.db || null;
+
+  if (db) {
+    try {
+      const w = await db.collection("lc_wallet_users").findOne({ userIdLower: uidLower });
+      if (w && Number.isFinite(Number(w.balance))) return Number(w.balance);
+    } catch (e) {
+      console.warn("[profile] cuzdan bakiyesi okunamadi:", e?.message || e);
+    }
+  }
+
+  try {
+    const state = await readJson(WALLET_FILE, { users: [] });
+    const w = (state.users || []).find(
+      (x) => String(x.userId || "").toLowerCase() === uidLower
+    );
+    if (w && Number.isFinite(Number(w.balance))) return Number(w.balance);
+  } catch {}
+
+  return typeof u?.lc === "number" ? u.lc : null;
+}
+
 /* =========================================================
    GROUPS compat layer (users.cjs <-> routes/groups.cjs uyumu)
    =========================================================
@@ -170,7 +206,15 @@ router.get("/profile", async (req, res) => {
       mainTeam: u.mainTeam || null,
       country: u.country || null,
       totals: Number(u.totals || 0),
-      lc: typeof u.lc === "number" ? u.lc : null,
+      // YETKİLİ BAKİYE cüzdandan gelir (lc_wallet_users), profildeki `lc`
+      // alanından DEĞİL.
+      //
+      // NEDEN: `users.lc` eski usul bir aynadır ve yalnızca cüzdan dosya aynası
+      // açıkken güncellenir. Ayna kapalıyken (üretimdeki durum) kullanıcı
+      // yaratılırken yazılan başlangıç değerinde donup kalır. Yarış ekranı bu
+      // alanı "LC bakiye" diye gösteriyordu — yani gerçek bakiyesi ne olursa
+      // olsun kullanıcı hep 30 görüyordu.
+      lc: await lcBakiyesi(userId, req, u),
       is1987: !!(u.is1987 || String(u.segment || "").toLowerCase() === "1987"),
       preferredLeagues: Array.isArray(u.preferredLeagues) ? u.preferredLeagues : [],
       preferredLang: u.preferredLang || null,

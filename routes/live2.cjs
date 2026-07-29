@@ -38,7 +38,10 @@ function ymdInTZ(ms, timeZone = TZ) {
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const PROV_FILE = path.join(DATA_DIR, "providers.json"); // provider.js ile aynı dosya
-const FAV_FILE = path.join(DATA_DIR, "users.json"); // { users:[{id, mainTeam}] }
+// FAV_FILE kaldırıldı: tanımlıydı ama HİÇ kullanılmıyordu (ölü kod). Üstelik
+// yorumundaki şema (`{users:[{id, mainTeam}]}`) dosyanın gerçek şemasıyla da
+// uyuşmuyordu — okuyan biri çıksa yanlış alan adı kullanırdı. Profil verisi
+// artık lib/users-store.cjs üzerinden gider.
 const MANUAL_FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 // admin-alerts.json artık lib/admin-alerts.cjs üzerinden yazılır (kırpma +
 // tekrar bastırma + dosya kilidi). Yol tanımı orada.
