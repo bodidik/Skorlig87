@@ -27,6 +27,7 @@ const MUAF = {
   match_results: "maç sonucu, kullanıcı verisi değil",
   pools: "maç bazlı havuz özeti (bahisler pool_bets'te ve siliniyor)",
   app_settings: "uygulama ayarları",
+  app_runtime: "runtime modu (profil/takim sayisi) — uygulama yapilandirmasi, kullanici verisi degil",
   tr_league_weeks: "hafta mührü — silinirse ödül tekrar dağıtılır",
   invite_codes_1987: "davet kodu kotası — silinirse kota sıfırlanır",
   admin_users: "yetki listesi",
