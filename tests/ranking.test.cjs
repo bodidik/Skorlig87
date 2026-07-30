@@ -121,3 +121,68 @@ describe("meta şeffaflığı", () => {
     assert.equal(rankingMeta([]).priorMean, 0);
   });
 });
+
+describe("nitelik eşiği — tek şanslı maç zirveye çıkmasın", () => {
+  /**
+   * Dosya başındaki tasarım notu "tek şanslı tahmin zirve getirmez" diyor ve
+   * bu MAÇ BAŞINA AZAMİ ~12 PUAN varsayımıyla kalibre edilmişti. Puanlama
+   * çarpanları sonradan genişledi (settle2: "üst sınır kalktı") ve tek maçtan
+   * çıkabilecek azami puan 56'ya yükseldi:
+   *   sonuç 3×4.0 + kesin skor 12×2.5 + yan kalemler ×1.4 ≈ 53 (×1.05 ülke)
+   *
+   * Ölçülmüştü: 1 maç / 56 puan → rating 13.33, 60 maç / 9.80 ort → 9.70.
+   * Yani tek maçlık oyuncu sezon lideri oluyordu.
+   *
+   * K'yı büyütmek çözmez: 1×56'nın 60×9.8'i geçmemesi için K > 513 gerekir.
+   */
+  const R = require("../lib/ranking.cjs");
+
+  const havuz = () => [
+    { userId: "sansli_1mac",    total: 56,       played: 1,  penalties: 0 },
+    { userId: "sansli_5mac",    total: 64,       played: 5,  penalties: 0 },
+    { userId: "iyi_12mac",      total: 12 * 11.5, played: 12, penalties: 0 },
+    { userId: "tutarli_60mac",  total: 60 * 9.8, played: 60, penalties: 0 },
+    { userId: "ortalama_60mac", total: 60 * 7,   played: 60, penalties: 0 },
+  ];
+
+  test("tek maçlık oyuncu zirveye çıkamaz", () => {
+    const s = R.rankRows(havuz());
+    assert.notEqual(s[0].userId, "sansli_1mac", "tek maclik oyuncu lider olmus");
+    const yer = s.findIndex((r) => r.userId === "sansli_1mac");
+    const tutarli = s.findIndex((r) => r.userId === "tutarli_60mac");
+    assert.ok(yer > tutarli, "tek maclik oyuncu tutarli oyuncunun ustunde");
+  });
+
+  test("eşik altındaki rating havuz ortalamasını aşmaz", () => {
+    const s = R.rankRows(havuz());
+    const prior = R.computePriorMean(havuz());
+    for (const r of s) {
+      if (r.played < R.RANK_MIN_PLAYED) {
+        assert.ok(r.rating <= prior + 1e-9,
+          `${r.userId} esik altinda ama rating ${r.rating} > ortalama ${prior}`);
+        assert.equal(r.qualified, false);
+      }
+    }
+  });
+
+  test("eşik altındaki oyuncu LİSTEDE KALIR (sert baraj değil)", () => {
+    const s = R.rankRows(havuz());
+    assert.ok(s.some((r) => r.userId === "sansli_1mac"), "oyuncu listeden dusmus");
+    const r = s.find((x) => x.userId === "sansli_1mac");
+    // Gerçek istatistikleri görünür kalmalı; yalnızca rating tavanlı.
+    assert.equal(r.played, 1);
+    assert.equal(r.avg, 56);
+    assert.equal(r.minPlayed, R.RANK_MIN_PLAYED);
+  });
+
+  test("eşiği geçen gerçekten iyi oyuncu lider olur", () => {
+    const s = R.rankRows(havuz());
+    assert.equal(s[0].userId, "iyi_12mac");
+    assert.equal(s[0].qualified, true);
+  });
+
+  test("çok maçlı vasat oyuncu (bot) en altta kalır", () => {
+    const s = R.rankRows(havuz());
+    assert.equal(s[s.length - 1].userId, "ortalama_60mac");
+  });
+});
