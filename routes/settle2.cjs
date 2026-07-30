@@ -76,6 +76,7 @@ const Season = require("../lib/season.cjs");
 const PoolStore = require("../lib/pool-store.cjs");
 // Odenemeyen odulu kalici olarak kaydetmek icin (bkz. kayipOdulKaydet).
 const WalletCredit = require("../lib/wallet-credit.cjs");
+const { kritikIs } = require("../lib/kritik-is.cjs");
 const RT_LIVE_GS_FILE = path.join(DATA_DIR, "rt-live-gs.json");
 
 // ✅ maç bazlı puan defteri (kalıcı history)
@@ -1162,7 +1163,11 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
     }
   }
 
-  await awardLcForRows(rows, db);
+  /* Kapanışta yarıda kesilmesin: mühür (claimAward) yukarıda atıldı, bu
+   * blok kesilirse ödül kaybolur ve mühür yüzünden tekrar denenmez.
+   * HTTP yolu `server.close()` ile zaten korunuyor; bu sayaç arka plan
+   * servislerinin doğrudan çağrılarını da kapsıyor. bkz. lib/kritik-is.cjs */
+  await kritikIs(`settle:${fid}`, () => awardLcForRows(rows, db));
 
   // ── Maç havuzu ödemesi (bkz. lib/pool-store.cjs) ──────────────────────
   // Kendi `settledAt` mührü var; settle2 defalarca çağrılsa da bir kez öder.

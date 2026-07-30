@@ -36,6 +36,8 @@ const path        = require("path");
 const fs          = require("fs");
 
 const rateLimit = require("./middleware/rateLimit.cjs");
+// Kapanista yarida kesilmemesi gereken arka plan isleri (bkz. lib/kritik-is.cjs)
+const { aktifKritikIs, aktifEtiketler } = require("./lib/kritik-is.cjs");
 
 // 🔹 Mongo helper
 const { getDb } = require("./lib/mongo.cjs");
@@ -497,16 +499,28 @@ async function gracefulShutdown(signal) {
     await new Promise((resolve) => server.close(resolve));
     console.log("[shutdown] HTTP sunucusu kapandı");
 
-    // Yazma işlemleri bitene kadar bekle (kilit sayacı sıfırlanmalı)
+    /* Yazma işlemleri bitene kadar bekle.
+     *
+     * ⚠️ İKİ SAYAÇ: `activeLockCount()` yalnızca DOSYA kilitlerini sayar.
+     * Depolar Mongo'ya taşındıktan sonra para dağıtımı dosya kilidi tutmuyor,
+     * yani o sayaç sıfır görünüyordu ve kapanış "her şey bitti" sanıp
+     * çıkabiliyordu. HTTP istekleri `server.close()` ile korunuyor ama arka
+     * plan servisleri (otomatik settle) zamanlayıcıyla çalışıyor ve hiçbir
+     * isteğe bağlı değil. bkz. lib/kritik-is.cjs
+     */
     const deadline = Date.now() + SHUTDOWN_FORCE_MS - 2000;
-    while (activeLockCount() > 0 && Date.now() < deadline) {
+    while ((activeLockCount() > 0 || aktifKritikIs() > 0) && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 50));
     }
     const remaining = activeLockCount();
-    if (remaining > 0) {
-      console.warn(`[shutdown] ${remaining} kilit hâlâ açık — yine de çıkılıyor`);
+    const kritik = aktifKritikIs();
+    if (remaining > 0 || kritik > 0) {
+      console.warn(
+        `[shutdown] ${remaining} dosya kilidi, ${kritik} kritik is hâlâ açık ` +
+        `(${aktifEtiketler().join(", ") || "-"}) — yine de çıkılıyor`
+      );
     } else {
-      console.log("[shutdown] tüm dosya yazmaları tamamlandı");
+      console.log("[shutdown] tüm yazmalar tamamlandı (dosya + kritik iş)");
     }
 
     try {

@@ -591,3 +591,48 @@ describe("ödenemeyen ödül izi — mühür atıldı ama para gitmedi", () => {
     assert.equal(await kayipOdulKaydet(null, { kaynak: "dbsiz" }), false);
   });
 });
+
+describe("kritik iş sayacı — kapanış yarıda kesmesin", () => {
+  /**
+   * Düzgün kapanış `activeLockCount()` bekliyordu, yani yalnızca DOSYA
+   * kilitlerini. Depolar Mongo'ya taşındıktan sonra para dağıtımı dosya kilidi
+   * tutmuyor; o sayaç sıfır görünüyor ve kapanış "bitti" sanıp çıkabiliyordu.
+   *
+   * HTTP yolu `server.close()` ile korunuyor (arka plan servisleri settle'ı
+   * kendi sunucusuna HTTP ile tetikliyor). Bu sayaç, servislerin DOĞRUDAN
+   * çağrılarını ve ileride eklenecek arka plan yazımlarını kapsıyor.
+   */
+  const { kritikIs, aktifKritikIs, aktifEtiketler } = require("../lib/kritik-is.cjs");
+
+  test("iş sürerken sayaç artar, bitince sıfırlanır", async () => {
+    assert.equal(aktifKritikIs(), 0);
+    let icerdeydi = 0;
+    await kritikIs("test:1", async () => {
+      icerdeydi = aktifKritikIs();
+      assert.ok(aktifEtiketler().includes("test:1"));
+    });
+    assert.equal(icerdeydi, 1);
+    assert.equal(aktifKritikIs(), 0, "sayac sifirlanmamis");
+  });
+
+  test("hata fırlatsa bile sayaç düşer (kapanış sonsuza kadar beklemesin)", async () => {
+    await assert.rejects(
+      () => kritikIs("test:patlayan", async () => { throw new Error("patladi"); }),
+      /patladi/
+    );
+    assert.equal(aktifKritikIs(), 0, "hata sonrasi sayac asili kalmis");
+  });
+
+  test("eşzamanlı işler doğru sayılır", async () => {
+    let enYuksek = 0;
+    await Promise.all(
+      Array.from({ length: 5 }, (_, i) =>
+        kritikIs("test:es-" + i, async () => {
+          enYuksek = Math.max(enYuksek, aktifKritikIs());
+          await new Promise((r) => setTimeout(r, 10));
+        }))
+    );
+    assert.equal(enYuksek, 5);
+    assert.equal(aktifKritikIs(), 0);
+  });
+});
