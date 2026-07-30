@@ -1547,25 +1547,40 @@ router.post("/pred/bots-generate", requireAdminToken, async (req, res) => {
   }
 });
 
-// ----------------- DEBUG: LİSTE -----------------
-// GET /api/pred/list?fixtureId=...
+// ----------------- LİSTE -----------------
+/**
+ * GET /api/pred/list?fixtureId=...&userId=...
+ *
+ * `userId` verilirse: YALNIZCA o kullanıcının kayıtları — token gerekmez.
+ * `userId` verilmezse: yönetici token'ı gerekir (aşağıdaki iki sebep).
+ *
+ * 1) SIZINTI. Uç hiçbir ara katmana sahip değildi ve `/api` altında herkese
+ *    açıktı. `fixtureId` yoksa HER kullanıcının HER tahminini döküyordu —
+ *    yerel veride 36.331 kayıt / 12,6 MB, her kayıtta `userId`. Yani tek
+ *    kimlik doğrulamasız istekle kimin neyi tahmin ettiği dışarı çıkıyordu.
+ *    `fixtureId` verildiğinde bile o maçtaki HERKESİN tahmini dönüyordu.
+ *    Hemen altındaki `/pred/cancel` `verifyToken` kullanıyor; bu gözden kaçmış.
+ *
+ * 2) İSRAF. İki istemci ekranı da (predict.tsx, mystatus.tsx) tüm listeyi
+ *    çekip `.find()` ile KENDİ kaydını arıyordu; gerisi atılıyordu. Bir maçta
+ *    1280 bot tahmini varken bu, her ekran açılışında yüzlerce kilobayt.
+ *    Artık sunucu süzüyor.
+ *
+ * ⚠️ Yanıt biçimi aynı kaldı (`{ok, count, items}`), istemciler yalnızca
+ * `userId` eklendi — eski `.find()` mantığı tek elemanlı listede de çalışır.
+ */
+const LIST_MAX = 500;
 router.get("/pred/list", async (req, res) => {
   try {
-    const db = getDb(req);
     const fx = String(req.query.fixtureId || "").trim();
+    const uid = String(req.query.userId || "").trim();
+    const uidLower = uid.toLowerCase();
 
-    if (db) {
-      const col = db.collection("predictions");
-      const query = fx ? { fixtureId: fx } : {};
-      const items = await col.find(query, { projection: { _id: 0 } }).toArray();
-      return res.json({ ok: true, count: items.length, items });
+    // Kendi kaydını isteyen herkes geçer; başkasınınkini/tümünü isteyen geçmez.
+    if (!uid) {
+      return requireAdminToken(req, res, () => listeyiDondur(req, res, fx, ""));
     }
-
-    const { list } = await loadPredList();
-    const filtered = fx
-      ? list.filter((p) => String(p.fixtureId) === fx)
-      : list;
-    res.json({ ok: true, count: filtered.length, items: filtered });
+    return listeyiDondur(req, res, fx, uidLower);
   } catch (e) {
     res.status(500).json({
       ok: false,
@@ -1574,6 +1589,42 @@ router.get("/pred/list", async (req, res) => {
     });
   }
 });
+
+async function listeyiDondur(req, res, fx, uidLower) {
+  try {
+    const db = getDb(req);
+
+    if (db) {
+      const col = db.collection("predictions");
+      const query = {};
+      if (fx) query.fixtureId = fx;
+      if (uidLower) query.userIdLower = uidLower;
+      // Sınır her durumda: filtresiz sorgu tüm koleksiyonu belleğe alırdı.
+      const items = await col.find(query, { projection: { _id: 0 } }).limit(LIST_MAX).toArray();
+      return res.json({ ok: true, count: items.length, items, limited: items.length >= LIST_MAX });
+    }
+
+    // Dosya modu da aynı dökümü yapıyordu — aynı süzme ve sınır burada da.
+    const { list } = await loadPredList();
+    const filtered = list.filter((p) => {
+      if (fx && String(p.fixtureId) !== fx) return false;
+      if (uidLower && String(p.userId || p.user || "").toLowerCase() !== uidLower) return false;
+      return true;
+    });
+    res.json({
+      ok: true,
+      count: Math.min(filtered.length, LIST_MAX),
+      items: filtered.slice(0, LIST_MAX),
+      limited: filtered.length > LIST_MAX,
+    });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: "PRED_LIST_FAILED",
+      detail: String(e && (e.message || e)),
+    });
+  }
+}
 
 // DELETE /api/pred/cancel — kullanıcının belirli bir maç tahmini sil
 router.delete("/pred/cancel", verifyToken, express.json(), async (req, res) => {

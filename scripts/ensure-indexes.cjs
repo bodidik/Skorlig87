@@ -41,6 +41,24 @@ const { getDb } = require("../lib/mongo.cjs");
   await db
     .collection("predictions")
     .createIndex({ fixtureId: 1, userIdLower: 1 }, { unique: true, background: true });
+
+  /* ⚠️ TEK BAŞINA userIdLower — "maçlarım" sorgusu buna muhtaç.
+   *
+   * Yukarıdaki iki indeksin İKİSİ DE `fixtureId` ile başlıyor. Bileşik indeks
+   * yalnızca ÖN EKİYLE kullanılabilir, dolayısıyla `{ userIdLower: X }` (fikstür
+   * listesi olmadan) hiçbirine düşmüyordu → TAM KOLEKSİYON TARAMASI.
+   *
+   * Ölçüldü (47.000 tahmin / 1700 kullanıcı, bellek-içi Mongo):
+   *     indekssiz : COLLSCAN · 47.000 belge incelendi · 28 döndü · 30,0 ms
+   *     indeksli  : IXSCAN   ·     28 belge incelendi · 28 döndü ·  2,3 ms
+   * 1679 kat daha az belge. Atlas'ta ağ gecikmesiyle fark daha da büyük.
+   *
+   * Etkilenen sıcak yollar:
+   *   - pred.cjs getPredFlagsFromMongo(filtresiz) → GET /api/pred/my
+   *     ("My bets" ekranı; uygulamada her açılışta çağrılıyor)
+   *   - settle2.cjs profil tahmin sayacı (countDocuments)
+   */
+  await db.collection("predictions").createIndex({ userIdLower: 1 }, { background: true });
   console.log("indexes: predictions OK");
 
   // Sezon toplamları: settle2 her settle'da kullanıcı başına upsert eder,

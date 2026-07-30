@@ -1760,7 +1760,12 @@ router.get("/user-profile", async (req, res) => {
       (u) => String(u.userId || "").toLowerCase() === tidLower
     );
 
-    // toplam tahmin sayısı — Mongo varsa indeksli count, yoksa dosya taraması
+    // Toplam tahmin sayısı. Bu count `{userIdLower}` üzerinden gidiyor ve o
+    // alan UZUN SÜRE indekssizdi (mevcut indekslerin ikisi de fixtureId ile
+    // başlıyor, bileşik indeks ön ekle çalışır) — yani buradaki yorum "indeksli
+    // count" diyordu ama gerçekte 47 bin belge taranıyordu. İndeks
+    // scripts/ensure-indexes.cjs içinde eklendi; ölçüm oradaki notta.
+    // ⚠️ İndeks kurulmadan deploy edilirse burası yine tam tarama yapar.
     const dbRef = req.app?.locals?.db || null;
     let predCount;
     if (dbRef) {
