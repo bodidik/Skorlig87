@@ -409,3 +409,50 @@ describe("cüzdan — kopya belge (benzersiz indeks)", () => {
     assert.equal(uid.unique, true, "userIdLower indeksi benzersiz degil");
   });
 });
+
+describe("turnuva giriş ücreti — havuz karşılıksız büyümemeli", () => {
+  /**
+   * `create` ve `join` havuzu büyütüyor ama giriş ücretini TAHSİL ETMİYORDU:
+   * dosyada tek bir `spendLc` çağrısı yoktu. Havuz karşılıksız değil —
+   * settle2 onu gerçek LC olarak dağıtıyor (`lc_wallet_users` $inc).
+   *
+   * Ölçülmüştü: entryLC=100, 1 kurucu + 7 katılımcı → 800 LC havuz, hiçbir
+   * bakiye değişmeden. 8+ katılımcı tablosu havuzun %100'ünü dağıtır.
+   * Günlük LC hakkı 3-7 LC; tek turnuva 100+ günlük gelir üretirdi.
+   */
+  const T = require("../services/tournament.cjs");
+
+  const arz = async () =>
+    (await db.collection(COLL_USERS).find({}).toArray())
+      .reduce((a, x) => a + Number(x.balance || 0), 0);
+
+  test("havuzdaki her LC bir bakiyeden düşülmüş olmalı", async () => {
+    for (const u of ["trnA", "trnB", "trnC"]) await creditLc(db, u, 120, "test");
+    const once = await arz();
+
+    const t = await T.create({
+      creatorId: "trnA", name: "T", entryLC: 100,
+      fixtureIds: ["TFX1", "TFX2"], fixtures: [], db,
+    });
+    await T.join(t.code, "trnB", db);
+    await T.join(t.code, "trnC", db);
+
+    const son = await T.getByCode(t.code);
+    assert.equal(son.pool, 300, "havuz beklenenden farkli");
+    assert.equal(await arz(), once - 300, "havuz kadar LC dusulmedi (para yaratildi)");
+  });
+
+  test("bakiye yetmezse katılım reddedilir ve havuz büyümez", async () => {
+    for (const u of ["trnD", "trnE"]) await creditLc(db, u, 120, "test");
+    const t = await T.create({
+      creatorId: "trnD", name: "T2", entryLC: 100,
+      fixtureIds: ["TFX3", "TFX4"], fixtures: [], db,
+    });
+    await spendLc(db, "trnE", 110, "bosalt");   // kalan 10 LC
+
+    await assert.rejects(() => T.join(t.code, "trnE", db), /INSUFFICIENT_LC/);
+    const son = await T.getByCode(t.code);
+    assert.equal(son.pool, 100, "reddedilen katilim havuzu buyutmus");
+    assert.equal(son.participants.length, 1);
+  });
+});

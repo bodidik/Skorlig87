@@ -1,7 +1,72 @@
 "use strict";
 
+/**
+ * GİRİŞ ÜCRETLİ TURNUVALAR.
+ *
+ * ⚠️ 2026-07-30'da bulunan PARA YARATMA açığı: `create` ve `join` havuzu
+ * büyütüyordu ama giriş ücretini KİMSEDEN TAHSİL ETMİYORDU. Dosyada tek bir
+ * `spendLc` çağrısı yoktu; `entryLC` yalnızca okunuyor, sınırlanıyor ve
+ * `t.pool`'a ekleniyordu.
+ *
+ * Havuz karşılıksız değildi — settle2 onu GERÇEK LC olarak dağıtıyor
+ * (routes/settle2.cjs, `lc_wallet_users` üzerinde `$inc: {balance}`).
+ *
+ * Ölçüldü: entryLC=100 ile 1 kurucu + 7 katılımcı → havuz 800 LC, hiçbir
+ * bakiye değişmeden. 8+ katılımcı ödeme tablosu (50/25/15/10) havuzun
+ * %100'ünü dağıtır, yani 800 LC yoktan yaratılırdı. Günlük LC hakkı 3-7 LC;
+ * yani tek turnuva 100+ günlük gelire denk ve tekrarlanabilirdi.
+ *
+ * Artık ücret turnuvaya YAZILMADAN ÖNCE tahsil ediliyor; yazma başarısız
+ * olursa iade ediliyor (aşağıdaki notlara bak).
+ */
 
 const SocialStore = require("../lib/social-store.cjs");
+const { spendLc, creditLc } = require("../lib/wallet-credit.cjs");
+
+/** Rotalar db'yi geçmiyorsa depoların yaptığı gibi kendimiz çözelim. */
+async function dbAl(db) {
+  if (db) return db;
+  try {
+    const { getDb } = require("../lib/mongo.cjs");
+    return await getDb();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Giriş ücretini tahsil eder. Bakiye yetmezse THROW eder — çağıran turnuvaya
+ * hiçbir şey yazmamalı.
+ *
+ * ⚠️ `spendLc` koşulu sorgunun içinde tutuyor (`balance: {$gte: tutar}`),
+ * yani okunan bir değere dayanmıyor ve bakiyeyi eksiye düşüremez.
+ */
+async function ucretTahsilEt(db, userId, tutar) {
+  const conn = await dbAl(db);
+  if (!conn) {
+    // Cüzdan yoksa ücret alınamaz. Bedava katılım = para yaratmak, o yüzden
+    // sessizce geçmiyoruz.
+    const e = new Error("WALLET_UNAVAILABLE");
+    throw e;
+  }
+  const r = await spendLc(conn, userId, tutar, "tournament_entry");
+  if (!r?.ok) {
+    const e = new Error(r?.reason === "INSUFFICIENT" ? "INSUFFICIENT_LC" : "ENTRY_CHARGE_FAILED");
+    e.balance = r?.lc ?? null;
+    throw e;
+  }
+  return conn;
+}
+
+/** Turnuvaya yazma başarısız olursa ücreti geri ver. */
+async function ucretIadeEt(conn, userId, tutar, neden) {
+  try {
+    await creditLc(conn, userId, tutar, "tournament_entry_refund", { neden });
+  } catch (e) {
+    // İade edilemezse KAYBOLMASIN: log'a düşsün, elle telafi edilebilsin.
+    console.error(`[tournament] IADE EDILEMEDI ${userId} ${tutar} LC (${neden}):`, e?.message || e);
+  }
+}
 
 const PAYOUT_TABLE = {
   2: [0.70, 0.30],
@@ -37,10 +102,15 @@ async function saveAll(data) {
   await SocialStore.saveTournaments(data?.tournaments || [], null);
 }
 
-async function create({ creatorId, name, entryLC, fixtureIds, fixtures }) {
+async function create({ creatorId, name, entryLC, fixtureIds, fixtures, db = null }) {
   const entry = Math.max(MIN_ENTRY, Math.min(MAX_ENTRY, Number(entryLC) || 10));
   const matchIds = (fixtureIds || []).slice(0, MAX_MATCHES);
   if (matchIds.length < MIN_MATCHES) throw new Error("MIN_2_MATCHES");
+
+  // ⚠️ Kurucu da KATILIMCI olarak ekleniyor ve havuz `entry` ile başlıyor —
+  // yani onun da ücreti alınmalı. Doğrulamalar bittikten SONRA tahsil et ki
+  // "MIN_2_MATCHES" hatasında boşuna para gitmesin.
+  const conn = await ucretTahsilEt(db, creatorId, entry);
 
   const data = await loadAll();
   const code = genCode();
@@ -68,11 +138,17 @@ async function create({ creatorId, name, entryLC, fixtureIds, fixtures }) {
   };
 
   data.tournaments.push(t);
-  await saveAll(data);
+  try {
+    await saveAll(data);
+  } catch (e) {
+    // Ücret alındı ama turnuva yazılamadı — parayı kullanıcıda bırakma.
+    await ucretIadeEt(conn, creatorId, entry, "create_save_failed");
+    throw e;
+  }
   return t;
 }
 
-async function join(code, userId) {
+async function join(code, userId, db = null) {
   const data = await loadAll();
   const t = data.tournaments.find(x => x.code === code.toUpperCase());
   if (!t) throw new Error("NOT_FOUND");
@@ -80,6 +156,10 @@ async function join(code, userId) {
   if (t.participants.some(p => p.userId.toLowerCase() === userId.toLowerCase())) {
     throw new Error("ALREADY_JOINED");
   }
+
+  // ⚠️ Ucuz kontroller (bulundu mu / açık mı / zaten katıldı mı) BİTTİKTEN
+  // sonra tahsil et — reddedilecek bir katılım için para alınmasın.
+  const conn = await ucretTahsilEt(db, userId, t.entryLC);
 
   t.participants.push({
     userId,
@@ -89,7 +169,12 @@ async function join(code, userId) {
   });
   t.pool += t.entryLC;
 
-  await saveAll(data);
+  try {
+    await saveAll(data);
+  } catch (e) {
+    await ucretIadeEt(conn, userId, t.entryLC, "join_save_failed");
+    throw e;
+  }
   return t;
 }
 
