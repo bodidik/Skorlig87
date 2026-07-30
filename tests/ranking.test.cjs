@@ -186,3 +186,46 @@ describe("nitelik eşiği — tek şanslı maç zirveye çıkmasın", () => {
     assert.equal(s[s.length - 1].userId, "ortalama_60mac");
   });
 });
+
+describe("sıralama ham rating ile — yuvarlama yapay eşitlik üretmesin", () => {
+  /**
+   * `rating` gösterim için 2 basamağa yuvarlanıyor ve SIRALAMA da o yuvarlanmış
+   * değere göre yapılıyordu. 1700+ oyunculu havuzda bu çok sayıda yapay
+   * eşitlik üretir: 3.918 ve 3.912 ikisi de 3.91 olur, gerçek farkı olan iki
+   * oyuncunun sırası eşitlik bozucuya kalır.
+   *
+   * Uçtan uca koşumda görüldü: -0.7 puanlı oyuncu -0.6 puanlının ÜSTÜNDE
+   * çıkıyordu.
+   */
+  const R = require("../lib/ranking.cjs");
+
+  test("yuvarlamada eşitlenen ama gerçekte farklı ratingler doğru sıralanır", () => {
+    // İkisi de aynı 2 basamağa yuvarlanacak kadar yakın, ama farklı.
+    const s = R.rankRows([
+      { userId: "dusuk", total: -0.7, played: 1, penalties: 0 },
+      { userId: "yuksek", total: -0.6, played: 1, penalties: 0 },
+    ]);
+    const yer = (u) => s.findIndex((r) => r.userId === u);
+    assert.ok(yer("yuksek") < yer("dusuk"),
+      "daha yuksek puanli oyuncu altta kalmis (yuvarlanmis degerle siralanmis olabilir)");
+  });
+
+  test("kalabalık havuzda da gerçek fark korunur", () => {
+    const insanlar = [
+      { userId: "veli", total: -0.6, played: 1, penalties: 0 },
+      { userId: "ayse", total: -0.7, played: 1, penalties: 0 },
+    ];
+    const botlar = Array.from({ length: 500 }, (_, i) => ({
+      userId: "bot" + i, total: i % 7, played: (i % 9) + 1, penalties: 0,
+    }));
+    const s = R.rankRows([...insanlar, ...botlar]);
+    const yer = (u) => s.findIndex((r) => r.userId === u);
+    assert.ok(yer("veli") < yer("ayse"));
+  });
+
+  test("sıralama alanı API yanıtına sızmaz", () => {
+    const s = R.rankRows([{ userId: "a", total: 10, played: 2, penalties: 0 }]);
+    assert.ok(!("_ratingRaw" in s[0]), "_ratingRaw yanita sizmis");
+    assert.equal(typeof s[0].rating, "number");
+  });
+});
