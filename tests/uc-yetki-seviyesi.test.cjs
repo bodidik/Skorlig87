@@ -205,3 +205,47 @@ describe("yazma uçları — beklenen yetki SEVİYESİ", () => {
     assert.ok(!/const\s*\{\s*userId/.test(govde), "handleOpt hala userId'yi govdeden aliyor");
   });
 });
+
+describe("okuma uçları — başkasının özel verisi", () => {
+  /**
+   * ⚠️ Yazma uçlarını seviyeye göre denetlerken okumalar açıkta kalmıştı.
+   * Ölçüldü: `GET /api/pred/my?userId=<baskasi>` kimliksiz olarak o kişinin
+   * OYNANMAMIŞ maçlardaki tahminlerini TAM İÇERİKLE döndürüyordu (sonuç,
+   * kesin skor, ilk gol, ilk yarı).
+   *
+   * Sonuç: liderlik tablosundan en iyi oyuncuyu bul, seçimlerini maç
+   * başlamadan kopyala. Bedava, çünkü bakmak LC istemiyor. Oyunun rekabet
+   * önermesi tam olarak budur.
+   *
+   * Aynı sızıntının iki hafif hâli daha vardı: `/pred/list?userId=` (maç
+   * bazlı) ve `/pred/flags?userId=` (hangi maçlarda oynuyor).
+   */
+  const fs = require("fs");
+  const path = require("path");
+  const src = () => fs.readFileSync(path.join(ROTA_DIZIN, "pred.cjs"), "utf8");
+
+  test("kendi tahminlerini dönen uçlar kimlik doğrular", () => {
+    const s = src();
+    assert.ok(/router\.get\("\/pred\/my",\s*verifyToken/.test(s),
+      "/pred/my kimliksiz — baskasinin acik tahminleri okunabilir");
+    assert.ok(/router\.get\("\/pred\/flags",\s*verifyToken/.test(s),
+      "/pred/flags kimliksiz");
+  });
+
+  test("kimlik SORGUDAN değil token'dan alınır", () => {
+    const s = src();
+    for (const uc of ["/pred/my", "/pred/flags"]) {
+      const i = s.indexOf(`router.get("${uc}"`);
+      const govde = s.slice(i, i + 700);
+      assert.ok(/req\.uid/.test(govde), `${uc} req.uid kullanmiyor`);
+      assert.ok(!/const uid = String\(req\.query\.userId/.test(govde),
+        `${uc} kimligi hala sorgudan aliyor`);
+    }
+  });
+
+  test("/pred/list başkasının kimliğini reddeder", () => {
+    const s = src();
+    assert.ok(/FORBIDDEN_OTHER_USER/.test(s),
+      "/pred/list baskasinin kaydini vermeye devam ediyor");
+  });
+});

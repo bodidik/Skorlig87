@@ -1605,11 +1605,21 @@ router.get("/pred/list", async (req, res) => {
     const uid = String(req.query.userId || "").trim();
     const uidLower = uid.toLowerCase();
 
-    // Kendi kaydını isteyen herkes geçer; başkasınınkini/tümünü isteyen geçmez.
+    // ⚠️ BAŞKASININ KAYDI OKUNAMAZ. Eskiden `?userId=` ile istenen KİM olursa
+    // olsun kaydı dönüyordu: `/pred/my` ile aynı sızıntının maç bazlı hâli.
+    // Artık kimlik token'dan doğrulanır; `?userId=` yalnızca geriye uyumluluk
+    // için kabul edilir ve token'daki kimlikle EŞLEŞMELİDİR.
     if (!uid) {
       return requireAdminToken(req, res, () => listeyiDondur(req, res, fx, ""));
     }
-    return listeyiDondur(req, res, fx, uidLower);
+    return verifyToken(req, res, () => {
+      const kendi = String(req.uid || "").trim().toLowerCase();
+      if (!kendi) return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
+      if (uidLower !== kendi) {
+        return res.status(403).json({ ok: false, error: "FORBIDDEN_OTHER_USER" });
+      }
+      return listeyiDondur(req, res, fx, kendi);
+    });
   } catch (e) {
     res.status(500).json({
       ok: false,
@@ -1714,10 +1724,18 @@ router.delete("/pred/cancel", verifyToken, express.json(), async (req, res) => {
  *    count: 2
  *  }
  */
-router.get("/pred/flags", async (req, res) => {
+/**
+ * ⚠️ KİMLİK TOKEN'DAN. `/pred/my` ile aynı sızıntının hafif hâliydi: hangi
+ * maçlara tahmin verildiği başkası için de okunabiliyordu. İçerik dönmüyor
+ * ama "iyi oyuncu şu an nerede oynuyor" bilgisini veriyordu.
+ *
+ * İstemcinin dört çağrı yerinin hepsi zaten KENDİ kimliğini gönderiyor
+ * (live, kings, mystatus, me) — davranış değişmiyor.
+ */
+router.get("/pred/flags", verifyToken, async (req, res) => {
   try {
     const db = getDb(req);
-    const uid = String(req.query.userId || "").trim();
+    const uid = String(req.uid || "").trim();
 
     if (!uid) {
       return res
@@ -1764,11 +1782,27 @@ router.get("/pred/flags", async (req, res) => {
  * Kullanıcının tahmin yaptığı tüm maçları döndürür.
  * Her item: { fixtureId, home, away, kickoffISO, league, country, status, score, pred }
  */
-router.get("/pred/my", async (req, res) => {
+/**
+ * ⚠️ KİMLİK ARTIK TOKEN'DAN. Bu uç `?userId=` ile ÇAĞIRANIN belirlediği
+ * kullanıcının tahminlerini döndürüyordu, hiçbir doğrulama yoktu:
+ *
+ *     GET /api/pred/my?userId=<baskasi>
+ *       → o kişinin OYNANMAMIŞ maçlardaki tahminleri, tam içerikle
+ *         (sonuç, kesin skor, ilk gol, ilk yarı)
+ *
+ * Ölçüldü: gerçek bir kullanıcının 3 açık tahmini kimliksiz okundu. Liderlik
+ * tablosundan en iyi oyuncuyu bulup seçimlerini maç başlamadan kopyalamak
+ * mümkündü — üstelik bedava, çünkü bakmak LC istemiyor. Oyunun rekabet
+ * önermesi budur.
+ *
+ * `?userId=` yok sayılıyor; istemciler zaten kendi kimliğini gönderiyordu,
+ * davranış değişmiyor.
+ */
+router.get("/pred/my", verifyToken, async (req, res) => {
   try {
     const db = getDb(req);
-    const uid = String(req.query.userId || "").trim();
-    if (!uid) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
+    const uid = String(req.uid || "").trim();
+    if (!uid) return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
 
     // 1) kullanıcının tüm fixtureId'leri
     const result = db
