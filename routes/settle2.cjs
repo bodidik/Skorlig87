@@ -74,6 +74,8 @@ const FixturesStore = require("../lib/fixtures-store.cjs");
 const SocialStore = require("../lib/social-store.cjs");
 const Season = require("../lib/season.cjs");
 const PoolStore = require("../lib/pool-store.cjs");
+// Odenemeyen odulu kalici olarak kaydetmek icin (bkz. kayipOdulKaydet).
+const WalletCredit = require("../lib/wallet-credit.cjs");
 const RT_LIVE_GS_FILE = path.join(DATA_DIR, "rt-live-gs.json");
 
 // ✅ maç bazlı puan defteri (kalıcı history)
@@ -631,10 +633,60 @@ async function _awardLcForRowsUnlocked(rows, db) {
   }
 
   if (usersCol && mongoUserOps.length) {
+    /* ⚠️ ÖDÜL YAZIMI BAŞARISIZ OLURSA ÖDÜL KAYBOLUR — İZ BIRAK.
+     *
+     * Bu noktaya gelindiğinde `claimAward` mührü ÇOKTAN atılmıştır (çift
+     * ödemeyi önlemek için, ve bu doğru sıra). Ama bunun ters riski şu: yazma
+     * başarısız olursa settle "başarılı" sayılır, tekrar denemede mühür
+     * "zaten ödüllendirilmiş" der ve ödüller KALICI olarak kaybolur.
+     *
+     * Eskiden burada yalnızca `console.error` vardı. Render'da log akıp gider;
+     * kimsenin bakmadığı bir satır, kaybolmuş parayı geri getirmez.
+     *
+     * ⚠️ KISMİ BAŞARISIZLIK DA YAKALANIYOR: `ordered:false` bulkWrite istisna
+     * ATMADAN bazı işlemleri atlayabilir (writeErrors). Sadece try/catch
+     * kullanmak bu sessiz eksiği hiç görmezdi.
+     *
+     * Mührü GERİ ALMIYORUZ: kısmi başarı mümkün olduğu için yeniden denemek
+     * bir kısmını ikinci kez öderdi. Doğru çözüm kalıcı iz + elle telafi.
+     */
+    let hata = null;
+    let eksik = 0;
     try {
-      await usersCol.bulkWrite(mongoUserOps, { ordered: false });
+      const r = await usersCol.bulkWrite(mongoUserOps, { ordered: false });
+      const islenen =
+        (r?.modifiedCount || 0) + (r?.upsertedCount || 0) + (r?.matchedCount || 0);
+      // matchedCount modified'ı da kapsayabilir; en iyimser okumayı alıp
+      // yine de eksik varsa şikayet ediyoruz.
+      eksik = Math.max(0, mongoUserOps.length - Math.max(islenen, (r?.matchedCount || 0)));
     } catch (e) {
-      console.error("[settle2] Mongo wallet_users bulkWrite failed:", e);
+      hata = e;
+      eksik = mongoUserOps.length;
+    }
+
+    if (hata || eksik > 0) {
+      console.error(
+        `[settle2] ⛔ ODUL YAZIMI EKSIK — ${eksik}/${mongoUserOps.length} kullanici ` +
+        `odenmemis olabilir. Mühür atildigi icin tekrar denenmeyecek.`,
+        hata?.message || ""
+      );
+      try {
+        await db.collection("failed_awards").insertOne({
+          fixtureId: rows?.[0]?.fixtureId ?? null,
+          createdAt: nowISO,
+          neden: hata ? String(hata?.message || hata) : "kismi_yazim",
+          beklenen: mongoUserOps.length,
+          eksik,
+          // Elle telafi için gereken asgari bilgi.
+          odemeler: mongoUserOps.map((op) => ({
+            userIdLower: op.updateOne.filter.userIdLower,
+            tutar: op.updateOne.update.$inc.balance,
+          })),
+        });
+      } catch (e2) {
+        // Son çare: iz de bırakılamadı. Ayırt edilebilir bir işaretle bas.
+        console.error("[settle2] ⛔⛔ FAILED_AWARDS KAYDI DA YAZILAMADI:", e2?.message || e2);
+      }
     }
   }
   if (ledgerCol && mongoLedgerDocs.length) {
@@ -1447,7 +1499,18 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
             const ledgerCol = db.collection("lc_wallet_ledger");
             await ledgerCol.insertOne({ id: "tx_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8), userId: uid, userIdLower: uidLower, kind: "reward", amount: payout.lcWon, reason: "tournament_payout", meta: { tournamentCode: t.code, rank: payout.rank }, createdAt: nowISO });
           } catch (e) {
-            console.error("[settle2] tournament payout mongo failed:", e);
+            // ⚠️ Turnuva `claimTournamentSettle` ile ÇOKTAN mühürlü: bu ödeme
+            // tekrar denenmez. Yalnızca log bırakmak parayı geri getirmez.
+            console.error("[settle2] ⛔ TURNUVA ODEMESI YAZILAMADI:", e?.message || e);
+            await WalletCredit.kayipOdulKaydet(db, {
+              kaynak: "tournament_payout",
+              tournamentCode: t.code,
+              rank: payout.rank,
+              odemeler: [{ userIdLower: uidLower, tutar: payout.lcWon }],
+              beklenen: 1,
+              eksik: 1,
+              neden: String(e?.message || e),
+            });
           }
         }
       }

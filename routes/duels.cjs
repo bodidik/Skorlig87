@@ -526,25 +526,50 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
       const lock = await isFixtureLocked(duel.fixtureId);
       if (lock.locked) { result = { err: lock.reason }; return; }
 
-      // Deduct inside DUELS lock — same pattern as pred.cjs
+      // Bahsi burada tahsil ediyoruz; kabulün KENDİSİ kilidin dışında
+      // ATOMİK olarak mühürleniyor (aşağıya bak). Tahsilat başarılı olup
+      // mühür alınamazsa iade ediliyor.
       const spend = await deductLc(db, acceptorId, duel.stake, "duel_accept", did);
       if (!spend.ok) { result = { err: spend.error || "LC_NOT_ENOUGH", lc: spend.lc, needed: duel.stake }; return; }
 
-      duel.acceptorId = acceptorId;
-      duel.acceptorName = acceptorName;
-      duel.status = "active";
-      duel.acceptedAt = new Date().toISOString();
-      await saveDuels(list, db);
-      result = { duel: { ...duel } };
+      result = { duel: { ...duel }, tahsilEdildi: true };
     });
 
     if (!result) return res.status(500).json({ ok: false, error: "UNKNOWN" });
     if (result.err === "DUEL_NOT_FOUND") return res.status(404).json({ ok: false, error: result.err });
     if (result.err) return res.status(400).json({ ok: false, error: result.err, lc: result.lc, needed: result.needed });
 
-    if (db) {
-      try { await db.collection("duels").updateOne({ id: did }, { $set: result.duel }); } catch {}
+    /* ⚠️ PARA KORUMASI — KABUL ATOMİK MÜHÜRLE ALINIR.
+     *
+     * Eskiden: listeyi oku → "open" mu diye BAK → bahsi TAHSİL ET → yaz.
+     * `withFileLock` yalnızca tek süreci korur; depo Mongo'ya taşındığı için
+     * çok instance'lı ortamda hiçbir şey yapmıyordu. İki eşzamanlı kabul de
+     * kontrolü geçiyor, İKİSİNDEN DE bahis alınıyor, son yazan kazanıyordu —
+     * biri parasını verip düelloya girememiş oluyordu.
+     *
+     * Sıra bilinçli: TAHSİLAT ÖNCE, MÜHÜR SONRA. Mühür alınamazsa (başkası
+     * kabul etti) para hemen iade edilir. Tersi sırada mühür alınıp tahsilat
+     * başarısız olsa düello "aktif" ama ödenmemiş kalırdı.
+     */
+    const acceptedAt = new Date().toISOString();
+    const bizimki = await SocialStore.claimDuelAccept(
+      did,
+      { acceptorId, acceptorName, acceptedAt },
+      db
+    );
+    if (!bizimki) {
+      // Başkası önce kabul etti — aldığımız bahsi GERİ VER.
+      const iade = await creditLc(db, acceptorId, result.duel.stake, "duel_accept_refund", did);
+      if (!iade) {
+        console.error(
+          `[duels] IADE EDILEMEDI duel=${did} kullanici=${acceptorId} ` +
+          `tutar=${result.duel.stake} — kabul alinamadi, LC elle telafi edilmeli`
+        );
+      }
+      return res.status(400).json({ ok: false, error: "NOT_OPEN" });
     }
+
+    Object.assign(result.duel, { acceptorId, acceptorName, acceptedAt, status: "active" });
 
     // Kuran kişi rakibinin belli olduğunu bilmeli — açık düelloda bunu
     // başka türlü fark etmesi mümkün değil.
@@ -577,22 +602,44 @@ router.post("/duels/cancel", verifyToken, async (req, res) => {
       if (!duel) { result = { err: "DUEL_NOT_FOUND" }; return; }
       if (duel.status !== "open") { result = { err: "NOT_OPEN" }; return; }
       if (duel.creatorId.toLowerCase() !== uid.toLowerCase()) { result = { err: "NOT_YOUR_DUEL" }; return; }
-      duel.status = "cancelled";
-      duel.settledAt = new Date().toISOString();
-      await saveDuels(list, db);
+      // Yalnızca ön kontrol (hızlı ve anlamlı hata mesajı için). Gerçek karar
+      // aşağıdaki ATOMİK mühürde veriliyor — bkz. yorum.
       result = { duel: { ...duel } };
     });
 
     if (!result || result.err === "DUEL_NOT_FOUND") return res.status(404).json({ ok: false, error: "DUEL_NOT_FOUND" });
     if (result.err) return res.status(400).json({ ok: false, error: result.err });
 
-    // Refund outside the lock
-    await creditLc(db, result.duel.creatorId, result.duel.stake, "duel_cancel_refund", did);
-
-    if (db) {
-      try { await db.collection("duels").updateOne({ id: did }, { $set: result.duel }); } catch {}
+    /* ⚠️ PARA KORUMASI — MÜHÜR İADEDEN ÖNCE, ATOMİK.
+     *
+     * Eskiden akış şöyleydi: durumu oku → "open" mu diye BAK → kilidi bırak →
+     * İADE ET. `withFileLock` yalnızca tek süreci korur ve depo Mongo'ya
+     * taşındığı için çok instance'lı ortamda hiçbir şey yapmıyordu. Aradaki
+     * pencerede ikinci bir istek de kontrolü geçip İADEYİ TEKRAR alabilirdi:
+     * bahis bir kez yatırılmışken iki kez geri ödenirdi.
+     *
+     * claimDuelCancel koşulu (status:"open" + kurucu eşleşmesi) yazmanın
+     * İÇİNDE tutuyor; yalnızca tek çağrı true alır. Aynı düzeltme settle
+     * yolunda zaten yapılmıştı, iptal atlanmış.
+     */
+    const nowISO = new Date().toISOString();
+    const bizimki = await SocialStore.claimDuelCancel(did, uid, { settledAt: nowISO }, db);
+    if (!bizimki) {
+      return res.status(400).json({ ok: false, error: "NOT_OPEN" });
     }
-    return res.json({ ok: true, duel: result.duel });
+
+    // İade mühürden SONRA: bu noktaya yalnızca bir çağrı gelebilir.
+    const iade = await creditLc(db, result.duel.creatorId, result.duel.stake, "duel_cancel_refund", did);
+    if (!iade) {
+      // Mühür atıldı ama para geri verilemedi — SESSİZ KALMA, borç doğdu.
+      console.error(
+        `[duels] IADE EDILEMEDI duel=${did} kullanici=${result.duel.creatorId} ` +
+        `tutar=${result.duel.stake} — duello iptal edildi, LC elle telafi edilmeli`
+      );
+    }
+
+    const cikti = { ...result.duel, status: "cancelled", settledAt: nowISO };
+    return res.json({ ok: true, duel: cikti });
   } catch (e) {
     console.error("[duels] cancel failed:", e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });

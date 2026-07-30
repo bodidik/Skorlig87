@@ -500,3 +500,94 @@ describe("mini turnuva — karşılıksız LC musluğu sınırlı", () => {
     assert.ok((await acikSay()) < max, "biri bitince yer acilmali");
   });
 });
+
+describe("düello kabul/iptal mührü — çift tahsilat ve çift iade", () => {
+  /**
+   * `/duels/accept` ve `/duels/cancel` "oku → koşula BAK → parayı hareket
+   * ettir" deseni kullanıyordu. `withFileLock` yalnızca tek süreci korur ve
+   * depo Mongo'ya taşındığından çok instance'lı ortamda hiçbir şey yapmıyordu.
+   *
+   *   accept: iki eşzamanlı kabul de kontrolü geçer, İKİSİNDEN DE bahis
+   *           alınır, son yazan kazanır — biri parasını verip düelloya
+   *           girememiş olur.
+   *   cancel: iki eşzamanlı iptal de kontrolü geçer, İADE İKİ KEZ yapılır.
+   *
+   * Settle yolunda bu düzeltilmişti (claimDuelSettle); bu ikisi atlanmıştı.
+   */
+  test("20 eşzamanlı iptalden yalnızca biri mührü alır", async () => {
+    await db.collection(S.COLL_DUELS).insertOne({
+      id: "dc1", status: "open", creatorId: "Kurucu", stake: 10,
+    });
+    const r = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        S.claimDuelCancel("dc1", "kurucu", { settledAt: new Date().toISOString() }, db))
+    );
+    assert.equal(r.filter(Boolean).length, 1, "birden fazla iptal muhru alindi");
+    const d = await db.collection(S.COLL_DUELS).findOne({ id: "dc1" });
+    assert.equal(d.status, "cancelled");
+  });
+
+  test("başkasının düellosu iptal edilemez (sahiplik yazmanın içinde)", async () => {
+    await db.collection(S.COLL_DUELS).insertOne({
+      id: "dc2", status: "open", creatorId: "Kurucu", stake: 10,
+    });
+    assert.equal(await S.claimDuelCancel("dc2", "baskasi", { settledAt: "x" }, db), false);
+    const d = await db.collection(S.COLL_DUELS).findOne({ id: "dc2" });
+    assert.equal(d.status, "open", "yabanci iptal durumu degistirmis");
+  });
+
+  test("20 eşzamanlı kabulden yalnızca biri mührü alır", async () => {
+    await db.collection(S.COLL_DUELS).insertOne({
+      id: "da1", status: "open", creatorId: "Kurucu", stake: 10,
+    });
+    const r = await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        S.claimDuelAccept("da1", { acceptorId: "kabul" + i, acceptedAt: new Date().toISOString() }, db))
+    );
+    assert.equal(r.filter(Boolean).length, 1, "birden fazla kabul muhru alindi");
+    const d = await db.collection(S.COLL_DUELS).findOne({ id: "da1" });
+    assert.equal(d.status, "active");
+    assert.ok(d.acceptorId, "kabul eden yazilmamis");
+  });
+
+  test("kapanmış düello tekrar kabul edilemez", async () => {
+    await db.collection(S.COLL_DUELS).insertOne({
+      id: "da2", status: "settled", creatorId: "K", stake: 10,
+    });
+    assert.equal(await S.claimDuelAccept("da2", { acceptorId: "x" }, db), false);
+  });
+});
+
+describe("ödenemeyen ödül izi — mühür atıldı ama para gitmedi", () => {
+  /**
+   * Para dağıtan yolların hepsi "önce mühürle, sonra öde" deseninde. Bu çift
+   * ödemeyi engeller (doğru sıra) ama ters riski vardır: ödeme başarısız
+   * olursa mühür atıldığı için TEKRAR DENENMEZ ve ödül kalıcı kaybolur.
+   *
+   * Eskiden bu durumlarda yalnızca `console.error` vardı. Render'da log akıp
+   * gider. `failed_awards` kalıcı iz bırakır ve GET /api/health onu sayar.
+   */
+  const { kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
+
+  test("kayıt kalıcı olarak yazılır ve telafi için gereken bilgiyi taşır", async () => {
+    await db.collection("failed_awards").deleteMany({});
+    const ok = await kayipOdulKaydet(db, {
+      kaynak: "test_odul",
+      odemeler: [{ userIdLower: "kullanici", tutar: 12.5 }],
+      beklenen: 1,
+      eksik: 1,
+    });
+    assert.equal(ok, true);
+
+    const d = await db.collection("failed_awards").findOne({ kaynak: "test_odul" });
+    assert.ok(d, "kayit bulunamadi");
+    assert.ok(d.createdAt, "zaman damgasi yok");
+    // Elle telafi için asgari bilgi: KİME ve NE KADAR.
+    assert.equal(d.odemeler[0].userIdLower, "kullanici");
+    assert.equal(d.odemeler[0].tutar, 12.5);
+  });
+
+  test("db yokken çağıranı düşürmez (kendi hatasıyla settle'ı bozmasın)", async () => {
+    assert.equal(await kayipOdulKaydet(null, { kaynak: "dbsiz" }), false);
+  });
+});

@@ -41,7 +41,7 @@ const MAX_MEMBERS = 50;
 const MINI_WIN_LC = Math.max(0, Number(process.env.SKORLIG_MINI_WIN_LC || 20));
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
-const { creditLc } = require("../lib/wallet-credit.cjs");
+const { creditLc, kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
 // settle2 ile AYNI bayrak: cüzdan dosyası aynası.
 const WALLET_FILE_MIRROR =
   String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0";
@@ -143,11 +143,33 @@ async function awardMiniWinLc(userIds, tournament, db) {
   const nowISO = new Date().toISOString();
 
   // Mongo tarafı: $inc göreli olduğu için dosyadan bağımsız ve doğru.
+  //
+  // ⚠️ DÖNÜŞ DEĞERİ KONTROL EDİLİYOR. Eskiden `await creditLc(...)` sonucu
+  // yok sayılıyordu: `creditLc` hatayı kendi içinde yakalayıp false döner,
+  // yani ödeme başarısız olsa bile burada hiçbir belirti oluşmuyordu. Turnuva
+  // ise `finishMini` ile ÇOKTAN mühürlenmiş olduğu için tekrar denenmez —
+  // kazanan "kazandın" görür, LC'si hiç gelmez.
+  const odenemeyen = [];
   for (const uid of winners) {
-    await creditLc(db, uid, pay, "mini_tournament_win", {
+    const ok = await creditLc(db, uid, pay, "mini_tournament_win", {
       tournamentId: tournament.id,
       tournamentName: tournament.name,
       kazananSayisi: winners.length,
+    });
+    if (!ok) odenemeyen.push(uid);
+  }
+  if (odenemeyen.length) {
+    console.error(
+      `[mini] ⛔ ODUL ODENEMEDI: turnuva=${tournament.id} kisi=${odenemeyen.join(", ")} ` +
+      `tutar=${pay} — turnuva muhurlu, tekrar denenmeyecek`
+    );
+    await kayipOdulKaydet(db, {
+      kaynak: "mini_tournament_win",
+      tournamentId: tournament.id,
+      tutar: pay,
+      odemeler: odenemeyen.map((u) => ({ userIdLower: String(u).toLowerCase(), tutar: pay })),
+      beklenen: winners.length,
+      eksik: odenemeyen.length,
     });
   }
 

@@ -210,12 +210,35 @@ function safeMount(name, fn) {
  * GET /api/health — dışarıdan sorulabilir açılış durumu.
  * Atlanan rota varsa `ok:false` döner: "ayakta" ile "eksiksiz" farklı şeyler.
  */
-app.get("/api/health", (req, res) => {
-  res.status(MOUNTS.skipped.length ? 503 : 200).json({
-    ok: MOUNTS.skipped.length === 0,
+app.get("/api/health", async (req, res) => {
+  const db = req.app?.locals?.db || null;
+
+  /* ⚠️ ÖDENMEMİŞ ÖDÜLLER GÖRÜNÜR OLSUN.
+   *
+   * settle2 ödül mührünü ödemeden ÖNCE atıyor (çift ödemeyi önlemek için).
+   * Bunun ters riski: yazma başarısız olursa ödül kalıcı kaybolur ve tekrar
+   * denenmez. O durumda `failed_awards` koleksiyonuna kalıcı iz bırakılıyor.
+   *
+   * İz yalnızca log'da kalsaydı kimse görmezdi. Burada sayılıyor: sıfırdan
+   * büyükse elle telafi edilecek PARA var demektir.
+   */
+  let odenmemisOdul = null;
+  if (db) {
+    try {
+      odenmemisOdul = await db.collection("failed_awards").countDocuments({}, { maxTimeMS: 2000 });
+    } catch {
+      odenmemisOdul = "okunamadi";
+    }
+  }
+
+  const sorunVar = MOUNTS.skipped.length > 0;
+  res.status(sorunVar ? 503 : 200).json({
+    ok: !sorunVar,
     mountedCount: MOUNTS.ok.length,
     skipped: MOUNTS.skipped,
-    mongo: !!req.app?.locals?.db,
+    mongo: !!db,
+    // >0 ise: bkz. routes/settle2.cjs "ODUL YAZIMI EKSIK"
+    odenmemisOdulKaydi: odenmemisOdul,
     uptimeSec: Math.round(process.uptime()),
   });
 });
