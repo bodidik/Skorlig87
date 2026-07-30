@@ -36,6 +36,7 @@ const BEKLENEN = {
   pool_bets: [["fixtureId", "userIdLower"]],
   // PARA: benzersizlik olmadan eşzamanlı upsert kopya cüzdan üretiyor.
   lc_wallet_users: [["userIdLower"]],
+  push_tokens: [["userIdLower"]],
   lc_wallet_ledger: [["userIdLower", "createdAt"]],
 };
 

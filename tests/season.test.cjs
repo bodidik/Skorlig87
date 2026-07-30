@@ -123,3 +123,40 @@ describe("sezon yalıtımı", () => {
     assert.equal(await db.collection("season_totals").countDocuments(), 2);
   });
 });
+
+describe("sezon kovaları ayrı — 1 Ağustos'ta tablo sıfırlanmalı", () => {
+  /**
+   * Sezon AYLIK. Dönüşün gerçekten çalışması iki şeye bağlı:
+   *   1) Okuma: leaderboard `season` alanına göre süzmeli (doğrulandı)
+   *   2) Yazma: settle sezon anahtarını YAZMA ANINDA hesaplamalı
+   *
+   * (2) kritik: anahtar modül yüklenirken bir kez hesaplanıp saklansaydı,
+   * sunucu Temmuz'da açılıp Ağustos'a girdiğinde yeni maçlar TEMMUZ kovasına
+   * yazılırdı ve sezon hiç sıfırlanmazdı — üstelik hata üretmeden.
+   */
+  const path = require("path");
+  const fs = require("fs");
+  const Season = require("../lib/season.cjs");
+
+  test("sezon anahtarı hiçbir yerde modül düzeyinde sabitlenmemiş", () => {
+    const kokler = ["routes", "lib", "services"];
+    const kalip = /^(const|let)\s+\w+\s*=\s*(Season\.)?seasonKey\(\)/m;
+    for (const k of kokler) {
+      const dizin = path.join(__dirname, "..", k);
+      for (const ad of fs.readdirSync(dizin)) {
+        if (!ad.endsWith(".cjs")) continue;
+        const src = fs.readFileSync(path.join(dizin, ad), "utf8");
+        assert.ok(!kalip.test(src),
+          `${k}/${ad}: sezon anahtari modul duzeyinde sabitlenmis — ay donunce eski sezona yazar`);
+      }
+    }
+  });
+
+  test("ay sınırında anahtar değişir (Istanbul saatiyle)", () => {
+    const tem = Season.seasonKey(new Date("2026-07-31T23:59:00+03:00"));
+    const agu = Season.seasonKey(new Date("2026-08-01T00:01:00+03:00"));
+    assert.equal(tem, "2026-07");
+    assert.equal(agu, "2026-08");
+    assert.equal(Season.previousKey(agu), tem);
+  });
+});

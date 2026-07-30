@@ -137,6 +137,12 @@ const { getDb } = require("../lib/mongo.cjs");
   }
   await db.collection("lc_wallet_users").createIndex({ userIdLower: 1 }, { unique: true, background: true });
   await db.collection("lc_wallet_ledger").createIndex({ userIdLower: 1, createdAt: -1 }, { background: true });
+  // Bildirim jetonlari + tercihleri (bkz. lib/push-store.cjs). Dosyada
+  // tutulurken her deploy siliniyordu: jeton kaybi bildirimi olu birakiyor,
+  // TERCIH kaybi ise kapatilan bildirimi yeniden aciyordu.
+  await db.collection("push_tokens").createIndex({ userIdLower: 1 }, { unique: true, background: true });
+  console.log("indexes: push OK");
+
   console.log("indexes: wallet OK");
 
   console.log(`veritabani: ${db.databaseName}`);

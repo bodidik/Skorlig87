@@ -14,8 +14,10 @@
  */
 
 const path = require("path");
-const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
-const { readJson } = require("./store.cjs");
+// writeJsonAtomic artik gerekmiyor: yazma lib/push-store.cjs uzerinden.
+const { withFileLock } = require("../lib/fileLock.cjs");
+// Jeton/tercih deposu Mongo birincil — dosya Render'da her deploy siliniyordu.
+const PushStore = require("../lib/push-store.cjs");
 
 const DATA_DIR   = path.join(__dirname, "..", "data");
 const TOKEN_FILE = path.join(DATA_DIR, "push-tokens.json");
@@ -37,10 +39,20 @@ const DEFAULT_PREFS = {
 
 /* ============ Token deposu ============ */
 
+/**
+ * ⚠️ ARTIK MONGO BİRİNCİL. Eskiden yalnızca `data/push-tokens.json` okunuyordu
+ * ve o dosya Render'da HER DEPLOY'DA siliniyordu:
+ *
+ *   - Jetonlar gidiyordu. İstemci her açılışta yeniden kaydoluyor, yani
+ *     uygulamayı AÇAN kullanıcı geri kazanıyordu — ama bildirimin amacı tam da
+ *     AÇMAYANI geri getirmek; onlar bir daha hiç bildirim almıyordu.
+ *   - TERCİHLER de gidiyordu: bildirimi KAPATAN kullanıcı varsayılana dönüyor
+ *     ve kapattığı bildirimi yeniden almaya başlıyordu.
+ *
+ * bkz. lib/push-store.cjs — diğer depolarla aynı desen.
+ */
 async function loadStore() {
-  const raw = await readJson(TOKEN_FILE, null);
-  if (raw && typeof raw === "object" && raw.items) return raw;
-  return { items: {} };
+  return PushStore.loadStore(null);
 }
 
 function isExpoToken(t) {
@@ -75,7 +87,7 @@ async function registerToken(userId, token, prefs) {
     rec.updatedAt = new Date().toISOString();
     store.items[uid] = rec;
 
-    await writeJsonAtomic(TOKEN_FILE, store);
+    await PushStore.saveStore(store, null);
     return { ok: true, tokens: rec.tokens.length, prefs: rec.prefs };
   });
 }
@@ -91,7 +103,7 @@ async function unregisterToken(userId, token) {
     if (!rec) return { ok: true, tokens: 0 };
     rec.tokens = tok ? rec.tokens.filter((t) => t !== tok) : [];
     rec.updatedAt = new Date().toISOString();
-    await writeJsonAtomic(TOKEN_FILE, store);
+    await PushStore.saveStore(store, null);
     return { ok: true, tokens: rec.tokens.length };
   });
 }
@@ -126,7 +138,7 @@ async function setPrefs(userId, prefs) {
     rec.prefs = sanitizePrefs(prefs, rec.prefs);
     rec.updatedAt = new Date().toISOString();
     store.items[uid] = rec;
-    await writeJsonAtomic(TOKEN_FILE, store);
+    await PushStore.saveStore(store, null);
     return { ok: true, prefs: rec.prefs };
   });
 }
@@ -145,7 +157,7 @@ async function pruneTokens(badTokens) {
       rec.tokens = rec.tokens.filter((t) => !bad.has(t));
       removed += before - rec.tokens.length;
     }
-    if (removed) await writeJsonAtomic(TOKEN_FILE, store);
+    if (removed) await PushStore.saveStore(store, null);
     return removed;
   });
 }
