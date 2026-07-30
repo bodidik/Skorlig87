@@ -10,10 +10,7 @@ const DATA    = path.join(__dirname,"..","data");
 // users.json yalnızca ARKADAŞ LİSTESİ isimleri için okunuyor (aşağıdaki
 // normalize edici). Profil verisi ve davet kodları lib/users-store.cjs
 // üzerinden gider — orası Mongo varsa Mongo'yu kullanır.
-const USERS   = path.join(DATA,"users.json");
-const TOTALS  = path.join(DATA,"totals.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
-const FRIENDS = path.join(DATA,"friends.json");
 const SocialStore = require("../lib/social-store.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
 const UsersStore = require("../lib/users-store.cjs");
@@ -29,9 +26,6 @@ async function writeJson(file, data){
   await fsp.writeFile(file, JSON.stringify(data,null,2), "utf8");
 }
 
-function emptyFriends(){
-  return { links: [], requests: [], blocks: [] };
-}
 
 function normId(x){ return String(x||"").trim(); }
 function normLower(x){ return String(x||"").trim().toLowerCase(); }
@@ -66,7 +60,6 @@ async function loadFriends(db){
   ensureBlocks(m);
   return m;
 }
-async function saveFriends(m, db){ await SocialStore.saveFriends(m, db || null); }
 
 // iki kullanıcı arasındaki arkadaşlık için canonical key
 function pairKey(a,b){

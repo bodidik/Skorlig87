@@ -242,42 +242,6 @@ function fromMackolik() {
 
 // ─── Source 2: Bilyoner ───────────────────────────────────────────────────────
 
-function fromBilyoner() {
-  return scrapeWithBrowser(
-    "https://www.bilyoner.com/canli-mac-sonuclari",
-    () => {
-      // Angular app — tries several selector patterns
-      const rows = document.querySelectorAll(
-        ".event-row, .live-event-item, [class*='liveEvent'], [class*='EventRow'], [class*='event-item']"
-      );
-      const results = [];
-      rows.forEach(row => {
-        const teams     = row.querySelectorAll("[class*='team-name'], [class*='teamName'], [class*='TeamName']");
-        if (teams.length < 2) return;
-        const homeTeam  = teams[0]?.textContent?.trim() || "";
-        const awayTeam  = teams[1]?.textContent?.trim() || "";
-        if (!homeTeam || !awayTeam) return;
-        const scoreEls  = row.querySelectorAll("[class*='score'], [class*='Score']");
-        const homeScore = scoreEls[0]?.textContent?.trim() || null;
-        const awayScore = scoreEls[1]?.textContent?.trim() || null;
-        const statusEl  = row.querySelector("[class*='status'], [class*='Status'], [class*='minute'], [class*='time']");
-        const status    = statusEl?.textContent?.trim() || "—";
-        const leagueEl  = row.closest("[class*='league'], [class*='competition'], [class*='League']")
-                            ?.querySelector("[class*='title'], [class*='name']");
-        results.push({
-          homeTeam, awayTeam, homeScore, awayScore,
-          status, startTime: "", htScore: null, matchDate: "",
-          homeCrest: null, awayCrest: null, homeRed: 0, awayRed: 0,
-          isLive: true, isHT: status === "HT", isFinished: false,
-          compTitle: leagueEl?.textContent?.trim() || "",
-          compCountry: "Turkey",
-        });
-      });
-      return results;
-    },
-    null
-  );
-}
 
 // ─── Source 3: Nesine ─────────────────────────────────────────────────────────
 
@@ -654,7 +618,6 @@ function fromESPN() {
     const data = await res.json();
     const events = Array.isArray(data?.events) ? data.events : [];
 
-    const two = (n) => String(n).padStart(2, "0");
     const out = [];
 
     for (const ev of events) {
@@ -711,53 +674,6 @@ function fromESPN() {
 
 // ─── Source 7: API-Football (HTTP, no browser) ────────────────────────────────
 
-function fromApiFootball() {
-  const key = process.env.AF_KEY;
-  if (!key) return Promise.reject(new Error("AF_KEY not set"));
-
-  return new Promise((resolve, reject) => {
-    const https = require("https");
-    const req = https.get(
-      { hostname: "v3.football.api-sports.io", path: "/fixtures?live=all", headers: { "x-apisports-key": key } },
-      (res) => {
-        let raw = "";
-        res.on("data", c => raw += c);
-        res.on("end", () => {
-          try {
-            const json = JSON.parse(raw);
-            if (json.errors && Object.keys(json.errors).length)
-              return reject(new Error("api-football: " + JSON.stringify(json.errors)));
-            const matches = (json.response || []).map(f => {
-              const elapsed = f.fixture.status.elapsed;
-              const short   = f.fixture.status.short;
-              return {
-                homeTeam:  f.teams.home.name,
-                awayTeam:  f.teams.away.name,
-                homeScore: f.goals.home !== null ? String(f.goals.home) : null,
-                awayScore: f.goals.away !== null ? String(f.goals.away) : null,
-                status:    elapsed ? `${elapsed}'` : short,
-                startTime: (f.fixture.date || "").substring(11, 16),
-                matchDate: (f.fixture.date || "").substring(0, 10),
-                htScore:   f.score.halftime.home !== null ? `${f.score.halftime.home}-${f.score.halftime.away}` : null,
-                homeCrest: f.teams.home.logo || null,
-                awayCrest: f.teams.away.logo || null,
-                homeRed: 0, awayRed: 0,
-                isLive:    ["1H","HT","2H","ET","BT","P","SUSP","INT","LIVE"].includes(short),
-                isHT:      short === "HT",
-                isFinished: short === "FT",
-                compTitle:   f.league.name,
-                compCountry: f.league.country,
-              };
-            });
-            resolve(matches);
-          } catch (e) { reject(e); }
-        });
-      }
-    );
-    req.on("error", reject);
-    req.setTimeout(10000, () => { req.destroy(); reject(new Error("api-football timeout")); });
-  });
-}
 
 // ─── Source 8: TNT Sports ─────────────────────────────────────────────────────
 
@@ -985,7 +901,9 @@ const SOURCES = [
   // bilyoner: API alan adı (sportsbookv2.bilyoner.com) artık DNS'te çözülmüyor —
   // "fetch failed", HTTP hatası bile alınmıyor. Kaynak ortadan kalkmış; şelalede
   // tutmak her turda boşuna bekleme demek. Yeni uç bulunursa geri açılabilir.
-  // { name: "bilyoner",     fn: fromBilyoner },
+  // bilyoner — KAPALI ve GOVDESI SILINDI (fromBilyoner artik yok).
+  //   Yeniden acmak icin cekici bastan yazmak gerekir; bu satiri acmak
+  //   ReferenceError verir. Kaynak zaten uzun suredir cevap vermiyordu.
   { name: "nesine",       fn: fromNesine },
   { name: "tntsports",    fn: fromTNTSports },
   { name: "wslfootball",  fn: fromWSLFootball },
@@ -993,7 +911,8 @@ const SOURCES = [
   // api-football: hesap askıya alındı (dashboard.api-football.com "suspended").
   // Kırık fallback gereksiz deneme + log gürültüsü yaratıyordu; hesap düzelince
   // aşağıdaki satırı geri aç.
-  // { name: "api-football", fn: fromApiFootball },
+  // api-football — KAPALI ve GOVDESI SILINDI (fromApiFootball artik yok).
+  //   Ucretli anahtar gerektiriyordu; bkz. yukaridaki not.
 ];
 
 /**

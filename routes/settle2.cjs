@@ -1320,7 +1320,6 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
  * TOURNAMENT AUTO-SETTLE
  * ====================== */
 
-const TOURNAMENTS_FILE = path.join(DATA_DIR, "tournaments.json");
 
 // Turnuvalar Mongo birincil — bkz. lib/social-store.cjs
 async function loadTournaments(db) {
@@ -1660,7 +1659,6 @@ router.get("/match-race", async (req, res) => {
     const actualScore = st?.score || result.finalScore || null;
     const actH = actualScore ? Number(actualScore.home) : 0;
     const actA = actualScore ? Number(actualScore.away) : 0;
-    const currentOutcome = result.outcome || null;
 
     // Sadece skor tahmini yapanlar yarışa alınır
     const scoredRows = rows.filter((r) => {

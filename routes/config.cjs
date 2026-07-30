@@ -10,29 +10,13 @@ const express = require("express");
 const router = express.Router();
 const fs = require("fs");
 const fsp = fs.promises;
-const path = require("path");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
-const SETTINGS = path.join(DATA_DIR, "settings.json");
 const SettingsStore = require("../lib/settings-store.cjs");
 
 // 🔹 Runtime mode entegrasyonu (4 takım / 30 takım / global vb.)
 const { getRuntimeMode, setRuntimeMode } = require("../lib/runtime-mode.cjs");
 
-async function readJson(file, fb = null) {
-  try {
-    return JSON.parse(await fsp.readFile(file, "utf8"));
-  } catch (e) {
-    return fb;
-  }
-}
 
-async function writeJson(file, data) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  const tmp = file + ".tmp";
-  await fsp.writeFile(tmp, JSON.stringify(data, null, 2), "utf8");
-  await fsp.rename(tmp, file);
-}
 
 // ---- Basic Auth (sadece POST /update için) ----
 // Fail-closed: ADMIN_USER/ADMIN_PASS env ayarlı değilse endpoint kapalı.

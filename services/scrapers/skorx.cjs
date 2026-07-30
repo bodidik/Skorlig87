@@ -38,13 +38,6 @@ function parseScore(s) {
 }
 
 // Süreyi dakikaya çevir: "45+2", "90", "HT" → number | null
-function parseMinute(s) {
-  if (!s) return null;
-  const t = s.trim();
-  if (/ht|iy|half/i.test(t)) return 45;
-  const m = t.match(/^(\d+)/);
-  return m ? parseInt(m[1], 10) : null;
-}
 
 // HTML'den maç satırlarını basit regex ile çeker (JS engine gerektirmez)
 function parseMatchRows(html) {
@@ -87,7 +80,6 @@ function parseMatchRows(html) {
   // --- Yaklaşım 2: HTML satır regex ---
   // SkorX'in ortak DOM yapısı: .event-row veya tr[data-id]
   const rowRe = /(?:class="[^"]*(?:event-row|match-row|live-match)[^"]*")[^>]*>([\s\S]*?)<\/(?:div|tr)>/gi;
-  const teamRe = /<[^>]+class="[^"]*(?:home|away|team-name)[^"]*"[^>]*>([\s\S]*?)<\/[^>]+>/i;
   const scoreRe = /(\d+)\s*[-:]\s*(\d+)/;
   const minuteRe = /(\d{1,3}(?:[+\']\d+)?)\s*(?:'|dk|min)/i;
 

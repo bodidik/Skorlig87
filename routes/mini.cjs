@@ -22,7 +22,6 @@ const path = require("path");
 const crypto = require("crypto");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
-const MINI_FILE = path.join(DATA_DIR, "mini-tournaments.json");
 const SocialStore = require("../lib/social-store.cjs");
 // ⚠️ Bu import BİR KEZ ATLANMIŞTI: koşullu ekleme ("dosyada 'verifyToken'
 // geçmiyorsa ekle") kullanılmıştı, ama az önce eklenen rota tanımları o
@@ -30,7 +29,6 @@ const SocialStore = require("../lib/social-store.cjs");
 // olmuştu. Ders: import eklemeyi metin varlığına bağlama.
 const { verifyToken } = require("../middleware/verifyToken.cjs");
 const premium = require("../lib/premium.cjs");
-const RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR = path.join(DATA_DIR, "live");
 
@@ -65,9 +63,6 @@ async function writeJson(file, data) {
 // hiçbir kaynaktan geri gelmiyordu.
 async function loadAll(db) {
   return SocialStore.loadMini(db || null);
-}
-async function saveAll(items, db) {
-  await SocialStore.saveMini(items, db || null);
 }
 
 function newCode(existing) {
@@ -338,7 +333,6 @@ router.post("/join", verifyToken, express.json(), async (req, res) => {
 // Üye olan bir kullanıcı, ARKADAŞI olan birini turnuvaya doğrudan ekler.
 // Arkadaşlık zaten karşılıklı onayla kurulduğu için ayrıca kabul adımı yok;
 // davet edilen, turnuvayı "Turnuvalarım" listesinde görür.
-const FRIENDS_FILE = path.join(DATA_DIR, "friends.json");
 
 async function areFriends(u1, u2) {
   // Arkadaşlıklar Mongo birincil — bkz. lib/social-store.cjs

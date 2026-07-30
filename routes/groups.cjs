@@ -5,7 +5,6 @@ const router  = express.Router();
 const fs      = require("fs");
 const fsp     = fs.promises;
 const path    = require("path");
-const crypto  = require("crypto");
 
 const DATA   = path.join(__dirname,"..","data");
 
@@ -16,7 +15,6 @@ function requireAdminToken(req, res, next) {
   if (got && got === token) return next();
   return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
 }
-const GROUPS = path.join(DATA,"groups.json");
 // Gruplar Mongo birincil — bkz. lib/social-store.cjs. Dosyada tutulurken
 // Render'da her deploy siliyordu; kullanıcının kurduğu grup ve üyelikler
 // hiçbir kaynaktan geri gelmiyordu.
@@ -25,15 +23,7 @@ const UsersStore = require("../lib/users-store.cjs");
 const TOTALS = path.join(DATA,"totals.json");  // { items: [ { userId, totalPoints, ...}, ... ], updatedAt }
 const SeasonTotals = require("../lib/season-totals.cjs");
 
-async function readJson(file, fb){ try{ return JSON.parse(await fsp.readFile(file,"utf8")); }catch{ return fb; } }
-async function writeJson(file, data){
-  await fsp.mkdir(path.dirname(file), { recursive:true });
-  await fsp.writeFile(file, JSON.stringify(data,null,2), "utf8");
-}
 
-function code6(){
-  return crypto.randomBytes(4).toString("base64url").slice(0,6).toUpperCase();
-}
 
 /* =========================
    HANDLERS (tek gerçek)

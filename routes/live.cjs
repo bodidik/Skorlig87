@@ -13,14 +13,9 @@
 "use strict";
 
 const express = require("express");
-const fs = require("fs");
-const fsp = fs.promises;
-const path = require("path");
 
 const router = express.Router();
 
-const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
-const LIVE_DIR = path.join(DATA_DIR, "live");
 
 /**
  * ⚠️ BU YOL data/live/fixtures.json İDİ — YANLIŞTI.
@@ -35,7 +30,6 @@ const LIVE_DIR = path.join(DATA_DIR, "live");
  * etmemişti — ama teşhis sırasında "üretimde hiç maç yok" gibi görünüp
  * yanlış alarma yol açtı. Boş dosya ile eksik veri dışarıdan aynı görünüyor.
  */
-const LIVE_FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 
 // ---- Normalizasyon

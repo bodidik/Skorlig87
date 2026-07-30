@@ -133,7 +133,6 @@ async function afGet(pathQs) {
 
 // ---------- durum eşleme ----------
 const FINISHED = new Set(["FT", "AET", "PEN"]);
-const LIVE = new Set(["1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT"]);
 
 function mapStatus(short) {
   const s = String(short || "NS").toUpperCase();

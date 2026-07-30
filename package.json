@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.cjs",
     "test": "node --test \"tests/**/*.test.cjs\"",
-    "lint": "eslint \"routes/**/*.cjs\" \"lib/**/*.cjs\" \"services/**/*.cjs\" \"middleware/**/*.cjs\" \"scripts/**/*.cjs\" server.cjs"
+    "lint": "eslint \"routes/**/*.cjs\" \"lib/**/*.cjs\" \"services/**/*.cjs\" \"middleware/**/*.cjs\" \"scripts/**/*.cjs\" server.cjs",
+    "dev:safe": "SKORLIG_BG=0 node server.cjs"
   },
   "engines": {
     "node": ">=20"

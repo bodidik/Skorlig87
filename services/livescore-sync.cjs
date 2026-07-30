@@ -6,10 +6,8 @@ const path = require("path");
 
 const DATA_DIR   = path.join(__dirname, "..", "data");
 const LIVE_DIR   = path.join(DATA_DIR, "live");
-const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 const RESULTS_FILE  = path.join(DATA_DIR, "results.json");   // settle2'nin okuduğu file
-const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
 
 const livescoreScraper = require("./livescore-scraper.cjs");
@@ -23,9 +21,6 @@ let _apiPort    = 4102;
 // ──────────────────────────────────────────────
 // helpers
 // ──────────────────────────────────────────────
-function readJsonSync(file) {
-  try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
-}
 async function readJson(file, fb = null) {
   try { return JSON.parse(await fsp.readFile(file, "utf8")); } catch { return fb; }
 }

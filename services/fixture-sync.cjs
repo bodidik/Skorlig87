@@ -34,7 +34,6 @@
  */
 
 const path = require("path");
-const fsp = require("fs").promises;
 
 const { withFileLock } = require("../lib/fileLock.cjs");
 

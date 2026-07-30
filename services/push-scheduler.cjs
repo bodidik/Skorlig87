@@ -21,10 +21,8 @@ const { readJson } = require("./store.cjs");
 const push = require("./push.cjs");
 
 const DATA_DIR     = path.join(__dirname, "..", "data");
-const FIXTURES     = path.join(DATA_DIR, "fixtures.json");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 const PREDS        = path.join(DATA_DIR, "preds.json");
-const RESULTS      = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
 const WALLET       = path.join(DATA_DIR, "lc-wallet.json");
 const SENT_FILE    = path.join(DATA_DIR, "push-sent.json");

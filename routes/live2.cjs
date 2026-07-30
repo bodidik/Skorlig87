@@ -64,7 +64,6 @@ const OPEN_WINDOW_HOURS = 36; // ileri (default)
 const BACK_WINDOW_HOURS = 48; // geri (–48h)
 
 // Test dönemi Big-4 takımları: GS, FB, BJK, TS
-const DERBY_WINDOW_HOURS = 72;
 const DEFAULT_WINDOW_HOURS = 72;
 // Not: MANUAL_LIST_AHEAD_DAYS ve PREDICT_OPEN_AHEAD_HOURS zaten yukarıda tanımlı
 
@@ -147,9 +146,6 @@ const {
  */
 const MIN_FIXTURES = Number(process.env.SKORLIG_MIN_FIXTURES || 20);
 
-function allowedCountry(c) {
-  return !!ALLOWED[c];
-}
 
 function isTopLeague(country, league) {
   const pats = ALLOWED[country];
@@ -311,26 +307,6 @@ function canonicalCountry(input) {
 }
 
 // extraLeagues: virgülle ayrılmış ülke kodu/adı listesi ("GB,FR" veya "England,France")
-function localizeForCountry(list, country, extraLeagues) {
-  const canon = canonicalCountry(country);
-  const extras = String(extraLeagues || "")
-    .split(",")
-    .map(e => canonicalCountry(e.trim()))
-    .filter(Boolean);
-
-  // ne ana ülke ne ek lig → filtresiz dön
-  if (!canon && !extras.length) return list;
-
-  const accepted = new Set();
-  for (const c of [canon, ...extras].filter(Boolean)) {
-    for (const alias of (COUNTRY_ALIASES[c] || [c])) accepted.add(alias);
-  }
-
-  return list.filter((it) => {
-    if (isGlobalLeagueName(it.league)) return true;
-    return accepted.has(String(it.country || ""));
-  });
-}
 
 function runtimeCountryCap(mode) {
   const p = String(mode?.profile || "").toUpperCase();

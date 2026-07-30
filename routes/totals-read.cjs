@@ -7,7 +7,6 @@ const path    = require("path");
 
 const DATA_DIR         = path.join(__dirname, "..", "data");
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
-const TOTALS_FILE      = path.join(DATA_DIR, "totals.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
 
 async function readJson(file, fb = null) {

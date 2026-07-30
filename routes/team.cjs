@@ -9,7 +9,6 @@ const path    = require("path");
 const DATA_DIR       = path.join(__dirname, "..", "data");
 const UsersStore = require("../lib/users-store.cjs");
 const LEADER_FILE    = path.join(DATA_DIR, "leaderboard.json");
-const FIXTURES_FILE  = path.join(DATA_DIR, "fixtures.json");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 
 // 🔹 Runtime mode (4 takım / 30 takım / global vb.)

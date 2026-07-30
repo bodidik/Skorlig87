@@ -28,11 +28,8 @@
  * Kapatmak için: SKORLIG_BOT_FILL=0
  */
 
-const path = require("path");
 const { readJson } = require("./store.cjs");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
-const FIXTURES = path.join(DATA_DIR, "fixtures.json");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 
 // Kickoff'a bu kadar veya daha az kalan maçlar doldurulur.
@@ -50,11 +47,6 @@ let _timer = null;
 let _port = null;
 let _running = false;
 
-function asArray(raw, ...keys) {
-  if (Array.isArray(raw)) return raw;
-  for (const k of keys) if (Array.isArray(raw?.[k])) return raw[k];
-  return [];
-}
 
 /** Doldurulacak maçlar: kickoff penceresi içinde ve kilide girmemiş. */
 async function pickFixtures() {

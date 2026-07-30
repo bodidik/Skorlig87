@@ -14,7 +14,6 @@ const WalletCredit = require("../lib/wallet-credit.cjs");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 const LIVE_DIR = path.join(DATA_DIR, "live"); // fixture state için
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
-const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 
 // 🔹 Otomatik LC birikimi (token bitince bekle)
@@ -38,7 +37,6 @@ const { isInternalCaller } = require("../lib/internal-caller.cjs");
 
 // 🔹 LigCoin / cüzdan parametreleri
 // lc-wallet.cjs ile SENKRON tutulmalı
-const DAILY_LC = 5;
 const INITIAL_DEFAULT = 30;
 const INITIAL_1987 = 60;
 const LC_MATCH_COST = 3; // matchEntryCost – hem backend hem frontend bu rakamla uyumlu

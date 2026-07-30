@@ -1,11 +1,6 @@
 "use strict";
 
-const fs = require("fs");
-const fsp = fs.promises;
-const path = require("path");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
-const TOURNAMENTS_FILE = path.join(DATA_DIR, "tournaments.json");
 const SocialStore = require("../lib/social-store.cjs");
 
 const PAYOUT_TABLE = {

@@ -16,12 +16,9 @@ const { verifyToken }              = require("../middleware/verifyToken.cjs");
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 
 const DATA_DIR           = path.join(__dirname, "..", "data");
-const FIXTURES_FILE      = path.join(DATA_DIR, "fixtures.json");
 const PREDS_FILE         = path.join(DATA_DIR, "preds.json");
-const USERS_FILE         = path.join(DATA_DIR, "users.json");
 const UsersStore = require("../lib/users-store.cjs");
 const WALLET_FILE        = path.join(DATA_DIR, "lc-wallet.json");
-const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
 // LC harcama: bakiye Mongo'da tutuluyor, dosyaya yazmak parayı kaybettirir.
 const WalletCredit = require("../lib/wallet-credit.cjs");

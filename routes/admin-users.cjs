@@ -2,34 +2,16 @@
 
 const express = require("express");
 const router = express.Router();
-const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
 
-const DATA_DIR    = path.join(__dirname, "..", "data");
-const FILE        = path.join(DATA_DIR, "admin-users.json");
-const BANNED_FILE = path.join(DATA_DIR, "banned-users.json");
 const Moderation = require("../lib/moderation-store.cjs");
 
 function normUserId(v) {
   return String(v || "").trim().toLowerCase();
 }
 
-async function readJson(file, fb) {
-  try {
-    const txt = await fsp.readFile(file, "utf8");
-    return JSON.parse(txt);
-  } catch {
-    return fb;
-  }
-}
 
-async function writeJsonAtomic(file, obj) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  const tmp = file + ".tmp";
-  await fsp.writeFile(tmp, JSON.stringify(obj, null, 2), "utf8");
-  await fsp.rename(tmp, file);
-}
 
 // Admin ve yasak listeleri Mongo birincil — bkz. lib/moderation-store.cjs.
 // Dosyada tutulurken her deploy siliniyordu: yönetici hakları sıfırlanıyor,

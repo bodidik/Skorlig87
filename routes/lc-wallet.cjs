@@ -14,7 +14,6 @@ const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const USERS_FILE  = path.join(DATA_DIR, "users.json");
 
 // LC ekonomi sabitleri – pred.cjs ve settle2.cjs ile SENKRON
-const DAILY_LC         = 5;
 
 /**
  * GÜNLÜK HAK: TABANA TAMAMLAMA (koşulsuz ekleme değil).

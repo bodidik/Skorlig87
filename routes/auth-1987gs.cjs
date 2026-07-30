@@ -4,10 +4,7 @@ const express = require("express");
 const router  = express.Router();
 const fs      = require("fs");
 const fsp     = fs.promises;
-const path    = require("path");
 
-const DATA_DIR    = path.join(__dirname, "..", "data");
-const CODES_FILE  = path.join(DATA_DIR, "gs1987-codes.json");
 const InviteStore = require("../lib/invite-store.cjs");
 
 function requireAdminToken(req, res, next) {
@@ -19,19 +16,7 @@ function requireAdminToken(req, res, next) {
 }
 const UsersStore = require("../lib/users-store.cjs");
 
-async function readJson(file, fb = null) {
-  try {
-    const txt = await fsp.readFile(file, "utf8");
-    return JSON.parse(txt);
-  } catch {
-    return fb;
-  }
-}
 
-async function writeJson(file, data) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
-}
 
 /**
  * Bir kullanıcıyı 1987 üyesi olarak işaretle.

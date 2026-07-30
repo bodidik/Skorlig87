@@ -2,6 +2,32 @@
 require("dotenv").config();
 require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 
+/* ⚠️ ANA ŞALTER — TÜM ARKA PLAN SERVİSLERİ: `SKORLIG_BG=0`
+ *
+ * NEDEN VAR: servisleri kapatmanın tek yolu 9 ayrı bayrağı doğru adıyla
+ * hatırlamaktı. Bir test sunucusunu `SKORLIG_BOTS=0` ile açtım — ÖYLE BİR
+ * BAYRAK YOK, doğrusu SKORLIG_BOT_FILL. Yani hiçbir şey kapanmadı ve bunu
+ * ancak log'da "[bot-filler] basladi" satırını görünce fark ettim.
+ *
+ * Asıl tehlike bot değil, listedeki SKORLIG_AUTO_SETTLE: yerel `.env` ÜRETİM
+ * Atlas'ına bakıyor. Yanlış yazılmış tek bayrak, üretimde maç sonuçlandırıp
+ * gerçek LC dağıtabilirdi.
+ *
+ * Yazım hatası artık sessiz kalamaz: tek isim, ya tutar ya tutmaz — ve tuttuğunda
+ * neyin kapandığını log'a basar.
+ *
+ * ⚠️ Yeni arka plan servisi eklerken bayrağını AŞAĞIDAKİ listeye de ekle.
+ */
+if (String(process.env.SKORLIG_BG || "") === "0") {
+  const KAPAT = [
+    "SKORLIG_AF_SYNC", "SKORLIG_LIVESCORE", "SKORLIG_SYNC", "SKORLIG_AUTO_SETTLE",
+    "SKORLIG_MONGO_HEALTH", "SKORLIG_PUSH", "SKORLIG_PUSH_SCHED",
+    "SKORLIG_FIXTURE_SYNC", "SKORLIG_BOT_FILL", "SKORLIG_SCRAPER_HEALTH",
+  ];
+  for (const ad of KAPAT) process.env[ad] = "0";
+  console.warn(`[SkorLig] SKORLIG_BG=0 — ${KAPAT.length} arka plan servisi KAPALI (yalnizca API).`);
+}
+
 const express     = require("express");
 const cors        = require("cors");
 const helmet      = require("helmet");

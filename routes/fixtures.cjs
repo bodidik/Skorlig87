@@ -28,7 +28,6 @@ const TZ = "Europe/Istanbul";
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const PROV_FILE = path.join(DATA_DIR, "providers.json");
-const MANUAL_FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 const ADMIN_ALERTS_FILE = path.join(DATA_DIR, "admin-alerts.json");
 const MATCH_NOTES_FILE = path.join(DATA_DIR, "match-notes.json");
@@ -1182,7 +1181,6 @@ router.get("/daily-featured", async (req, res) => {
 
   try {
     let featured = null;
-    const now = Date.now();
 
     for (const lid of leagueIds) {
       const fixtures = await fetchFixturesForLeague(lid);

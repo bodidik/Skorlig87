@@ -24,7 +24,6 @@ const path = require("path");
 const crypto = require("crypto");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
-const RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR = path.join(DATA_DIR, "live");
 const USERS_FILE = path.join(DATA_DIR, "users.json");

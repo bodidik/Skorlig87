@@ -20,7 +20,6 @@ const DATA_DIR     = path.join(__dirname, "..", "data");
 // users.json artık DOĞRUDAN okunmuyor — profil verisi lib/users-store.cjs
 // üzerinden (Mongo varsa Mongo). Yol bilgisi orada.
 const GROUPS_FILE  = path.join(DATA_DIR, "groups.json");
-const TOTALS_FILE  = path.join(DATA_DIR, "totals.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
 const SocialStore = require("../lib/social-store.cjs");
 
@@ -30,10 +29,6 @@ const LC_START = 30;
 async function readJson(file, fb) {
   try { return JSON.parse(await fsp.readFile(file, "utf8")); }
   catch { return fb; }
-}
-async function writeJson(file, data) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
 }
 
 // atomic write (tek process için yeterli stabilite)

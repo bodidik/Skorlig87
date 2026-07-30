@@ -5,10 +5,8 @@
 
 const path = require("path");
 const fs   = require("fs");
-const fsp  = require("fs").promises;
 
 // ─── Ban cache (60 sn TTL, her restart'ta sıfırlanır) ────────────────────────
-const BANNED_FILE = path.join(__dirname, "..", "data", "banned-users.json");
 const Moderation = require("../lib/moderation-store.cjs");
 let _bannedCache  = new Set();
 let _bannedAt     = 0;

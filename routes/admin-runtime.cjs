@@ -60,22 +60,6 @@ async function writeJsonAtomic(file, data) {
    ========================================================= */
 const FixturesStore = require("../lib/fixtures-store.cjs");
 
-function pickFixtures(raw) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  if (Array.isArray(raw.fixtures)) return raw.fixtures;
-  if (Array.isArray(raw.items)) return raw.items;
-  return [];
-}
-function wrapFixturesLike(raw, list) {
-  if (Array.isArray(raw)) return list;
-  if (raw && typeof raw === "object") {
-    if (Array.isArray(raw.fixtures)) return { ...raw, fixtures: list };
-    if (Array.isArray(raw.items)) return { ...raw, items: list };
-    return { fixtures: list };
-  }
-  return { fixtures: list };
-}
 // Fikstürler Mongo birincil (bkz. lib/fixtures-store.cjs). Admin'in elle
 // eklediği/sildiği maçlar da oraya gider; eskiden yalnızca dosyaya yazılıyordu
 // ve Render'da her deploy'da yok oluyordu.
