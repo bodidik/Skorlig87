@@ -23,6 +23,7 @@ if (String(process.env.SKORLIG_BG || "") === "0") {
     "SKORLIG_AF_SYNC", "SKORLIG_LIVESCORE", "SKORLIG_SYNC", "SKORLIG_AUTO_SETTLE",
     "SKORLIG_MONGO_HEALTH", "SKORLIG_PUSH", "SKORLIG_PUSH_SCHED",
     "SKORLIG_FIXTURE_SYNC", "SKORLIG_BOT_FILL", "SKORLIG_SCRAPER_HEALTH",
+    "SKORLIG_KUPON_PLAN",
   ];
   for (const ad of KAPAT) process.env[ad] = "0";
   console.warn(`[SkorLig] SKORLIG_BG=0 — ${KAPAT.length} arka plan servisi KAPALI (yalnizca API).`);
@@ -467,6 +468,13 @@ const server = app.listen(PORT, HOST, () => {
      (mackolik) dayandığı için kesinti ancak buradan erken fark edilir.
      Durum ucu: GET /api/admin/scraper-health
      Kapatmak için: SKORLIG_SCRAPER_HEALTH=0 */
+  /* 🎟️ Haftalık kupon planlayıcı: eksik kuponları kurar (idempotent).
+     Kapatmak için: SKORLIG_KUPON_PLAN=0 */
+  if (process.env.SKORLIG_KUPON_PLAN !== "0") {
+    safeMount("kupon-planlayici", () =>
+      require("./services/kupon-planlayici.cjs").start(6 * 3600 * 1000));
+  }
+
   if (process.env.SKORLIG_SCRAPER_HEALTH !== "0") {
     safeMount("scraper-health", () =>
       require("./services/scraper-health.cjs").start(10 * 60 * 1000)

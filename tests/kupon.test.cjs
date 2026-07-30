@@ -99,3 +99,33 @@ describe("kupon — EKONOMİ (LC basıyor, ölçülü olmalı)", () => {
       `kupon (${K.GIRIS_BEDELI[K.TUR.ULKE]}) tek tek oynamaktan (${tekTek}) pahali — anlamsiz`);
   });
 });
+
+describe("kupon planlayıcı — otomatik kurulum", () => {
+  /**
+   * Kuponları elle kurmak yayında sürdürülebilir değil: her hafta, her ülke
+   * için ayrı çağrı gerekirdi. Planlayıcı eksikleri kurar.
+   *
+   * ⚠️ İDEMPOTENT OLMAK ZORUNDA: servis 6 saatte bir çalışıyor. İkinci tur
+   * yeni kupon üretirse aynı hafta için iki kupon oluşur, oyuncu iki kez öder
+   * ve tablo bölünür. Benzersiz indeks (haftaKey+tur+ulke) bunu engelliyor
+   * ama davranışı burada da sabitliyoruz.
+   */
+  const P = require("../services/kupon-planlayici.cjs");
+
+  test("iki hafta ileri bakar (hazırlık süresi kalsın)", () => {
+    const h = P._haftaAnahtarlari();
+    assert.equal(h.length, 2, "yalnizca bu hafta kuruluyor — cuma maci icin pencere cok kisa");
+    assert.notEqual(h[0], h[1]);
+    assert.ok(/^\d{4}-W\d{2}$/.test(h[0]));
+  });
+
+  test("ana şalter listesinde yer alıyor (test sunucusu servisi açmasın)", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const srv = fs.readFileSync(path.join(__dirname, "..", "server.cjs"), "utf8");
+    const i = srv.indexOf("const KAPAT = [");
+    const liste = srv.slice(i, srv.indexOf("]", i));
+    assert.ok(liste.includes("SKORLIG_KUPON_PLAN"),
+      "yeni arka plan servisi ana saltere eklenmemis — SKORLIG_BG=0 onu kapatmaz");
+  });
+});
