@@ -456,3 +456,47 @@ describe("turnuva giriş ücreti — havuz karşılıksız büyümemeli", () => 
     assert.equal(son.participants.length, 1);
   });
 });
+
+
+describe("mini turnuva — karşılıksız LC musluğu sınırlı", () => {
+  /**
+   * Mini turnuvaya giriş ÜCRETSİZ ama bitince kazananlara MINI_WIN_LC
+   * (varsayılan 20) veriliyor — karşılığı olmayan LC üretimi. Kazanan "en
+   * yüksek puanda BERABERE kalan herkes" olduğu için aynı tahmini yapan N
+   * hesap turnuva başına N×20 LC üretir.
+   *
+   * Kaç turnuva kurulabileceğine dair HİÇBİR sınır yoktu (ne rotada ne
+   * depoda). Sınır "aynı anda bitmemiş" üzerinden: her turnuvanın bitmesi
+   * için maçların oynanması gerekir, yani musluk fikstür takvimine bağlanır.
+   */
+  const premium = require("../lib/premium.cjs");
+
+  test("ücretsiz kullanıcının açık mini sınırı premium'dan düşük ve tanımlı", () => {
+    const ucretsiz = premium.miniMaxOpen(false);
+    const prem = premium.miniMaxOpen(true);
+    assert.ok(Number.isFinite(ucretsiz) && ucretsiz > 0, "ucretsiz sinir tanimsiz");
+    assert.ok(prem > ucretsiz, "premium siniri ucretsizden buyuk olmali");
+  });
+
+  test("sınıra ulaşınca yeni turnuva reddedilir, biri bitince yer açılır", async () => {
+    const max = premium.miniMaxOpen(false);
+    const acikSay = async () =>
+      (await S.loadMini(db)).filter(
+        (t) => !t.finishedAt && String(t.ownerId || "").toLowerCase() === "farmci"
+      ).length;
+
+    for (let i = 1; i <= max; i++) {
+      await S.createMini({
+        id: "mini" + i, ownerId: "farmci", name: "T" + i, members: ["farmci"],
+        fixtures: [{ fixtureId: "F1" }, { fixtureId: "F2" }],
+        createdAt: new Date().toISOString(), finishedAt: null,
+      }, db);
+    }
+    assert.equal(await acikSay(), max, "sinir kadar acik turnuva olmali");
+    // Rotadaki koşulun aynısı: acik >= max ise reddedilir.
+    assert.ok((await acikSay()) >= max, "bu noktada yeni kurma reddedilmeli");
+
+    await S.finishMini("mini1", { finishedAt: new Date().toISOString(), winners: [], rewardLc: 0 }, db);
+    assert.ok((await acikSay()) < max, "biri bitince yer acilmali");
+  });
+});

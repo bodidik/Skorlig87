@@ -257,6 +257,38 @@ router.post("/create", verifyToken, express.json(), async (req, res) => {
       });
     }
 
+    /* ⚠️ AÇIK MİNİ TURNUVA SINIRI — LC musluğunu sınırlar.
+     *
+     * Mini turnuvaya giriş ÜCRETSİZ ama bitince kazananlara MINI_WIN_LC
+     * (varsayılan 20) veriliyor — yani karşılığı olmayan LC üretimi. Üstelik
+     * kazanan "en yüksek puanda BERABERE kalan herkes": aynı tahmini yapan 5
+     * hesap turnuva başına 5×20 = 100 LC üretir.
+     *
+     * Kaç turnuva kurulabileceğine dair hiçbir sınır yoktu (ne rotada ne
+     * depoda); hız sınırı da dakikada 10 create'e izin veriyor.
+     *
+     * Sınır "aynı anda BİTMEMİŞ" üzerinden — günlük sayaç yerine bilinçli:
+     * her turnuvanın bitmesi için seçilen maçların oynanması gerekir, yani
+     * musluğun hızı gerçek fikstür takvimine bağlanır.
+     *
+     * ⚠️ Bu bir DENGE değil KÖTÜYE KULLANIM ayarı. Ödülün beraberlikte
+     * bölüşülmesi mi yoksa herkese tam mı verilmesi gerektiği ayrı bir karar.
+     */
+    const maxOpen = premium.miniMaxOpen(isPrem);
+    const hepsi = await loadAll(db);
+    const acik = hepsi.filter(
+      (t) => !t.finishedAt && String(t.ownerId || t.creatorId || "").toLowerCase() === userId.toLowerCase()
+    ).length;
+    if (acik >= maxOpen) {
+      return res.status(400).json({
+        ok: false,
+        error: "TOO_MANY_OPEN_MINI",
+        open: acik,
+        max: maxOpen,
+        detail: `Aynı anda en fazla ${maxOpen} bitmemiş mini turnuvan olabilir.`,
+      });
+    }
+
     const clean = [];
     const seen = new Set();
     for (const f of fixtures) {
