@@ -55,6 +55,23 @@ const RULES = [
   { re: /\/duels?\//,            max: 30, windowMs: 60_000 },
   { re: /\/mini\/create\b/,      max: 10, windowMs: 60_000 },
   { re: /\/friends\/invite\b/,   max: 20, windowMs: 60_000 },
+
+  /* ⚠️ KOD DENEME UÇLARI — en dar sınır.
+   * İkisi de `is1987` veriyor: açılış bakiyesi 60 LC (normalde 30), ücretsiz
+   * haftalık seçim, premium tabanı. Yani doğru tahmin PARA kazandırıyor.
+   * DEFAULT_RULE (120/dk) bir kod deneme ucu için fazla cömert — dakikada 120
+   * deneme, saatte 7200 eder. 5/dk meşru kullanımı (kullanıcı kodu bir kez
+   * yazar, yanılırsa birkaç kez dener) hiç etkilemez.
+   */
+  { re: /\/weekly-picks\/verify-code\b/, max: 5, windowMs: 60_000 },
+  { re: /\/auth1987gs\/verify\b/,        max: 5, windowMs: 60_000 },
+
+  /* Para hareketi: havuz bahsi ve turnuva giriş/ödemesi. DEFAULT_RULE'a
+   * bırakılmışlardı; meşru kullanımın çok üstünde ama flood'u durduran sınır.
+   */
+  { re: /\/pool\/[^/]+\/bet\b/,  max: 20, windowMs: 60_000 },
+  { re: /\/tournaments\/(create|join|settle)\b/, max: 10, windowMs: 60_000 },
+  { re: /\/groups\/(create|join)\b/,             max: 10, windowMs: 60_000 },
 ];
 
 // Kural eşleşmeyen her şey için üst sınır. Cömert (saniyede ~2) ama

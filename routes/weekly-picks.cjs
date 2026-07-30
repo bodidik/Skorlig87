@@ -420,12 +420,40 @@ router.get("/my", verifyToken, async (req, res) => {
  * POST /api/weekly-picks/verify-code
  * 1987GS Facebook grup kodunu doğrular; doğruysa kullanıcıya is1987 bayrağı verir.
  */
+/**
+ * POST /api/weekly-picks/verify-code — 1987GS grup kodu (live.tsx "1987GS MODU").
+ *
+ * ⚠️ VARSAYILAN KOD KALDIRILDI. Önceki hâli:
+ *     const expected = String(process.env.GS1987_CODE || "1987GS").trim();
+ *
+ * `GS1987_CODE` üretimde tanımsızsa geçerli kod kelimenin tam anlamıyla
+ * "1987GS" oluyordu — ucun kendi adından tahmin edilebilir. Değişken
+ * `.env.example`'da da yoktu, yani örnekten kurulan bir ortamda tanımsız
+ * kalması olağan durumdu.
+ *
+ * Verdiği şey bedava değil: `is1987` açılış bakiyesini 60 LC yapıyor
+ * (normalde 30), haftalık seçimleri ücretsizleştiriyor ve premium tabanını
+ * geçerli kılıyor. Yani tahmin edilebilir bir kelime, sınırsız sayıda hesaba
+ * premium ayrıcalığı dağıtabilirdi.
+ *
+ * Artık tanımsızsa 503 döner ve GEÇİRMEZ (yönetici token'ıyla aynı ilke:
+ * yapılandırma eksikse kapalı kal, sessizce zayıf bir varsayılana düşme).
+ *
+ * ⚠️ NOT — İKİ PARALEL YOL: aynı `is1987` ayrıcalığını `/api/auth1987gs/verify`
+ * de veriyor, ama o kod BAŞINA KOTA tutuyor (lib/invite-store.cjs, atomik
+ * `redeem`). Buradaki tek paylaşılan kodun kotası yok. İkisi bilinçli bir
+ * tercih mi, yoksa biri diğerinin yerini mi almalı — ürün kararı.
+ */
 router.post("/verify-code", verifyToken, async (req, res) => {
   try {
     const uid  = req.uid;
     const code = String(req.body?.code || "").trim();
-    const expected = String(process.env.GS1987_CODE || "1987GS").trim();
+    const expected = String(process.env.GS1987_CODE || "").trim();
 
+    if (!expected) {
+      console.error("[weekly-picks] GS1987_CODE tanimsiz — kod dogrulama KAPALI");
+      return res.status(503).json({ ok: false, error: "GROUP_CODE_NOT_CONFIGURED" });
+    }
     if (!code || code.toUpperCase() !== expected.toUpperCase()) {
       return res.status(400).json({ ok: false, error: "WRONG_CODE" });
     }
