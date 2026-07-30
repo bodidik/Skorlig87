@@ -79,7 +79,30 @@ const CORS_ALLOWLIST = new Set(
 
 // Yerel geliştirme origin'leri (Expo web, Metro, tarayıcı önizleme)
 const DEV_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$/;
-const ALLOW_DEV_ORIGINS = process.env.NODE_ENV !== "production";
+
+/* ⚠️ Bu bayrak SESSİZCE geliştirme davranışına düşebiliyordu.
+ *
+ * Tek dayanağı `NODE_ENV`'di ve o değişken `.env.example`'da hiç geçmiyordu —
+ * yani üretimde ayarlanmamış olması olağan durumdu. Ayarlanmadığında localhost
+ * ve LAN origin'leri (192.168.*, 10.*) `credentials:true` ile kabul ediliyordu.
+ *
+ * Pratik risk düşük: API kimliği `x-auth-token` BAŞLIĞINDA taşıyor, çerezde
+ * değil; tarayıcıdaki kötü niyetli bir sayfa kurbanın token'ını okuyamaz.
+ * Yine de gevşek origin politikasının üretimde SESSİZCE açık kalması yanlış.
+ *
+ * Render `RENDER=true` set eder — NODE_ENV unutulsa bile üretim tanınsın.
+ * Açık kaldığında aşağıda log'a uyarı düşer (bkz. mağaza mock uyarısı: sessiz
+ * gevşeklik, fark edilmesi en zor olanıdır).
+ */
+const URETIM_SINYALI =
+  process.env.NODE_ENV === "production" || String(process.env.RENDER || "") === "true";
+const ALLOW_DEV_ORIGINS = !URETIM_SINYALI;
+if (ALLOW_DEV_ORIGINS) {
+  console.warn(
+    "[cors] ⚠️ Yerel gelistirme origin'leri (localhost/192.168.*/10.*) KABUL EDILIYOR. " +
+    "Uretimde NODE_ENV=production ayarla."
+  );
+}
 
 app.use(cors({
   origin(origin, cb) {
