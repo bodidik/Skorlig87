@@ -2,6 +2,7 @@
 
 const express = require("express");
 const router  = express.Router();
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 const path    = require("path");
 const fs      = require("fs");
 const fsp     = fs.promises;
@@ -173,7 +174,10 @@ router.get("/competitions", async (req, res) => {
  *  - Mongo varsa "competitions" koleksiyonuna upsert
  *  - Yoksa data/competitions.json içinde upsert
  */
-router.post("/competitions/upsert", express.json(), async (req, res) => {
+// ⚠️ requireAdmin EKLENDİ. Bu uç kimlik doğrulamasızdı; yetki denetimim
+// onu KAÇIRMIŞTI çünkü kalıbım `express.json()` gibi parantezli ara
+// katmanlarda eşleşmiyordu. Denetim aracının kör noktası bulguyu gizledi.
+router.post("/competitions/upsert", requireAdmin, express.json(), async (req, res) => {
   try {
     const {
       id,
@@ -369,8 +373,11 @@ router.get("/fixture-competitions", async (req, res) => {
  * - Aynı competitionId zaten varsa, countsForPoints alanını günceller.
  * - settle2.cjs, competition_totals mirror'ında bu dokümanı kullanıyor.
  */
+// ⚠️ requireAdmin EKLENDİ: maçı bir yarışmaya bağlamak puanlamayı etkiler
+// (settle2 competition_totals aynasında bu belgeyi kullanıyor).
 router.post(
   "/fixture-competitions/assign",
+  requireAdmin,
   express.json(),
   async (req, res) => {
     try {

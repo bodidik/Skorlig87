@@ -268,10 +268,14 @@ router.post("/cancel", verifyToken, express.json(), async (req, res) => {
  * body: { userId, otherUserId } veya { a, b }
  * - iki yön pending request'i temizler (idempotent)
  */
-router.post("/remove-request", express.json(), async (req, res) => {
+// ⚠️ KİMLİK GÖVDEDEN ALINMIYOR ARTIK. Bu uç kimlik doğrulamasızdı ve
+// `userId` gövdeden geliyordu — yani herkes BAŞKASININ adına işlem
+// yapabiliyordu. Yetki denetimim bunu kaçırmıştı (kalıbım
+// `express.json()` gibi parantezli ara katmanlarda eşleşmiyordu).
+router.post("/remove-request", verifyToken, express.json(), async (req, res) => {
   try {
     const body = req.body || {};
-    const a = String(body.userId ?? body.a ?? "").trim();
+    const a = String(req.uid || "").trim();
     const b = String(body.otherUserId ?? body.b ?? "").trim();
     if (!a || !b) return res.status(400).json({ ok: false, error: "REQ" });
     if (a === b)  return res.status(400).json({ ok: false, error: "SELF_NOT_ALLOWED" });
@@ -555,10 +559,13 @@ router.post("/block", verifyToken, express.json(), async (req,res)=>{
  * POST /api/friends/unblock
  * body: { userId, targetUserId }  veya { by, target }
  */
-router.post("/unblock", express.json(), async (req,res)=>{
+// ⚠️ EN CİDDİSİ: kimlik gövdeden geldiği için ENGELLENEN KİŞİ kendini
+// başkasının engel listesinden çıkarabiliyordu. Engelleme bir güvenlik
+// aracı; onu hedefin kaldırabilmesi aracı işlevsiz kılar.
+router.post("/unblock", verifyToken, express.json(), async (req,res)=>{
   try{
     const body = req.body || {};
-    const by = String(body.userId ?? body.by ?? "").trim();
+    const by = String(req.uid || "").trim();
     const target = String(body.targetUserId ?? body.target ?? "").trim();
 
     if (!by || !target) return res.status(400).json({ ok:false, error:"REQ" });

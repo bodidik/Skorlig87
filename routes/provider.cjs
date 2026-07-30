@@ -190,7 +190,9 @@ router.get("/diag", async (req, res) => {
   res.json({ ok: true, model: m });
 });
 
-router.post("/mark", express.json(), async (req, res) => {
+// ⚠️ requireAdmin EKLENDİ (kimliksizdi). Yetki denetimim kaçırmıştı:
+// kalıbım parantezli ara katmanlarda eşleşmiyordu.
+router.post("/mark", requireAdmin, express.json(), async (req, res) => {
   try {
     const name = String(
       req.query.name || req.body?.name || ""
@@ -362,7 +364,9 @@ router.get("/team-primary", async (req, res) => {
   }
 });
 
-router.post("/team-primary", express.json(), async (req, res) => {
+// ⚠️ requireAdmin EKLENDİ (kimliksizdi). Yetki denetimim kaçırmıştı:
+// kalıbım parantezli ara katmanlarda eşleşmiyordu.
+router.post("/team-primary", requireAdmin, express.json(), async (req, res) => {
   try {
     const teamRaw = String(req.body?.team || "");
     const providerRaw = String(
@@ -419,7 +423,9 @@ router.get("/warn", async (req, res) => {
   }
 });
 
-router.post("/warn", express.json(), async (req, res) => {
+// ⚠️ requireAdmin EKLENDİ (kimliksizdi). Yetki denetimim kaçırmıştı:
+// kalıbım parantezli ara katmanlarda eşleşmiyordu.
+router.post("/warn", requireAdmin, express.json(), async (req, res) => {
   try {
     const name = String(
       req.body?.name || ""
@@ -473,8 +479,10 @@ router.get("/auto-primary", async (req, res) => {
   }
 });
 
+// ⚠️ requireAdmin EKLENDİ (kimliksizdi).
 router.post(
   "/auto-primary",
+  requireAdmin,
   express.json(),
   async (req, res) => {
     try {

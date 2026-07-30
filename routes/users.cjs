@@ -529,10 +529,14 @@ router.get("/groups/:code/board", async (req, res) => {
  * POST /api/users/groups/:code/opt
  * body: { userId, includeInTotal:boolean }
  */
-router.post("/groups/:code/opt", express.json(), async (req, res) => {
+// ⚠️ KİMLİK GÖVDEDEN ALINMIYOR ARTIK. Bu uç kimlik doğrulamasızdı ve
+// `userId` gövdeden geliyordu — yani herkes BAŞKASININ adına işlem
+// yapabiliyordu. Yetki denetimim bunu kaçırmıştı (kalıbım
+// `express.json()` gibi parantezli ara katmanlarda eşleşmiyordu).
+router.post("/groups/:code/opt", verifyToken, express.json(), async (req, res) => {
   try {
     const code = normCode(req.params.code);
-    const userId = normUserId(req.body?.userId);
+    const userId = normUserId(req.uid);
     const includeInTotal = req.body?.includeInTotal;
 
     if (!userId || typeof includeInTotal !== "boolean") {

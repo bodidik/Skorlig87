@@ -55,7 +55,9 @@ router.get("/source-stats", (_req, res) => {
   }
 });
 
-router.post("/refresh", async (_req, res) => {
+// ⚠️ requireAdmin EKLENDİ (kimliksizdi). Yetki denetimim kaçırmıştı:
+// kalıbım parantezli ara katmanlarda eşleşmiyordu.
+router.post("/refresh", requireAdmin, async (_req, res) => {
   try {
     const result = await scraper.scrape();
     res.json({ ok: true, ts: result?.ts, trackedMatchCount: result?.trackedMatchCount });
@@ -66,7 +68,9 @@ router.post("/refresh", async (_req, res) => {
 
 const syncService = require("../services/livescore-sync.cjs");
 
-router.post("/sync", async (_req, res) => {
+// ⚠️ requireAdmin EKLENDİ (kimliksizdi). Yetki denetimim kaçırmıştı:
+// kalıbım parantezli ara katmanlarda eşleşmiyordu.
+router.post("/sync", requireAdmin, async (_req, res) => {
   try {
     const result = await syncService.sync();
     res.json({ ok: true, ...result });

@@ -2,6 +2,7 @@
 
 const express = require("express");
 const router = express.Router();
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 
 const fs = require("fs");
 const fsp = fs.promises;
@@ -490,7 +491,12 @@ router.get("/live-gs", async (req, res) => {
   }
 });
 
-router.post("/admin-live-gs", express.json(), async (req, res) => {
+/* ⚠️ EN CİDDİSİ: bu uç kimliksizken `status`, `homeGoals`, `awayGoals` ve
+ * `kickoffISO` yazabiliyordu — yani maçın skorunu ve "bitti" durumunu
+ * herkes belirleyebilirdi. settle2 ödemeyi bu duruma bakarak yapıyor, yani
+ * routes/admin-live.cjs'te kapatılan PARA ZİNCİRİNİN AYNISI, ikinci dosyada.
+ * Yönetim ekranı zaten x-admin-token gönderiyor (withAdminHeaders). */
+router.post("/admin-live-gs", requireAdmin, express.json(), async (req, res) => {
   try {
     const fixtureId = normFixtureId(req.body.fixtureId);
     if (!fixtureId) {
