@@ -52,7 +52,7 @@ describe("ekonomi sabitleri", () => {
   test("hiçbir dosya bu sabitleri yeniden TANIMLAMIYOR", () => {
     // `const LC_START = 30;` gibi sayısal yeniden tanımlar yasak;
     // `const { LC_START } = require(...)` serbest.
-    const yasak = /^const\s+(LC_START|INITIAL_DEFAULT|INITIAL_1987|LC_MATCH_COST)\s*=\s*[0-9]/m;
+    const yasak = /^const\s+(LC_START|INITIAL_DEFAULT|INITIAL_1987|LC_MATCH_COST|MATCH_ENTRY_COST|LC_COST_NORMAL)\s*=\s*[0-9]/m;
     const ihlal = [];
     for (const [ad, src] of kaynaklar()) {
       if (ad === "lib/ekonomi.cjs") continue;

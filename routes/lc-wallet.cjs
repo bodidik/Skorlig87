@@ -116,7 +116,11 @@ function seriDevamMi(lastDailyAt, bugun) {
 // (LC_START / INITIAL_DEFAULT) tanımlıydı; birini değiştiren diğerini
 // aramazdı ve açılış bakiyesi kod yoluna göre değişebilirdi.
 const { INITIAL_DEFAULT, INITIAL_1987 } = require("../lib/ekonomi.cjs");
-const MATCH_ENTRY_COST = 3; // Maç girişi LC bedeli (bilgi amaçlı)
+// ⚠️ ÜÇÜNCÜ AD, AYNI DEĞER. Bu sabit arayüze GÖSTERILEN fiyatı üretiyor
+// (pricing.matchEntryCost), oysa TAHSILATI pred.cjs LC_MATCH_COST ile
+// yapıyor. İkisi ayrı tanımlıyken sapma, uygulamanın bir fiyat gösterip
+// BAŞKA fiyat kesmesi demekti. Artık ikisi de lib/ekonomi.cjs'ten.
+const { MAC_GIRIS_BEDELI: MATCH_ENTRY_COST } = require("../lib/ekonomi.cjs");
 
 // 🚀 Tanıtım dönemi: ilk N üyeye başlangıç LC bonusu (erken kuş ödülü).
 // Kapatmak için SKORLIG_EARLY_LIMIT=0. Cüzdanı ilk oluşan üyeler faydalanır.
@@ -1107,7 +1111,9 @@ router.get("/lc-wallet/premium/status", async (req, res) => {
     const userId = String(req.query.userId || "").trim();
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
     const status = await premium.premiumStatus(userId, getDb(req));
-    res.json({ ok: true, mode: STORE_MODE, ...status });
+    // ⚠️ Fiyat da gönderiliyor: premium ekranı "maç girişi 3 LC" cümlesini
+    // METNE GÖMÜYORDU. Bedel değişirse ekran yalan söylerdi.
+    res.json({ ok: true, mode: STORE_MODE, matchEntryCost: MATCH_ENTRY_COST, ...status });
   } catch (e) {
     res.status(500).json({ ok: false, error: "PREMIUM_STATUS_ERR", detail: String(e?.message || e) });
   }

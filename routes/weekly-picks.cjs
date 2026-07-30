@@ -28,7 +28,10 @@ const LIVE_DIR           = path.join(DATA_DIR, "live");
 
 const WINDOW_BEFORE_MS = 24 * 60 * 60 * 1000;  // 24 saat önce açılır
 const WINDOW_AFTER_MS  =  4 * 60 * 60 * 1000;  // bitimden 4 saat sonra kapanır
-const LC_COST_NORMAL   = 3;
+// ⚠️ DÖRDÜNCÜ AD, AYNI DEĞER (LC_MATCH_COST / MATCH_ENTRY_COST /
+// LC_COST_NORMAL). Hepsi maç giriş bedeli; ayrı tanımlıyken biri
+// değişince diğerleri sessizce eski kalırdı.
+const { MAC_GIRIS_BEDELI: LC_COST_NORMAL } = require("../lib/ekonomi.cjs");
 const WEEK_MS          = 7 * 24 * 60 * 60 * 1000;
 
 async function readJson(file, fb = null) {
