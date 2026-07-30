@@ -26,6 +26,12 @@ const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 const Kupon = require("../lib/kupon.cjs");
 const Store = require("../lib/kupon-store.cjs");
 const FixturesStore = require("../lib/fixtures-store.cjs");
+// ⚠️ Ülke adı karşılaştırması GEVŞEK olmalı: fikstürler "Turkey" yazıyor,
+// kullanıcı profili "Türkiye". Düz eşitlik kullanınca Türk kullanıcıya HİÇ
+// kupon çıkmıyordu (üretim verisinde ölçüldü: 0 maç). Beşinci bir
+// karşılaştırma yazmak yerine fikstür boru hattının kullandığı yardımcıyı
+// kullanıyoruz.
+const { sameCountry } = require("../lib/fixture-priority.cjs");
 const WalletCredit = require("../lib/wallet-credit.cjs");
 const UsersStore = require("../lib/users-store.cjs");
 
@@ -69,7 +75,7 @@ function maclariSec(hepsi, { tur, ulke, haftaKey, adet }) {
     if (isoHaftaKey(new Date(ko).toISOString()) !== haftaKey) return false;
     return tur === Kupon.TUR.AVRUPA
       ? avrupaMaci(f)
-      : !avrupaMaci(f) && String(f.country || "") === ulke;
+      : !avrupaMaci(f) && sameCountry(f.country, ulke);
   });
   uygun.sort((a, b) =>
     new Date(a.kickoffISO || a.kickoffDate).getTime() -
@@ -328,6 +334,55 @@ router.post("/sonuclandir", requireAdmin, express.json(), async (req, res) => {
     res.json(r);
   } catch (e) {
     res.status(500).json({ ok: false, error: "KUPON_SONUCLANDIR_FAILED", detail: String(e?.message || e) });
+  }
+});
+
+/**
+ * GET /api/kupon/siralama?tur=ulke|avrupa&ulke=&hafta=2026-W
+ *
+ * KÜMÜLATİF kupon sıralaması — sonuçlanmış tüm kuponların toplamı.
+ * Açık uç: tablo herkese görünür (tahmin içeriği DEĞİL, yalnızca sonuçlar).
+ *
+ * ⚠️ Varsayılan olarak İÇİNDE BULUNULAN SEZONLA sınırlı. Sonsuza kadar
+ * biriken bir tablo, ana sıralama her ay sıfırlanırken ikisini ayrıştırır ve
+ * yeni oyuncu asla yetişemez.
+ */
+router.get("/siralama", async (req, res) => {
+  try {
+    const db = getDb(req);
+    const tur = req.query.tur ? String(req.query.tur) : null;
+    if (tur && !Object.values(Kupon.TUR).includes(tur)) {
+      return res.status(400).json({ ok: false, error: "GECERSIZ_TUR" });
+    }
+    const ulke = req.query.ulke ? String(req.query.ulke).trim() : null;
+    // "2026-07" sezonundan "2026-W" ön eki: yıl aynı, hafta anahtarı yıl+W.
+    const Season = require("../lib/season.cjs");
+    const varsayilanOnEk = `${Season.seasonKey().slice(0, 4)}-W`;
+    const hafta = req.query.hafta ? String(req.query.hafta) : varsayilanOnEk;
+
+    const satirlar = await Store.siralama(
+      { tur, ulke, haftaOnEk: hafta, limit: Number(req.query.limit) || 200 }, db);
+
+    res.json({
+      ok: true,
+      tur: tur || "hepsi",
+      ulke: ulke || null,
+      haftaOnEk: hafta,
+      count: satirlar.length,
+      siralama: satirlar.map((r, i) => ({
+        sira: i + 1,
+        userId: r.userId || r._id,
+        toplamPuan: Math.round((r.toplamPuan || 0) * 10) / 10,
+        kuponSayisi: r.kuponSayisi || 0,
+        toplamDogru: r.toplamDogru || 0,
+        toplamMac: r.toplamMac || 0,
+        isabetYuzde: r.toplamMac ? Math.round((r.toplamDogru / r.toplamMac) * 100) : 0,
+        tamKupon: r.tamKupon || 0,
+        toplamOdul: r.toplamOdul || 0,
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: "KUPON_SIRALAMA_FAILED", detail: String(e?.message || e) });
   }
 });
 

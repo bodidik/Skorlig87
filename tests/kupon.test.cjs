@@ -112,11 +112,13 @@ describe("kupon planlayıcı — otomatik kurulum", () => {
    */
   const P = require("../services/kupon-planlayici.cjs");
 
-  test("iki hafta ileri bakar (hazırlık süresi kalsın)", () => {
+  test("birden çok hafta ileri bakar ve anahtarlar tekil", () => {
+    // ⚠️ Önce 2 haftaydı; üretim verisinde ölçülünce yetmediği görüldü
+    // (önümüzdeki iki haftada 3 ve 17 maç, W33'te 51). Ufuk 4 haftaya çıktı.
     const h = P._haftaAnahtarlari();
-    assert.equal(h.length, 2, "yalnizca bu hafta kuruluyor — cuma maci icin pencere cok kisa");
-    assert.notEqual(h[0], h[1]);
-    assert.ok(/^\d{4}-W\d{2}$/.test(h[0]));
+    assert.ok(h.length >= 2, "ufuk cok dar — hic kupon kurulamaz");
+    assert.equal(new Set(h).size, h.length, "ayni hafta iki kez listelenmis");
+    for (const k of h) assert.ok(/^\d{4}-W\d{2}$/.test(k), `gecersiz hafta anahtari: ${k}`);
   });
 
   test("ana şalter listesinde yer alıyor (test sunucusu servisi açmasın)", () => {
@@ -158,5 +160,39 @@ describe("kupon — katılım kilidi ilk maçtan ÖNCE kapanır", () => {
       "kilit hesabinda tampon kullanilmiyor — kilitISO dogrudan kickoff olabilir");
     assert.ok(!/kilitISO:\s*ilkKickoff\s*[,;]/.test(src),
       "kilitISO hala dogrudan ilk kickoff");
+  });
+});
+
+describe("kupon — ülke eşleşmesi ve kümülatif sıralama", () => {
+  /**
+   * ⚠️ ÜLKE ADI EŞLEŞMESİ GEVŞEK OLMALI. Fikstürler İngilizce yazıyor
+   * ("Turkey"), kullanıcı profili Türkçe ("Türkiye"). Düz eşitlik kullanınca
+   * Türk kullanıcıya HİÇ kupon çıkmıyordu — üretim verisinde ölçüldü: 0 maç.
+   * Beşinci bir karşılaştırma yazmak yerine fikstür boru hattının kullandığı
+   * `sameCountry` kullanılıyor.
+   */
+  const fs = require("fs");
+  const path = require("path");
+  const { sameCountry } = require("../lib/fixture-priority.cjs");
+
+  test("Türkiye ↔ Turkey eşleşiyor", () => {
+    assert.ok(sameCountry("Turkey", "Türkiye"));
+    assert.ok(sameCountry("Türkiye", "turkey"));
+    assert.ok(!sameCountry("Turkey", "England"));
+  });
+
+  test("kupon maç süzgeci düz eşitlik KULLANMIYOR", () => {
+    const src = fs.readFileSync(path.join(__dirname, "..", "routes", "kupon.cjs"), "utf8");
+    assert.ok(/sameCountry\(f\.country, ulke\)/.test(src),
+      "ulke suzgeci gevsek karsilastirma kullanmiyor");
+    assert.ok(!/String\(f\.country \|\| ""\) === ulke/.test(src),
+      "duz esitlik geri gelmis — Turk kullaniciya kupon cikmaz");
+  });
+
+  test("planlayıcı ufku 2 haftadan geniş (fikstürler ileride yoğunlaşıyor)", () => {
+    const P = require("../services/kupon-planlayici.cjs");
+    const h = P._haftaAnahtarlari();
+    assert.ok(h.length >= 4,
+      `ufuk ${h.length} hafta — uretim verisinde onumuzdeki 2 haftada 3 ve 17 mac vardi, hic kupon kurulamiyordu`);
   });
 });

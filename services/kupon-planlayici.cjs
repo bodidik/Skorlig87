@@ -15,9 +15,8 @@
  * kullanıcı yeni bir ülkeden geldiğinde onu kuponsuz bırakırdı. Bot ülkeleri
  * de dahil — bot kadrosu zaten gerçek ülkelere dağıtılmış durumda.
  *
- * ⚠️ İKİ HAFTA İLERİ BAKAR: bu hafta ve gelecek hafta. Hafta sonu maçları
- * genelde Cuma başlar; Perşembe kurulan kupon için katılım penceresi çok
- * kısa kalırdı. Gelecek haftayı da kurmak oyuncuya hazırlık süresi verir.
+ * ⚠️ DÖRT HAFTA İLERİ BAKAR (bkz. haftaAnahtarlari): fikstürler ilerideki
+ * haftalarda yoğunlaşıyor, dar ufuk hiç kupon kuramıyordu.
  */
 
 const Kupon = require("../lib/kupon.cjs");
@@ -48,14 +47,28 @@ async function ulkeler(db) {
   }
 }
 
-/** Bu hafta ve gelecek haftanın ISO anahtarları. */
+/**
+ * Önümüzdeki N haftanın ISO anahtarları.
+ *
+ * ⚠️ ÖNCE 2 HAFTAYDI, YETMEDİ. Üretim verisinde ölçüldü (2026-07-30, Avrupa
+ * ligleri hazırlık döneminde): önümüzdeki iki haftada 3 ve 17 maç var, oysa
+ * W33'te 51, W34'te 83. Yani fikstürler ilerideki haftalarda yoğunlaşıyor ve
+ * dar ufuk hiçbir kupon kuramıyordu.
+ *
+ * Erken kurulan kupon zararsız: kendi `kilitISO`suna kadar açık kalır,
+ * oyuncuya hazırlık süresi verir. Birden fazla haftanın kuponu aynı anda
+ * açık olabilir — bilinçli.
+ */
+const UFUK_HAFTA = Number(process.env.SKORLIG_KUPON_UFUK_HAFTA || 4);
+
 function haftaAnahtarlari() {
-  const simdi = new Date();
-  const gelecek = new Date(simdi.getTime() + 7 * 24 * 3600 * 1000);
-  return [
-    KuponRota._isoHaftaKey(simdi.toISOString()),
-    KuponRota._isoHaftaKey(gelecek.toISOString()),
-  ].filter(Boolean);
+  const simdi = Date.now();
+  const out = [];
+  for (let i = 0; i < UFUK_HAFTA; i++) {
+    const k = KuponRota._isoHaftaKey(new Date(simdi + i * 7 * 24 * 3600 * 1000).toISOString());
+    if (k && !out.includes(k)) out.push(k);
+  }
+  return out;
 }
 
 /**
