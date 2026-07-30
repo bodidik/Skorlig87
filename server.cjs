@@ -286,6 +286,29 @@ app.get("/__routes", (req, res) => {
 
 app.get("/", (req, res) => res.redirect("/health"));
 
+/**
+ * BİLİNMEYEN ROTA — SESSİZ 404 YOK.
+ *
+ * ⚠️ NEDEN VAR: mobil tarafta dört ekran, VAR OLMAYAN uçlara istek atarken
+ * aylarca fark edilmeden çalıştı (kings → /api/users, board2 →
+ * /api/stats/board2, iki favori ekranı → /api/stats/fav ve /api/rt/fav-team).
+ * Express varsayılan 404'ü sessizdir; istemci de hatayı yuttuğu için ekran
+ * boş/işlevsiz kalıyor ve HİÇBİR YERDE iz kalmıyordu.
+ *
+ * Bu iki taraflı bir kural: istemci tarafı lib/apiFetch.ts'te 2xx dışını
+ * loglar, burası da sunucu tarafında aynı olayı kaydeder. Sunucu logunu
+ * izlemek cihaz logundan çok daha kolay.
+ *
+ * Yalnızca /api altını loglar: statik dosya ve tarayıcı gürültüsü (favicon vb.)
+ * bu listeyi kirletmesin.
+ */
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    console.warn(`[404] ${req.method} ${req.originalUrl} — boyle bir uc yok`);
+  }
+  next();
+});
+
 /* ===== Start ===== */
 const server = app.listen(PORT, HOST, () => {
   console.log(`[SkorLig API] listening on http://${HOST}:${PORT}`);
