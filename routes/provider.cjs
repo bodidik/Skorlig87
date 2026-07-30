@@ -2,6 +2,8 @@
 
 const express = require("express");
 const router = express.Router();
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
+
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
@@ -240,7 +242,8 @@ router.post("/mark", express.json(), async (req, res) => {
   }
 });
 
-router.post("/reset", async (req, res) => {
+// ⚠️ Sağlayıcı durumunu sıfırlar (veri kaynağı davranışını değiştirir).
+router.post("/reset", requireAdmin, async (req, res) => {
   try {
     const name = String(req.query.name || "").toUpperCase();
     let m = await loadModel();

@@ -2,6 +2,8 @@
 
 const express = require("express");
 const router = express.Router();
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
+
 const scraper = require("../services/livescore-scraper.cjs");
 
 router.get("/matches", (req, res) => {
@@ -118,7 +120,8 @@ router.get("/live-fallback", async (req, res) => {
 });
 
 // POST /api/livescore/refresh-bilyoner
-router.post("/refresh-bilyoner", async (req, res) => {
+// ⚠️ Dış kaynak çekimini elle tetikler (kaynak zaten kapalı, bkz. scraper).
+router.post("/refresh-bilyoner", requireAdmin, async (req, res) => {
   try {
     const bilyoner = require("../services/scrapers/bilyoner.cjs");
     const result = await bilyoner.scrape({ maxFixtures: 100 });

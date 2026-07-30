@@ -3,8 +3,26 @@
  * Yalın admin uçları: bootstrap, goal, status, red, halfscore, penalty, ht, final
  * Bu router server.cjs içinde "/api/admin" altına mount edilir.
  *
- * Not: Token kontrolünü bu router'a koymadım (senin projende farklı admin router'lar var).
- * İstersen burada da x-admin-token kontrolü ekleyebiliriz.
+ * ⚠️ 2026-07-30: BU DOSYA TAMAMEN KORUMASIZDI.
+ *
+ * Eski başlık şunu diyordu: "Token kontrolünü bu router'a koymadım... İstersen
+ * burada da x-admin-token kontrolü ekleyebiliriz." O kontrol hiç eklenmedi ve
+ * yedi POST ucu `/api/admin` altında herkese açık kaldı.
+ *
+ * Bu kozmetik bir eksik değildi, PARA yoluydu:
+ *
+ *   POST /api/admin/match/final?fixtureId=X&home=3&away=0
+ *     → data/live/X.json içine skoru yazar, status'u "FT" yapar.
+ *   settle2 ödemeyi hesaplarken TAM O DOSYAYI okur (stateFile → st.score,
+ *     st.status === "FT" şartı) ve otomatik settle FT maçları tarar.
+ *
+ * Yani kimliksiz tek istekle bir maçın nihai skoru belirlenip gerçek LC
+ * dağıtımı tetiklenebiliyordu; saldırgan kendi tahminine uyan skoru yazar.
+ * `/match/bootstrap` durum dosyası hiç yokken bile oluşturuyordu.
+ *
+ * Koruma UÇ BAZINDA DEĞİL ROUTER GENELİNDE (`router.use`): bu dosyaya ileride
+ * eklenecek bir uç da otomatik kapsansın — açığın kök nedeni zaten "bir yerde
+ * yazmayı unutmak"tı.
  */
 "use strict";
 
@@ -13,6 +31,12 @@ const fsp = fs.promises;
 const path = require("path");
 const express = require("express");
 const router = express.Router();
+
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
+
+// ⚠️ AŞAĞIDAKİ TÜM UÇLAR İÇİN GEÇERLİ — tek tek eklemeye gerek yok, ve
+// silinirse hepsi birden açılır. Buraya dokunma.
+router.use(requireAdmin);
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const LIVE_DIR = path.join(DATA_DIR, "live");

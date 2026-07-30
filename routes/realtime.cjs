@@ -2,6 +2,7 @@
 
 const express = require("express");
 const router  = express.Router();
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 
 const fs   = require("fs");
 const fsp  = fs.promises;
@@ -161,7 +162,9 @@ router.get("/disabled", async (req,res)=>{
  * =======================*/
 
 // POST /api/rt/settle?fixtureId=...
-router.post("/settle", async (req, res) => {
+// ⚠️ Ödeme tetikler (settle2 akışı). Skoru yazan /api/admin/match/final
+// ile birlikte kimliksiz uçtan uca bir para zinciri oluşturuyordu.
+router.post("/settle", requireAdmin, async (req, res) => {
   try {
     const fixtureId = String(req.query.fixtureId || req.body?.fixtureId || "").trim();
     if (!fixtureId) {

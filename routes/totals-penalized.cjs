@@ -1,12 +1,14 @@
 "use strict";
 const express = require("express");
 const router  = express.Router();
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 const fs = require("fs"), fsp = fs.promises, path = require("path");
 
 async function readJson(f, fb){ try{ return JSON.parse(await fsp.readFile(f,"utf8")); }catch{ return fb; } }
 function outcomeOf(h,a){ return h>a? "H" : a>h? "A" : "D"; }
 
-router.post("/recalc", async (req,res)=>{
+// ⚠️ Tüm toplamları yeniden hesaplayıp dosyaya yazar — sıralamayı değiştirir.
+router.post("/recalc", requireAdmin, async (req,res)=>{
   try{
     const DATA = path.join(__dirname,"..","data");
     const PRED = path.join(DATA,"preds.json");

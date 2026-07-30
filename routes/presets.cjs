@@ -4,6 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 const router = express.Router();
+const { verifyToken } = require("../middleware/verifyToken.cjs");
 
 // ---- paths / io helpers ----
 const dataDir = path.join(__dirname, "..", "data");
@@ -149,9 +150,13 @@ router.get("/user-presets", (req, res) => {
 });
 
 // POST /api/user-presets/soft-delete {userId,id}
-router.post("/user-presets/soft-delete", (req, res) => {
+// ⚠️ KİMLİK GÖVDEDEN ALINMAZ. Bu iki uç kimlik doğrulamasızdı ve `userId`
+// gövdeden geliyordu: herkes BAŞKASININ hazır tahmin listesini silebiliyor
+// ya da geri getirebiliyordu. mini.cjs'te düzeltilen desenin aynısı.
+// Kimlik artık `req.uid`'den (doğrulanmış token) geliyor.
+router.post("/user-presets/soft-delete", verifyToken, (req, res) => {
   const body = req.body || {};
-  const userId = String(body.userId || "");
+  const userId = String(req.uid || "").trim();
   const id = String(body.id || "");
   if (!userId || !id) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
 
@@ -169,9 +174,13 @@ router.post("/user-presets/soft-delete", (req, res) => {
 });
 
 // POST /api/user-presets/restore {userId,id}
-router.post("/user-presets/restore", (req, res) => {
+// ⚠️ KİMLİK GÖVDEDEN ALINMAZ. Bu iki uç kimlik doğrulamasızdı ve `userId`
+// gövdeden geliyordu: herkes BAŞKASININ hazır tahmin listesini silebiliyor
+// ya da geri getirebiliyordu. mini.cjs'te düzeltilen desenin aynısı.
+// Kimlik artık `req.uid`'den (doğrulanmış token) geliyor.
+router.post("/user-presets/restore", verifyToken, (req, res) => {
   const body = req.body || {};
-  const userId = String(body.userId || "");
+  const userId = String(req.uid || "").trim();
   const id = String(body.id || "");
   if (!userId || !id) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
 
