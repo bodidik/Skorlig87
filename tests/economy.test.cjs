@@ -197,3 +197,48 @@ describe("ekonomi raporu", () => {
     assert.equal(a.girisCikisOrani, null);
   });
 });
+
+describe("mini turnuva ödülü — beraberlikte bölüşülür", () => {
+  /**
+   * Eskiden beraberlikte HERKESE tam MINI_WIN_LC veriliyordu: aynı tahmini
+   * yapan 5 hesap turnuva başına 5×20 = 100 LC üretiyordu. Giriş ücretsiz
+   * olduğu için bunun karşılığı yoktu — karşılıksız LC musluğu.
+   *
+   * Değişmez: turnuva başına DAĞITILAN TOPLAM, MINI_WIN_LC'yi aşamaz.
+   */
+  const mini = require("../routes/mini.cjs");
+  const pay = mini._kazananPayi;
+  const TOPLAM = mini._MINI_WIN_LC;
+
+  test("hiçbir kazanan sayısında toplam ödül aşılmaz", () => {
+    for (let n = 1; n <= 50; n++) {          // MAX_MEMBERS = 50
+      const kisiBasi = pay(n);
+      const dagitilan = Math.round(kisiBasi * n * 10) / 10;
+      assert.ok(
+        dagitilan <= TOPLAM + 1e-9,
+        `${n} kazananda ${dagitilan} LC dagitiliyor, tavan ${TOPLAM}`
+      );
+    }
+  });
+
+  test("tek kazanan tam ödülü alır", () => {
+    assert.equal(pay(1), TOPLAM);
+  });
+
+  test("iki kazanan yarı yarıya böler", () => {
+    assert.equal(Math.round(pay(2) * 2 * 10) / 10, TOPLAM);
+  });
+
+  test("bölünmeyen sayıda AŞAĞI yuvarlanır (yukarı yuvarlamak LC yaratırdı)", () => {
+    // 20/3 = 6.666 → 6.6 (6.7 olsaydı 3×6.7 = 20.1, yani 0.1 LC yoktan)
+    const p = pay(3);
+    assert.ok(p * 3 <= TOPLAM, "asagi yuvarlanmamis");
+    assert.equal(p, Math.floor((TOPLAM / 3) * 10) / 10);
+  });
+
+  test("geçersiz kazanan sayısı 0 döner (para yazılmaz)", () => {
+    assert.equal(pay(0), 0);
+    assert.equal(pay(-3), 0);
+    assert.equal(pay(NaN), 0);
+  });
+});

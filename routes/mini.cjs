@@ -97,6 +97,34 @@ function isBotUser(uid) {
   return String(uid || "").toLowerCase().startsWith("bot_");
 }
 
+/** Bot olmayan (yani ödül alabilecek) kazananlar. */
+function gercekKazananlar(userIds) {
+  return (userIds || []).filter((u) => u && !isBotUser(u));
+}
+
+/**
+ * Kazanan BAŞINA düşen ödül.
+ *
+ * ⚠️ ÖDÜL BÖLÜŞÜLÜR, ÇOĞALTILMAZ. Eskiden beraberlikte HERKESE tam
+ * MINI_WIN_LC veriliyordu: aynı tahmini yapan 5 hesap turnuva başına
+ * 5×20 = 100 LC üretiyordu. Girişin ücretsiz olduğu düşünülünce bu
+ * karşılıksız bir LC musluğuydu. Artık turnuva başına dağıtılan toplam
+ * MINI_WIN_LC'yi AŞAMAZ.
+ *
+ * ⚠️ AŞAĞI yuvarlanır (0.1 adım). Yukarı yuvarlamak toplamı taşırırdı:
+ * 20/3 = 6.666 → 6.7 verilseydi 3×6.7 = 20.1, yani 0.1 LC yoktan yaratılırdı.
+ * 6.6 ile toplam 19.8 olur; artan 0.2 LC dağıtılmaz (yakılır). Enflasyon
+ * yönünde hata yapmamak, kuruş kuruşuna dağıtmaktan önemli.
+ *
+ * Bölüşme BOT ELENDİKTEN SONRAKİ sayıya göre: bot para almıyor, yani
+ * turnuvaya bot eklemek gerçek kazananın payını düşürmemeli.
+ */
+function kazananPayi(kazananSayisi) {
+  const n = Number(kazananSayisi) || 0;
+  if (n <= 0 || MINI_WIN_LC <= 0) return 0;
+  return Math.floor((MINI_WIN_LC / n) * 10) / 10;
+}
+
 /**
  * Mini turnuva ödülü.
  *
@@ -106,16 +134,20 @@ function isBotUser(uid) {
  * dosyaya düşüyor, bakiyesi hiç artmıyordu. Hata da üretilmiyordu.
  */
 async function awardMiniWinLc(userIds, tournament, db) {
-  const winners = (userIds || []).filter((u) => u && !isBotUser(u));
-  if (!winners.length || MINI_WIN_LC <= 0) return 0;
+  const winners = gercekKazananlar(userIds);
+  const pay = kazananPayi(winners.length);
+  // Pay 0'a yuvarlandıysa (çok kalabalık beraberlik) kimseye yazma:
+  // creditLc zaten 0'ı reddeder ama defterde anlamsız kayıt da oluşmasın.
+  if (!winners.length || pay <= 0) return 0;
 
   const nowISO = new Date().toISOString();
 
   // Mongo tarafı: $inc göreli olduğu için dosyadan bağımsız ve doğru.
   for (const uid of winners) {
-    await creditLc(db, uid, MINI_WIN_LC, "mini_tournament_win", {
+    await creditLc(db, uid, pay, "mini_tournament_win", {
       tournamentId: tournament.id,
       tournamentName: tournament.name,
+      kazananSayisi: winners.length,
     });
   }
 
@@ -134,14 +166,14 @@ async function awardMiniWinLc(userIds, tournament, db) {
   for (const uid of winners) {
     let u = usersItems.find((x) => String(x.userId) === uid);
     if (!u) {
-      u = { userId: uid, mainTeam: null, createdAt: nowISO, lc: MINI_WIN_LC, lcLastDaily: null };
+      u = { userId: uid, mainTeam: null, createdAt: nowISO, lc: pay, lcLastDaily: null };
       usersItems.push(u);
     } else {
-      u.lc = Number(u.lc || 0) + MINI_WIN_LC;
+      u.lc = Number(u.lc || 0) + pay;
     }
     u.lcUpdatedAt = nowISO;
     u.lcLastReason = "mini_tournament_win";
-    u.lcLastAmount = MINI_WIN_LC;
+    u.lcLastAmount = pay;
 
     let wu = wallet.users.find(
       (x) => String(x.userId || "").toLowerCase() === uid.toLowerCase()
@@ -158,15 +190,15 @@ async function awardMiniWinLc(userIds, tournament, db) {
       };
       wallet.users.push(wu);
     }
-    wu.balance = Number(wu.balance || 0) + MINI_WIN_LC;
-    wu.totalEarned = Number(wu.totalEarned || 0) + MINI_WIN_LC;
+    wu.balance = Number(wu.balance || 0) + pay;
+    wu.totalEarned = Number(wu.totalEarned || 0) + pay;
     wu.updatedAt = nowISO;
 
     wallet.ledger.push({
       id: "tx_" + Date.now().toString(36) + "_" + crypto.randomBytes(3).toString("hex"),
       userId: uid,
       kind: "reward",
-      amount: MINI_WIN_LC,
+      amount: pay,
       reason: "mini_tournament_win",
       fixtureId: null,
       meta: { tournamentId: tournament.id, tournamentName: tournament.name },
@@ -202,10 +234,16 @@ async function finalizeIfDone(t, board, settledCount, fixtureCount, db) {
     // Kimse puan alamadıysa kazanan yok (hükümsüz biter, ödül dağıtılmaz)
     const winners = top > 0 ? board.filter((r) => r.points === top).map((r) => r.userId) : [];
 
+    // ⚠️ `rewardLc` KİŞİ BAŞI düşen pay (toplam değil) — ekran bu alanı
+    // gösteriyor. Bot olmayan kazanan sayısına göre hesaplanıyor, çünkü
+    // ödemeyi alacak olanlar onlar (bkz. kazananPayi).
+    const odulAlanlar = gercekKazananlar(winners);
+    const kisiBasi = kazananPayi(odulAlanlar.length);
+
     const alanlar = {
       finishedAt: new Date().toISOString(),
       winners,
-      rewardLc: winners.length ? MINI_WIN_LC : 0,
+      rewardLc: kisiBasi,
     };
 
     // ⚠️ PARA KORUMASI: koşul (finishedAt boş mu) yazmanın İÇİNDE. Eskiden
@@ -219,7 +257,8 @@ async function finalizeIfDone(t, board, settledCount, fixtureCount, db) {
     if (winners.length) {
       const awarded = await awardMiniWinLc(winners, cur, db);
       console.log(
-        `[mini] turnuva bitti: "${cur.name}" (${cur.id}) | kazanan: ${winners.join(", ")} | LC ödülü: ${MINI_WIN_LC} x ${awarded}`
+        `[mini] turnuva bitti: "${cur.name}" (${cur.id}) | kazanan: ${winners.join(", ")} | ` +
+        `LC odulu: toplam ${MINI_WIN_LC} -> kisi basi ${kisiBasi} x ${awarded} kisi`
       );
     } else {
       console.log(`[mini] turnuva hükümsüz bitti (puan yok): "${cur.name}" (${cur.id})`);
@@ -558,3 +597,7 @@ router.get("/board", async (req, res) => {
 });
 
 module.exports = router;
+// Test icin: odul bolusmesi PARA degismezi tasiyor (toplam MINI_WIN_LC'yi
+// asamaz). Router'i ayaga kaldirmadan dogrulanabilsin diye disa aciliyor.
+module.exports._kazananPayi = kazananPayi;
+module.exports._MINI_WIN_LC = MINI_WIN_LC;
