@@ -782,6 +782,13 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
         ["duels",          { $or: [{ creatorId: uid }, { acceptorId: uid }] }],
         ["tournaments",    { creatorId: uid }],
         ["mini_tournaments", { ownerId: uid }],
+        // ⚠️ CİHAZ JETONU KİŞİSEL VERİDİR. Bu koleksiyon depo Mongo'ya
+        // taşınırken eklendi ama silme listesine yazılmamıştı: hesabını
+        // silen kullanıcının jetonu ve bildirim tercihleri kalıyordu.
+        // Play Store "kullanıcı verisini sil" şartı bunu da kapsar.
+        ["push_tokens",    { userIdLower: uidL }],
+        // Kupa/yarışma puanları da kullanıcı verisi.
+        ["competition_totals", { $or: [{ userIdLower: uidL }, { userId: uid }] }],
       ];
       for (const [koleksiyon, filtre] of islemler) {
         try {
@@ -792,6 +799,29 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
           // eksik silme bir uyum sorunudur.
           console.error(`[delete-account] ${koleksiyon} silinemedi:`, e?.message || e);
         }
+      }
+
+      /* ⚠️ PROFİL SATIRI. Yukarıdaki adımlar yalnızca `users.json` DOSYASINDAN
+       * çıkarıyordu; Mongo'daki `users` belgesi duruyordu. Hesabını silen
+       * kullanıcı aramalarda, takım kadrosunda ve 1987 üye listesinde
+       * görünmeye devam ediyordu. Depoda silme fonksiyonu HİÇ YOKTU. */
+      try {
+        await UsersStore.deleteUser(uid, dbSil);
+      } catch (e) {
+        console.error("[delete-account] users profili silinemedi:", e?.message || e);
+      }
+
+      /* Maç bazlı sıralama anlık görüntüsü: belge fikstüre ait, ama `items`
+       * dizisi kullanıcı satırları taşıyor. Belgeyi silmek başkalarının
+       * verisini de götürürdü — yalnızca bu kullanıcının satırı çekiliyor. */
+      try {
+        const r = await dbSil.collection("leaderboard").updateMany(
+          {},
+          { $pull: { items: { $or: [{ userId: uid }, { userIdLower: uidL }] } } }
+        );
+        if (r.modifiedCount) console.log(`[delete-account] leaderboard: ${r.modifiedCount} anlik goruntuden cikarildi`);
+      } catch (e) {
+        console.error("[delete-account] leaderboard temizlenemedi:", e?.message || e);
       }
     }
 
