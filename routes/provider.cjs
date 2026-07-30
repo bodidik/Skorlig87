@@ -8,7 +8,11 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR OKUNUYOR. Sabit yol testleri GERÇEK data/ dizinine
+// yazdırıyordu: bir entegrasyon testi 7 kaydı canlı preds.json'a düşürdü.
+// Ayrıca settle2 bu değişkeni okuyup pred okumayınca aynı zincirdeki iki
+// modül maç durum dosyasını FARKLI dizinlerde arıyordu.
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const FILE_PATH = path.join(DATA_DIR, "providers.json");
 
 // ----------------- JSON HELPERS -----------------

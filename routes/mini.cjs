@@ -21,7 +21,11 @@ const fsp = fs.promises;
 const path = require("path");
 const crypto = require("crypto");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR OKUNUYOR. Sabit yol testleri GERÇEK data/ dizinine
+// yazdırıyordu: bir entegrasyon testi 7 kaydı canlı preds.json'a düşürdü.
+// Ayrıca settle2 bu değişkeni okuyup pred okumayınca aynı zincirdeki iki
+// modül maç durum dosyasını FARKLI dizinlerde arıyordu.
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const SocialStore = require("../lib/social-store.cjs");
 // ⚠️ Bu import BİR KEZ ATLANMIŞTI: koşullu ekleme ("dosyada 'verifyToken'
 // geçmiyorsa ekle") kullanılmıştı, ama az önce eklenen rota tanımları o

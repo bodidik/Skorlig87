@@ -38,7 +38,11 @@ const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 // silinirse hepsi birden açılır. Buraya dokunma.
 router.use(requireAdmin);
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR OKUNUYOR. Sabit yol testleri GERÇEK data/ dizinine
+// yazdırıyordu: bir entegrasyon testi 7 kaydı canlı preds.json'a düşürdü.
+// Ayrıca settle2 bu değişkeni okuyup pred okumayınca aynı zincirdeki iki
+// modül maç durum dosyasını FARKLI dizinlerde arıyordu.
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const LIVE_DIR = path.join(DATA_DIR, "live");
 
 function stFile(id) {
