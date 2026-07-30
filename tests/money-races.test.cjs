@@ -711,3 +711,59 @@ describe("tahmin kilidi — kapalı başarısızlık, ama oyunu durdurmadan", ()
       "durum dosyasi yokken depoya bakilmiyor — gelecek maclar da reddedilir");
   });
 });
+
+describe("turnuva — üç delik (kilit, yetki, ödeme)", () => {
+  /**
+   * Turnuva mantığı denetlendiğinde üç ölümcül kusur çıktı:
+   *
+   *  1) `predict()` YALNIZCA `status==="settled"` bakıyordu — maçın başlayıp
+   *     başlamadığına hiç bakmıyordu. Oynanmış, sonucu bilinen maça tahmin
+   *     girilebiliyordu. (Ana oyunda bu kilit iki kez sertleştirilmişti;
+   *     turnuva o işten habersizdi.)
+   *
+   *  2) `POST /settle/:code` yorumunda "(admin)" yazıyordu ama muhafızı
+   *     `verifyToken`dı: giriş yapmış HERKES herhangi bir turnuvayı
+   *     sonuçlandırıp maç sonuçlarını KENDİ GÖVDESİNDE gönderebiliyordu.
+   *
+   *  3) O settle `payouts` yazıyor ama CÜZDANA HİÇ yazmıyordu. Gerçek ödemeyi
+   *     settle2 yapıyor, o da yalnızca `status==="open"` tarıyor — yani çağrı
+   *     turnuvayı "settled" yapınca giriş ücretleri KİMSEYE ödenmiyordu.
+   *
+   * ⚠️ Artık İKİ ödeme yolu var (bu servis + settle2) ve ikisi de AYNI mührü
+   * kullanıyor; hangisi önce alırsa diğeri atlar.
+   */
+  const fs = require("fs");
+  const path = require("path");
+  const kaynak = (d, f) => fs.readFileSync(path.join(__dirname, "..", d, f), "utf8");
+
+  test("tahmin maç kilidinden geçer (kapalı başarısızlık)", () => {
+    const s = kaynak("services", "tournament.cjs");
+    assert.ok(/async function macKilitliMi\(/.test(s), "mac kilidi yok");
+    assert.ok(/kilit\.kilitli\)\s*throw/.test(s), "predict kilidi kullanmiyor");
+    // Bilinmeyen fikstür KİLİTLİ sayılmalı (ana oyundaki ilkenin aynısı).
+    assert.ok(/kilitli:\s*true,\s*sebep:\s*"FIXTURE_NOT_FOUND"/.test(s));
+    assert.ok(/kilitli:\s*true,\s*sebep:\s*"NO_KICKOFF"/.test(s));
+  });
+
+  test("settle ucu YÖNETİCİ ister (verifyToken yeterli değil)", () => {
+    const r = kaynak("routes", "tournaments.cjs");
+    assert.ok(/"\/settle\/:code",\s*requireAdmin/.test(r),
+      "settle ucu hala verifyToken ile korunuyor — herkes sonuclandirabilir");
+  });
+
+  test("settle mührü settle2 ile AYNI (çift ödeme olmasın)", () => {
+    const s = kaynak("services", "tournament.cjs");
+    const s2 = kaynak("routes", "settle2.cjs");
+    assert.ok(/claimTournamentSettle\(/.test(s), "servis muhur kullanmiyor");
+    assert.ok(/claimTournamentSettle\(/.test(s2), "settle2 muhur kullanmiyor");
+  });
+
+  test("settle gerçekten cüzdana yazar", () => {
+    const s = kaynak("services", "tournament.cjs");
+    const govde = s.slice(s.indexOf("async function settle("));
+    assert.ok(/creditLc\(/.test(govde),
+      "settle odeme yapmiyor — havuz kimseye odenmez, para yakilir");
+    assert.ok(/kayipOdulKaydet/.test(govde),
+      "odeme basarisiz olursa iz birakilmiyor (muhur atildi, tekrar denenmez)");
+  });
+});

@@ -21,6 +21,12 @@
  */
 
 const SocialStore = require("../lib/social-store.cjs");
+const path = require("path");
+const fsp = require("fs").promises;
+// Maç kilidi için: durum dosyası Render'da kalıcı değil, depo yetkili kaynak.
+const FixturesStore = require("../lib/fixtures-store.cjs");
+const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
+const LIVE_DIR = path.join(DATA_DIR, "live");
 const { spendLc, creditLc } = require("../lib/wallet-credit.cjs");
 
 /** Rotalar db'yi geçmiyorsa depoların yaptığı gibi kendimiz çözelim. */
@@ -178,7 +184,51 @@ async function join(code, userId, db = null) {
   return t;
 }
 
-async function predict(code, userId, fixtureId, outcome) {
+/**
+ * ⚠️ MAÇ KİLİDİ EKLENDİ. Önceki hâli YALNIZCA `status === "settled"` bakıyordu:
+ * maçın başlayıp başlamadığına HİÇ bakmıyordu. Yani oynanmış, sonucu bilinen
+ * bir maça turnuva içinde tahmin girilebiliyordu — turnuva kapanana kadar.
+ *
+ * Ana oyunda bu kilit iki kez sertleştirildi (routes/pred.cjs computePredLock,
+ * routes/duels.cjs isFixtureLocked) ama turnuva o işten habersizdi.
+ *
+ * Aynı kapalı-başarısızlık ilkesi: durum dosyası yoksa FİKSTÜR DEPOSUNA
+ * bakılır; maç orada da yoksa KİLİTLİ sayılır.
+ */
+async function macKilitliMi(fixtureId, db) {
+  const fid = String(fixtureId || "").trim();
+  if (!fid) return { kilitli: true, sebep: "FIXTURE_ID_REQUIRED" };
+
+  let st = null;
+  try {
+    st = JSON.parse(await fsp.readFile(path.join(LIVE_DIR, `${fid}.json`), "utf8"));
+  } catch { st = null; }
+
+  if (!st || typeof st !== "object") {
+    try {
+      const hepsi = await FixturesStore.loadAll(db);
+      const fx = (hepsi || []).find((f) => String(f?.fixtureId || "") === fid);
+      if (!fx) return { kilitli: true, sebep: "FIXTURE_NOT_FOUND" };
+      st = { status: fx.status || "NS", kickoffISO: fx.kickoffISO || fx.kickoff || null };
+    } catch (e) {
+      console.error("[tournament] fikstur dogrulanamadi, kilitli sayiliyor:", e?.message || e);
+      return { kilitli: true, sebep: "FIXTURE_CHECK_FAILED" };
+    }
+  }
+
+  const durum = String(st.status || "").toUpperCase();
+  if (durum && durum !== "NS") return { kilitli: true, sebep: "MATCH_ALREADY_STARTED" };
+
+  const ko = st.kickoffISO || st.kickoff || null;
+  if (!ko) return { kilitli: true, sebep: "NO_KICKOFF" };
+  const koMs = new Date(String(ko)).getTime();
+  if (!Number.isFinite(koMs)) return { kilitli: true, sebep: "BAD_KICKOFF" };
+  if (Date.now() >= koMs) return { kilitli: true, sebep: "MATCH_ALREADY_STARTED" };
+
+  return { kilitli: false, sebep: null };
+}
+
+async function predict(code, userId, fixtureId, outcome, db = null) {
   const data = await loadAll();
   const t = data.tournaments.find(x => x.code === code.toUpperCase());
   if (!t) throw new Error("NOT_FOUND");
@@ -188,12 +238,28 @@ async function predict(code, userId, fixtureId, outcome) {
   if (!p) throw new Error("NOT_JOINED");
   if (!t.fixtureIds.includes(fixtureId)) throw new Error("INVALID_FIXTURE");
 
+  // ⚠️ Maç başladıysa tahmin alınmaz — bkz. macKilitliMi notu.
+  const kilit = await macKilitliMi(fixtureId, db);
+  if (kilit.kilitli) throw new Error(kilit.sebep);
+
   p.predictions[fixtureId] = { outcome, at: new Date().toISOString() };
   await saveAll(data);
   return { ok: true };
 }
 
-async function settle(code, results) {
+/**
+ * ⚠️ ÖDEME YOLU BAĞLANDI. Önceki hâli `payouts` dizisini HESAPLAYIP YAZIYOR
+ * ama cüzdana TEK SATIR yazmıyordu. Gerçek ödemeyi settle2 yapıyor, o da
+ * yalnızca `status === "open"` turnuvaları tarıyor — yani bu fonksiyon
+ * çağrıldığı anda turnuva "settled" oluyor, settle2 bir daha bakmıyordu ve
+ * TOPLANAN GİRİŞ ÜCRETLERİ KİMSEYE ÖDENMİYORDU. Giriş ücreti gerçekten
+ * tahsil edildiği için bu doğrudan para yakıyordu.
+ *
+ * ⚠️ MÜHÜR settle2 İLE AYNI (`claimTournamentSettle`): iki ödeme yolu var ve
+ * hangisi önce mührü alırsa diğeri atlar. Ayrı mühür kullanmak çift ödeme
+ * demek olurdu.
+ */
+async function settle(code, results, db = null) {
   const { calcOdds } = require("./odds-engine.cjs");
   const data = await loadAll();
   const t = data.tournaments.find(x => x.code === code.toUpperCase());
@@ -234,9 +300,38 @@ async function settle(code, results) {
     };
   }).filter(Boolean);
 
+  const nowISO = new Date().toISOString();
+
+  // ⚠️ MÜHÜR ÖDEMEDEN ÖNCE, ATOMİK. Koşul (`status:"open"`) yazmanın içinde;
+  // yalnızca tek çağrı true alır. settle2 de aynı mührü kullanıyor.
+  const conn = await dbAl(db);
+  const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, conn);
+  if (!bizimki) throw new Error("ALREADY_SETTLED");
+
   t.status = "settled";
-  t.settledAt = new Date().toISOString();
+  t.settledAt = nowISO;
   await saveAll(data);
+
+  // Mühür alındı → ödemeyi BİZ yapmalıyız; settle2 artık bu turnuvayı görmez.
+  const odenemeyen = [];
+  for (const odeme of t.payouts) {
+    const tutar = Number(odeme?.lcWon || 0);
+    if (!odeme?.userId || tutar <= 0) continue;
+    const ok = await creditLc(conn, odeme.userId, tutar, "tournament_payout", {
+      tournamentId: t.id, tournamentCode: t.code, rank: odeme.rank,
+    });
+    if (!ok) odenemeyen.push({ userIdLower: String(odeme.userId).toLowerCase(), tutar });
+  }
+  if (odenemeyen.length) {
+    // Mühür atıldı, tekrar denenmez → kalıcı iz bırak (bkz. lib/wallet-credit).
+    console.error(`[tournament] ⛔ ODEME YAPILAMADI: ${t.code} — ${odenemeyen.length} kisi`);
+    const { kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
+    await kayipOdulKaydet(conn, {
+      kaynak: "tournament_payout", tournamentCode: t.code,
+      odemeler: odenemeyen, beklenen: t.payouts.length, eksik: odenemeyen.length,
+    });
+  }
+
   return t;
 }
 

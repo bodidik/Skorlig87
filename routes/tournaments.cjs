@@ -4,6 +4,7 @@ const express = require("express");
 const router = express.Router();
 const t = require("../services/tournament.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 
 // POST /api/tournaments/create
 router.post("/create", verifyToken, async (req, res) => {
@@ -51,7 +52,7 @@ router.post("/predict", verifyToken, async (req, res) => {
     if (!code || !fixtureId || !outcome) {
       return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
     }
-    await t.predict(code, req.uid, fixtureId, outcome);
+    await t.predict(code, req.uid, fixtureId, outcome, req.app?.locals?.db || null);
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ ok: false, error: e.message });
@@ -69,14 +70,27 @@ router.get("/:code", async (req, res) => {
   }
 });
 
-// POST /api/tournaments/settle/:code  (admin)
-router.post("/settle/:code", verifyToken, async (req, res) => {
+/**
+ * POST /api/tournaments/settle/:code — YÖNETİCİ.
+ *
+ * ⚠️ YORUMU "(admin)" DİYORDU, MUHAFIZI `verifyToken`DI. Yani giriş yapmış
+ * HERKES herhangi bir turnuvayı sonuçlandırabiliyor ve maç sonuçlarını KENDİ
+ * GÖVDESİNDE gönderiyordu: turnuvaya katıl, kendi tahminlerine uyan sonuçları
+ * yolla, havuzu al.
+ *
+ * Yetki testim bunu kaçırmıştı çünkü "bir muhafız var mı" diye bakıyor,
+ * "doğru muhafız mı" diye değil.
+ *
+ * ⚠️ Normal akışta bu uca GEREK YOK: settle2 maç sonuçlandıkça turnuvaları
+ * kendi tarar. Burası elle müdahale içindir.
+ */
+router.post("/settle/:code", requireAdmin, async (req, res) => {
   try {
     const { results } = req.body; // { [fixtureId]: { outcome: "H"|"D"|"A" } }
     if (!results || typeof results !== "object") {
       return res.status(400).json({ ok: false, error: "RESULTS_REQUIRED" });
     }
-    const tournament = await t.settle(req.params.code, results);
+    const tournament = await t.settle(req.params.code, results, req.app?.locals?.db || null);
     res.json({ ok: true, tournament });
   } catch (e) {
     const status = e.message === "NOT_FOUND" ? 404 : 400;
