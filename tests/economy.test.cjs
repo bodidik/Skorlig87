@@ -242,3 +242,55 @@ describe("mini turnuva ödülü — beraberlikte bölüşülür", () => {
     assert.equal(pay(NaN), 0);
   });
 });
+
+describe("ekonomi raporu — bir kerelik girişler oranı bozmamalı", () => {
+  /**
+   * Rapor tüm girişleri tek torbaya koyuyordu. Açılış bakiyesi (hesap başına
+   * bir kez, 30 LC) tekrarlayan bir musluk değil ama girişe yazılınca oranı
+   * şişiriyordu.
+   *
+   * Bu tam YAYINDA yanıltır: 1000 kayıt = 30.000 LC bir kerelik giriş; ekonomi
+   * kusursuz dengede olsa bile rapor haftalarca "ENFLASYONIST" gösterir ve
+   * yanlış muslukları kısmaya iter.
+   *
+   * Ölçülmüştü (üretim, 30 gün): 69 LC girişin 60'ı `initial_default`.
+   * Oran 3.3:1 "enflasyonist" görünüyordu; ayrıştırınca 0.3:1 deflasyonist.
+   */
+  const { _akis: akis } = require("../lib/economy-report.cjs");
+
+  const defter = [
+    { reason: "initial_default", amount: 30, createdAt: "2026-07-30T10:00:00Z" },
+    { reason: "initial_default", amount: 30, createdAt: "2026-07-30T10:01:00Z" },
+    { reason: "match_reward",    amount: 6,  createdAt: "2026-07-30T10:02:00Z" },
+    { reason: "match_pred",      amount: -18, createdAt: "2026-07-30T10:03:00Z" },
+    { reason: "duel_create",     amount: -3, createdAt: "2026-07-30T10:04:00Z" },
+    { reason: "entry_refund",    amount: 3,  createdAt: "2026-07-30T10:05:00Z" },
+  ];
+
+  test("açılış bakiyesi orandan hariç tutulur", () => {
+    const a = akis(defter, null);
+    assert.equal(a.toplamBirKerelik, 60);
+    assert.equal(a.toplamGiris, 6, "bir kerelikler tekrarlayan girise sizmis");
+    assert.equal(a.girisCikisOrani, 0.3);
+    assert.equal(a.durum, "deflasyonist");
+  });
+
+  test("iade ne girişe ne çıkışa yazılır", () => {
+    const a = akis(defter, null);
+    assert.equal(a.toplamIade, 3);
+    assert.ok(!("entry_refund" in a.giris), "iade girise yazilmis");
+    assert.ok(!("entry_refund" in a.cikis), "iade cikisa yazilmis");
+  });
+
+  test("net arz değişimi bir kerelikleri DAHİL eder (büyüme görünür kalsın)", () => {
+    const a = akis(defter, null);
+    // 6 tekrarlayan + 60 bir kerelik - 21 cikis = 45
+    assert.equal(a.netArzDegisimi, 45);
+  });
+
+  test("yalnızca açılış bakiyesi varken sahte enflasyon uyarısı üretilmez", () => {
+    const a = akis(defter.filter((k) => k.reason === "initial_default"), null);
+    assert.equal(a.toplamGiris, 0, "tekrarlayan giris olmamali");
+    assert.equal(a.girisCikisOrani, null, "cikis yokken oran hesaplanmamali");
+  });
+});
