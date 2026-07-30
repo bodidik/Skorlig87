@@ -63,15 +63,41 @@ router.get("/board2", async (req, res) => {
 });
 
 /** GET /api/rt/totals[?userId=demo1] → totals.json’dan normalize liste */
+/**
+ * GET /api/rt/totals?userId=...&limit=...
+ *
+ * ⚠️ SINIRSIZDI. Filtre verilmeyince TÜM sıralama dönüyordu: ölçüldü, 1707
+ * satır / 182 KB. İki istemci de bunu gereksiz yere indiriyordu —
+ * `me.tsx` yalnızca KENDİ satırını arıyordu (182 KB → 167 bayt, `?userId=`
+ * ile), `kings.tsx` ise sıralayıp yalnızca ilk 100'ü gösteriyordu.
+ *
+ * `limit` sunucuda SIRALADIKTAN sonra keser — istemci kendi sıralamasını
+ * yapmaya devam edebilir (aynı ölçüt), sıra numaraları bozulmaz. Ölçüt
+ * `totalPoints`; ceza ayrı alanda tutuluyor ve istemci sıralaması da bunu
+ * kullanıyor, ikisi ayrışmasın diye burada da aynısı.
+ *
+ * ⚠️ VARSAYILAN SINIR YOK — kasıtlı. Bu uç yalnızca liderlik tablosu için
+ * değil, grup/arkadaş panolarının kesişim hesabı için de okunuyor olabilir;
+ * sessizce kesmek o yolları bozardı. İstemci `limit` göndererek katılır.
+ */
 router.get("/totals", async (req, res) => {
   const userId = String(req.query.userId || "");
+  const limitRaw = Number(req.query.limit || 0);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 5000) : 0;
+
   const { items, updatedAt } = await loadTotals(req.app?.locals?.db || null);
 
-  const out = userId
+  let out = userId
     ? items.filter((x) => String(x.userId).toLowerCase() === userId.toLowerCase())
     : items;
 
-  res.json({ ok: true, items: out, updatedAt });
+  if (!userId && limit) {
+    out = [...out]
+      .sort((a, b) => (Number(b.totalPoints) || 0) - (Number(a.totalPoints) || 0))
+      .slice(0, limit);
+  }
+
+  res.json({ ok: true, items: out, updatedAt, limited: !userId && !!limit && items.length > limit });
 });
 
 module.exports = router;

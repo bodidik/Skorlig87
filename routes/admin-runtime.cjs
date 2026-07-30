@@ -241,6 +241,9 @@ router.post(
 );
 
 // GET /api/admin/runtime-mode/ping
+// ⚠️ BİLEREK AÇIK: yalnızca "router ayakta" der, veri döndürmez. Yukarıdaki
+// ikisi de böyle sanılıp atlanmıştı; bu satır ayrımın kasıtlı olduğunu
+// belgeliyor. Yeni uç eklerken varsayılan requireAdminToken'dır.
 router.get("/runtime-mode/ping", (req, res) => {
   res.json({ ok: true, where: "admin-runtime-router-alive" });
 });
@@ -683,7 +686,11 @@ router.post("/fixtures/delete", requireAdminToken, express.json(), async (req, r
    fixtures.json'daki tüm maçları döner (zaman filtresi yok)
    Admin live panel için kullanılır.
    ========================================================= */
-router.get("/fixtures", async (req, res) => {
+// ⚠️ requireAdminToken UNUTULMUŞTU. Bu dosyada muhafız uç uç yazılıyor ve
+// bu üçü atlanmıştı — admin-live.cjs ile aynı kök neden. Fikstür verisi
+// zaten aleni ama uç `/api/admin` altında ve dosyanın TAMAMINI sınırsız
+// döndürüyor; panel token gönderiyor, kapatmanın maliyeti yok.
+router.get("/fixtures", requireAdminToken, async (req, res) => {
   try {
     const raw = await readJson(FIXTURES_FILE, { fixtures: [] });
     const list = Array.isArray(raw?.fixtures) ? raw.fixtures : [];
@@ -702,7 +709,13 @@ router.get("/fixtures", async (req, res) => {
    TheSportsDB – takım ara → yaklaşan maçları getir
    GET /api/admin/search-match?q=karabag
    ========================================================= */
-router.get("/search-match", async (req, res) => {
+// ⚠️ requireAdminToken UNUTULMUŞTU — ve bu üçünün en tehlikelisiydi:
+// kimliksiz istek, kullanıcının verdiği sorguyla DIŞ API'ye (TheSportsDB)
+// çıkıyordu. Yani sunucu vekil olarak kullanılabiliyor ve ücretsiz katman
+// kotası tüketilerek yöneticinin maç ekleme yeteneği düşürülebiliyordu.
+// İstemci tarafı da düzeltildi: admin-add.tsx ham `fetch` kullanıyordu,
+// artık token ekleyen apiFetch sarmalayıcısından geçiyor.
+router.get("/search-match", requireAdminToken, async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
     if (!q || q.length < 2) return res.status(400).json({ ok: false, error: "QUERY_TOO_SHORT" });
