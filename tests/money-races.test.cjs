@@ -379,3 +379,33 @@ describe("1987 davet kodları", () => {
     assert.equal("codeNorm" in r.code, false);
   });
 });
+
+describe("cüzdan — kopya belge (benzersiz indeks)", () => {
+  /**
+   * creditLc `{userIdLower}` üzerinde `upsert:true` yapıyor. Benzersiz indeks
+   * YOKKEN iki eşzamanlı upsert eşleşme bulamazsa İKİSİ DE ekler: aynı
+   * kullanıcıya iki cüzdan belgesi. Ölçüm (40 eşzamanlı +5 LC):
+   *     indekssiz : 2 belge · bakiyeler [195, 5]
+   *     indeksli  : 1 belge · bakiye [200]
+   * Toplam doğru ama bölünmüş; `findOne` birini döndürdüğü için kullanıcı
+   * 200 yerine 5 LC görür. Belirti "hata" değil, sessiz para kaybı.
+   */
+  test("40 eşzamanlı ödül tek belgede toplanır", async () => {
+    const N = 40;
+    await Promise.all(
+      Array.from({ length: N }, () => creditLc(db, "KopyaTest", 5, "test_odul"))
+    );
+    const belgeler = await db.collection(COLL_USERS).find({ userIdLower: "kopyatest" }).toArray();
+    assert.equal(belgeler.length, 1, `cuzdan ${belgeler.length} belgeye bolundu`);
+    assert.equal(Number(belgeler[0].balance), N * 5);
+  });
+
+  test("indeks kod tarafından kurulur — ensure-indexes.cjs beklenmez", async () => {
+    // Sunucu betik çalıştırılmadan deploy edilirse koruma yine devrede olmalı.
+    await creditLc(db, "IndeksTest", 1, "test_odul");
+    const ix = await db.collection(COLL_USERS).indexes();
+    const uid = ix.find((i) => Object.keys(i.key).join() === "userIdLower");
+    assert.ok(uid, "userIdLower indeksi yok");
+    assert.equal(uid.unique, true, "userIdLower indeksi benzersiz degil");
+  });
+});

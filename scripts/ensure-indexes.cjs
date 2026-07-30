@@ -113,6 +113,32 @@ const { getDb } = require("../lib/mongo.cjs");
   await db.collection("pools").createIndex({ fixtureId: 1 }, { unique: true, background: true });
   console.log("indexes: pool OK");
 
+  /* ⚠️ CÜZDAN — PARA. `lc_wallet_users` hiç indekslenmemişti.
+   *
+   * creditLc `{userIdLower}` üzerinde `upsert:true` yapıyor. Benzersiz indeks
+   * yokken iki eşzamanlı upsert eşleşme bulamazsa İKİSİ DE ekler. Ölçüldü
+   * (40 eşzamanlı ödül): 2 belge, bakiyeler [195, 5]. Toplam doğru ama
+   * bölünmüş — `findOne` birini döndürdüğü için kullanıcı 5 LC görüyor.
+   *
+   * ÖNCE KOPYA VAR MI BAK: varsa createIndex zaten patlar, ama hata mesajı
+   * ("E11000") neyin yanlış olduğunu söylemez. Kopyaları birleştirmek elle
+   * karar gerektirir (hangi bakiye doğru?), o yüzden burada YAPMIYORUZ —
+   * yalnızca açıkça rapor ediyoruz.
+   */
+  const kopyalar = await db.collection("lc_wallet_users").aggregate([
+    { $group: { _id: "$userIdLower", n: { $sum: 1 }, bakiyeler: { $push: "$balance" } } },
+    { $match: { n: { $gt: 1 } } },
+  ]).toArray();
+  if (kopyalar.length) {
+    console.error(`\n⛔ ${kopyalar.length} kullanicida KOPYA CUZDAN var — benzersiz indeks kurulamaz:`);
+    for (const k of kopyalar) console.error(`   ${k._id}: ${k.n} belge, bakiyeler [${k.bakiyeler.join(", ")}]`);
+    console.error(`   Once bunlari elle birlestir (dogru bakiye = toplam), sonra bu betigi tekrar calistir.\n`);
+    process.exit(1);
+  }
+  await db.collection("lc_wallet_users").createIndex({ userIdLower: 1 }, { unique: true, background: true });
+  await db.collection("lc_wallet_ledger").createIndex({ userIdLower: 1, createdAt: -1 }, { background: true });
+  console.log("indexes: wallet OK");
+
   console.log(`veritabani: ${db.databaseName}`);
   process.exit(0);
 })().catch((e) => {
