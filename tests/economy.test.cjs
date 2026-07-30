@@ -331,3 +331,52 @@ describe("mağaza modu — varsayılan KAPALI olmalı", () => {
     assert.notEqual(modOku("gogglepay"), "mock");
   });
 });
+
+describe("gün sınırı — UTC değil Europe/Istanbul", () => {
+  /**
+   * Günlük hak ve seri hesabı `toISOString().slice(0,10)` kullanıyordu, yani
+   * UTC. Sunucu UTC çalışıyor (Render) ama kullanıcılar UTC+3'te: "gün" yerel
+   * saatle 00:00'da değil 03:00'te dönüyordu.
+   *
+   *   1) 00:00–03:00 arasında kullanıcı yeni güne girmiş olmasına rağmen
+   *      "bugün hakkını zaten aldın" cevabı alıyordu.
+   *   2) Seri HAKSIZ YERE kırılıyordu: Salı 01:00 ve Çarşamba 23:00'te alan
+   *      biri yerel olarak ardışık iki gün almış olur ama UTC anahtarları
+   *      07-27 ve 07-29 çıkar. Seri kademeleri (3/5/7 LC) buna dayanıyor.
+   */
+  const Season = require("../lib/season.cjs");
+
+  test("yerel gün 00:00'da döner (23:00 ile ertesi 01:00 farklı gün)", () => {
+    const sali23 = Season.dayKey(new Date("2026-07-28T20:00:00Z"));   // Salı 23:00 IST
+    const carsamba01 = Season.dayKey(new Date("2026-07-28T22:00:00Z")); // Çarşamba 01:00 IST
+    assert.notEqual(sali23, carsamba01, "yerel gun donmemis sayiliyor");
+    assert.equal(sali23, "2026-07-28");
+    assert.equal(carsamba01, "2026-07-29");
+  });
+
+  test("UTC dilimlemesi bu ayrımı KAÇIRIR (gerileme koruması)", () => {
+    const utcSali23 = new Date("2026-07-28T20:00:00Z").toISOString().slice(0, 10);
+    const utcCarsamba01 = new Date("2026-07-28T22:00:00Z").toISOString().slice(0, 10);
+    // Eski davranışın neden yanlış olduğunu belgeler: ikisi de aynı UTC günü.
+    assert.equal(utcSali23, utcCarsamba01);
+  });
+
+  test("yerel olarak ardışık günlerde seri sürer", () => {
+    const oncekiAlis = Season.dayKey(new Date("2026-07-27T22:00:00Z")); // Salı 01:00 IST
+    const bugun = Season.dayKey(new Date("2026-07-29T20:00:00Z"));      // Çarşamba 23:00 IST
+    assert.equal(oncekiAlis, "2026-07-28");
+    assert.equal(bugun, "2026-07-29");
+    assert.equal(Season.previousDayKey(new Date(bugun + "T12:00:00Z")), oncekiAlis);
+  });
+
+  test("gerçekten atlanan gün seriyi kırar", () => {
+    const bugun = "2026-07-30";
+    assert.notEqual(Season.previousDayKey(new Date(bugun + "T12:00:00Z")), "2026-07-28");
+    assert.equal(Season.previousDayKey(new Date(bugun + "T12:00:00Z")), "2026-07-29");
+  });
+
+  test("ay ve yıl sınırında doğru komşu gün", () => {
+    assert.equal(Season.previousDayKey(new Date("2026-08-01T12:00:00Z")), "2026-07-31");
+    assert.equal(Season.previousDayKey(new Date("2026-01-01T12:00:00Z")), "2025-12-31");
+  });
+});

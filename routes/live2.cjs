@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const Season = require("../lib/season.cjs");
 const { tsdbKickoffISO } = require("../lib/tsdb-time.cjs");
 const router = express.Router();
 
@@ -411,6 +412,9 @@ async function loadProv() {
 
   // Günlük kota sıfırlama: gün değiştiyse tüm used sayaçlarını sıfırla.
   // (Sayaç hiç sıfırlanmayınca AF kalıcı olarak "kota dolu" sanılıp atlanıyordu.)
+  // ⚠️ BURASI BILEREK UTC: dis saglayicilarin gunluk kotasi UTC gece
+  // yarisinda doner. Yerel gune cevirmek sayaci saglayiciyla desenkron
+  // yapardi. (Kullaniciya gorunen gun hesaplari icin Season.dayKey.)
   const today = new Date().toISOString().slice(0, 10);
   if (m.quotaDay !== today) {
     m.quotaDay = today;
@@ -628,7 +632,10 @@ async function readFxCache(isoDate) {
   const f = path.join(FX_CACHE_DIR, `fx-${isoDate}.json`);
   const c = await readJson(f, null);
   if (!c || !Array.isArray(c.items) || !Number.isFinite(c.at)) return null;
-  const today = new Date().toISOString().slice(0, 10);
+  // ⚠️ YEREL GUN: "bugun" UTC ile hesaplaninca yerel 00:00–03:00 arasinda
+  // bugunun fikstur onbellegi "eski gun" sayilip UZUN TTL aliyordu, yani
+  // gunun ilk saatlerinde bayat veri gosteriliyordu.
+  const today = Season.dayKey();
   const ttl = isoDate === today ? FX_CACHE_TTL_TODAY_MS : FX_CACHE_TTL_OTHER_MS;
   if (Date.now() - c.at > ttl) return null;
   return c.items;

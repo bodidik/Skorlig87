@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const Season = require("../lib/season.cjs");
 const router = express.Router();
 const fetch = globalThis.fetch || require("node-fetch");
 const { calcOdds, lcReward } = require("../services/odds-engine.cjs");
@@ -72,7 +73,10 @@ async function fetchLeagueFixtures(leagueId, dateStr) {
 router.get("/singles", async (req, res) => {
   const country = String(req.query.country || "").trim();
   const limit = Math.min(8, Math.max(1, Number(req.query.limit) || 5));
-  const dateStr = new Date().toISOString().slice(0, 10);
+  // ⚠️ TARIH ISTANBUL'A GORE. Ayni istek API'ye `timezone: "Europe/Istanbul"`
+  // gonderiyor (bkz. fetchLeagueFixtures) ama tarih UTC hesaplaniyordu: yerel
+  // 00:00–03:00 arasinda DUNUN maclari isteniyordu.
+  const dateStr = Season.dayKey();
 
   try {
     const localLeagues = (country && COUNTRY_LEAGUES[country]) || [];
@@ -112,7 +116,10 @@ router.get("/singles", async (req, res) => {
 // GET /api/daily-picks/quad?country=Türkiye
 router.get("/quad", async (req, res) => {
   const country = String(req.query.country || "").trim();
-  const dateStr = new Date().toISOString().slice(0, 10);
+  // ⚠️ TARIH ISTANBUL'A GORE. Ayni istek API'ye `timezone: "Europe/Istanbul"`
+  // gonderiyor (bkz. fetchLeagueFixtures) ama tarih UTC hesaplaniyordu: yerel
+  // 00:00–03:00 arasinda DUNUN maclari isteniyordu.
+  const dateStr = Season.dayKey();
 
   try {
     const localLeagues = (country && COUNTRY_LEAGUES[country]) || [];

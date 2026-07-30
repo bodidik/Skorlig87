@@ -8,6 +8,8 @@ const path    = require("path");
 
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+// Gun anahtari TZ'ye gore (bkz. lib/season.cjs dayKey notu): ISO dilimlemek UTC verir.
+const Season = require("../lib/season.cjs");
 
 const DATA_DIR    = path.join(__dirname, "..", "data");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
@@ -103,10 +105,11 @@ function gunlukMiktar(bakiye, premium, seri) {
 /** Dünden bugüne kesintisiz mi? "2026-07-29" → "2026-07-30" ise evet. */
 function seriDevamMi(lastDailyAt, bugun) {
   if (!lastDailyAt) return false;
-  const onceki = String(lastDailyAt).slice(0, 10);
-  const d = new Date(bugun + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() - 1);
-  return onceki === d.toISOString().slice(0, 10);
+  // ⚠️ İkisi de TZ gün anahtarı olmalı; ISO dilimlemek UTC verir ve yerel
+  // olarak ardışık iki gün arada boşluk varmış gibi görünür (seri kırılır).
+  const onceki = gunAnahtari(lastDailyAt);
+  if (!onceki) return false;
+  return onceki === Season.previousDayKey(new Date(bugun + "T12:00:00Z"));
 }
 const INITIAL_DEFAULT  = 30;
 const INITIAL_1987     = 60;
@@ -221,8 +224,22 @@ async function isUser1987MemberFromFile(userId, db) {
   return u.is1987 === true || seg === "1987";
 }
 
+/**
+ * ⚠️ ARTIK UTC DEĞIL. Eskiden `d.toISOString().slice(0,10)` idi; sunucu UTC
+ * çalışıyor (Render) ama kullanıcılar UTC+3'te, yani "gün" yerel saatle
+ * 03:00'te dönüyordu. Sonuçları için bkz. lib/season.cjs `dayKey` notu:
+ * 00:00–03:00 arasında "bugün zaten aldın" cevabı, ve seri kademelerinin
+ * haksız yere kırılması.
+ */
 function todayKey(d = new Date()) {
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  return Season.dayKey(d);
+}
+
+/** Saklanan ISO damgasını TZ gün anahtarına çevirir (dilimleme UTC verirdi). */
+function gunAnahtari(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : Season.dayKey(d);
 }
 
 function addLedgerEntryFile(state, { userId, kind, amount, reason, fixtureId, meta }) {
@@ -470,7 +487,7 @@ router.get("/lc-wallet/summary", async (req, res) => {
       }
 
       const today = todayKey();
-      const last  = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
+      const last  = gunAnahtari(user.lastDailyAt);
       const bugunAlindi = last === today;
 
       // ⚠️ ARAYÜZE GERÇEK MİKTAR GİDER, TABAN DEĞİL.
@@ -554,7 +571,7 @@ router.get("/lc-wallet/summary", async (req, res) => {
     });
 
     const today = todayKey();
-    const last  = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
+    const last  = gunAnahtari(user.lastDailyAt);
     const bugunAlindi = last === today;
 
     // ⚠️ ARAYÜZE GERÇEK MİKTAR GİDER, TABAN DEĞİL.
@@ -646,7 +663,7 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
       // — bugün eklenen "başarısız istekler sessiz kalmaz" kuralı sayesinde.
       const isPrem = await premium.isPremium(userId, db);
 
-      const last = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
+      const last = gunAnahtari(user.lastDailyAt);
       if (last === today) {
         return res.status(400).json({
           ok: false,
@@ -700,7 +717,7 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
       if (!updateResult.matchedCount) {
         const fresh = await col.findOne({ userIdLower: uidLower });
         const freshLast = fresh?.lastDailyAt
-          ? fresh.lastDailyAt.slice(0, 10)
+          ? gunAnahtari(fresh.lastDailyAt)
           : null;
 
         if (freshLast === today) {
@@ -793,7 +810,7 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
         });
       }
 
-      const last = u.lastDailyAt ? u.lastDailyAt.slice(0, 10) : null;
+      const last = gunAnahtari(u.lastDailyAt);
       if (last === today) {
         return {
           status: 400,
