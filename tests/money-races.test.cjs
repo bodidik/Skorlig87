@@ -636,3 +636,78 @@ describe("kritik iş sayacı — kapanış yarıda kesmesin", () => {
     assert.equal(aktifKritikIs(), 0);
   });
 });
+
+describe("fikstür kilidi — kapalı başarısızlık", () => {
+  /**
+   * `isFixtureLocked` ÜÇ yerde açık bırakıyordu: durum dosyası yoksa, başlama
+   * saati yoksa, başlama saati bozuksa → "kilitli değil". Yani bilinmeyen bir
+   * maç sonsuza kadar bahse açıktı.
+   *
+   * Kuramsal değildi: `data/live/*.json` Render'da kalıcı değil, her deploy
+   * siliniyor — deploy sonrası TÜM geçmiş maçlar "kilitli değil" görünüyordu.
+   * Üstelik /duels/create maç bilgisini istemci gövdesinden alıyor, yani
+   * sonucu bilinen bir maç için düello açıp habersiz birine kabul ettirmek
+   * mümkündü.
+   *
+   * Bu test dosya seviyesinde davranışı değil, KURALI korur: bilinmeyen ya da
+   * doğrulanamayan fikstür KİLİTLİ sayılmalı.
+   */
+  const path = require("path");
+  const fs = require("fs");
+
+  test("duels.cjs kaynağında fail-open dönüşler kalmamalı", () => {
+    const src = fs.readFileSync(path.join(__dirname, "..", "routes", "duels.cjs"), "utf8");
+    const fn = src.slice(src.indexOf("async function isFixtureLocked"));
+    const govde = fn.slice(0, fn.indexOf("\n}\n"));
+    for (const sebep of ["NO_FIXTURE", "FIXTURE_NOT_FOUND", "NO_KICKOFF", "BAD_KICKOFF"]) {
+      const re = new RegExp(`locked:\s*false[^}]*${sebep}`);
+      assert.ok(!re.test(govde), `${sebep} hâlâ locked:false donuyor`);
+    }
+  });
+
+  test("bilinmeyen fikstür için kilitli dönülür", () => {
+    const src = fs.readFileSync(path.join(__dirname, "..", "routes", "duels.cjs"), "utf8");
+    assert.ok(/locked:\s*true,\s*reason:\s*"FIXTURE_NOT_FOUND"/.test(src),
+      "FIXTURE_NOT_FOUND kilitli donmuyor");
+  });
+});
+
+describe("tahmin kilidi — kapalı başarısızlık, ama oyunu durdurmadan", () => {
+  /**
+   * `computePredLock` üç yerde açık bırakıyordu ("yanlış bloklamayalım"
+   * gerekçesiyle): durum dosyası yok / başlama saati yok / bozuk.
+   *
+   * `data/live/*.json` Render'da kalıcı değil — her deploy siliniyor, yani
+   * deploy sonrası TÜM maçlar tahmine açık görünüyordu. En riskli pencere:
+   * maç BİTMİŞ ama henüz settle edilmemişken sonucu bilinen maça tahmin.
+   *
+   * ⚠️ ASIL RİSK KAPATIRKEN: kapalı başarısızlık yanlış uygulanırsa meşru
+   * tahmin de reddedilir ve oyun durur. Bu yüzden durum dosyası yoksa fikstür
+   * DEPOSUNA düşülüyor; gelecek maç kabul edilmeye devam ediyor.
+   */
+  const fs = require("fs");
+  const path = require("path");
+  const kaynak = () =>
+    fs.readFileSync(path.join(__dirname, "..", "routes", "pred.cjs"), "utf8");
+
+  test("bilinmeyen/doğrulanamayan fikstür kilitli döner", () => {
+    const s = kaynak();
+    assert.ok(/locked:\s*true,\s*reason:\s*"FIXTURE_NOT_FOUND"/.test(s));
+    assert.ok(/locked:\s*true,\s*reason:\s*"FIXTURE_CHECK_FAILED"/.test(s));
+  });
+
+  test("başlama saati yok/bozuk artık açık bırakmıyor", () => {
+    const s = kaynak();
+    assert.ok(!/locked:\s*false,\s*reason:\s*"NO_KICKOFF"/.test(s), "NO_KICKOFF hâlâ açık");
+    assert.ok(!/locked:\s*false,\s*reason:\s*"BAD_KICKOFF"/.test(s), "BAD_KICKOFF hâlâ açık");
+    assert.ok(!/locked:\s*false,\s*reason:\s*"NO_STATE"/.test(s), "NO_STATE hâlâ açık");
+  });
+
+  test("durum dosyası yoksa fikstür deposuna düşülür (meşru oyun engellenmesin)", () => {
+    const s = kaynak();
+    const fn = s.slice(s.indexOf("async function computePredLock"));
+    const govde = fn.slice(0, fn.indexOf("\n}\n"));
+    assert.ok(/FixturesStore\.loadAll/.test(govde),
+      "durum dosyasi yokken depoya bakilmiyor — gelecek maclar da reddedilir");
+  });
+});

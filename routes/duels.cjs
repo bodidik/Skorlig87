@@ -12,6 +12,9 @@ const { verifyToken } = require("../middleware/verifyToken.cjs");
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const DUELS_FILE = path.join(DATA_DIR, "duels.json");
 const SocialStore = require("../lib/social-store.cjs");
+// Fikstur dogrulamasi icin (bkz. isFixtureLocked): durum dosyasi Render'da
+// kalici degil, deposu yetkili kaynak.
+const FixturesStore = require("../lib/fixtures-store.cjs");
 const premium = require("../lib/premium.cjs");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
@@ -92,12 +95,39 @@ function getDb(req) {
 const LIVE_DIR = path.join(DATA_DIR, "live");
 const DUEL_LOCK_BEFORE_MIN = 10;
 
-async function isFixtureLocked(fixtureId) {
+/**
+ * ⚠️ ARTIK KAPALI BAŞARISIZLIK. Önceki hâli ÜÇ yerde açık bırakıyordu:
+ * durum dosyası yoksa, başlama saati yoksa, başlama saati bozuksa → "kilitli
+ * değil". Yani bilinmeyen bir maç sonsuza kadar bahse açıktı.
+ *
+ * Bu kuramsal değildi: `data/live/*.json` Render'da KALICI DEĞİL, her deploy
+ * siliniyor. Deploy sonrası geçmiş maçların durum dosyası yok, yani hepsi
+ * "kilitli değil" görünüyordu. Üstelik `/duels/create` maç bilgisini
+ * (home/away/kickoffISO) İSTEMCİ GÖVDESİNDEN alıyor — yani sonucu bilinen bir
+ * maç için düello açıp habersiz birine kabul ettirmek mümkündü.
+ *
+ * Artık durum dosyası yoksa FİKSTÜR DEPOSUNA bakılıyor (Mongo birincil,
+ * deploy'dan etkilenmez) ve maç orada da yoksa KİLİTLİ sayılıyor.
+ */
+async function isFixtureLocked(fixtureId, db = null) {
   const fid = String(fixtureId || "").trim();
-  if (!fid) return { locked: false, reason: "NO_FIXTURE" };
+  if (!fid) return { locked: true, reason: "NO_FIXTURE" };
 
-  const st = await readJson(path.join(LIVE_DIR, `${fid}.json`), null);
-  if (!st || typeof st !== "object") return { locked: false, reason: "NO_STATE" };
+  let st = await readJson(path.join(LIVE_DIR, `${fid}.json`), null);
+
+  if (!st || typeof st !== "object") {
+    // Durum dosyası yok (ya da deploy sildi) — fikstür deposu yetkili kaynak.
+    try {
+      const hepsi = await FixturesStore.loadAll(db);
+      const fx = (hepsi || []).find((f) => String(f?.fixtureId || "") === fid);
+      if (!fx) return { locked: true, reason: "FIXTURE_NOT_FOUND" };
+      st = { status: fx.status || "NS", kickoffISO: fx.kickoffISO || fx.kickoff || null };
+    } catch (e) {
+      // Depoya da ulaşamıyorsak karar veremeyiz → güvenli taraf: KİLİTLİ.
+      console.error("[duels] fikstur dogrulanamadi, kilitli sayiliyor:", e?.message || e);
+      return { locked: true, reason: "FIXTURE_CHECK_FAILED" };
+    }
+  }
 
   const status = String(st.status || "").toUpperCase();
   if (status && status !== "NS") {
@@ -105,10 +135,10 @@ async function isFixtureLocked(fixtureId) {
   }
 
   const kickoffISO = st.kickoffISO || st.kickoff || null;
-  if (!kickoffISO) return { locked: false, reason: "NO_KICKOFF" };
+  if (!kickoffISO) return { locked: true, reason: "NO_KICKOFF" };
 
   const koMs = new Date(String(kickoffISO)).getTime();
-  if (!Number.isFinite(koMs)) return { locked: false, reason: "BAD_KICKOFF" };
+  if (!Number.isFinite(koMs)) return { locked: true, reason: "BAD_KICKOFF" };
 
   const lockAt = koMs - DUEL_LOCK_BEFORE_MIN * 60 * 1000;
   if (Date.now() >= lockAt) {
@@ -427,7 +457,7 @@ router.post("/duels/create", verifyToken, async (req, res) => {
     }
 
     // 🔒 Maç başladıysa düello kurulamaz
-    const lock = await isFixtureLocked(fx);
+    const lock = await isFixtureLocked(fx, db);
     if (lock.locked) {
       return res.status(409).json({ ok: false, error: lock.reason, fixtureId: fx, lockAtISO: lock.lockAtISO || null });
     }
@@ -523,7 +553,7 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
       }
 
       // 🔒 Maç başladıysa düello kabul edilemez
-      const lock = await isFixtureLocked(duel.fixtureId);
+      const lock = await isFixtureLocked(duel.fixtureId, db);
       if (lock.locked) { result = { err: lock.reason }; return; }
 
       // Bahsi burada tahsil ediyoruz; kabulün KENDİSİ kilidin dışında

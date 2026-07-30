@@ -656,15 +656,36 @@ async function getPredFlagsFromMongo(db, userId, fixtureIdsFilter) {
 // kickoff'tan kaç dakika önce kilitleyelim?
 const PRED_LOCK_BEFORE_MIN = 10;
 
-async function computePredLock(fixtureId) {
+/**
+ * ⚠️ ARTIK KAPALI BAŞARISIZLIK. Önceki hâli üç yerde açık bırakıyordu
+ * ("yanlış bloklamayalım" gerekçesiyle): durum dosyası yoksa, başlama saati
+ * yoksa, başlama saati bozuksa → kilitli değil.
+ *
+ * `data/live/*.json` Render'da KALICI DEĞİL — her deploy siliniyor. Deploy
+ * sonrası tüm maçların durum dosyası yok, yani hepsi tahmine açık görünüyordu.
+ * En riskli pencere: maç BİTMİŞ ama henüz settle edilmemişken (settle
+ * zamanlayıcıyla çalışır) sonucu bilinen maça tahmin girilebilirdi.
+ *
+ * Artık durum dosyası yoksa FİKSTÜR DEPOSU (Mongo birincil, deploy'dan
+ * etkilenmez) yetkili kaynak; maç orada da yoksa kilitli sayılıyor.
+ * Aynı düzeltme routes/duels.cjs `isFixtureLocked` içinde de yapıldı.
+ */
+async function computePredLock(fixtureId, db = null) {
   const fx = String(fixtureId || "").trim();
-  if (!fx) return { locked: false, reason: "FIXTURE_ID_REQUIRED", lock: null };
+  if (!fx) return { locked: true, reason: "FIXTURE_ID_REQUIRED", lock: null };
 
   // state dosyası varsa oradan oku
-  const st = await readJson(stateFile(fx), null);
+  let st = await readJson(stateFile(fx), null);
   if (!st || typeof st !== "object") {
-    // state yoksa kilitleme yapma (yanlış bloklamayalım)
-    return { locked: false, reason: "NO_STATE", lock: null };
+    try {
+      const hepsi = await FixturesStore.loadAll(db);
+      const f = (hepsi || []).find((x) => String(x?.fixtureId || "") === fx);
+      if (!f) return { locked: true, reason: "FIXTURE_NOT_FOUND", lock: null };
+      st = { status: f.status || "NS", kickoffISO: f.kickoffISO || f.kickoff || null };
+    } catch (e) {
+      console.error("[pred] fikstur dogrulanamadi, kilitli sayiliyor:", e?.message || e);
+      return { locked: true, reason: "FIXTURE_CHECK_FAILED", lock: null };
+    }
   }
 
   const status = String(st.status || "").toUpperCase();
@@ -680,13 +701,13 @@ async function computePredLock(fixtureId) {
   }
 
   if (!kickoffISO) {
-    // kickoff yoksa kilitleme yapma
-    return { locked: false, reason: "NO_KICKOFF", lock: { status, kickoffISO: null, lockAtISO: null } };
+    // Başlama saati bilinmiyorsa karar veremeyiz → kilitli (bkz. fonksiyon notu).
+    return { locked: true, reason: "NO_KICKOFF", lock: { status, kickoffISO: null, lockAtISO: null } };
   }
 
   const koMs = new Date(String(kickoffISO)).getTime();
   if (!Number.isFinite(koMs)) {
-    return { locked: false, reason: "BAD_KICKOFF", lock: { status, kickoffISO: String(kickoffISO), lockAtISO: null } };
+    return { locked: true, reason: "BAD_KICKOFF", lock: { status, kickoffISO: String(kickoffISO), lockAtISO: null } };
   }
 
   const lockAt = koMs - PRED_LOCK_BEFORE_MIN * 60 * 1000;
@@ -704,8 +725,11 @@ async function computePredLock(fixtureId) {
   };
 }
 
-async function assertPredNotLocked(fixtureId) {
-  return computePredLock(fixtureId);
+async function assertPredNotLocked(fixtureId, db = null) {
+  // ⚠️ `db` GEÇİLMELİ: durum dosyası yoksa kilit fikstür deposuna bakıyor.
+  // Geçilmezse depo kendi bağlantısını kurar (yavaş) ya da bulamayıp
+  // fixtureId'yi bilinmeyen sayar — yani meşru tahmin reddedilir.
+  return computePredLock(fixtureId, db);
 }
 
 // ----------------- ANA ROUTE: HUMAN SUBMIT -----------------
@@ -752,7 +776,7 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
 
     // 🔒 Kickoff kilidi: maç başladıktan sonra tahmin gönderilemez / değiştirilemez
     // (aksi halde skoru görüp tahmin değiştirerek her maçı doğru bilmek mümkün olur)
-    const lockRes = await assertPredNotLocked(fx);
+    const lockRes = await assertPredNotLocked(fx, getDb(req));
     if (lockRes.locked) {
       return res.status(409).json({
         ok: false,
@@ -1457,7 +1481,7 @@ router.post("/pred/bots-generate", requireAdminToken, async (req, res) => {
       });
     }
         // ✅ Botlar da aynı kilide tabi (oyun oturana kadar aynı kural)
-    const lockRes = await assertPredNotLocked(fx);
+    const lockRes = await assertPredNotLocked(fx, getDb(req));
     if (lockRes.locked) {
       return res.status(409).json({
         ok: false,
