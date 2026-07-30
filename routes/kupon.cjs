@@ -10,7 +10,10 @@
  *   ulke   → her ülke kendi ligi, hafta sonu, kendi tablosu
  *   avrupa → hafta ortası kupa maçları, TEK kupon, tüm ülkeler aynı tabloda
  *
- * KATILIM PENCERESİ: ilk maç başlayana kadar. Kilit `kilitISO` ile tutuluyor
+ * KATILIM PENCERESİ: ilk maçtan 1 SAAT ÖNCE kapanır (bkz. lib/kupon.cjs
+ * KILIT_ONCE_DK — fikstür saatleri dış kaynaklardan geliyor ve gecikmeli
+ * olabiliyor; tampon olmadan maç başlamışken katılmak mümkün olurdu).
+ * Kilit `kilitISO` ile tutuluyor
  * ve her istekte kontrol ediliyor — zamanlayıcıya güvenilmiyor, çünkü Render
  * ücretsiz katmanda süreç uyutulabiliyor.
  */
@@ -86,6 +89,8 @@ async function kuponKur({ tur, ulke, haftaKey }, db) {
   }
 
   const ilkKickoff = maclar[0].kickoffISO || maclar[0].kickoffDate;
+  // Katılım ilk maçtan KILIT_ONCE_DK dakika önce kapanır (bkz. lib/kupon.cjs).
+  const kilitMs = new Date(ilkKickoff).getTime() - Kupon.KILIT_ONCE_DK * 60 * 1000;
   const kupon = {
     id: `kp_${tur}_${ulke || "AVRUPA"}_${haftaKey}`.replace(/\s+/g, "-"),
     tur, ulke: ulke ?? null, haftaKey,
@@ -95,7 +100,8 @@ async function kuponKur({ tur, ulke, haftaKey }, db) {
       kickoffISO: m.kickoffISO || m.kickoffDate, league: m.league || null,
     })),
     girisBedeli: Kupon.GIRIS_BEDELI[tur],
-    kilitISO: ilkKickoff,           // katılım ilk maça kadar
+    ilkKickoffISO: ilkKickoff,
+    kilitISO: new Date(kilitMs).toISOString(),
     durum: "open",
     olusturulduAt: new Date().toISOString(),
   };

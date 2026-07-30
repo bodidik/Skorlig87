@@ -129,3 +129,34 @@ describe("kupon planlayıcı — otomatik kurulum", () => {
       "yeni arka plan servisi ana saltere eklenmemis — SKORLIG_BG=0 onu kapatmaz");
   });
 });
+
+describe("kupon — katılım kilidi ilk maçtan ÖNCE kapanır", () => {
+  /**
+   * ⚠️ Kilit ilk maçın tam başlama anı DEĞİL, ondan KILIT_ONCE_DK dakika önce.
+   *
+   * Sebep: fikstür saatleri dış kaynaklardan geliyor ve gecikmeli/yanlış
+   * olabiliyor. Tampon olmadan, maç fiilen başlamışken kupon "açık" görünür ve
+   * sonucu bilerek katılmak mümkün olurdu. Aynı sınıf risk bu oturumda
+   * `pred.cjs` ve `duels.cjs` kilitlerinde de bulunmuştu.
+   *
+   * Tampon KISALTILIRSA bu test uyarır — düşürmeden önce fikstür saatlerinin
+   * güvenilirliğini ölç.
+   */
+  const K = require("../lib/kupon.cjs");
+  const fs = require("fs");
+  const path = require("path");
+
+  test("tampon tanımlı ve sıfırdan büyük", () => {
+    assert.ok(Number.isFinite(K.KILIT_ONCE_DK));
+    assert.ok(K.KILIT_ONCE_DK > 0,
+      "tampon 0 — mac baslamisken katilim mumkun olur (fikstur saatleri gecikmeli olabiliyor)");
+  });
+
+  test("kupon kurulurken kilit ilk kickoff'tan tampon kadar geriye alınıyor", () => {
+    const src = fs.readFileSync(path.join(__dirname, "..", "routes", "kupon.cjs"), "utf8");
+    assert.ok(/KILIT_ONCE_DK\s*\*\s*60\s*\*\s*1000/.test(src),
+      "kilit hesabinda tampon kullanilmiyor — kilitISO dogrudan kickoff olabilir");
+    assert.ok(!/kilitISO:\s*ilkKickoff\s*[,;]/.test(src),
+      "kilitISO hala dogrudan ilk kickoff");
+  });
+});
