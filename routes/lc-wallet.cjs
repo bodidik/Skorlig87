@@ -129,12 +129,37 @@ const WALLET_FILE_MIRROR =
 
 /* =========================
  *  LC MAĞAZASI (ücret karşılığı token)
- *  SKORLIG_STORE_MODE=mock  -> test modu: anında yüklenir (varsayılan)
- *  SKORLIG_STORE_MODE=disabled -> satın alma kapalı
+ *
+ *  SKORLIG_STORE_MODE=disabled -> satın alma kapalı  ⬅ VARSAYILAN
+ *  SKORLIG_STORE_MODE=mock     -> test modu: ÖDEME ALMADAN anında yükler
+ *
+ *  ⚠️ VARSAYILAN `mock`TAN `disabled`A ÇEVRİLDİ.
+ *
+ *  Eskiden değişken tanımlı değilse mod `mock` oluyordu, yani üretimde bu
+ *  değişkeni ayarlamayı unutmak "herkese bedava LC" demekti. Kimlik doğrulaması
+ *  olan her kullanıcı `/purchase` çağırıp `lc_200` paketini (200 LC / 99,99 TL)
+ *  ödemesiz alabilirdi; hız sınırı 5/dk olduğu için hesap başına dakikada
+ *  1000 LC. Günlük LC hakkı 3-7 LC.
+ *
+ *  Bugün aynı desen iki yerde daha çıktı (yönetici token'ı, 1987 grup kodu):
+ *  yapılandırma eksikse KAPALI kal, zayıf bir varsayılana düşme. Test modunu
+ *  isteyen açıkça `SKORLIG_STORE_MODE=mock` yazar.
+ *
  *  Gerçek yayında: Google Play Billing / App Store IAP makbuz doğrulaması
- *  purchase endpoint'ine eklenmeli (provider:"google"|"apple" dalı).
+ *  purchase endpoint'ine eklenmeli (provider:"google"|"apple" dalı). O gelene
+ *  kadar doğru davranış satın almayı kapalı tutmaktır — kullanıcı LC'yi
+ *  günlük hak, seri bonusu ve oyunla kazanır.
  * ========================= */
-const STORE_MODE = String(process.env.SKORLIG_STORE_MODE || "mock").toLowerCase();
+const STORE_MODE = String(process.env.SKORLIG_STORE_MODE || "disabled").toLowerCase();
+
+// ⚠️ Mock açıkken SESSİZ KALMA: üretimde yanlışlıkla açık kalırsa log'da
+// görünsün. Sessiz bir "bedava LC" modu, fark edilmesi en zor para hatasıdır.
+if (STORE_MODE === "mock") {
+  console.warn(
+    "[lc-wallet] ⚠️ MAGAZA MOCK MODUNDA — satin almalar ODEME ALINMADAN yukleniyor. " +
+    "Bu yalnizca gelistirme icindir; uretimde SKORLIG_STORE_MODE=disabled olmali."
+  );
+}
 
 const LC_PACKAGES = [
   // Tokeni tükenen kullanıcı için ucuz, hızlı "acil giriş" paketi (en az 3 maç girişi eder)
@@ -1193,3 +1218,6 @@ router.post("/lc-wallet/premium/subscribe", verifyToken, express.json(), async (
 });
 
 module.exports = router;
+// Test icin: magaza modunun VARSAYILANI kapali olmali. Varsayilan 
+// iken degiskeni ayarlamayi unutmak "herkese bedava LC" demekti.
+module.exports._STORE_MODE = STORE_MODE;

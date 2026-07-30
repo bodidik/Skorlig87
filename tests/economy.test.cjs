@@ -294,3 +294,40 @@ describe("ekonomi raporu — bir kerelik girişler oranı bozmamalı", () => {
     assert.equal(a.girisCikisOrani, null, "cikis yokken oran hesaplanmamali");
   });
 });
+
+describe("mağaza modu — varsayılan KAPALI olmalı", () => {
+  /**
+   * `SKORLIG_STORE_MODE` varsayılanı `mock`tu: değişkeni ayarlamayı unutmak
+   * üretimde "herkese bedava LC" demekti. Kimliği olan her kullanıcı
+   * /lc-wallet/purchase çağırıp lc_200 paketini (200 LC / 99,99 TL) ödemesiz
+   * alabilirdi; hız sınırı 5/dk olduğu için dakikada 1000 LC.
+   *
+   * Aynı gün iki yerde daha çıkan desen (yönetici token'ı, 1987 grup kodu):
+   * yapılandırma eksikse KAPALI kal, zayıf varsayılana düşme.
+   */
+  function modOku(deger) {
+    const onceki = process.env.SKORLIG_STORE_MODE;
+    if (deger === null) delete process.env.SKORLIG_STORE_MODE;
+    else process.env.SKORLIG_STORE_MODE = deger;
+    delete require.cache[require.resolve("../routes/lc-wallet.cjs")];
+    const m = require("../routes/lc-wallet.cjs")._STORE_MODE;
+    if (onceki === undefined) delete process.env.SKORLIG_STORE_MODE;
+    else process.env.SKORLIG_STORE_MODE = onceki;
+    delete require.cache[require.resolve("../routes/lc-wallet.cjs")];
+    return m;
+  }
+
+  test("değişken tanımsızken mod 'disabled' olur (asla 'mock' değil)", () => {
+    assert.equal(modOku(null), "disabled");
+  });
+
+  test("mock yalnızca AÇIKÇA istendiğinde açılır", () => {
+    assert.equal(modOku("mock"), "mock");
+    assert.equal(modOku("disabled"), "disabled");
+  });
+
+  test("tanınmayan değer mock'a düşmez", () => {
+    // Bilinmeyen mod purchase'ta 501 döner; sessizce ödemesiz yüklemez.
+    assert.notEqual(modOku("gogglepay"), "mock");
+  });
+});
