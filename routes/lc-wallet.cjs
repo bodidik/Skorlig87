@@ -47,8 +47,12 @@ const DAILY_LC         = 5;
  * İlk gün tek seferlik ~3.185 LC basılır (mevcut 838 cüzdanın çoğu taban
  * altında); sonrası oyuncunun harcamasına bağlı ve üst sınırı 6/gün.
  */
-const DAILY_FLOOR      = Number(process.env.SKORLIG_DAILY_FLOOR || 6);
+const DAILY_FLOOR      = Number(process.env.SKORLIG_DAILY_FLOOR || 3);
 const DAILY_FLOOR_PREM = Number(process.env.SKORLIG_DAILY_FLOOR_PREMIUM || 12);
+// Üst üste gün kademeleri (bkz. gunlukTaban). Kullanıcı isteği: temel miktar
+// 3-4 LC, süreklilik ödüllensin.
+const DAILY_FLOOR_3 = Number(process.env.SKORLIG_DAILY_FLOOR_STREAK3 || 5);
+const DAILY_FLOOR_7 = Number(process.env.SKORLIG_DAILY_FLOOR_STREAK7 || 7);
 
 /**
  * Bugün verilecek LC miktarı.
@@ -56,10 +60,54 @@ const DAILY_FLOOR_PREM = Number(process.env.SKORLIG_DAILY_FLOOR_PREMIUM || 12);
  * @param {boolean} premium
  * @returns {number} 0 ise verilecek bir şey yok (taban zaten aşılmış)
  */
-function gunlukMiktar(bakiye, premium) {
-  const taban = premium ? DAILY_FLOOR_PREM : DAILY_FLOOR;
+/**
+ * ÜST ÜSTE GÜN SAYISINA GÖRE TABAN.
+ *
+ * Kullanıcı isteği: günlük miktar 3-4 LC yeterli, ama üst üste alana bonus
+ * olsun. Bonusu TABANA EKLEMEK yerine TABANI YÜKSELTEREK veriyoruz —
+ * koşulsuz ekleme birikir, tamamlama birikmez. (Aynı gerekçe premium aylık
+ * kasasını 300 LC'den 60 LC tabanına çevirirken de geçerliydi.)
+ *
+ *   1-2. gün : 3 LC   (1 maç)
+ *   3-6. gün : 5 LC
+ *   7+  gün  : 7 LC   (2 maç + artakalan)
+ *
+ * ⚠️ ÜST SINIR KURALI KORUNUYOR: taban, günlük oyun bedelinin 3 katından az
+ * kalmalı (7 < 9). Aksi halde her şeyini kaybeden oyuncu ertesi gün tam
+ * tamamlanır ve kaybetmek bedava olur — iade eşiği düzeltmesi anlamsızlaşır.
+ * bkz. tests/economy.test.cjs
+ */
+function gunlukTaban(seri, premium) {
+  if (premium) return DAILY_FLOOR_PREM;
+  const g = Number(seri || 0);
+  if (g >= 7) return DAILY_FLOOR_7;
+  if (g >= 3) return DAILY_FLOOR_3;
+  return DAILY_FLOOR;
+}
+
+/**
+ * Bugün gerçekte kaç LC verilecek.
+ *
+ * ⚠️ BU DEĞER ARAYÜZE DE GİDER. Eskiden özet yanıtı `daily.amount` alanında
+ * TABANI bildiriyordu (6), oysa bakiye tabanın üstündeyse verilen 0 oluyordu.
+ * Yani sistem 6 vaat edip 0 veriyor, `canClaim` de true kalıyordu: kullanıcı
+ * butona basıyor, hiçbir şey almıyor, üstüne GÜNÜN HAKKI YANIYORDU
+ * (lastDailyAt yazılıyor). Ölçüldü (2026-07-30): bakiye 21, amount 6,
+ * canClaim true, gerçek kazanç 0.
+ */
+function gunlukMiktar(bakiye, premium, seri) {
+  const taban = gunlukTaban(seri, premium);
   const b = Number(bakiye || 0);
   return b >= taban ? 0 : Math.round((taban - b) * 10) / 10;
+}
+
+/** Dünden bugüne kesintisiz mi? "2026-07-29" → "2026-07-30" ise evet. */
+function seriDevamMi(lastDailyAt, bugun) {
+  if (!lastDailyAt) return false;
+  const onceki = String(lastDailyAt).slice(0, 10);
+  const d = new Date(bugun + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() - 1);
+  return onceki === d.toISOString().slice(0, 10);
 }
 const INITIAL_DEFAULT  = 30;
 const INITIAL_1987     = 60;
@@ -399,8 +447,25 @@ router.get("/lc-wallet/summary", async (req, res) => {
 
       const today = todayKey();
       const last  = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
-      const canClaim = !last || last !== today;
-      const dailyAmount = premium.dailyLc(isPrem);
+      const bugunAlindi = last === today;
+
+      // ⚠️ ARAYÜZE GERÇEK MİKTAR GİDER, TABAN DEĞİL.
+      // Eskiden `premium.dailyLc(isPrem)` (yani TABAN) bildiriliyordu; bakiye
+      // tabanın üstündeyse verilen 0 olduğu hâlde arayüz "6 LC" vaat ediyordu.
+      // Ölçüldü (2026-07-30): bakiye 21, amount 6, canClaim true, gerçek 0.
+      const seri = bugunAlindi
+        ? Number(user.dailyStreak || 0)
+        : (seriDevamMi(user.lastDailyAt, today) ? Number(user.dailyStreak || 0) + 1 : 1);
+      const dailyAmount = bugunAlindi ? 0 : gunlukMiktar(Number(user.balance || 0), isPrem, seri);
+
+      // Bakiye zaten tabanın üstündeyse buton AÇIK KALMAMALI: basınca 0 LC gelir
+      // ve günün hakkı boşa yanar (lastDailyAt yazılır).
+      const canClaim = !bugunAlindi && dailyAmount > 0;
+      const claimReason = bugunAlindi
+        ? "ALREADY_CLAIMED"
+        : dailyAmount > 0
+        ? null
+        : "BALANCE_ABOVE_FLOOR";
 
       return res.json({
         ok: true,
@@ -417,6 +482,9 @@ router.get("/lc-wallet/summary", async (req, res) => {
           today,
           canClaim,
           amount: dailyAmount,
+          reason: claimReason,   // neden alınamıyor — arayüz sessiz kalmasın
+          streak: seri,
+          floor: gunlukTaban(seri, isPrem),
         },
         pricing: {
           daily: dailyAmount,
@@ -463,8 +531,25 @@ router.get("/lc-wallet/summary", async (req, res) => {
 
     const today = todayKey();
     const last  = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
-    const canClaim = !last || last !== today;
-    const dailyAmount = premium.dailyLc(isPrem);
+    const bugunAlindi = last === today;
+
+    // ⚠️ ARAYÜZE GERÇEK MİKTAR GİDER, TABAN DEĞİL.
+    // Eskiden `premium.dailyLc(isPrem)` (yani TABAN) bildiriliyordu; bakiye
+    // tabanın üstündeyse verilen 0 olduğu hâlde arayüz "6 LC" vaat ediyordu.
+    // Ölçüldü (2026-07-30): bakiye 21, amount 6, canClaim true, gerçek 0.
+    const seri = bugunAlindi
+      ? Number(user.dailyStreak || 0)
+      : (seriDevamMi(user.lastDailyAt, today) ? Number(user.dailyStreak || 0) + 1 : 1);
+    const dailyAmount = bugunAlindi ? 0 : gunlukMiktar(Number(user.balance || 0), isPrem, seri);
+
+    // Bakiye zaten tabanın üstündeyse buton AÇIK KALMAMALI: basınca 0 LC gelir
+    // ve günün hakkı boşa yanar (lastDailyAt yazılır).
+    const canClaim = !bugunAlindi && dailyAmount > 0;
+    const claimReason = bugunAlindi
+      ? "ALREADY_CLAIMED"
+      : dailyAmount > 0
+      ? null
+      : "BALANCE_ABOVE_FLOOR";
 
     return res.json({
       ok: true,
@@ -480,6 +565,9 @@ router.get("/lc-wallet/summary", async (req, res) => {
         today,
         canClaim,
         amount: dailyAmount,
+        reason: claimReason,
+        streak: seri,
+        floor: gunlukTaban(seri, isPrem),
       },
       pricing: {
         daily: dailyAmount,
@@ -539,7 +627,25 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
       const nowISO = new Date().toISOString();
 
       // TABANA TAMAMLAMA — koşulsuz ekleme DEĞİL. Bkz. gunlukMiktar().
-      const verilecek = gunlukMiktar(Number(user.balance || 0), isPrem);
+      // Üst üste gün: dünden devam ediyorsa seri artar, yoksa 1'den başlar.
+      const yeniSeri = seriDevamMi(user.lastDailyAt, today)
+        ? Number(user.dailyStreak || 0) + 1
+        : 1;
+      const verilecek = gunlukMiktar(Number(user.balance || 0), isPrem, yeniSeri);
+
+      // ⚠️ 0 LC İÇİN GÜNÜ YAKMA.
+      // Eskiden bakiye tabanın üstündeyken de `lastDailyAt` yazılıyordu:
+      // kullanıcı butona basıyor, hiçbir şey almıyor, ÜSTÜNE o günkü hakkını
+      // kaybediyordu. Artık hiçbir şey yazılmıyor — bakiye düşünce yine alabilir.
+      if (verilecek <= 0) {
+        return res.status(400).json({
+          ok: false,
+          error: "BALANCE_ABOVE_FLOOR",
+          floor: gunlukTaban(yeniSeri, isPrem),
+          balance: Number(user.balance || 0),
+          streak: Number(user.dailyStreak || 0),
+        });
+      }
 
       const updateResult = await col.updateOne(
         {
@@ -553,6 +659,7 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
           },
           $set: {
             lastDailyAt: nowISO,
+            dailyStreak: yeniSeri,
             updatedAt: nowISO,
           },
         }

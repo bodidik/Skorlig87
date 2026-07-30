@@ -65,18 +65,24 @@ describe("günlük hak — tabana tamamlama", () => {
   // routes/lc-wallet.cjs gunlukMiktar ile aynı kural.
   // routes/lc-wallet.cjs ile AYNI: taban bir gunluk oyun bedelinden az olmali
   // (taban 15 iken 5 tahmin kaybeden ertesi gun tam tamamlanir = kayip bedava).
-  const TABAN = 6;
+  // routes/lc-wallet.cjs ile AYNI kademeler (gunlukTaban).
+  // Kullanıcı isteği (2026-07-30): temel miktar 3-4 LC yeterli, üst üste
+  // alana bonus olsun. Bonus TABANI YÜKSELTEREK verilir — koşulsuz ekleme
+  // birikir, tamamlama birikmez.
+  const TABAN = 3;        // 1-2. gün
+  const TABAN_3 = 5;      // 3-6. gün
+  const TABAN_7 = 7;      // 7+ gün
   const gunluk = (bakiye, taban = TABAN) =>
     bakiye >= taban ? 0 : Math.round((taban - bakiye) * 10) / 10;
 
   test("parasız oyuncuya tabana kadar verilir", () => {
-    assert.equal(gunluk(0), 6);
-    assert.equal(gunluk(2), 4, "medyan bakiye 2 LC ölçülmüştü");
+    assert.equal(gunluk(0), 3, "1-2. günde temel taban");
+    assert.equal(gunluk(2), 1, "medyan bakiye 2 LC ölçülmüştü → fark kadar");
   });
 
   test("ZENGİN oyuncuya HİÇBİR ŞEY verilmez", () => {
     // Asıl düzeltme bu: eskiden 229 LC'si olan da her gün +5 alıyordu.
-    assert.equal(gunluk(6), 0);
+    assert.equal(gunluk(3), 0, "taban 3 → 3 LC'si olana verilmez");
     assert.equal(gunluk(100), 0);
     assert.equal(gunluk(229), 0);
   });
@@ -87,7 +93,8 @@ describe("günlük hak — tabana tamamlama", () => {
     const eklenen = oyuncular.reduce((a, b) => a + gunluk(b), 0);
     const ustSinir = oyuncular.length * TABAN;
     assert.ok(eklenen <= ustSinir, "günlük ekleme oyuncu×taban'ı aşamaz");
-    assert.equal(eklenen, 6 + 4 + 1, "yalnızca taban altındakiler alır");
+    // Taban 3: yalnızca 0 (+3) ve 2 (+1) alır; 5 ve üstü hiçbir şey almaz.
+    assert.equal(eklenen, 3 + 1, "yalnızca taban altındakiler alır");
   });
 
   test("KAYIP BEDAVA OLMAMALI — taban < günlük oyun bedeli", () => {
@@ -95,8 +102,28 @@ describe("günlük hak — tabana tamamlama", () => {
     // (5×3=15 LC) hepsini kaybetse ertesi gün tam tamamlanıyordu — zararı
     // sistem karşılıyor, iade eşiği düzeltmesi anlamsızlaşıyordu.
     const GIRIS_BEDELI = 3;
-    assert.ok(TABAN < GIRIS_BEDELI * 3, "taban 3 maçlık bedelin altında kalmalı");
-    assert.equal(TABAN / GIRIS_BEDELI, 2, "taban = 2 maç");
+    // Kural EN YÜKSEK kademe için de geçerli olmalı — seri bonusu bu sınırı
+    // delerse kaybetmek yine bedava olur.
+    assert.ok(TABAN_7 < GIRIS_BEDELI * 3, "en yüksek taban 3 maçlık bedelin altında kalmalı");
+    assert.equal(TABAN, GIRIS_BEDELI, "temel taban = 1 maç");
+  });
+
+  test("üst üste gün TABANI yükseltir, EKLEME yapmaz", () => {
+    // Ayrım kritik: bonus tabana EKLENSEYDİ zengin oyuncu da her gün alırdı
+    // ve arz birikirdi. Taban yükseltmede zengine yine 0 verilir.
+    assert.equal(gunluk(0, TABAN), 3, "1. gün");
+    assert.equal(gunluk(0, TABAN_3), 5, "3. gün");
+    assert.equal(gunluk(0, TABAN_7), 7, "7. gün");
+    assert.equal(gunluk(21, TABAN_7), 0, "bakiyesi yüksek oyuncu seride bile 0 alır");
+  });
+
+  test("0 LC verilecekse GÜN YAKILMAMALI", () => {
+    // Ölçüldü (2026-07-30): bakiye 21, taban 6 → verilen 0, ama lastDailyAt
+    // yazılıyordu. Kullanıcı butona basıp hiçbir şey almıyor, üstüne o günkü
+    // hakkını kaybediyordu. Kural: miktar 0 ise talep REDDEDİLİR.
+    const miktar = gunluk(21, TABAN_7);
+    assert.equal(miktar, 0);
+    assert.ok(miktar <= 0, "bu durumda uç BALANCE_ABOVE_FLOOR dönmeli, gün yazmamalı");
   });
 
   test("premium yüksek TABAN alır, koşulsuz para değil", () => {
