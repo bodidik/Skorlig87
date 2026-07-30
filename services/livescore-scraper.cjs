@@ -1,5 +1,14 @@
 "use strict";
 
+/* eslint-env node, browser */
+
+/*
+ * ⚠️ `browser` ortamı BİLEREK açık (yukarıdaki direktif): bu dosyadaki bazı
+ * fonksiyonlar Puppeteer `page.evaluate()` içine gönderiliyor ve TARAYICI
+ * bağlamında çalışıyor — orada `document` gerçekten tanımlıdır. Node tarafında
+ * çağrılmazlar. Ortamı belirtmeden lint 9 sahte `no-undef` üretiyordu.
+ */
+
 const fs   = require("fs");
 const path = require("path");
 

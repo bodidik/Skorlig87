@@ -614,6 +614,14 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
 
       const user = await ensureWalletUserMongo(db, userId);
 
+      // ⚠️ `isPrem` BU HANDLER'DA HİÇ TANIMLI DEĞİLDİ.
+      // Aşağıda `gunlukMiktar(..., isPrem, ...)` çağrılıyordu → ReferenceError
+      // → HTTP 500. Yani günlük hak talebi HER SEFERİNDE sunucuyu çökertiyordu;
+      // kullanıcı "alınamıyor" diyordu ve sebebi hiçbir yerde görünmüyordu.
+      // Cihaz logunda ortaya çıktı: `[apiFetch] 500 /api/rt/lc-wallet/daily-claim`
+      // — bugün eklenen "başarısız istekler sessiz kalmaz" kuralı sayesinde.
+      const isPrem = await premium.isPremium(userId, db);
+
       const last = user.lastDailyAt ? user.lastDailyAt.slice(0, 10) : null;
       if (last === today) {
         return res.status(400).json({

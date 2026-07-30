@@ -203,6 +203,13 @@ router.post("/predict", verifyToken, async (req, res) => {
       return res.status(400).json({ ok: false, error: "INVALID_INPUT" });
     }
 
+    // ⚠️ `db` BURADA TANIMLANIR — aşağıda değil.
+    // Fikstür okumasını buraya eklerken `db`yi kullandım ama tanımı 14 satır
+    // AŞAĞIDAYDI: geçici ölü bölge (TDZ) → her tahmin gönderimi 500 verirdi.
+    // Aynı sınıf hata bugün dört kez çıktı (settle2 nowISO, me.tsx banInput,
+    // lc-wallet isPrem, bu). Artık `no-use-before-define` kuralı yakalıyor.
+    const db = req.app?.locals?.db || null;
+
     // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
     const all = await FixturesStore.loadAll(db);
     const fx  = all.find(f => f.fixtureId === fixtureId);
@@ -218,7 +225,6 @@ router.post("/predict", verifyToken, async (req, res) => {
       return res.status(400).json({ ok: false, error: "MATCH_ALREADY_STARTED" });
     }
 
-    const db       = req.app?.locals?.db || null;
     const existing = await getUserPred(uid, fixtureId, db);
     const free     = await is1987User(uid, db);
     let lc         = 0;

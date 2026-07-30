@@ -1071,6 +1071,8 @@ router.get("/mongo-diagnose", requireAdminToken, async (req, res) => {
       const bitir = (r) => {
         if (done) return;
         done = true;
+        // GÜVENLİ: `bitir` yalnızca olay geri çağrılarından çalışır, o an `sock` hazırdır.
+        // eslint-disable-next-line no-use-before-define
         try { sock.destroy(); } catch {}
         resolve({ ...r, ms: Date.now() - t0 });
       };

@@ -1032,6 +1032,8 @@ router.get("/daily-menu", async (req, res) => {
     }
 
     // 1. Kullanıcının ülke ligleri
+    // GÜVENLİ: COUNTRY_LEAGUES modül seviyesinde; bu fonksiyon modül yüklendikten sonra çağrılır.
+    // eslint-disable-next-line no-use-before-define
     const localLeagues = (country && COUNTRY_LEAGUES[country]) || [];
     for (const lid of localLeagues) {
       if (results.length >= SLOTS) break;
@@ -1040,6 +1042,8 @@ router.get("/daily-menu", async (req, res) => {
 
     // 2. Eksik slotları global elit liglerden doldur
     if (results.length < SLOTS) {
+      // GÜVENLİ: GLOBAL_FALLBACK_LEAGUES modül seviyesinde (bkz. yukarıdaki not).
+      // eslint-disable-next-line no-use-before-define
       for (const lid of GLOBAL_FALLBACK_LEAGUES) {
         if (results.length >= SLOTS) break;
         if (localLeagues.includes(lid)) continue; // zaten çekildiyse atla
