@@ -16,7 +16,8 @@ function requireAdminToken(req, res, next) {
   return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
 }
 
-const DATA_DIR     = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR     = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 // users.json artık DOĞRUDAN okunmuyor — profil verisi lib/users-store.cjs
 // üzerinden (Mongo varsa Mongo). Yol bilgisi orada.
 const GROUPS_FILE  = path.join(DATA_DIR, "groups.json");
@@ -24,7 +25,10 @@ const SeasonTotals = require("../lib/season-totals.cjs");
 const SocialStore = require("../lib/social-store.cjs");
 
 // 🔹 LigCoin başlangıç değeri (pred/settle2 ile uyumlu olmalı)
-const LC_START = 30;
+// ⚠️ Tek kaynak: lib/ekonomi.cjs. Bu değer DÖRT dosyada İKİ AYRI ADLA
+// (LC_START / INITIAL_DEFAULT) tanımlıydı; birini değiştiren diğerini
+// aramazdı ve açılış bakiyesi kod yoluna göre değişebilirdi.
+const { LC_START } = require("../lib/ekonomi.cjs");
 
 async function readJson(file, fb) {
   try { return JSON.parse(await fsp.readFile(file, "utf8")); }

@@ -26,7 +26,8 @@ const fsp  = fs.promises;
 const path = require("path");
 const { getDb } = require("../lib/db.cjs");
 
-const DATA_DIR   = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR   = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 
 async function readJson(file, fb) {

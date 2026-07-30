@@ -82,7 +82,8 @@ const cget = k => {
 const cset = (k,v,ttl=1000) => { try{ __cache.set(k,{t:Date.now()+ttl,v}); }catch(e){ console.warn("[realtime] cache set failed:", e && e.message ? e.message : e); } };
 
 /* === DOSYA YOLLARI === */
-const DATA_DIR         = path.join(__dirname,"..","data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR         = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const LIVE_DIR         = path.join(DATA_DIR,"live");
 const PREDS_FILE       = path.join(DATA_DIR,"preds.json");
 const LEADERBOARD_FILE = path.join(DATA_DIR,"leaderboard.json");

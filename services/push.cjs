@@ -19,7 +19,8 @@ const { withFileLock } = require("../lib/fileLock.cjs");
 // Jeton/tercih deposu Mongo birincil — dosya Render'da her deploy siliniyordu.
 const PushStore = require("../lib/push-store.cjs");
 
-const DATA_DIR   = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR   = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const TOKEN_FILE = path.join(DATA_DIR, "push-tokens.json");
 
 const EXPO_URL   = "https://exp.host/--/api/v2/push/send";

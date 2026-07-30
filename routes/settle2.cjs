@@ -83,7 +83,10 @@ const RT_LIVE_GS_FILE = path.join(DATA_DIR, "rt-live-gs.json");
 const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 
 // 🔹 LigCoin parametreleri
-const LC_START = 30;
+// ⚠️ Tek kaynak: lib/ekonomi.cjs. Bu değer DÖRT dosyada İKİ AYRI ADLA
+// (LC_START / INITIAL_DEFAULT) tanımlıydı; birini değiştiren diğerini
+// aramazdı ve açılış bakiyesi kod yoluna göre değişebilirdi.
+const { LC_START } = require("../lib/ekonomi.cjs");
 const LC_ENTRY_COST = 3;
 
 /**

@@ -15,7 +15,8 @@ const path    = require("path");
 const { verifyToken }              = require("../middleware/verifyToken.cjs");
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 
-const DATA_DIR           = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR           = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const PREDS_FILE         = path.join(DATA_DIR, "preds.json");
 const UsersStore = require("../lib/users-store.cjs");
 const WALLET_FILE        = path.join(DATA_DIR, "lc-wallet.json");

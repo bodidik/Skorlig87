@@ -5,7 +5,8 @@ const fs      = require("fs");
 const fsp     = fs.promises;
 const path    = require("path");
 
-const DATA_DIR         = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR         = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
 

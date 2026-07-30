@@ -4,7 +4,8 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 
-const DATA_DIR   = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR   = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const LIVE_DIR   = path.join(DATA_DIR, "live");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 const RESULTS_FILE  = path.join(DATA_DIR, "results.json");   // settle2'nin okuduğu file

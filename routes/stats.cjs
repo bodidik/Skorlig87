@@ -6,7 +6,8 @@ const path    = require("path");
 const fs      = require("fs");
 const fsp     = fs.promises;
 
-const DATA_DIR         = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR         = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const TOTALS_FILE      = path.join(DATA_DIR, "totals.json");
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const WALLET_FILE      = path.join(DATA_DIR, "lc-wallet.json");

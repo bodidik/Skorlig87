@@ -11,7 +11,8 @@ const { verifyToken } = require("../middleware/verifyToken.cjs");
 // Gun anahtari TZ'ye gore (bkz. lib/season.cjs dayKey notu): ISO dilimlemek UTC verir.
 const Season = require("../lib/season.cjs");
 
-const DATA_DIR    = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR    = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const USERS_FILE  = path.join(DATA_DIR, "users.json");
 
@@ -111,8 +112,10 @@ function seriDevamMi(lastDailyAt, bugun) {
   if (!onceki) return false;
   return onceki === Season.previousDayKey(new Date(bugun + "T12:00:00Z"));
 }
-const INITIAL_DEFAULT  = 30;
-const INITIAL_1987     = 60;
+// ⚠️ Tek kaynak: lib/ekonomi.cjs. Bu değer DÖRT dosyada İKİ AYRI ADLA
+// (LC_START / INITIAL_DEFAULT) tanımlıydı; birini değiştiren diğerini
+// aramazdı ve açılış bakiyesi kod yoluna göre değişebilirdi.
+const { INITIAL_DEFAULT, INITIAL_1987 } = require("../lib/ekonomi.cjs");
 const MATCH_ENTRY_COST = 3; // Maç girişi LC bedeli (bilgi amaçlı)
 
 // 🚀 Tanıtım dönemi: ilk N üyeye başlangıç LC bonusu (erken kuş ödülü).

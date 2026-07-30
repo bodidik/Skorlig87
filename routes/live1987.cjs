@@ -23,7 +23,8 @@ const AF_HDR  = process.env.AF_HEADER_KEY || "x-apisports-key";
 const TZ      = "Europe/Istanbul";
 
 // ---- Providers state (ortak dosya) ----
-const DATA_DIR  = path.join(__dirname, "..", "data");
+// ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
+const DATA_DIR  = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const PROV_FILE = path.join(DATA_DIR, "providers.json");
 
 async function readJson(file, fb) {
