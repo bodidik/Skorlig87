@@ -1172,6 +1172,18 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
    * servislerinin doğrudan çağrılarını da kapsıyor. bkz. lib/kritik-is.cjs */
   await kritikIs(`settle:${fid}`, () => awardLcForRows(rows, db));
 
+  /* Haftalık kupon: bu maç bir kuponun parçasıysa ve kuponun TÜM maçları
+   * bittiyse kupon da sonuçlanır. Kendi mührü var, tekrar ödemez.
+   * bkz. lib/kupon-settle.cjs */
+  if (db) {
+    try {
+      const KuponSettle = require("../lib/kupon-settle.cjs");
+      await kritikIs(`kupon:${fid}`, () => KuponSettle.bekleyenleriSonuclandir(db));
+    } catch (e) {
+      console.error("[settle2] kupon sonuclandirma hatasi:", e?.message || e);
+    }
+  }
+
   // ── Maç havuzu ödemesi (bkz. lib/pool-store.cjs) ──────────────────────
   // Kendi `settledAt` mührü var; settle2 defalarca çağrılsa da bir kez öder.
   // Havuz SIRALAMAYI ETKİLEMEZ — burada yalnızca LC dağıtılır, `rows`a

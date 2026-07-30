@@ -141,6 +141,16 @@ const { getDb } = require("../lib/mongo.cjs");
   // tutulurken her deploy siliniyordu: jeton kaybi bildirimi olu birakiyor,
   // TERCIH kaybi ise kapatilan bildirimi yeniden aciyordu.
   await db.collection("push_tokens").createIndex({ userIdLower: 1 }, { unique: true, background: true });
+  /* Haftalik kupon (bkz. lib/kupon-store.cjs).
+   * ⚠️ Ikisi de PARA korumasi: ayni hafta+tur+ulke icin tek kupon, ve bir
+   * oyuncu bir kupona bir kez katilir. Benzersizlik olmazsa oyuncu iki kez
+   * odeyip iki kez odul alabilir. */
+  await db.collection("kuponlar").createIndex({ id: 1 }, { unique: true, background: true });
+  await db.collection("kuponlar").createIndex({ haftaKey: 1, tur: 1, ulke: 1 }, { unique: true, background: true });
+  await db.collection("kupon_katilim").createIndex({ kuponId: 1, userIdLower: 1 }, { unique: true, background: true });
+  await db.collection("kupon_katilim").createIndex({ userIdLower: 1 }, { background: true });
+  console.log("indexes: kupon OK");
+
   console.log("indexes: push OK");
 
   console.log("indexes: wallet OK");

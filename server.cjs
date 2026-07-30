@@ -297,6 +297,8 @@ safeMount("tr-league",        () => app.use("/api/tr-league",  require("./routes
 safeMount("auth-1987gs",      () => app.use("/api/auth1987gs", require("./routes/auth-1987gs.cjs")));
 safeMount("livescore",        () => app.use("/api/livescore",  require("./routes/livescore.cjs")));
 safeMount("daily-picks",      () => app.use("/api/daily-picks", require("./routes/daily-picks.cjs")));
+// Haftalik kupon (yeni oyun): bkz. lib/kupon.cjs
+safeMount("kupon",           () => app.use("/api/kupon",      require("./routes/kupon.cjs")));
 safeMount("tournaments",      () => app.use("/api/tournaments",   require("./routes/tournaments.cjs")));
 safeMount("weekly-picks",     () => app.use("/api/weekly-picks", require("./routes/weekly-picks.cjs")));
 safeMount("teams",            () => app.use("/api/teams",        require("./routes/teams.cjs")));

@@ -795,6 +795,9 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
         // silen kullanıcının jetonu ve bildirim tercihleri kalıyordu.
         // Play Store "kullanıcı verisini sil" şartı bunu da kapsar.
         ["push_tokens",    { userIdLower: uidL }],
+        // Haftalik kupon katilimlari: tahminler, odenen bedel, kazanilan
+        // odul — hepsi kullaniciya ait.
+        ["kupon_katilim", { userIdLower: uidL }],
         // Kupa/yarışma puanları da kullanıcı verisi.
         ["competition_totals", { $or: [{ userIdLower: uidL }, { userId: uid }] }],
       ];

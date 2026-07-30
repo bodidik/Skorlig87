@@ -365,7 +365,21 @@ async function finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount, db
       return (await TrLeagueStore.getWeek(weekKey, db)) || null;
     }
 
-    await awardWeeklyLc(awards, weekKey, db);
+    /* ⚠️ HAFTALIK LC ÖDÜLÜ KAPATILDI — yerini HAFTALIK KUPON aldı.
+     *
+     * Bu lig ücretsizdi ve ilk 3'e LC veriyordu. Kupon oyunu (bkz.
+     * lib/kupon.cjs) aynı haftanın aynı maçlarını kapsıyor; ikisi birlikte
+     * çalışsaydı oyuncu AYNI tahminden iki kaynaktan ödül alırdı — bu oturumda
+     * kapattığımız karşılıksız LC musluğu sınıfının aynısı.
+     *
+     * Sıralama ve hafta tabloları OKUNMAYA DEVAM EDİYOR (uçlar bozulmadı);
+     * yalnızca para dağıtımı durdu. Geri açmak için SKORLIG_TR_LEAGUE_ODUL=1.
+     */
+    if (String(process.env.SKORLIG_TR_LEAGUE_ODUL || "0") === "1") {
+      await awardWeeklyLc(awards, weekKey, db);
+    } else {
+      console.log(`[tr-league] hafta ${weekKey} kapandi — LC odulu KAPALI (yerini haftalik kupon aldi)`);
+    }
     console.log(`[tr-league] hafta bitti ${weekKey} | kazanan: ${winners.join(", ") || "yok"} | ödül alan: ${awards.length}`);
     return record;
   }
