@@ -2,6 +2,7 @@
 
 const express = require("express");
 const router  = express.Router();
+const { verifyToken } = require("../middleware/verifyToken.cjs");
 const fs      = require("fs");
 const fsp     = fs.promises;
 const path    = require("path");
@@ -31,7 +32,11 @@ const SeasonTotals = require("../lib/season-totals.cjs");
 
 async function handleCreate(req,res){
   try{
-    const { name, ownerId } = req.body || {};
+// ⚠️ Kimlik GÖVDEDEN alınıyordu ve muhafız yoktu: herkes BAŞKASI ADINA
+// grup kurabiliyor / gruba katabiliyordu. handleOpt ile aynı kusur;
+// adlandırılmış handler oldukları için yetki denetimlerim görmüyordu.
+    const { name } = req.body || {};
+    const ownerId = String(req.uid || "").trim();
     if (!name || !ownerId) {
       return res.status(400).json({ ok:false, error:"NAME_OWNER_REQUIRED" });
     }
@@ -51,8 +56,11 @@ async function handleCreate(req,res){
 
 async function handleJoin(req,res){
   try{
-    const { code, userId } = req.body || {};
-    const uid = String(userId||"").trim();
+// ⚠️ Kimlik GÖVDEDEN alınıyordu ve muhafız yoktu: herkes BAŞKASI ADINA
+// grup kurabiliyor / gruba katabiliyordu. handleOpt ile aynı kusur;
+// adlandırılmış handler oldukları için yetki denetimlerim görmüyordu.
+    const { code } = req.body || {};
+    const uid = String(req.uid || "").trim();
     if (!uid) return res.status(400).json({ ok:false, error:"USER_REQUIRED" });
 
     // Atomik: $addToSet hem yarışı hem mükerrer üyeliği kendisi engelliyor.
@@ -108,10 +116,20 @@ async function handleBoard(req,res){
   }
 }
 
+/**
+ * ⚠️ KİMLİK GÖVDEDEN ALINIYORDU ve hiçbir muhafız yoktu: herkes BAŞKASININ
+ * grup katılım ayarını değiştirebiliyordu. İkizi routes/users.cjs'te
+ * (`POST /api/users/groups/:code/opt`) daha önce düzeltilmişti — aynı işi
+ * yapan iki rotadan biri atlanmıştı.
+ *
+ * ⚠️ Bu uç yetki denetimlerimin ÜÇÜNCÜ kör noktasıydı: handler satır içi ok
+ * fonksiyonu değil ADLANDIRILMIŞ FONKSİYON (`handleOpt`), kalıp eşleşmiyordu.
+ */
 async function handleOpt(req,res){
   try{
     const code = String(req.params.code || "").toUpperCase();
-    const { userId, includeInTotal } = req.body || {};
+    const userId = String(req.uid || "").trim();
+    const { includeInTotal } = req.body || {};
     if (!userId || typeof includeInTotal !== "boolean") {
       return res.status(400).json({ ok:false, error:"REQ" });
     }
@@ -134,20 +152,20 @@ async function handleOpt(req,res){
    ========================= */
 
 // CREATE
-router.post("/groups/create", express.json(), handleCreate); // legacy
-router.post("/create",        express.json(), handleCreate); // alias
+router.post("/groups/create", verifyToken, express.json(), handleCreate); // legacy
+router.post("/create",        verifyToken, express.json(), handleCreate); // alias
 
 // JOIN
-router.post("/groups/join", express.json(), handleJoin); // legacy
-router.post("/join",        express.json(), handleJoin); // alias
+router.post("/groups/join", verifyToken, express.json(), handleJoin); // legacy
+router.post("/join",        verifyToken, express.json(), handleJoin); // alias
 
 // BOARD
 router.get("/groups/:code/board", handleBoard); // legacy
 router.get("/:code/board",        handleBoard); // alias
 
 // OPT
-router.post("/groups/:code/opt", express.json(), handleOpt); // legacy
-router.post("/:code/opt",        express.json(), handleOpt); // alias
+router.post("/groups/:code/opt", verifyToken, express.json(), handleOpt); // legacy
+router.post("/:code/opt",        verifyToken, express.json(), handleOpt); // alias
 
 // DIAG (aynı)
 router.get("/diag", requireAdminToken, async (req,res)=>{
