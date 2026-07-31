@@ -30,13 +30,25 @@ async function isBanned(uid) {
   return _bannedCache.has(String(uid || "").toLowerCase());
 }
 
+const { uretimMi } = require("../lib/ortam.cjs");
+
 let _auth = null;
-let _initTried = false;
+let _sonDeneme = 0;
+
+/**
+ * ⚠️ ESKİDEN TEK DENEME VARDI (`_initTried`) ve başarısızlık KALICIYDI.
+ * İlk deneme geçici bir nedenle (ağ, yavaş disk, env henüz yüklenmemiş)
+ * patlarsa süreç yeniden başlatılana kadar kimlik doğrulama bir daha hiç
+ * kurulamıyordu. Fail-closed davranışla birlikte bu, tek bir anlık arızanın
+ * sunucuyu kalıcı olarak 503'e kilitlemesi demek olurdu. Artık 60 saniyede
+ * bir yeniden deneniyor: geçici arıza kendiliğinden toparlanır.
+ */
+const YENIDEN_DENE_MS = 60_000;
 
 function getFirebaseAuth() {
   if (_auth) return _auth;
-  if (_initTried) return _auth; // bir kez denendi, yoksa null kalsın
-  _initTried = true;
+  if (Date.now() - _sonDeneme < YENIDEN_DENE_MS) return null;
+  _sonDeneme = Date.now();
 
   try {
     const { initializeApp, cert, applicationDefault, getApps } = require("firebase-admin/app");
@@ -69,6 +81,62 @@ function getFirebaseAuth() {
 }
 
 /**
+ * FIREBASE KURULAMADIĞINDA NE OLUR?
+ *
+ * ⚠️ BULUNAN AÇIK — bu, kod tabanındaki en kritik kapının fail-OPEN olmasıydı.
+ * Eski kod şunu yapıyordu:
+ *
+ *     if (!fbAuth) { req.uid = req.headers["x-user-id"] || "dev"; return next(); }
+ *
+ * Yani `firebase-admin` KURULAMAZSA — tek bir bozuk/eksik
+ * `FIREBASE_SERVICE_ACCOUNT_B64`, bir JSON ayrıştırma hatası, geçici bir
+ * arıza — sunucu her isteği KABUL EDİYOR ve kimliği İSTEMCİNİN GÖNDERDİĞİ
+ * başlıktan alıyordu. `x-user-id: kurban` yazan herkes kurbanın cüzdanını
+ * harcayabilir, hesabını silebilirdi.
+ *
+ * ⚠️ VE FARK EDİLMEZDİ: `mobile/lib/apiFetch.ts` zaten HER istekte
+ * `x-user-id` gönderiyor. Yani uygulama sorunsuz çalışmaya devam ederdi;
+ * tek belirti açılışta akıp giden bir `console.warn` satırı olurdu.
+ *
+ * Aynı ilke bu kod tabanında İKİ KEZ yazılı:
+ *   • middleware/requireAdmin.cjs — "token tanımlı değilse 503 döner, GEÇİRMEZ"
+ *   • bu dosyanın kendi yasak listesi notu — "fail-open bir güvenlik kontrolü,
+ *     hiç olmamasından daha kötü: koruyor sanılıyor"
+ * En önemli kapı ikisini de çiğniyordu.
+ *
+ * Artık: ÜRETİMDE 503 (geçirmez). Yerelde geri düşüş korunuyor — orada
+ * servis hesabı dosyası olmadan çalışmak olağan — ama gürültülü.
+ */
+function kimlikYokKapali(req, res, next) {
+  if (uretimMi()) {
+    console.error(
+      "[verifyToken] ⛔ firebase-admin KURULAMADI — uretimde istek GECIRILMIYOR. " +
+      "FIREBASE_SERVICE_ACCOUNT_B64 / _JSON degerini kontrol et."
+    );
+    return res.status(503).json({ ok: false, error: "AUTH_NOT_CONFIGURED" });
+  }
+  console.warn(
+    "[verifyToken] ⚠️ firebase-admin yok — YEREL GERI DUSUS: kimlik x-user-id " +
+    "basligindan aliniyor. Bu davranis uretimde KAPALI."
+  );
+  req.uid = req.headers["x-user-id"] || "dev";
+  return next();
+}
+
+/**
+ * Sağlık ucu bunu bildiriyor: yanlış yapılandırılmış dağıtım görünür olsun.
+ *
+ * ⚠️ KURULUMU TETİKLER. `_auth` tembel kuruluyor (ilk istekte). Yalnızca
+ * `_auth`a bakan bir sürüm, HENÜZ İSTEK GELMEMİŞ taze bir sunucuda "kapalı"
+ * derdi — sağlık ucu var olmayan bir arıza bildirirdi. Burada kurulum
+ * denenip sonucu okunuyor.
+ */
+function kimlikModu() {
+  if (getFirebaseAuth()) return "firebase";
+  return uretimMi() ? "kapali" : "yerel-gecis";
+}
+
+/**
  * Zorunlu kimlik: x-auth-token doğrulanır, req.uid set edilir.
  * Token yok/geçersizse 401.
  */
@@ -79,12 +147,7 @@ async function verifyToken(req, res, next) {
   }
 
   const fbAuth = getFirebaseAuth();
-  if (!fbAuth) {
-    // firebase-admin yoksa dev fallback (prod'da olmaz)
-    console.warn("[verifyToken] no firebase-admin — dev fallback");
-    req.uid = req.headers["x-user-id"] || "dev";
-    return next();
-  }
+  if (!fbAuth) return kimlikYokKapali(req, res, next);
 
   try {
     const decoded    = await fbAuth.verifyIdToken(token);
@@ -107,8 +170,15 @@ async function optionalToken(req, res, next) {
   const token = req.headers["x-auth-token"];
   if (!token) { req.uid = null; return next(); }
 
+  /* ⚠️ BURADA DA İSTEMCİ BAŞLIĞINA GÜVENİLİYORDU. `optionalToken` kimliği
+   * zorunlu kılmıyor ama set ettiği `req.uid` aşağı akıyor — örneğin
+   * `/api/daily-picks/streak` onu doğrudan kullanıyor. Üretimde anonim
+   * (`null`) geçmek doğru davranış: kimlik doğrulanamıyorsa kimlik YOKTUR. */
   const fbAuth = getFirebaseAuth();
-  if (!fbAuth) { req.uid = req.headers["x-user-id"] || null; return next(); }
+  if (!fbAuth) {
+    req.uid = uretimMi() ? null : (req.headers["x-user-id"] || null);
+    return next();
+  }
 
   try {
     const decoded    = await fbAuth.verifyIdToken(token);
@@ -120,4 +190,4 @@ async function optionalToken(req, res, next) {
   next();
 }
 
-module.exports = { verifyToken, optionalToken, getFirebaseAuth };
+module.exports = { verifyToken, optionalToken, getFirebaseAuth, kimlikModu };

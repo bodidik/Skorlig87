@@ -97,8 +97,7 @@ const DEV_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d
  * Açık kaldığında aşağıda log'a uyarı düşer (bkz. mağaza mock uyarısı: sessiz
  * gevşeklik, fark edilmesi en zor olanıdır).
  */
-const URETIM_SINYALI =
-  process.env.NODE_ENV === "production" || String(process.env.RENDER || "") === "true";
+const URETIM_SINYALI = require("./lib/ortam.cjs").uretimMi();
 const ALLOW_DEV_ORIGINS = !URETIM_SINYALI;
 if (ALLOW_DEV_ORIGINS) {
   console.warn(
@@ -281,12 +280,21 @@ app.get("/api/health", async (req, res) => {
     }
   }
 
-  const sorunVar = MOUNTS.skipped.length > 0;
+  /* ⚠️ KİMLİK MODU GÖRÜNÜR OLSUN. `firebase-admin` kurulamazsa üretimde artık
+   * hiçbir istek geçmiyor (fail-closed) — ama arızayı ANLAMAK için modun
+   * dışarıdan okunabilmesi gerek, yoksa belirti "her uç 503" olur ve nedeni
+   * yalnızca log'da kalır. */
+  const kimlik = require("./middleware/verifyToken.cjs").kimlikModu();
+
+  const sorunVar = MOUNTS.skipped.length > 0 || kimlik === "kapali";
   res.status(sorunVar ? 503 : 200).json({
     ok: !sorunVar,
     mountedCount: MOUNTS.ok.length,
     skipped: MOUNTS.skipped,
     mongo: !!db,
+    // "firebase" = normal | "kapali" = URETIMDE kimlik kurulamadi (her uc 503)
+    // | "yerel-gecis" = yalnizca gelistirme
+    kimlikModu: kimlik,
     // >0 ise: bkz. routes/settle2.cjs "ODUL YAZIMI EKSIK"
     odenmemisOdulKaydi: odenmemisOdul,
     uptimeSec: Math.round(process.uptime()),
