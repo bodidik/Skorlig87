@@ -1559,18 +1559,21 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
  * Aksi halde birisi ham HTTP ile POST atarak totals'a defalarca puan yatırtabilir.
  * (Idempotency de var — awardedAt sentinel — ama katmanlı savunma.)
  */
-function isInternalCaller(req) {
-  const remote = String(req.socket?.remoteAddress || req.ip || "");
-  const isLocal = remote === "127.0.0.1" || remote === "::1" || remote === "::ffff:127.0.0.1";
-  if (isLocal) return true;
-  const expected = String(
-    process.env.SKORLIG_ADMIN_TOKEN ||
-    process.env.ADMIN_TOKEN ||
-    ""
-  ).trim();
-  const got = String(req.headers["x-admin-token"] || "").trim();
-  return !!(expected && got && got === expected);
-}
+/**
+ * ⚠️ BURADA ZAYIF BİR KOPYA VARDI ve sağlamlaştırılmış sürüm ZATEN MEVCUTTU.
+ *
+ * `lib/internal-caller.cjs` tam bu boşluğu kapatmak için yazılmış ve kendi
+ * başlığında farkı açıkça anlatıyor: "ters proxy loopback üzerinden
+ * bağlanıyorsa yalnızca soket adresine bakmak DIŞ TRAFİĞİ İÇ SAYABİLİR".
+ * Yani fark biliniyordu, yazılmıştı — ama yalnızca `routes/pred.cjs`
+ * geçirilmiş, bu dosya eski kopyayla kalmıştı.
+ *
+ * Önemi: bu ucun kendi yorumu neyin tehlikede olduğunu söylüyor — "birisi ham
+ * HTTP ile POST atarak totals'a defalarca puan yatırtabilir". Önündeki ters
+ * proxy uygulamaya loopback üzerinden ulaşıyorsa `/api/rt/settle2` tüm
+ * internete KİMLİKSİZ açık olurdu.
+ */
+const { isInternalCaller } = require("../lib/internal-caller.cjs");
 
 router.post("/settle2", async (req, res) => {
   try {
