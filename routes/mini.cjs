@@ -246,9 +246,39 @@ async function awardMiniWinLc(userIds, tournament, db) {
 const _finalizing = new Set();
 
 /** Tüm maçlar settle olduysa turnuvayı bitir: kazananları yaz, LC ödülünü ver. */
-async function finalizeIfDone(t, board, settledCount, fixtureCount, db) {
+/**
+ * Turnuva bitmeye hazir mi?
+ *
+ * ⚠️ ESKIDEN "TUM MACLAR SETTLE OLMALI" SARTIYDI ve tek ertelenen mac
+ * turnuvayi SONSUZA KADAR askida birakiyordu: kazananlar 20 LC odulunu hic
+ * almiyordu ve turnuva, kurucunun ayni anda acik tutabilecegi turnuva
+ * kotasindan bir yuvayi KALICI olarak isgal ediyordu.
+ *
+ * Ayni delik kuponda ve duello/havuzda da vardi (bkz. lib/bayat-mac.cjs).
+ * Artik sonucu gelmeyen mac bekleme suresi dolunca YOK SAYILIR: turnuva
+ * cozulen maclar uzerinden biter.
+ */
+async function bitmeyeHazirMi(t, settledCount, fixtureIds, db) {
+  if (!fixtureIds.length) return false;
+  if (settledCount >= fixtureIds.length) return true;
+
+  // Eksik maclarin HEPSI bayatsa turnuva kapatilabilir. Biri hala
+  // bekleniyorsa turnuva da bekler — erken kapatmak, sonucu gec gelen maci
+  // haksiz yere yok saymak olurdu.
+  const { bayatMi, sonucVarMi } = require("../lib/bayat-mac.cjs");
+  for (const fid of fixtureIds) {
+    if (await sonucVarMi(fid, db)) continue;
+    const fx = (t.fixtures || []).find((f) => String(f.fixtureId) === String(fid));
+    const durum = await bayatMi({ fixtureId: fid, kickoffISO: fx?.kickoffISO || null, db });
+    if (!durum.bayat) return false;
+  }
+  return true;
+}
+
+async function finalizeIfDone(t, board, settledCount, fixtureCount, db, fixtureIds = null) {
   if (t.finishedAt) return t;
-  if (!fixtureCount || settledCount < fixtureCount) return t;
+  const idListe = fixtureIds || (t.fixtures || []).map((f) => String(f.fixtureId));
+  if (!(await bitmeyeHazirMi(t, settledCount, idListe, db))) return t;
   if (_finalizing.has(t.id)) return t;
   _finalizing.add(t.id);
 
@@ -611,7 +641,7 @@ router.get("/board", async (req, res) => {
       .sort((a, b) => b.points - a.points || a.userId.localeCompare(b.userId));
 
     // Tüm maçlar bittiyse turnuvayı sonlandır (kazanan + LC ödülü, bir kez)
-    const finalT = await finalizeIfDone(t, board, settledCount, fixtureIds.length, req.app?.locals?.db || null);
+    const finalT = await finalizeIfDone(t, board, settledCount, fixtureIds.length, req.app?.locals?.db || null, fixtureIds);
 
     return res.json({
       ok: true,

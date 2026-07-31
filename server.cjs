@@ -475,6 +475,14 @@ const server = app.listen(PORT, HOST, () => {
       require("./services/kupon-planlayici.cjs").start(6 * 3600 * 1000));
   }
 
+  /* Bayat mac temizleyici: sonucu gelmeyen maclarda kilitli kalan duello
+   * bahislerini ve havuz paralarini iade eder. Kapatilabilir ama KAPATMAK
+   * parayi kilitli birakir — varsayilan acik. bkz. lib/bayat-mac.cjs */
+  if (process.env.SKORLIG_BAYAT_TEMIZLE !== "0") {
+    safeMount("bayat-temizleyici", () =>
+      require("./services/bayat-temizleyici.cjs").start(6 * 3600 * 1000));
+  }
+
   if (process.env.SKORLIG_SCRAPER_HEALTH !== "0") {
     safeMount("scraper-health", () =>
       require("./services/scraper-health.cjs").start(10 * 60 * 1000)
