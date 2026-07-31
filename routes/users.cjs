@@ -790,6 +790,7 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
         ["duels",          { $or: [{ creatorId: uid }, { acceptorId: uid }] }],
         ["tournaments",    { creatorId: uid }],
         ["mini_tournaments", { ownerId: uid }],
+
         // ⚠️ CİHAZ JETONU KİŞİSEL VERİDİR. Bu koleksiyon depo Mongo'ya
         // taşınırken eklendi ama silme listesine yazılmamıştı: hesabını
         // silen kullanıcının jetonu ve bildirim tercihleri kalıyordu.
@@ -801,6 +802,44 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
         // Kupa/yarışma puanları da kullanıcı verisi.
         ["competition_totals", { $or: [{ userIdLower: uidL }, { userId: uid }] }],
       ];
+
+      /* ⚠️ SİLMEK YETMİYOR: kullanıcı BAŞKALARININ kayıtlarının İÇİNDE de duruyor.
+       *
+       * Gruplarda bu iki durum ayrı ele alınmıştı (sahibi olduğu grup silinir,
+       * üyesi olduğu gruptan çıkarılır) ama aynı ayrım mini turnuvada ve maç
+       * sonucu anlık görüntülerinde yapılmamıştı:
+       *
+       *   mini_tournaments — yalnızca `ownerId` eşleşenler siliniyordu; kullanıcı
+       *     BAŞKASININ turnuvasında üye/kazanan olarak kalıyordu.
+       *
+       *   match_results.rows — kullanıcının tahmini, puanı ve kırılımı her maçın
+       *     anlık görüntüsünde gömülü duruyordu. Üstelik `/api/rt/pred/history`
+       *     bu satırları `?userId=` ile döndürüyor: hesap silindikten SONRA da
+       *     kimliği bilen biri tüm tahmin geçmişini okuyabiliyordu.
+       *
+       * Play Store "kullanıcı verisini sil" şartı bunları da kapsıyor. */
+      const gomuluTemizlik = [
+        /* ⚠️ İKİ AYRI GÜNCELLEME, TEK $pull DEĞİL. `$pull` dizi olmayan alanda
+         * HATA verir; süzgeci alanın kendisine dayamak (`{winners: uid}` yalnızca
+         * winners bir dizi VE uid içeriyorsa eşleşir) bunu yapısal olarak
+         * imkânsız kılıyor. Tek $pull'da `winners: null` olan bir belge tüm
+         * temizliği düşürürdü. */
+        ["mini_tournaments", { members: uid }, { $pull: { members: uid } }],
+        ["mini_tournaments", { winners: uid }, { $pull: { winners: uid } }],
+        // İndeksli süzgeç (rows.userIdLower) — tüm anlık görüntüleri taramaz.
+        ["match_results", { "rows.userIdLower": uidL }, { $pull: { rows: { userIdLower: uidL } } }],
+      ];
+      for (const [koleksiyon, filtre, guncelleme] of gomuluTemizlik) {
+        try {
+          const r = await dbSil.collection(koleksiyon).updateMany(filtre, guncelleme);
+          if (r.modifiedCount) {
+            console.log(`[delete-account] ${koleksiyon}: ${r.modifiedCount} kayittan cikarildi`);
+          }
+        } catch (e) {
+          console.error(`[delete-account] ${koleksiyon} icinden cikarilamadi:`, e?.message || e);
+        }
+      }
+
       for (const [koleksiyon, filtre] of islemler) {
         try {
           const r = await dbSil.collection(koleksiyon).deleteMany(filtre);
