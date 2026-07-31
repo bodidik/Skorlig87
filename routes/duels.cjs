@@ -123,6 +123,33 @@ const DUEL_LOCK_BEFORE_MIN = 10;
  * metne cevirmek icin kullaniyor (mobile/lib/hataMesaji.ts). Ortak yardimci
  * genel kodu donuyor, burada duelloya ozel koda geri cevriliyor.
  */
+/**
+ * Maçın takım adlarını SUNUCUDAN çözer.
+ *
+ * ⚠️ İstemciye asla düşmez: bu adlar `calcOdds` üzerinden düello puanını
+ * belirliyor. Bilinmiyorsa `null` döner ve sonuçlandırma tarafsız orana düşer.
+ *
+ * `denge` (maç dengesi kapısının sonucu) çoğu zaman adları zaten taşıyor;
+ * taşımadığı durumlar var (denetim kapalıysa erken dönüyor), o yüzden
+ * gerekirse depo tekrar okunuyor — `getOne` indeksli tekil arama.
+ */
+async function macTakimlari(fixtureId, db, denge) {
+  if (denge?.home && denge?.away) {
+    return { home: String(denge.home).trim() || null, away: String(denge.away).trim() || null };
+  }
+  try {
+    const FixturesStore = require("../lib/fixtures-store.cjs");
+    const fx = await FixturesStore.getOne(String(fixtureId || "").trim(), db);
+    return {
+      home: String(fx?.home || fx?.homeTeam || "").trim() || null,
+      away: String(fx?.away || fx?.awayTeam || "").trim() || null,
+    };
+  } catch (e) {
+    console.error("[duels] takim adlari okunamadi:", e?.message || e);
+    return { home: null, away: null };
+  }
+}
+
 async function isFixtureLocked(fixtureId, db = null) {
   const s = await fiksturKilidi(fixtureId, { oncekiDk: DUEL_LOCK_BEFORE_MIN, db });
   if (s.locked && s.reason === "LOCKED_BEFORE_KICKOFF") {
@@ -476,7 +503,8 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
 router.post("/duels/create", verifyToken, async (req, res) => {
   try {
     const db = getDb(req);
-    const { fixtureId, stake, challengedId, creatorName, home, away, league, kickoffISO } = req.body || {};
+    // ⚠️ `home`/`away` BİLEREK OKUNMUYOR — sunucudan çözülüyor (bkz. macTakimlari).
+    const { fixtureId, stake, challengedId, creatorName, league, kickoffISO } = req.body || {};
     const creatorId = req.uid;
     const fx = String(fixtureId || "").trim();
     if (!fx) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
@@ -536,6 +564,24 @@ router.post("/duels/create", verifyToken, async (req, res) => {
       return res.status(400).json({ ok: false, error: spend.error || "LC_NOT_ENOUGH", lc: spend.lc, needed: s });
     }
 
+    /* ⚠️ TAKIM ADLARI ARTIK SUNUCUDAN. Eskiden doğrudan istek gövdesinden
+     * alınıp saklanıyordu ve SONUÇLANDIRMADA KULLANILIYORDU:
+     *
+     *     const odds = calcOdds(duel.home, duel.away);   // settleDuelsForFixture
+     *
+     * `calcOdds` yalnızca takım adlarına bakan bir derecelendirme tablosu —
+     * yani düelloyu kuran, KENDİ düellosunun puan ağırlıklarını yazabiliyordu.
+     * Ayrıca adlar rakibe olduğu gibi gösteriliyor: gerçek maçtan başka bir
+     * eşleşme yazıp karşı tarafı yanıltmak da mümkündü.
+     *
+     * Fikstür zaten okunuyor (yukarıdaki denge kapısı `FixturesStore.getOne`
+     * çağırıyor); ikinci bir sorgu değil, aynı sonucun kullanılması.
+     *
+     * ⚠️ SUNUCU BİLMİYORSA `null` — gövdeye DÜŞMÜYORUZ. Düşseydik saldırgan
+     * bilinmeyen bir fikstür kimliği verip deliği yeniden açardı. `null`
+     * olduğunda sonuçlandırma tarafsız orana (2.0/3.2/2.0) düşüyor. */
+    const takim = await macTakimlari(fx, db, denge);
+
     const nowISO = new Date().toISOString();
     const id = genId();
     const pot = s * 2;
@@ -546,8 +592,8 @@ router.post("/duels/create", verifyToken, async (req, res) => {
       creatorId, creatorName: String(creatorName || "").trim() || null,
       challengedId: targetId, acceptorId: null, acceptorName: null,
       status: "open",
-      home: String(home || "").trim() || null,
-      away: String(away || "").trim() || null,
+      home: takim.home,
+      away: takim.away,
       league: String(league || "").trim() || null,
       kickoffISO: kickoffISO || null,
       creatorPoints: null, acceptorPoints: null, winnerId: null,
