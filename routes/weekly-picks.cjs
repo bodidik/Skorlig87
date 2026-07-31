@@ -25,6 +25,7 @@ const MatchResults = require("../lib/match-results.cjs");
 // LC harcama: bakiye Mongo'da tutuluyor, dosyaya yazmak parayı kaybettirir.
 const WalletCredit = require("../lib/wallet-credit.cjs");
 const FixturesStore = require("../lib/fixtures-store.cjs");
+const { fiksturKilidi } = require("../lib/fikstur-kilit.cjs");
 const LIVE_DIR           = path.join(DATA_DIR, "live");
 
 const WINDOW_BEFORE_MS = 24 * 60 * 60 * 1000;  // 24 saat önce açılır
@@ -212,19 +213,36 @@ router.post("/predict", verifyToken, async (req, res) => {
     // lc-wallet isPrem, bu). Artık `no-use-before-define` kuralı yakalıyor.
     const db = req.app?.locals?.db || null;
 
-    // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
-    const all = await FixturesStore.loadAll(db);
-    const fx  = all.find(f => f.fixtureId === fixtureId);
+    // İndeksli tekil okuma (bkz. lib/fixtures-store.cjs getOne): eskiden TÜM
+    // fikstür listesi çekilip bellekte süzülüyordu.
+    const fx = await FixturesStore.getOne(fixtureId, db);
     if (!fx) return res.status(404).json({ ok: false, error: "FIXTURE_NOT_FOUND" });
 
+    // Tahmin penceresi maçtan 24 saat önce AÇILIR (bu moda özel kural).
     const now = Date.now();
     const ko  = new Date(fx.kickoffISO || "").getTime();
     if (!Number.isFinite(ko) || now < ko - WINDOW_BEFORE_MS) {
       return res.status(400).json({ ok: false, error: "NOT_OPEN_YET" });
     }
-    const live = await getLiveState(fixtureId);
-    if (live?.status && live.status !== "NS") {
-      return res.status(400).json({ ok: false, error: "MATCH_ALREADY_STARTED" });
+
+    /* ⚠️ KAPANMA KONTROLÜ ORTAK KİLİDE BAĞLANDI.
+     *
+     * Eskiden yalnızca canlı durum DOSYASINA bakılıyordu:
+     *     if (live?.status && live.status !== "NS") reddet
+     * Dosya yoksa `live` null olur ve kontrol SESSİZCE GEÇERDİ. Render'da
+     * `data/live/` geçici disk: her deploy'da siliniyor. Üstelik saat tabanlı
+     * bir yedek de yoktu — yani kickoff geçmiş olsa bile hiçbir şey durdurmuyordu.
+     *
+     * Bu ucun yazdığı tahmin `predictions` koleksiyonuna gidiyor ve settle2
+     * tarafından normal tahmin gibi PUANLANIP ÖDÜLLENDİRİLİYOR. Yani bitmiş
+     * maça tahmin girip sonucu bilerek LC kazanmak mümkündü.
+     *
+     * `fiksturKilidi` fail-closed ve İKİ bağımsız sinyal kullanıyor: durum
+     * (NS değilse başlamış) ve kickoff saati (durum bayatsa saat yakalar).
+     * Aynı kilit düelloda ve havuzda da kullanılıyor. */
+    const kilit = await fiksturKilidi(fixtureId, { db });
+    if (kilit.locked) {
+      return res.status(400).json({ ok: false, error: kilit.reason, fixtureId });
     }
 
     const existing = await getUserPred(uid, fixtureId, db);
