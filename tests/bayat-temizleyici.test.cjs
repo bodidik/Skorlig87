@@ -309,3 +309,59 @@ describe("düello durum adları", () => {
     assert.equal(await bakiye("veli"), 10, "kabul edene iade yapilmamis");
   });
 });
+
+/* ── Başlama saati yedek araması ─────────────────────────────────────────── */
+
+describe("başlama saati yedeği", () => {
+  test("belgede saat yoksa YETKİLİ fikstürden okunur", async () => {
+    /**
+     * ⚠️ Mini turnuvanın `fixtures[].kickoffISO` alanı doğrudan İSTEMCİ
+     * gövdesinden doluyor ve eski kayıtlarda boş olabilir. Saat okunamayınca
+     * maç asla bayat sayılmaz, yani para sonsuza kadar kilitli kalırdı —
+     * tam da bu mekanizmanın önlemek için yazıldığı durum.
+     */
+    await db.collection("fixtures").insertOne({
+      fixtureId: "m9", status: "NS", kickoffISO: GECMIS(72),
+    });
+    const r = await bayatMi({ fixtureId: "m9", kickoffISO: null, db });
+    assert.equal(r.bayat, true, "yetkili fikstur saatine dusulmemis");
+  });
+
+  test("yedek de bulunamazsa fail-closed korunur", async () => {
+    const r = await bayatMi({ fixtureId: "hicyok", kickoffISO: null, db });
+    assert.equal(r.bayat, false);
+    assert.equal(r.sebep, "BAD_KICKOFF");
+  });
+});
+
+/* ── Mini turnuva bitme şartı ────────────────────────────────────────────── */
+
+describe("mini turnuva bitme şartı", () => {
+  const Mini = require("../routes/mini.cjs");
+
+  test("tüm maçlar settle olduysa biter", async () => {
+    const t = { fixtures: [{ fixtureId: "m1" }, { fixtureId: "m2" }] };
+    assert.equal(await Mini._bitmeyeHazirMi(t, 2, ["m1", "m2"], db), true);
+  });
+
+  test("eksik maç HENÜZ bayat değilse bekler", async () => {
+    const t = { fixtures: [{ fixtureId: "m1", kickoffISO: GECMIS(2) }] };
+    assert.equal(await Mini._bitmeyeHazirMi(t, 0, ["m1"], db), false);
+  });
+
+  test("eksik maç bayatsa turnuva bitebilir", async () => {
+    // ⚠️ ESKİDEN TURNUVA SONSUZA KADAR AÇIK KALIRDI: kazananlar ödülünü
+    // almıyor, turnuva kurucunun kota yuvasını kalıcı işgal ediyordu.
+    const t = { fixtures: [{ fixtureId: "m1", kickoffISO: GECMIS(72) }] };
+    assert.equal(await Mini._bitmeyeHazirMi(t, 0, ["m1"], db), true);
+  });
+
+  test("bir maç bayat, diğeri bekleniyorsa BEKLER", async () => {
+    // Erken kapatmak, sonucu geç gelen maçı haksız yere yok saymak olurdu.
+    const t = { fixtures: [
+      { fixtureId: "m1", kickoffISO: GECMIS(72) },
+      { fixtureId: "m2", kickoffISO: GECMIS(2) },
+    ] };
+    assert.equal(await Mini._bitmeyeHazirMi(t, 0, ["m1", "m2"], db), false);
+  });
+});

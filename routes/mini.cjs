@@ -662,3 +662,5 @@ module.exports = router;
 // asamaz). Router'i ayaga kaldirmadan dogrulanabilsin diye disa aciliyor.
 module.exports._kazananPayi = kazananPayi;
 module.exports._MINI_WIN_LC = MINI_WIN_LC;
+// Test icin: bitme sarti (bayat mac yok sayilmasi) dogrudan sinanabilsin.
+module.exports._bitmeyeHazirMi = bitmeyeHazirMi;
