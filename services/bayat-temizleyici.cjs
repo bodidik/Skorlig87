@@ -25,6 +25,7 @@ const { bayatMi } = require("../lib/bayat-mac.cjs");
 const { creditLc, kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
 const { DURUM, PARA_TUTAN } = require("../lib/duel-durum.cjs");
 
+const { MAC_GIRIS_BEDELI } = require("../lib/ekonomi.cjs");
 const COLL_DUELS = "duels";
 const COLL_POOLS = "pools";
 const COLL_BETS = "pool_bets";
@@ -136,6 +137,85 @@ async function duellolariTemizle(db, simdi = null) {
 /* ── Havuzlar ────────────────────────────────────────────────────────────── */
 
 /** Bayat maçtaki havuz bahislerini iade eder ve havuzu mühürler. */
+/**
+ * BAYAT MACTA KALAN TAHMIN BEDELLERINI IADE EDER.
+ *
+ * UYARI: DUELLO VE HAVUZ IADE EDILIYORDU, TAHMIN EDILMIYORDU. Tahmin gonderimi
+ * MAC_GIRIS_BEDELI (3 LC) dusuyor; settle2 bu bedeli yalnizca oyuncu
+ * base >= REFUND_MIN_BASE puan aldiysa geri veriyor. Mac HIC sonuclanmazsa
+ * puanlama da olmuyor — yani oyuncu oynanmamis bir oyun icin odemis oluyor ve
+ * parasi kaliciolarak kayboluyor.
+ *
+ * Ayni maca duello acan ya da havuza giren oyuncunun parasi iade ediliyordu;
+ * tahmin yapanin ki edilmiyordu. Tutarsizlik buradaydi.
+ *
+ * OLCULDU (2026-07-31, uretim verisi): 4 bayat macta 160 tahmin var ama
+ * HEPSI BOT — su an kilitli insan parasi YOK. Yapisal bosluk gercek kullanici
+ * gelince isirir.
+ *
+ * UYARI: MUHUR TAHMIN BELGESINDE. `iadeEdildi` alanini kosullu yazip
+ * modifiedCount kontrol ediyoruz; iki tur ust uste calissa bile ikinci tur
+ * hicbir sey odemez. Ayri bir muhur koleksiyonu, tahminle ayrisabilecek ikinci
+ * bir dogruluk kaynagi olurdu.
+ *
+ * UYARI: BOTLARA IADE YOK. Botlar LC harcamiyor (settle2 onlari suzuyor), yani
+ * iade etmek karsiliksiz LC basmak olurdu.
+ */
+async function tahminleriTemizle(db, simdi = null) {
+  const col = db.collection("predictions");
+
+  // Iadesi yapilmamis, bot olmayan tahminlerin maclari
+  const fidler = await col.distinct("fixtureId", {
+    isBot: { $ne: true },
+    iadeEdildi: { $ne: true },
+  });
+  if (!fidler.length) return { bakilan: 0, iade: 0, iadeLc: 0 };
+
+  const saatler = await kickoffHaritasi(db, fidler);
+  let iade = 0, iadeLc = 0;
+  const odenemeyen = [];
+
+  for (const fid of fidler) {
+    const durum = await bayatMi({
+      fixtureId: String(fid),
+      kickoffISO: saatler.get(String(fid)) || null,
+      db,
+      simdi,
+    });
+    if (!durum.bayat) continue;
+
+    const tahminler = await col
+      .find({ fixtureId: fid, isBot: { $ne: true }, iadeEdildi: { $ne: true } })
+      .toArray();
+
+    for (const t of tahminler) {
+      const nowISO = new Date().toISOString();
+      // Muhur ODEMEDEN once, kosul yazmanin icinde.
+      const m = await col.updateOne(
+        { _id: t._id, iadeEdildi: { $ne: true } },
+        { $set: { iadeEdildi: true, iadeSebebi: "SONUC_GELMEDI", iadeAt: nowISO } }
+      );
+      if (!m.modifiedCount) continue;
+
+      const ok = await creditLc(db, t.userId, MAC_GIRIS_BEDELI, "pred_void_refund", {
+        fixtureId: String(fid), sebep: "SONUC_GELMEDI",
+      });
+      if (ok) { iade++; iadeLc += MAC_GIRIS_BEDELI; }
+      else odenemeyen.push({ userIdLower: String(t.userId).toLowerCase(), tutar: MAC_GIRIS_BEDELI, fixtureId: String(fid) });
+    }
+  }
+
+  if (odenemeyen.length) {
+    console.error(`[bayat-temizleyici] TAHMIN IADESI ODENEMEDI: ${odenemeyen.length} kayit`);
+    await kayipOdulKaydet(db, {
+      kaynak: "pred_void_refund", odemeler: odenemeyen,
+      beklenen: odenemeyen.length, eksik: odenemeyen.length,
+    });
+  }
+
+  return { bakilan: fidler.length, iade, iadeLc };
+}
+
 async function havuzlariTemizle(db, simdi = null) {
   const acikHavuzlar = await db
     .collection(COLL_POOLS)
@@ -196,12 +276,14 @@ async function tur(dbDisaridan = null, simdi = null) {
 
   const duello = await duellolariTemizle(db, simdi);
   const havuz = await havuzlariTemizle(db, simdi);
+  const tahmin = await tahminleriTemizle(db, simdi);
 
-  _sonTur = { at: new Date().toISOString(), duello, havuz };
-  if (duello.iptal || havuz.iptal) {
+  _sonTur = { at: new Date().toISOString(), duello, havuz, tahmin };
+  if (duello.iptal || havuz.iptal || tahmin.iade) {
     console.warn(
-      `[bayat-temizleyici] ${duello.iptal} duello + ${havuz.iptal} havuz iptal edildi · ` +
-      `${duello.iadeLc + havuz.iadeLc} LC iade`
+      `[bayat-temizleyici] ${duello.iptal} duello + ${havuz.iptal} havuz iptal, ` +
+      `${tahmin.iade} tahmin iadesi · ` +
+      `${duello.iadeLc + havuz.iadeLc + tahmin.iadeLc} LC iade`
     );
   }
   return { ok: true, ..._sonTur };
@@ -222,4 +304,6 @@ function stop() {
   _timer = null;
 }
 
-module.exports = { start, stop, tur, sonTur: () => _sonTur, _duellolariTemizle: duellolariTemizle, _havuzlariTemizle: havuzlariTemizle };
+module.exports = { start, stop, tur, sonTur: () => _sonTur,
+  _duellolariTemizle: duellolariTemizle, _havuzlariTemizle: havuzlariTemizle,
+  _tahminleriTemizle: tahminleriTemizle };

@@ -365,3 +365,74 @@ describe("mini turnuva bitme şartı", () => {
     assert.equal(await Mini._bitmeyeHazirMi(t, 0, ["m1", "m2"], db), false);
   });
 });
+
+/* ── Tahmin bedeli iadesi ───────────────────────────────────────────────── */
+
+describe("bayat maçtaki tahmin bedeli", () => {
+  /**
+   * ⚠️ DÜELLO VE HAVUZ İADE EDİLİYORDU, TAHMİN EDİLMİYORDU.
+   *
+   * Tahmin gönderimi 3 LC düşüyor; settle2 bu bedeli yalnızca oyuncu yeterli
+   * puan aldıysa geri veriyor. Maç HİÇ sonuçlanmazsa puanlama da olmuyor —
+   * yani oyuncu oynanmamış bir oyun için ödemiş oluyor. Aynı maça düello açanın
+   * ya da havuza girenin parası iade ediliyordu; tahmin yapanınki edilmiyordu.
+   *
+   * Ölçüldü (üretim verisi): 4 bayat maçta 160 tahmin var ama HEPSİ BOT —
+   * şu an kilitli insan parası yok. Yapısal boşluk gerçek kullanıcı gelince ısırır.
+   */
+  const { MAC_GIRIS_BEDELI } = require("../lib/ekonomi.cjs");
+
+  test("sonucu gelmeyen maçta bedel iade edilir", async () => {
+    await db.collection("fixtures").insertOne({
+      fixtureId: "mt1", status: "NS", kickoffISO: GECMIS(72),
+    });
+    await db.collection("predictions").insertOne({
+      fixtureId: "mt1", userId: "Ali", userIdLower: "ali", isBot: false, outcome: "H",
+    });
+
+    const r = await Temizleyici._tahminleriTemizle(db);
+    assert.equal(r.iade, 1);
+    assert.equal(await bakiye("ali"), MAC_GIRIS_BEDELI);
+  });
+
+  test("İKİ KEZ çalışsa da bir kez öder", async () => {
+    await db.collection("fixtures").insertOne({
+      fixtureId: "mt2", status: "NS", kickoffISO: GECMIS(72),
+    });
+    await db.collection("predictions").insertOne({
+      fixtureId: "mt2", userId: "Ali", userIdLower: "ali", isBot: false, outcome: "H",
+    });
+
+    await Temizleyici._tahminleriTemizle(db);
+    const araBakiye = await bakiye("ali");
+    await Temizleyici._tahminleriTemizle(db);
+    assert.equal(await bakiye("ali"), araBakiye, "cift iade yapilmis");
+  });
+
+  test("BOTLARA iade yapılmaz", async () => {
+    // Botlar LC harcamıyor; iade etmek karşılıksız LC basmak olurdu.
+    await db.collection("fixtures").insertOne({
+      fixtureId: "mt3", status: "NS", kickoffISO: GECMIS(72),
+    });
+    await db.collection("predictions").insertOne({
+      fixtureId: "mt3", userId: "BotKisi", userIdLower: "botkisi", isBot: true, outcome: "H",
+    });
+
+    const r = await Temizleyici._tahminleriTemizle(db);
+    assert.equal(r.iade, 0);
+    assert.equal(await bakiye("botkisi"), 0);
+  });
+
+  test("henüz bayat olmayan maça dokunulmaz", async () => {
+    await db.collection("fixtures").insertOne({
+      fixtureId: "mt4", status: "NS", kickoffISO: GECMIS(2),
+    });
+    await db.collection("predictions").insertOne({
+      fixtureId: "mt4", userId: "Veli", userIdLower: "veli", isBot: false, outcome: "H",
+    });
+
+    const r = await Temizleyici._tahminleriTemizle(db);
+    assert.equal(r.iade, 0);
+    assert.equal(await bakiye("veli"), 0);
+  });
+});

@@ -60,6 +60,9 @@ const IADE = new Set([
   "pool_refund_no_winner",
   "pool_void_refund",
   "tournament_entry_refund",
+  // Mac hic sonuclanmazsa tahmin giris bedeli iade edilir; muhur
+  // tahmin belgesindeki `iadeEdildi` alani (bkz. bayat-temizleyici).
+  "pred_void_refund",
 ]);
 
 /**
