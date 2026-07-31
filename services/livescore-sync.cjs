@@ -292,15 +292,54 @@ async function sync() {
 
       if (!hasScore && !htParsed) continue; // maç henüz başlamadı
 
+      /* UYARI: SKOR AYRISTIRILAMADIYSA FT YAZMA, SETTLE TETIKLEME.
+       *
+       * Yukarida `home`/`away` icin `hasScore ? parseInt(...) : 0` var — yani
+       * skor okunamadiginda 0 UYDURULUYOR. Bu tek basina zararsiz (canli
+       * durumda 0-0 gosterilir, sonraki tur duzeltir) ama `isFinished` de
+       * dogruysa 0-0 FINAL olarak yazilip settle tetikleniyordu.
+       *
+       * Ulasilabilir yol: FT isareti gelmis, HT skoru ayrismis ama FT skoru
+       * ayrismamis (kaynak isaretlemesi degisti, hucre bos). Sonuc: herkesin
+       * tahmini 0-0'a gore puanlanir, LC yanlis dagitilir — ve `claimAward`
+       * muhru atildigi icin KENDI KENDINE DUZELMEZ.
+       *
+       * Ayni sinifta bir hata bu dosyada zaten yasanmisti (bkz. normalizeTeam
+       * notu: yanlis takim eslesmesi -> yanlis settle, 1411 takimin 30'u).
+       *
+       * Dogru davranis: FT'yi YOK SAY. Skor sonraki turda gelirse normal
+       * akis calisir; hic gelmezse bayat mac temizleyicisi 48 saat sonra
+       * bahisleri iade eder — para kilitli kalmaz. */
+      const ftGuvenilir = scores.isFT && hasScore;
+
+      /* UYARI: CANLI DURUM YAZIMI DA ATLANIYOR — yalnizca sonuc dosyasi degil.
+       *
+       * settle2 skoru CANLI DURUM DOSYASINDAN okuyor (`fx.score.home`). Eger
+       * burada `status:"FT", score:{0,0}` yazsaydik, settle'i baska bir yol
+       * tetikledigi anda (af-sync, admin paneli, elle /rt/settle) 0-0
+       * uzlastirilirdi. Yani yalnizca settle tetigini kapatmak YETMEZ;
+       * guvenilmez veriyi hic yazmamak gerekiyor.
+       *
+       * Onceki (dogru) durum dosyasi yerinde kaliyor; skor sonraki turda
+       * gelirse normal akis calisir. Hic gelmezse bayat mac temizleyicisi
+       * 48 saat sonra bahisleri iade eder — para kilitli kalmaz. */
+      if (scores.isFT && !hasScore) {
+        console.error(
+          `[sync] FT bildirildi ama skor ayristirilamadi -> ${fid} ` +
+          `(${fixture.home} - ${fixture.away}); durum ve sonuc YAZILMIYOR, settle TETIKLENMIYOR`
+        );
+        continue;
+      }
+
       // Write live state (HT+FT veya sadece LIVE)
       await writeLiveState(fid, liveMatch, scores, nowISO);
-      if (scores.isFT) await writeResultsEntry(fixture, scores, nowISO);
+      if (ftGuvenilir) await writeResultsEntry(fixture, scores, nowISO);
 
-      // Settle trigger — sadece FT + daha önce settle edilmemişse
-      if (scores.isFT && !settledIds.has(fid) && !_settledThisSession.has(fid)) {
+      // Settle trigger — sadece GUVENILIR FT + daha önce settle edilmemişse
+      if (ftGuvenilir && !settledIds.has(fid) && !_settledThisSession.has(fid)) {
         settleQueue.push(fid);
         newFT++;
-      } else if (!scores.isFT && hasScore) {
+      } else if (!ftGuvenilir && hasScore) {
         newLive++;
       }
     }
