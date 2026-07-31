@@ -59,9 +59,27 @@ describe("isPremium", () => {
     assert.equal(await premium.isPremium("suresi_bitti", null), false);
   });
 
-  test("suresiz premium (premiumUntil yok) true doner", async () => {
+  test("sure YOKSA premium sayilmaz (fail-closed)", async () => {
+    /**
+     * ⚠️ BU TEST DAVRANISI TERSINE CEVIRDI. Eskiden "suresiz premium
+     * (premiumUntil yok) true doner" diyordu — ama lib/premium.cjs'in KENDI
+     * BASLIGI bunun tersini soyluyor:
+     *   "premiumUntil: ISO tarih (yoksa/expired ise premium sayilmaz)"
+     *
+     * Eski testin bir gerekcesi yoktu; kodun o anki halini tarif ediyordu.
+     * Celiski tehlikeliydi: sozlesmeden akil yuruten biri (yonetici araci,
+     * tasima betigi, elle DB duzeltmesi) `premium: true` yazip sureyi bos
+     * birakinca KALICI premium vermis olurdu.
+     *
+     * Degisiklik mevcut kullanicilari etkilemiyor: kodda premium veren TEK
+     * yol (premium/subscribe) her zaman premiumUntil yaziyor, 1987 uyeligi
+     * ise daha onceki dalda donuyor (asagidaki test onu koruyor).
+     *
+     * Suresiz premium gercekten istenirse ACIK bir alan (premiumForever)
+     * eklenmeli — "alan yok" bir niyet beyani degildir.
+     */
     await Store.updateUser("suresiz", { premium: true }, V, null);
-    assert.equal(await premium.isPremium("suresiz", null), true);
+    assert.equal(await premium.isPremium("suresiz", null), false);
   });
 
   test("premium olmayan false doner", async () => {
