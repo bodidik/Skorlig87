@@ -4,6 +4,8 @@ const express = require("express");
 const router = express.Router();
 const path = require("path");
 const { fiksturKilidi } = require("../lib/fikstur-kilit.cjs");
+const MacDenge = require("../lib/mac-denge.cjs");
+const { duelloyaUygunMu } = MacDenge;
 const fsp = require("fs").promises;
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
@@ -444,6 +446,23 @@ router.post("/duels/create", verifyToken, async (req, res) => {
       return res.status(409).json({ ok: false, error: lock.reason, fixtureId: fx, lockAtISO: lock.lockAtISO || null });
     }
 
+    /* ⚠️ TEK TARAFLI MAÇA DÜELLO YOK.
+     *
+     * "Real Madrid – Erokspor" gibi maçlarda sonuç zaten büyük ölçüde belli.
+     * Sürprizi ödüllendirme işini TEK MAÇ TAHMİNİ yapıyor (düşük ihtimalli
+     * sonuç daha çok LC getiriyor); aynı maça düello açmak yeni bir oyun
+     * kurmuyor, yalnızca kayıt/eşleşme/sonuçlandırma yükü ekliyor.
+     *
+     * ⚠️ LC DÜŞÜLMEDEN ÖNCE: aşağıda `deductLc` var. Kapıyı ondan sonra
+     * koysaydık reddedilen düello yine de para götürürdü. bkz. lib/mac-denge.cjs */
+    const denge = await duelloyaUygunMu(fx, db);
+    if (!denge.uygun) {
+      return res.status(400).json({
+        ok: false, error: "MATCH_TOO_LOPSIDED",
+        fixtureId: fx, olasilik: denge.olasilik, esik: MacDenge.ESIK,
+      });
+    }
+
     // 🔒 Açık düello sınırı — premium ayrıcalığı (erişim/kapasite grubu).
     //
     // LC AKIŞINA DOKUNMAZ: bahis yine tam ödeniyor, kesinti aynı. Premium'un
@@ -674,7 +693,17 @@ router.get("/duels/open", async (req, res) => {
       return true;
     });
 
-    return res.json({ ok: true, count: open.length, items: open });
+    /* Bu maça düello kurulabilir mi? Ekran açılışında zaten burası
+     * çağrılıyor; bayrağı buradan vermek, kullanıcının butona basıp hata
+     * almasını önlüyor. Karar yine SUNUCUDA (bkz. lib/mac-denge.cjs) — bu
+     * yalnızca arayüz ipucu, kapının kendisi /duels/create içinde. */
+    const denge = await duelloyaUygunMu(fx, getDb(req));
+
+    return res.json({
+      ok: true, count: open.length, items: open,
+      duelloyaUygun: denge.uygun,
+      dengeOlasilik: denge.olasilik,
+    });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

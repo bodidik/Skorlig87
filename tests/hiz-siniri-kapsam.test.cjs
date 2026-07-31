@@ -47,15 +47,32 @@ function montajOnekleri() {
   return harita;
 }
 
-/** Bir rota dosyasındaki, gövdesinde para harcayan POST yolları. */
+/**
+ * Bir rota dosyasındaki, gövdesinde para harcayan POST yolları.
+ *
+ * ⚠️ GÖVDE SINIRI SABİT SATIR SAYISI DEĞİL. İlk sürüm "sonraki 45 satır" diye
+ * bakıyordu; `duels.cjs`'e maç dengesi kapısı eklenince `deductLc` çağrısı
+ * pencerenin dışına taştı ve tarama o ucu GÖREMEZ oldu. Sabit pencere,
+ * işleyici uzadıkça sessizce körleşir. Artık gövde bir sonraki `router.`
+ * bildirimine kadar sürer.
+ *
+ * (O körleşmeyi aşağıdaki `bakilan.length >= 4` sağlık denetimi yakaladı —
+ * o olmasaydı kapsam sessizce daralır, test yine yeşil görünürdü.)
+ */
 function harcayanRotalar(dosyaYolu) {
   const satirlar = fs.readFileSync(dosyaYolu, "utf8").split("\n");
-  const out = [];
+
+  const baslangiclar = [];
   satirlar.forEach((satir, i) => {
-    const m = /router\.post\(\s*"([^"]+)"/.exec(satir);
+    if (/^\s*router\.(get|post|put|patch|delete|use)\(/.test(satir)) baslangiclar.push(i);
+  });
+
+  const out = [];
+  baslangiclar.forEach((bas, k) => {
+    const m = /router\.post\(\s*"([^"]+)"/.exec(satirlar[bas]);
     if (!m) return;
-    const govde = satirlar.slice(i, i + 45).join("\n");
-    if (!HARCAMA.test(govde)) return;
+    const son = k + 1 < baslangiclar.length ? baslangiclar[k + 1] : satirlar.length;
+    if (!HARCAMA.test(satirlar.slice(bas, son).join("\n"))) return;
     out.push(m[1]);
   });
   return out;

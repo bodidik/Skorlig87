@@ -684,8 +684,9 @@ async function computePredLock(fixtureId, db = null) {
   let st = await readJson(stateFile(fx), null);
   if (!st || typeof st !== "object") {
     try {
-      const hepsi = await FixturesStore.loadAll(db);
-      const f = (hepsi || []).find((x) => String(x?.fixtureId || "") === fx);
+      // Indeksli tekil arama (bkz. fixtures-store.getOne): bu yol her tahmin
+      // gonderiminde calisiyor ve eskiden tum listeyi cekiyordu.
+      const f = await FixturesStore.getOne(fx, db);
       if (!f) return { locked: true, reason: "FIXTURE_NOT_FOUND", lock: null };
       st = { status: f.status || "NS", kickoffISO: f.kickoffISO || f.kickoff || null };
     } catch (e) {
