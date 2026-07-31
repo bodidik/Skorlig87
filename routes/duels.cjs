@@ -470,9 +470,8 @@ router.post("/duels/create", verifyToken, async (req, res) => {
     // veriliyor. bkz. lib/premium.cjs — PERKS'in iki grubu.
     const isPrem = await premium.isPremium(creatorId, db);
     const acikSinir = premium.maxOpenDuels(isPrem);
-    const mevcutAcik = (await loadDuels(db)).filter(
-      (d) => String(d.creatorId || "").toLowerCase() === creatorId.toLowerCase() && d.status === "open"
-    ).length;
+    // Sayim icin TUM duellolari cekmeye gerek yok; countDocuments belge tasimaz.
+    const mevcutAcik = await SocialStore.acikDuelloSayisi(creatorId, db);
     if (mevcutAcik >= acikSinir) {
       return res.status(400).json({
         ok: false, error: "TOO_MANY_OPEN_DUELS",
@@ -684,10 +683,10 @@ router.get("/duels/open", async (req, res) => {
     const uid = String(req.query.userId || "").trim();
     if (!fx) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
 
-    const list = await loadDuels(getDb(req));
+    // Hedefli sorgu: yalnizca BU macin ACIK duellolari (ikisi de indeksli).
+    const list = await SocialStore.duelsBul({ fixtureId: fx, status: "open" }, getDb(req));
     const uidL = uid.toLowerCase();
     const open = list.filter(d => {
-      if (d.fixtureId !== fx || d.status !== "open") return false;
       if (uid && d.creatorId.toLowerCase() === uidL) return false; // own duel
       if (d.challengedId && uid && d.challengedId.toLowerCase() !== uidL) return false; // targeted at another
       return true;
@@ -720,15 +719,9 @@ router.get("/duels/my", verifyToken, async (req, res) => {
     const fx = String(req.query.fixtureId || "").trim();
     if (!uid) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
 
-    const uidL = uid.toLowerCase();
-    const list = await loadDuels(getDb(req));
-    const mine = list
-      .filter(d => {
-        const isMe = d.creatorId.toLowerCase() === uidL || (d.acceptorId && d.acceptorId.toLowerCase() === uidL);
-        if (!isMe) return false;
-        if (fx && d.fixtureId !== fx) return false;
-        return true;
-      })
+    // Hedefli sorgu: kurucu ya da kabul eden BEN olan duellolar.
+    // (Kimlik alanlarinda *Lower yok, esitlik $expr ile — bkz. social-store.)
+    const mine = (await SocialStore.duelsKullanici(uid, getDb(req), { fixtureId: fx || null }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return res.json({ ok: true, count: mine.length, items: mine });
@@ -742,11 +735,11 @@ router.get("/duels/arena", async (req, res) => {
   try {
     const uid = String(req.query.userId || "").trim();
     const uidL = uid.toLowerCase();
-    const list = await loadDuels(getDb(req));
+    // Arena yalnizca ACIK duellolari gosteriyor; sonuclanmislari cekmek bosuna.
+    const list = await SocialStore.duelsBul({ status: "open" }, getDb(req));
 
     const matchMap = new Map();
     for (const d of list) {
-      if (d.status !== "open") continue;
       if (uid && d.creatorId.toLowerCase() === uidL) continue; // kendi duellonu gösterme
       if (d.challengedId && uid && d.challengedId.toLowerCase() !== uidL) continue; // başkasına özel
 
