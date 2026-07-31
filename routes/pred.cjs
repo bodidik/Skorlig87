@@ -147,8 +147,8 @@ async function isUser1987Member(userId, db) {
   const u = map[uid];
   if (!u) return false;
 
-  const seg = String(u.segment || "").toLowerCase();
-  return u.is1987 === true || seg === "1987";
+  // Tek kaynak: lib/premium.cjs uyeMi1987 (kural bes yerde kopyalanmisti).
+  return require("../lib/premium.cjs").uyeMi1987(u);
 }
 
 async function ensureWalletUserFile(userId) {

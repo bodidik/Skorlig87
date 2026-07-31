@@ -228,8 +228,8 @@ async function isUser1987MemberFromFile(userId, db) {
   const u = map[uid];
   if (!u) return false;
 
-  const seg = String(u.segment || "").toLowerCase();
-  return u.is1987 === true || seg === "1987";
+  // Tek kaynak: lib/premium.cjs uyeMi1987 (kopya kural ayrisiyordu).
+  return premium.uyeMi1987(u);
 }
 
 /**

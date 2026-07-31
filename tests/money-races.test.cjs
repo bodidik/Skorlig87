@@ -711,11 +711,34 @@ describe("tahmin kilidi — kapalı başarısızlık, ama oyunu durdurmadan", ()
   });
 
   test("durum dosyası yoksa fikstür deposuna düşülür (meşru oyun engellenmesin)", () => {
+    /**
+     * ⚠️ BU TEST İKİ AYRI SEBEPLE KAZARA GEÇTİ.
+     *
+     * 1) Gövde dilimi `fn.indexOf("\n}\n")` ile kesiliyordu ve
+     *    `computePredLock`un DIŞINA taşıp komşu bir fonksiyondaki `loadAll`u
+     *    yakalıyordu — yani fonksiyonda hiç depo erişimi olmasa bile yeşildi.
+     * 2) Dosya CRLF satır sonuyla yazıldığında `"\n}\n"` HİÇ eşleşmiyor,
+     *    `indexOf` -1 dönüyor ve `slice(0, -1)` neredeyse tüm dosyayı alıyor.
+     *
+     * İkisi de aynı şeyi söylüyor: sabit bir metin sınırına güvenen test,
+     * ölçtüğünü sandığı şeyi ölçmeyebilir.
+     *
+     * Artık sınır bir sonraki ÜST DÜZEY bildirim ve aranan şey ERİŞİMİN
+     * KENDİSİ — `loadAll` da `getOne` de aynı değişmezi sağlıyor: durum
+     * dosyası yoksa fikstür DEPOSUNA bakılır, maç körü körüne reddedilmez.
+     */
     const s = kaynak();
-    const fn = s.slice(s.indexOf("async function computePredLock"));
-    const govde = fn.slice(0, fn.indexOf("\n}\n"));
-    assert.ok(/FixturesStore\.loadAll/.test(govde),
-      "durum dosyasi yokken depoya bakilmiyor — gelecek maclar da reddedilir");
+    const bas = s.indexOf("async function computePredLock");
+    assert.ok(bas > 0, "computePredLock bulunamadi");
+
+    const kalan = s.slice(bas + 10);
+    const sonraki = kalan.search(/\r?\n(async function|function|router\.|module\.exports)/);
+    const govde = sonraki > 0 ? s.slice(bas, bas + 10 + sonraki) : s.slice(bas);
+
+    assert.ok(
+      /FixturesStore\.(loadAll|getOne)/.test(govde),
+      "durum dosyasi yokken fikstur deposuna bakilmiyor — gelecek maclar da reddedilir"
+    );
   });
 });
 
