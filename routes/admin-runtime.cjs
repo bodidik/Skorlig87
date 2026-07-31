@@ -39,7 +39,6 @@ function requireAdminToken(req, res, next) {
 // Ayrıca settle2 bu değişkeni okuyup pred okumayınca aynı zincirdeki iki
 // modül maç durum dosyasını FARKLI dizinlerde arıyordu.
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
-const FIXTURES_FILE = path.join(DATA_DIR, "fixtures.json");
 const RESULTS_FILE = path.join(DATA_DIR, "results.json");
 
 /* =========================================================
@@ -694,8 +693,19 @@ router.post("/fixtures/delete", requireAdminToken, express.json(), async (req, r
 // döndürüyor; panel token gönderiyor, kapatmanın maliyeti yok.
 router.get("/fixtures", requireAdminToken, async (req, res) => {
   try {
-    const raw = await readJson(FIXTURES_FILE, { fixtures: [] });
-    const list = Array.isArray(raw?.fixtures) ? raw.fixtures : [];
+    /* UYARI: MONGO BIRINCIL, DOSYA DEGIL.
+     *
+     * Bu uc yalnizca `data/fixtures.json` okuyordu; oysa fiksturler
+     * lib/fixtures-store.cjs uzerinden MONGO birincil tutuluyor. Dosya bir
+     * AYNA ve iki bicimde bayatlayabiliyor:
+     *   • Render'da `data/` gecici disk — deploy sonrasi dosya YOK, panel bos
+     *     liste gosterir (Mongo'da veri dururken).
+     *   • Ayna kapatilirsa (SKORLIG_FIXTURES_FILE_MIRROR=0; kod tabani baska
+     *     depolari zaten kapatti) dosya kalici olarak bayatlar.
+     *
+     * Panel operasyonel: pilot modda maclar buradan elle giriliyor. Yalan
+     * soyleyen bir liste, yanlis mac girilmesine yol acar. */
+    const list = await FixturesStore.loadAll(req.app?.locals?.db || null);
     const sorted = [...list].sort((a, b) => {
       const ta = new Date(a.kickoffISO || a.kickoffDate || 0).getTime();
       const tb = new Date(b.kickoffISO || b.kickoffDate || 0).getTime();

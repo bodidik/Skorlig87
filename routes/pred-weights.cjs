@@ -42,9 +42,25 @@ async function readJson(file, fb) {
 }
 
 /** Maç bilgisini takvimden, yoksa canlı durum dosyasından bul. */
-async function findMatch(fixtureId) {
+async function findMatch(fixtureId, db = null) {
   const fid = String(fixtureId || "").trim();
   if (!fid) return null;
+
+  /* UYARI: MONGO BIRINCIL. Bu fonksiyon yalnizca `data/fixtures.json` ve
+   * `data/live/*.json` okuyordu; fiksturler ise lib/fixtures-store.cjs
+   * uzerinden MONGO birincil tutuluyor ve Render'da `data/` GECICI disk.
+   * Deploy sonrasi iki dosya da yok -> findMatch null doner -> tahmin
+   * ekranindaki puan onizlemesi varsayilan carpanlari gosterir, yani
+   * kullanicaya YANLIS beklenen puan gosterilir. Sessiz bir bozulma. */
+  try {
+    const FixturesStore = require("../lib/fixtures-store.cjs");
+    const doc = await FixturesStore.getOne(fid, db);   // indeksli tekil okuma
+    if (doc && (doc.home || doc.away)) {
+      return { home: doc.home, away: doc.away, country: doc.country, league: doc.league };
+    }
+  } catch (e) {
+    console.error("[pred-weights] fikstur okunamadi, dosyaya dusuluyor:", e?.message || e);
+  }
 
   const raw = await readJson(FIXTURES_FILE, null);
   const list = Array.isArray(raw) ? raw : (raw?.fixtures || raw?.items || []);
@@ -71,7 +87,7 @@ router.get("/pred/weights", async (req, res) => {
     let league = "";
 
     if ((!home || !away) && fid) {
-      const m = await findMatch(fid);
+      const m = await findMatch(fid, req.app?.locals?.db || null);
       if (m) {
         home = home || String(m.home || "");
         away = away || String(m.away || "");
