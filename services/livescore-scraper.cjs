@@ -368,6 +368,17 @@ async function fromNesine() {
         // \b sınırı "unliveData" ile eşleşmez (n-l arasında sözcük sınırı yok),
         // bu yüzden ayrıca dışlamaya gerek kalmaz.
         const isLive = /\bliveData\b/.test(cls);
+        /* ⚠️ BİTMİŞLİK KARARI BURADA VERİLMİYOR.
+         *
+         * Eskiden `isFinished = /match-not-play|finished/.test(cls)` idi ve
+         * `match-not-play` "oynanmıyor" demek — ERTELENEN, İPTAL ve YARIDA
+         * KESİLEN maçlar da bu sınıfta. Üçü de "bitti" sayılıp ödeme zincirine
+         * giriyordu.
+         *
+         * Bu geri çağırım SAYFA BAĞLAMINDA çalışıyor, dış kapsama (require)
+         * erişemez. O yüzden karar Node tarafına taşındı: burada yalnızca ham
+         * girdiler taşınıyor (`_cls`, `_rawStatus`), `bittiMi` onları okuyor.
+         * Kopya mantık yazmak yerine tek kaynak korunuyor. */
         const isFinished = /match-not-play|finished/.test(cls);
         const notStarted = /not-started/.test(cls);
 
@@ -393,6 +404,9 @@ async function fromNesine() {
           isLive,
           isHT: status === "HT" || status === "DA",
           isFinished,
+          // Node tarafındaki `bittiMi` için ham girdiler (bkz. yukarıdaki not).
+          _cls: cls,
+          _rawStatus: status,
           compTitle: league || "",
           // Ülke lig adının içinde gömülü geliyor ("Brezilya Serie B"); sayfada
           // ayrı bir alan yok. Tarayıcı içinde çözemeyiz (bu fonksiyon sayfa
@@ -405,6 +419,22 @@ async function fromNesine() {
     },
     "[data-test-id='ClassicMatchLine']"
   );
+
+  /* ⚠️ BİTMİŞLİK BURADA DÜZELTİLİYOR — sayfa bağlamı `require` edemediği için.
+   * `match-not-play` sınıfı ertelenen/iptal/yarıda kesilen maçları da kapsıyor;
+   * `bittiMi` ham durum metnine bakıp ayırıyor. Bitmemişse `MS` damgası da
+   * geri alınır, yoksa aşağı akan zincir yine "bitti" görür. */
+  const { bittiMi } = require("../lib/mac-durumu.cjs");
+  for (const r of rows || []) {
+    const gercektenBitti = bittiMi(r._cls, r._rawStatus);
+    if (!gercektenBitti && r.isFinished) {
+      r.isFinished = false;
+      r.status = r._rawStatus || r.status;
+      r.isLive = false;
+    }
+    delete r._cls;
+    delete r._rawStatus;
+  }
 
   return enrichNesine(rows);
 }
