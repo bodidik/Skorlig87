@@ -22,6 +22,7 @@
 
 const SocialStore = require("../lib/social-store.cjs");
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 const fsp = require("fs").promises;
 // Maç kilidi için: durum dosyası Render'da kalıcı değil, depo yetkili kaynak.
 const FixturesStore = require("../lib/fixtures-store.cjs");
@@ -201,7 +202,7 @@ async function macKilitliMi(fixtureId, db) {
 
   let st = null;
   try {
-    st = JSON.parse(await fsp.readFile(path.join(LIVE_DIR, `${fid}.json`), "utf8"));
+    st = JSON.parse(await fsp.readFile(guvenliYol(LIVE_DIR, fid, ".json"), "utf8"));
   } catch { st = null; }
 
   if (!st || typeof st !== "object") {

@@ -3,6 +3,7 @@
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 // ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
 const DATA_DIR   = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
@@ -33,7 +34,7 @@ async function writeJsonAtomic(file, data) {
 }
 
 function liveStateFile(fid) {
-  return path.join(LIVE_DIR, `${String(fid)}.json`);
+  return guvenliYol(LIVE_DIR, String(fid), ".json");
 }
 
 // ──────────────────────────────────────────────

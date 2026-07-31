@@ -29,6 +29,7 @@
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 const express = require("express");
 const router = express.Router();
 
@@ -46,7 +47,7 @@ const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "dat
 const LIVE_DIR = path.join(DATA_DIR, "live");
 
 function stFile(id) {
-  return path.join(LIVE_DIR, `${id}.json`);
+  return guvenliYol(LIVE_DIR, id, ".json");
 }
 
 async function readJson(file, fb = null) {

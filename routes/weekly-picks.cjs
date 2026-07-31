@@ -12,6 +12,7 @@ const express = require("express");
 const router  = express.Router();
 const fsp     = require("fs").promises;
 const path    = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 const { verifyToken }              = require("../middleware/verifyToken.cjs");
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 
@@ -39,7 +40,7 @@ async function readJson(file, fb = null) {
 }
 
 async function getLiveState(fixtureId) {
-  try { return JSON.parse(await fsp.readFile(path.join(LIVE_DIR, `${fixtureId}.json`), "utf8")); }
+  try { return JSON.parse(await fsp.readFile(guvenliYol(LIVE_DIR, fixtureId, ".json"), "utf8")); }
   catch { return null; }
 }
 

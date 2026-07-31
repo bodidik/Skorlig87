@@ -19,6 +19,7 @@ const router = express.Router();
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 const crypto = require("crypto");
 
 // ⚠️ SKORLIG_DATA_DIR OKUNUYOR. Sabit yol testleri GERÇEK data/ dizinine
@@ -580,7 +581,7 @@ router.get("/board", async (req, res) => {
       const snap = byFixture.get(fid);
 
       // canlı/pending durum bilgisi için state dosyası
-      const st = await readJson(path.join(LIVE_DIR, `${fid}.json`), null);
+      const st = await readJson(guvenliYol(LIVE_DIR, fid, ".json"), null);
 
       const view = {
         ...f,

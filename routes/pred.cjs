@@ -6,6 +6,7 @@ const router = express.Router();
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 // ⚠️ SKORLIG_DATA_DIR OKUNUYOR. Sabit yol testleri GERÇEK data/ dizinine
 // yazdırıyordu: bir entegrasyon testi 7 kaydı canlı preds.json'a düşürdü.
@@ -94,7 +95,7 @@ async function loadPredList() {
 
 // Fixture state dosyası (settle2.cjs ile uyumlu)
 function stateFile(fid) {
-  return path.join(LIVE_DIR, `${String(fid)}.json`);
+  return guvenliYol(LIVE_DIR, String(fid), ".json");
 }
 
 /* ======================
@@ -1819,7 +1820,7 @@ router.get("/pred/my", verifyToken, async (req, res) => {
     // 3) live state'den skor/status (data/live/<fixtureId>.json)
     async function getLiveState(fid) {
       try {
-        const p = path.join(LIVE_DIR, `${String(fid).replace(/[<>:"/\\|?*]/g, "_")}.json`);
+        const p = guvenliYol(LIVE_DIR, fid, ".json");
         return JSON.parse(await fsp.readFile(p, "utf8"));
       } catch { return null; }
     }

@@ -8,6 +8,7 @@ const router = express.Router();
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 // Node 18+ için global fetch vardır; yoksa node-fetch kullan
 const fetch = globalThis.fetch || require("node-fetch");
@@ -633,7 +634,7 @@ const FX_CACHE_TTL_TODAY_MS = 30 * 60 * 1000;
 const FX_CACHE_TTL_OTHER_MS = 6 * 60 * 60 * 1000;
 
 async function readFxCache(isoDate) {
-  const f = path.join(FX_CACHE_DIR, `fx-${isoDate}.json`);
+  const f = guvenliYol(FX_CACHE_DIR, `fx-${isoDate}`, ".json");
   const c = await readJson(f, null);
   if (!c || !Array.isArray(c.items) || !Number.isFinite(c.at)) return null;
   // ⚠️ YEREL GUN: "bugun" UTC ile hesaplaninca yerel 00:00–03:00 arasinda
@@ -646,7 +647,7 @@ async function readFxCache(isoDate) {
 }
 
 async function writeFxCache(isoDate, items) {
-  const f = path.join(FX_CACHE_DIR, `fx-${isoDate}.json`);
+  const f = guvenliYol(FX_CACHE_DIR, `fx-${isoDate}`, ".json");
   try {
     await writeJson(f, { at: Date.now(), date: isoDate, items });
   } catch (e) {
@@ -916,7 +917,7 @@ async function fixturesByTeamWithPreference(team) {
 // API çıktısında kickoffISO alanını "kickoffISO varsa ISO, yoksa kickoffDate" şeklinde döndürüyoruz.
 // ===== Patch-1: status from live state + kickoff (no redeclare) =====
 function stateFile(fid) {
-  return path.join(LIVE_DIR, `${String(fid)}.json`);
+  return guvenliYol(LIVE_DIR, String(fid), ".json");
 }
 
 /**

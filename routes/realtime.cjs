@@ -7,6 +7,7 @@ const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 const fs   = require("fs");
 const fsp  = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 // DB helperlar (ileride kullanmak istersen diye bıraktım)
 let getDbSafe = async () => null;
@@ -99,7 +100,7 @@ async function writeJson(file, data){
   await fsp.mkdir(path.dirname(file), { recursive:true });
   await fsp.writeFile(file, JSON.stringify(data,null,2), "utf8");
 }
-const stateFile = fid => path.join(LIVE_DIR, `${String(fid)}.json`);
+const stateFile = fid => guvenliYol(LIVE_DIR, String(fid), ".json");
 
 /* === MODELLER (dosya veya DB) === */
 const { getPredsForFixture, getMyLatestPred } = require("../models/preds.cjs");

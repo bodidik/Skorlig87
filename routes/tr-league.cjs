@@ -21,6 +21,7 @@ const router = express.Router();
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 const crypto = require("crypto");
 
 // ⚠️ SKORLIG_DATA_DIR OKUNUYOR. Sabit yol testleri GERÇEK data/ dizinine
@@ -217,7 +218,7 @@ async function buildWeekBoard(weekFixtures, db = null) {
   for (const f of weekFixtures) {
     const fid = String(f.fixtureId);
     const snap = byFixture.get(fid);
-    const st = await readJson(path.join(LIVE_DIR, `${fid}.json`), null);
+    const st = await readJson(guvenliYol(LIVE_DIR, fid, ".json"), null);
 
     fixtureViews.push({
       fixtureId: fid,

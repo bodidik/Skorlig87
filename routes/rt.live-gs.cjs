@@ -7,6 +7,7 @@ const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 // Node 18+ global fetch; yoksa node-fetch fallback
 const _fetch = globalThis.fetch || require("node-fetch");
@@ -20,14 +21,7 @@ const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "dat
 const LIVE_FILE = path.join(DATA_DIR, "rt-live-gs.json");
 const LIVE_DIR = path.join(DATA_DIR, "live");
 
-// fixtureId -> dosya adı: Windows güvenli hale getir
-function safeFilePart(s) {
-  return String(s || "")
-    .trim()
-    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_")
-    .slice(0, 180);
-}
-const LIVE_STATE_FILE = (fid) => path.join(LIVE_DIR, `${safeFilePart(fid)}.json`);
+const LIVE_STATE_FILE = (fid) => guvenliYol(LIVE_DIR, fid, ".json");
 
 // İç API’yi çağırmak için (provider tarafı hazırda bekliyor)
 const INTERNAL_PORT = Number(process.env.PORT || 4102);

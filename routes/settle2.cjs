@@ -5,6 +5,7 @@ const router = express.Router();
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 // Dosya kilidi + atomik yazma.
 // settle2 cüzdana/kullanıcı dosyasına yazan en ağır modül; pred.cjs ve
@@ -133,7 +134,7 @@ async function writeJson(file, data) {
   await writeJsonAtomic(file, data);
 }
 function stateFile(fid) {
-  return path.join(LIVE_DIR, `${String(fid)}.json`);
+  return guvenliYol(LIVE_DIR, String(fid), ".json");
 }
 
 // Bir fixture'ın tahminlerini getir. Mongo primary varsa oradan (indeksli

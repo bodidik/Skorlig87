@@ -22,6 +22,7 @@
 const express = require("express");
 const router  = express.Router();
 const path    = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 const fsp     = require("fs").promises;
 
 const MW = require("../services/match-weights.cjs");
@@ -40,10 +41,6 @@ async function readJson(file, fb) {
   catch { return fb; }
 }
 
-function safeName(fid) {
-  return String(fid).replace(/[<>:"/\\|?*]/g, "_");
-}
-
 /** Maç bilgisini takvimden, yoksa canlı durum dosyasından bul. */
 async function findMatch(fixtureId) {
   const fid = String(fixtureId || "").trim();
@@ -56,7 +53,7 @@ async function findMatch(fixtureId) {
     return { home: fx.home, away: fx.away, country: fx.country, league: fx.league };
   }
 
-  const st = await readJson(path.join(LIVE_DIR, `${safeName(fid)}.json`), null);
+  const st = await readJson(guvenliYol(LIVE_DIR, fid, ".json"), null);
   if (st && (st.home || st.away)) {
     return { home: st.home, away: st.away, country: st.country, league: st.league };
   }

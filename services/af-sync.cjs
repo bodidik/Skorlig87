@@ -17,6 +17,7 @@
  */
 
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 const fs = require("fs");
 const fsp = fs.promises;
 
@@ -146,7 +147,7 @@ function mapStatus(short) {
 
 // ---------- state dosyaları ----------
 function stateFile(fid) {
-  return path.join(LIVE_DIR, `${String(fid)}.json`);
+  return guvenliYol(LIVE_DIR, String(fid), ".json");
 }
 
 async function readState(fid) {

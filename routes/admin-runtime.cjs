@@ -6,6 +6,7 @@ const router = express.Router();
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 const { getRuntimeMode, setRuntimeMode } = require("../lib/runtime-mode.cjs");
 
@@ -336,10 +337,7 @@ router.get("/results/pending", requireAdminToken, async (req, res) => {
       settle'ı bozmasın diye)
    ========================================================= */
 const LIVE_DIR = path.join(DATA_DIR, "live");
-function liveSafePart(s) {
-  return String(s || "").trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_").slice(0, 180);
-}
-const LIVE_STATE_FILE = (fid) => path.join(LIVE_DIR, `${liveSafePart(fid)}.json`);
+const LIVE_STATE_FILE = (fid) => guvenliYol(LIVE_DIR, fid, ".json");
 
 router.post("/results/set", requireAdminToken, express.json(), async (req, res) => {
   try {

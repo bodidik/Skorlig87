@@ -3,6 +3,7 @@
 const express = require("express");
 const router = express.Router();
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 const fsp = require("fs").promises;
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
@@ -113,7 +114,7 @@ async function isFixtureLocked(fixtureId, db = null) {
   const fid = String(fixtureId || "").trim();
   if (!fid) return { locked: true, reason: "NO_FIXTURE" };
 
-  let st = await readJson(path.join(LIVE_DIR, `${fid}.json`), null);
+  let st = await readJson(guvenliYol(LIVE_DIR, fid, ".json"), null);
 
   if (!st || typeof st !== "object") {
     // Durum dosyası yok (ya da deploy sildi) — fikstür deposu yetkili kaynak.
