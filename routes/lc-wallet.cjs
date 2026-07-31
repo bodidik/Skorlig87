@@ -486,6 +486,33 @@ router.get("/lc-wallet/summary", verifyToken, async (req, res) => {
             meta: { month: premium.monthKey() },
           });
         }
+        /* ⚠️ BİRİKİM DEFTERE YAZILMIYORDU.
+         *
+         * `eklenen` iki kalemin toplamı (aylık kasa + otomatik birikim) ama
+         * defter kaydı YALNIZCA aylık kasa için yazılıyordu. Yani birikimle
+         * gelen LC bakiyeye ekleniyor, hiçbir iz bırakmıyordu.
+         *
+         * ÖLÇÜLDÜ: bakiye 2 → 14 (12 LC üretildi), defterde 0 kayıt.
+         *
+         * İki sonucu vardı:
+         *  1) DENETİM İZİ KOPUK: `bakiye = açılış + defter toplamı` değişmezi
+         *     birikim alan her kullanıcı için bozuktu.
+         *  2) EKONOMİ RAPORU KÖR: `lib/economy-report.cjs` YALNIZCA defterden
+         *     topluyor. Birikim oyunun sürekli çalışan ücretsiz muslugu —
+         *     yani muslukları ölçmek için yazılmış rapor, en büyük muslugu
+         *     hiç görmüyordu.
+         *
+         * Rapor pozitif ve listelerde olmayan sebebi "tekrarlayan giriş"
+         * kovasına koyuyor; birikim için doğru kova o. */
+        if (r.modifiedCount && regenEarned > 0) {
+          await addLedgerEntryMongo(db, {
+            userId,
+            kind: "reward",
+            amount: regenEarned,
+            reason: "regen",
+            meta: { isPremium: isPrem },
+          });
+        }
         if (!r.modifiedCount) {
           // Yarışı kaybettik: taze veriyle yanıtla, kendi hesabımızı at.
           const fresh = await col.findOne({ userIdLower: uidLower });
