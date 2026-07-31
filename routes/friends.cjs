@@ -13,6 +13,7 @@ const DATA    = path.join(__dirname,"..","data");
 const SeasonTotals = require("../lib/season-totals.cjs");
 const SocialStore = require("../lib/social-store.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const UsersStore = require("../lib/users-store.cjs");
 // {
 //   links:    [ { a:"user1", b:"user2", createdAt:"..." } ],
@@ -638,10 +639,13 @@ async function addLc(wallet, userId, amount, reason, meta = {}) {
  * GET /api/friends/invite-code?userId=
  * Kullanıcının davet kodunu döner (yoksa oluşturur).
  */
-router.get("/invite-code", async (req, res) => {
+router.get("/invite-code", verifyToken, async (req, res) => {
   try {
-    const userId = normId(req.query.userId);
-    if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
+    // ⚠️ SAHIPLİK: kimlik sorgudan geliyordu; denetim yoktu.
+    // bkz. lib/kimlik-kontrol.cjs
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const userId = _k.uid;
 
     const db = req.app?.locals?.db || null;
     let user = await UsersStore.getUser(userId, db);

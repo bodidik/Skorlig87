@@ -19,6 +19,7 @@ const router = express.Router();
 
 const Pool = require("../lib/pool-store.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const { BOT_PROFILE_MAP } = require("../lib/botIds.cjs");
 
 const getDb = (req) => req.app?.locals?.db || null;
@@ -118,10 +119,13 @@ router.post("/:fixtureId/bet", verifyToken, express.json(), async (req, res) => 
  * GET /api/pool/:fixtureId/my?userId=...
  * Yalnızca kendi bahsi (hafif sorgu; ekran yenilemesi için).
  */
-router.get("/:fixtureId/my", async (req, res) => {
+router.get("/:fixtureId/my", verifyToken, async (req, res) => {
   try {
-    const uid = String(req.query.userId || req.uid || "").trim();
-    if (!uid) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
+    // ⚠️ SAHIPLİK: kimlik sorgudan geliyordu; denetim yoktu.
+    // bkz. lib/kimlik-kontrol.cjs
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const uid = _k.uid;
     const bet = await Pool.myBet(String(req.params.fixtureId || ""), uid, getDb(req));
     return res.json({ ok: true, bet });
   } catch (e) {

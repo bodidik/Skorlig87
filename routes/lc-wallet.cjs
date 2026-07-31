@@ -8,6 +8,7 @@ const path    = require("path");
 
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 // Gun anahtari TZ'ye gore (bkz. lib/season.cjs dayKey notu): ISO dilimlemek UTC verir.
 const Season = require("../lib/season.cjs");
 
@@ -416,14 +417,13 @@ async function ensureWalletUserMongo(db, userId) {
  * - Bugünkü günlük LC hakkı var mı bilgisini de döner.
  * - Ayrıca ekonomi sabitlerini (günlük, maç girişi vs.) verir.
  */
-router.get("/lc-wallet/summary", async (req, res) => {
+router.get("/lc-wallet/summary", verifyToken, async (req, res) => {
   try {
-    const userId = String(req.query.userId || "").trim();
-    if (!userId) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "USER_REQUIRED" });
-    }
+    // ⚠️ SAHIPLİK: `?userId=` istekten geliyor. Denetim olmadan herkes
+    // başkasının cüzdanını okuyabiliyordu (bkz. lib/kimlik-kontrol.cjs).
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const userId = _k.uid;
 
     const db = getDb(req);
 
@@ -877,15 +877,15 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
  * GET /api/rt/lc-wallet/ledger?userId=...&limit=50
  * - Kullanıcının son işlemlerini döner.
  */
-router.get("/lc-wallet/ledger", async (req, res) => {
+router.get("/lc-wallet/ledger", verifyToken, async (req, res) => {
   try {
-    const userId = String(req.query.userId || "").trim();
-    const limit  = Number(req.query.limit || 50) || 50;
-    if (!userId) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "USER_REQUIRED" });
-    }
+    // ⚠️ SAHIPLİK: `?userId=` istekten geliyor. Denetim olmadan herkes
+    // başkasının cüzdanını okuyabiliyordu (bkz. lib/kimlik-kontrol.cjs).
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const userId = _k.uid;
+    // ⚠️ TAVAN: eskiden tavansızdı; `?limit=1e9` tüm defteri döküyordu.
+    const limit = Math.max(1, Math.min(200, Math.floor(Number(req.query.limit)) || 50));
 
     const db = getDb(req);
 
@@ -1106,10 +1106,13 @@ router.post("/lc-wallet/purchase", verifyToken, express.json(), async (req, res)
  * GET /api/rt/lc-wallet/premium/status?userId=
  * Premium durumu + ayrıcalıklar + abonelik paketleri.
  */
-router.get("/lc-wallet/premium/status", async (req, res) => {
+router.get("/lc-wallet/premium/status", verifyToken, async (req, res) => {
   try {
-    const userId = String(req.query.userId || "").trim();
-    if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
+    // ⚠️ SAHIPLİK: `?userId=` istekten geliyor. Denetim olmadan herkes
+    // başkasının cüzdanını okuyabiliyordu (bkz. lib/kimlik-kontrol.cjs).
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const userId = _k.uid;
     const status = await premium.premiumStatus(userId, getDb(req));
     // ⚠️ Fiyat da gönderiliyor: premium ekranı "maç girişi 3 LC" cümlesini
     // METNE GÖMÜYORDU. Bedel değişirse ekran yalan söylerdi.

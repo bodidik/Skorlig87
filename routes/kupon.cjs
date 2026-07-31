@@ -361,7 +361,9 @@ router.get("/siralama", async (req, res) => {
     const hafta = req.query.hafta ? String(req.query.hafta) : varsayilanOnEk;
 
     const satirlar = await Store.siralama(
-      { tur, ulke, haftaOnEk: hafta, limit: Number(req.query.limit) || 200 }, db);
+      { tur, ulke, haftaOnEk: hafta,
+        // Tavan: tavansiz limit tum kumulatif tabloyu dokturuyordu.
+        limit: Math.max(1, Math.min(500, Math.floor(Number(req.query.limit)) || 200)) }, db);
 
     res.json({
       ok: true,

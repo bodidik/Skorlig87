@@ -79,8 +79,10 @@ test("komşu dizin kökün içi sayılmaz", () => {
 test("NÖBETÇİ: temizlenmemiş path.join(DIR, `${x}.json`) kalmamalı", () => {
   const kokDizin = path.join(__dirname, "..");
   const taranan = ["routes", "lib", "services", "models"];
-  // `path.join(<BIRSEY>_DIR, `${...}` ...)` — şablon değişkeniyle dosya adı
-  const kalip = /path\.join\(\s*[A-Za-z_]*DIR\s*,\s*`[^`]*\$\{/;
+  // ⚠️ KALIP ÖNCE `*DIR` İLE BİTEN DEĞİŞKENLERİ ARIYORDU ve `LIVE` gibi
+  // adlandırılmış dört çağrı yerini KAÇIRDI. Nöbetçinin kendi kör noktası,
+  // koruduğu açık kadar tehlikeli — artık HERHANGİ bir tanımlayıcı eşleşir.
+  const kalip = /path\.join\(\s*[A-Za-z_][A-Za-z0-9_]*\s*,\s*`[^`]*\$\{/;
 
   const bulunanlar = [];
   for (const alt of taranan) {

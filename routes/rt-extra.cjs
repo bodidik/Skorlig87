@@ -2,8 +2,11 @@
 
 const express = require("express");
 const router  = express.Router();
+const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const fs = require("fs").promises;
 const path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 const DATA = path.join(__dirname, "..", "data");
 const PREDS = path.join(DATA, "preds.json");
@@ -18,7 +21,7 @@ router.get("/score", async (req,res)=>{
     const fixtureId = String(req.query.fixtureId||"");
     if(!fixtureId) return res.status(400).json({ ok:false, error:"FIXTURE_REQUIRED" });
 
-    const st    = await readJson(path.join(LIVE, `${fixtureId}.json`), null);
+    const st    = await readJson(guvenliYol(LIVE, fixtureId, ".json"), null);
     const raw   = await readJson(PREDS, []);
     const preds = Array.isArray(raw)? raw : (Array.isArray(raw?.items)? raw.items : []);
 
@@ -48,13 +51,17 @@ router.get("/score", async (req,res)=>{
 
 /** === /api/rt/my?fixtureId=...&userId=... ===
  * Kullanıcının (son) tahmini ve hâlâ yaşayıp yaşamadığı */
-router.get("/my", async (req,res)=>{
+router.get("/my", verifyToken, async (req,res)=>{
   try{
     const fixtureId = String(req.query.fixtureId||"");
-    const userId    = String(req.query.userId||"");
+    // ⚠️ SAHIPLİK: kimlik sorgudan geliyordu; denetim yoktu.
+    // bkz. lib/kimlik-kontrol.cjs
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const userId = _k.uid;
     if(!fixtureId || !userId) return res.status(400).json({ ok:false, error:"REQUIRED" });
 
-    const st    = await readJson(path.join(LIVE, `${fixtureId}.json`), null);
+    const st    = await readJson(guvenliYol(LIVE, fixtureId, ".json"), null);
     const raw   = await readJson(PREDS, []);
     const preds = Array.isArray(raw)? raw : (Array.isArray(raw?.items)? raw.items : []);
     const mine  = preds.filter(p=> String(p.fixtureId)===fixtureId && String(p.userId||p.user||"anon")===userId).slice(-1)[0];

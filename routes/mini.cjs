@@ -33,6 +33,7 @@ const SocialStore = require("../lib/social-store.cjs");
 // metni zaten içerdiği için koşul yanlış çalıştı. Aynı hata settle2'de de
 // olmuştu. Ders: import eklemeyi metin varlığına bağlama.
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const premium = require("../lib/premium.cjs");
 const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR = path.join(DATA_DIR, "live");
@@ -498,10 +499,13 @@ router.post("/invite", verifyToken, express.json(), async (req, res) => {
 });
 
 // ---- GET /api/mini/mine?userId= ----
-router.get("/mine", async (req, res) => {
+router.get("/mine", verifyToken, async (req, res) => {
   try {
-    const userId = String(req.query.userId || "").trim();
-    if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
+    // ⚠️ SAHIPLİK: kimlik sorgudan geliyordu; denetim yoktu.
+    // bkz. lib/kimlik-kontrol.cjs
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const userId = _k.uid;
 
     const items = await loadAll();
     const mine = items

@@ -2,6 +2,8 @@
 
 const express = require("express");
 const router  = express.Router();
+const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const path    = require("path");
 const fs      = require("fs");
 const fsp     = fs.promises;
@@ -328,9 +330,13 @@ router.get("/user", async (req, res) => {
  * Not:
  *  - Şu an favTeam / team alanlarını dolduracak veri kaynağı yok; ileride users.json / Mongo user profile bağlanabilir.
  */
-router.get("/me", async (req, res) => {
+router.get("/me", verifyToken, async (req, res) => {
   try {
-    const userId = String(req.query.userId || "").trim();
+    // ⚠️ SAHIPLİK: kimlik sorgudan geliyordu; denetim yoktu.
+    // bkz. lib/kimlik-kontrol.cjs
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const userId = _k.uid;
     if (!userId) {
       return res
         .status(400)

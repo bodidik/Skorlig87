@@ -3,6 +3,7 @@ const express = require("express");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 const router  = express.Router();
 const fs = require("fs"), fsp = fs.promises, path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 const UsersStore = require("../lib/users-store.cjs");
 
@@ -36,7 +37,7 @@ router.get("/fav", async (req,res)=>{
 
       let status="NS", score={home:0,away:0};
       try{
-        const st = await readJson(path.join(liveDir, `${fx.fixtureId||fx.id}.json`), null);
+        const st = await readJson(guvenliYol(liveDir, fx.fixtureId||fx.id, ".json"), null);
         if(st){ status=st.status||status; score={ home:Number(st?.score?.home||0), away:Number(st?.score?.away||0) }; }
       }catch(e){ console.warn(`[live-fav] live state read failed for fixtureId=${fx.fixtureId||fx.id}:`, e && e.message ? e.message : e); }
 

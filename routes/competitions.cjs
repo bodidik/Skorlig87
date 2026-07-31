@@ -567,7 +567,8 @@ router.post(
 router.get("/competitions/totals", async (req, res) => {
   try {
     const competitionId = String(req.query.competitionId || "").trim();
-    const limit = Number(req.query.limit || 100) || 100;
+    // Tavan: tavansiz limit tum tabloyu dokturuyordu.
+    const limit = Math.max(1, Math.min(500, Math.floor(Number(req.query.limit)) || 100));
 
     if (!competitionId) {
       return res

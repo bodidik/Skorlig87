@@ -3,6 +3,7 @@ const express = require("express");
 const router  = express.Router();
 const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 const fs = require("fs"), fsp = fs.promises, path = require("path");
+const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 async function readJson(f, fb){ try{ return JSON.parse(await fsp.readFile(f,"utf8")); }catch{ return fb; } }
 function outcomeOf(h,a){ return h>a? "H" : a>h? "A" : "D"; }
@@ -28,7 +29,7 @@ router.post("/recalc", requireAdmin, async (req,res)=>{
       const fid = String(p.fixtureId||"");
       if(!fid) continue;
 
-      const st  = await readJson(path.join(LIVE, `${fid}.json`), null);
+      const st  = await readJson(guvenliYol(LIVE, fid, ".json"), null);
       if(!st || String(st.status)!=="FT") continue;
       const h = Number(st?.score?.home||0), a = Number(st?.score?.away||0);
       const finalOutcome = outcomeOf(h,a);

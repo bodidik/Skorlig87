@@ -7,6 +7,7 @@ const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 const fsp = require("fs").promises;
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 
 // settle2 ile aynı env: düello sonuçlandırma settle akışının içinden çağrılır,
 // testlerde izole veri dizinine yönlendirilebilmesi gerekir.
@@ -700,9 +701,13 @@ router.get("/duels/open", async (req, res) => {
 });
 
 // GET /api/duels/my?userId=&fixtureId=
-router.get("/duels/my", async (req, res) => {
+router.get("/duels/my", verifyToken, async (req, res) => {
   try {
-    const uid = String(req.query.userId || "").trim();
+    // ⚠️ SAHIPLİK: kimlik sorgudan geliyordu; denetim yoktu.
+    // bkz. lib/kimlik-kontrol.cjs
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const uid = _k.uid;
     const fx = String(req.query.fixtureId || "").trim();
     if (!uid) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
 

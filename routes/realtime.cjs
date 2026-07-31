@@ -2,6 +2,8 @@
 
 const express = require("express");
 const router  = express.Router();
+const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 
 const fs   = require("fs");
@@ -477,9 +479,13 @@ router.get("/score", async (req,res)=>{
 });
 
 // ---- GET /api/rt/my
-router.get("/my", async (req,res)=>{
+router.get("/my", verifyToken, async (req,res)=>{
   const fixtureId = String(req.query.fixtureId||"").trim();
-  const userId    = String(req.query.userId||"").trim();
+  // ⚠️ SAHIPLİK: kimlik sorgudan geliyordu; denetim yoktu.
+  // bkz. lib/kimlik-kontrol.cjs
+  const _k = kimlikVeyaHata(req, res, req.query.userId);
+  if (!_k) return;
+  const userId = _k.uid;
   if(!fixtureId || !userId) {
     return res.status(400).json({ ok:false, error:"REQUIRED" });
   }
