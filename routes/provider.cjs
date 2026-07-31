@@ -351,7 +351,10 @@ router.get("/next", async (req, res) => {
   }
 });
 
-router.get("/team-primary", async (req, res) => {
+/* ⚠️ POST'u korunuyordu, GET korumasızdı. İstemci bu ucu çağırmıyor;
+ * içerik takim basina saglayici tercihi — isletim yapilandirmasi.
+ * Kota durumunu dışarı açmak, dış API'nin ne zaman tükendiğini bildirir. */
+router.get("/team-primary", requireAdmin, async (req, res) => {
   try {
     const teamRaw = String(req.query.team || "");
     const team = teamKey(teamRaw);
@@ -414,7 +417,10 @@ router.post("/team-primary", requireAdmin, express.json(), async (req, res) => {
   }
 });
 
-router.get("/warn", async (req, res) => {
+/* ⚠️ POST'u korunuyordu, GET korumasızdı. İstemci bu ucu çağırmıyor;
+ * içerik dis API kota durumu — isletim istihbarati.
+ * Kota durumunu dışarı açmak, dış API'nin ne zaman tükendiğini bildirir. */
+router.get("/warn", requireAdmin, async (req, res) => {
   try {
     const m = await loadModel();
     res.json({ ok: true, quotas: m.quotas || {} });

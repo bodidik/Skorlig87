@@ -4,6 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 const router = express.Router();
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
 
 // ---- paths / io helpers ----
@@ -138,10 +139,18 @@ function renderLaunch(deeplink) {
 
 // ========== USER PRESETS ==========
 // GET /api/user-presets?userId=&includeDeleted=1
-router.get("/user-presets", (req, res) => {
-  const userId = String(req.query.userId || "");
+/**
+ * GET /api/user-presets?userId= — YALNIZCA KENDİ hazır listen.
+ *
+ * ⚠️ YAZMA UÇLARI DÜZELTİLMİŞ AMA OKUMA AÇIK KALMIŞTI (bkz. aşağıdaki
+ * soft-delete yorumu). Aynı yarım-düzeltme izi cüzdan uçlarında da vardı:
+ * yazmaların hepsinde kimlik denetimi, okumaların hiçbirinde yoktu.
+ */
+router.get("/user-presets", verifyToken, (req, res) => {
+  const _k = kimlikVeyaHata(req, res, req.query.userId);
+  if (!_k) return;
+  const userId = _k.uid;
   const includeDeleted = String(req.query.includeDeleted || "") === "1";
-  if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
   const db = readUserStore();
   const row = db[userId] || { items: [], userVersion: 0 };
   const items = Array.isArray(row.items) ? row.items : [];

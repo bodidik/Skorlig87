@@ -403,9 +403,26 @@ router.get("/favorite", async (req, res) => {
  * GET /api/users/groups/list?userId=...
  * → /api/groups/list?userId=... ile aynı sonuç hedeflenir (summary list)
  */
-router.get("/groups/list", async (req, res) => {
+/**
+ * GET /api/users/groups/list?userId= — YALNIZCA KENDİ grupların.
+ *
+ * ⚠️ KİMLİK DENETİMİ YOKTU ve yanıt `groupSummary` döndürüyor: KATILIM
+ * KODU ve TAM ÜYE LİSTESİ dahil. Yani herkes, sıralama tablolarında görünen
+ * bir kimliği alıp o kişinin tüm özel gruplarının kodunu öğrenebiliyor ve
+ * `POST /api/groups/join` ile o gruplara girebiliyordu.
+ *
+ * Bu, kod tabanlı özel grup fikrini tamamen geçersiz kılıyordu: kodları
+ * tahmin edilemez yapmak (bkz. lib/social-store.cjs code6) bir şey ifade
+ * etmez, çünkü bu uç onları bedavaya dağıtıyordu.
+ *
+ * İstemci zaten YALNIZCA kendi kimliğiyle çağırıyor (mobile/app/(tabs)/me.tsx);
+ * eksik olan sunucunun bunu zorlamasıydı.
+ */
+router.get("/groups/list", verifyToken, async (req, res) => {
   try {
-    const userId = normUserId(req.query.userId);
+    const _k = kimlikVeyaHata(req, res, req.query.userId);
+    if (!_k) return;
+    const userId = normUserId(_k.uid);
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
 
     const store = await loadGroupsStoreCompat(); // map
