@@ -266,10 +266,30 @@ async function bitmeyeHazirMi(t, settledCount, fixtureIds, db) {
   // bekleniyorsa turnuva da bekler — erken kapatmak, sonucu gec gelen maci
   // haksiz yere yok saymak olurdu.
   const { bayatMi, sonucVarMi } = require("../lib/bayat-mac.cjs");
+  const FixturesStore = require("../lib/fixtures-store.cjs");
   for (const fid of fixtureIds) {
     if (await sonucVarMi(fid, db)) continue;
-    const fx = (t.fixtures || []).find((f) => String(f.fixtureId) === String(fid));
-    const durum = await bayatMi({ fixtureId: fid, kickoffISO: fx?.kickoffISO || null, db });
+
+    /* ⚠️ SAAT ÖNCE SUNUCUDAN. `/create` artık maç bilgisini depodan yazıyor,
+     * ama BU DÜZELTMEDEN ÖNCE kurulmuş turnuvalar hâlâ istemcinin verdiği
+     * saati taşıyor — ve karar tam o saate bakıyor. Geçmişe çekilmiş bir saat,
+     * turnuvayı istenen anda bitirilebilir yapardı. Depoda karşılığı varsa
+     * yetkili değer kullanılıyor; yoksa kayıttaki değere düşülüyor (yoksa
+     * eski turnuvalar hiç kapanmaz ve para kilitli kalırdı — bu dosyanın
+     * önlemek için yazıldığı durumun ta kendisi). */
+    let saat = null;
+    try {
+      const sunucuFx = await FixturesStore.getOne(fid, db);
+      saat = sunucuFx?.kickoffISO || sunucuFx?.kickoff || null;
+    } catch (e) {
+      console.error("[mini] fikstur saati okunamadi:", fid, e?.message || e);
+    }
+    if (!saat) {
+      const kayit = (t.fixtures || []).find((f) => String(f.fixtureId) === String(fid));
+      saat = kayit?.kickoffISO || null;
+    }
+
+    const durum = await bayatMi({ fixtureId: fid, kickoffISO: saat, db });
     if (!durum.bayat) return false;
   }
   return true;
@@ -386,18 +406,54 @@ router.post("/create", verifyToken, express.json(), async (req, res) => {
       });
     }
 
+    /* ⚠️ MAÇ BİLGİSİ ARTIK SUNUCUDAN — ÖZELLİKLE `kickoffISO`.
+     *
+     * Eskiden beş alan da istek gövdesinden olduğu gibi saklanıyordu. Bunlardan
+     * `kickoffISO` GÖRÜNTÜ DEĞİL, KARAR verisi: turnuvanın bitip bitmeyeceğini
+     * `bitmeyeHazirMi` → `bayatMi({ fixtureId, kickoffISO })` belirliyor ve
+     * başlama saatinin üstünden `BEKLEME_SAAT` geçmişse maç "bayat" sayılıp
+     * YOK SAYILIYOR.
+     *
+     * Yani kurucu her maça GEÇMİŞ bir saat yazarak turnuvayı istediği an
+     * bitirilebilir hâle getiriyordu: kendi lehine sonuçlanan ilk maçtan sonra
+     * `/board` çağırıp kalan maçları eledikten sonra MINI_WIN_LC'yi alıyordu.
+     *
+     * `lib/bayat-mac.cjs` sunucu tarafında bir yedek arama yapıyor ama YALNIZCA
+     * saat OKUNAMADIĞINDA — geçerli ama yalan bir tarih o yedeği hiç
+     * çalıştırmıyordu. (O dosyanın kendi notu bu alanın istemciden geldiğini
+     * zaten yazıyor; eksik olan, yalan bir DEĞERİN de aynı kapıdan geçmesiydi.)
+     *
+     * Ek kazanç: fikstür kimliği artık var olmak zorunda. Önceden tamamen
+     * uydurma kimliklerle turnuva kurulabiliyordu. */
+    const FixturesStore = require("../lib/fixtures-store.cjs");
     const clean = [];
     const seen = new Set();
+    const bulunamayan = [];
     for (const f of fixtures) {
       const fid = String(f?.fixtureId || "").trim();
       if (!fid || seen.has(fid)) continue;
       seen.add(fid);
+
+      let fx = null;
+      try {
+        fx = await FixturesStore.getOne(fid, db);
+      } catch (e) {
+        console.error("[mini] fikstur okunamadi:", fid, e?.message || e);
+      }
+      if (!fx) { bulunamayan.push(fid); continue; }
+
       clean.push({
         fixtureId: fid,
-        home: String(f?.home || "").slice(0, 60) || null,
-        away: String(f?.away || "").slice(0, 60) || null,
-        kickoffISO: f?.kickoffISO || null,
-        league: String(f?.league || "").slice(0, 60) || null,
+        home: String(fx.home || fx.homeTeam || "").slice(0, 60) || null,
+        away: String(fx.away || fx.awayTeam || "").slice(0, 60) || null,
+        kickoffISO: fx.kickoffISO || fx.kickoff || null,
+        league: String(fx.league || "").slice(0, 60) || null,
+      });
+    }
+    if (bulunamayan.length) {
+      return res.status(400).json({
+        ok: false, error: "FIXTURE_NOT_FOUND", fixtures: bulunamayan,
+        detail: "Bu maçlar bulunamadı; turnuva kurulamaz.",
       });
     }
     if (clean.length < MIN_FIXTURES) {
