@@ -22,6 +22,7 @@
  */
 
 const fs   = require("fs");
+const { ensurePredIndexes } = require("../lib/preds-index.cjs");
 const fsp  = fs.promises;
 const path = require("path");
 const { getDb } = require("../lib/db.cjs");
@@ -67,6 +68,7 @@ async function savePred(pred) {
   // 1) Mongo
   try {
     const db = await getDb();
+    await ensurePredIndexes(db);   // ilk erisimde kendi kendini onarir
     await db.collection("predictions").insertOne(doc);
   } catch (e) {
     console.error("MONGO_SAVE_PRED_FAILED", e);
@@ -96,6 +98,7 @@ async function getPredsForFixture(fixtureId) {
   // Önce Mongo
   try {
     const db = await getDb();
+    await ensurePredIndexes(db);
     const arr = await db
       .collection("predictions")
       .find({ fixtureId: fid })
@@ -123,6 +126,7 @@ async function getMyLatestPred(fixtureId, userId) {
 
   try {
     const db = await getDb();
+    await ensurePredIndexes(db);
     const doc = await db
       .collection("predictions")
       .find({ fixtureId: fid, userIdLower: uid.toLowerCase() })
