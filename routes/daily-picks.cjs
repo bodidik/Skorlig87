@@ -89,6 +89,69 @@ async function fetchLeagueFixtures(leagueId, dateStr) {
   } catch { return []; }
 }
 
+/**
+ * ⚠️ FİKSTÜR DEPOSUNDAN GERİ DÜŞÜŞ — ana ekran boş kalmasın.
+ *
+ * BULUNAN: bu dosyanın maç kaynağı YALNIZCA AF sağlayıcısıydı ve `AF_KEY`
+ * tanımsızsa `fetchLeagueFixtures` sessizce `[]` dönüyordu. `.env.example`'da
+ * `AF_KEY=` boş; sağlayıcı da askıda. Sonuç: `/singles` ve `/quad`
+ * `ok: true, count: 0` dönüyor — istemci hata bile göremiyor, ana ekrandaki
+ * hızlı-oyun bölümü sessizce boş kalıyor.
+ *
+ * ÖLÇÜLDÜ: fikstür deposunda 12 oynanabilir maç varken iki uç da 0 döndü.
+ *
+ * Depo (Mongo, Mackolik/FDO besliyor) uygulamanın ÇALIŞAN maç kaynağı; burada
+ * hiç kullanılmıyordu. Artık AF bir şey döndürmezse oradan doldurulur.
+ */
+async function depodanMaclar(country, db, limit) {
+  try {
+    const FixturesStore = require("../lib/fixtures-store.cjs");
+    const hepsi = await FixturesStore.loadAll(db);
+    const simdi = Date.now();
+    const uygun = (hepsi || []).filter((f) => {
+      const ko = new Date(f.kickoffISO || f.kickoff || "").getTime();
+      if (!Number.isFinite(ko) || ko < simdi) return false;
+      const st = String(f.status || "NS").toUpperCase();
+      return st === "NS" || st === "TBD";
+    });
+
+    // Ülke verildiyse önce oradakiler; yetmezse gerisi (AF'deki davranışla aynı).
+    const ulke = String(country || "").trim().toLowerCase();
+    const yerli = ulke ? uygun.filter((f) => String(f.country || "").toLowerCase() === ulke) : [];
+    const digerleri = uygun.filter((f) => !yerli.includes(f));
+    const secilen = [...yerli, ...digerleri]
+      .sort((a, b) => new Date(a.kickoffISO || 0) - new Date(b.kickoffISO || 0))
+      .slice(0, Math.max(1, Number(limit) || 5) * 3);
+
+    return secilen.map((f) => {
+      const home = f.home || f.homeTeam || "?";
+      const away = f.away || f.awayTeam || "?";
+      return {
+        fixtureId: String(f.fixtureId),
+        home,
+        away,
+        homeLogo: f.homeLogo || null,
+        awayLogo: f.awayLogo || null,
+        kickoffISO: f.kickoffISO || f.kickoff || null,
+        status: f.status || "NS",
+        league: f.league || null,
+        country: f.country || null,
+        leagueId: f.leagueId || null,
+        odds: calcOdds(home, away),
+        rewards: {
+          home: sonucOdulu(home, away, "H"),
+          draw: sonucOdulu(home, away, "D"),
+          away: sonucOdulu(home, away, "A"),
+        },
+        _attraction: matchAttraction(home, away),
+      };
+    });
+  } catch (e) {
+    console.error("[daily-picks] fikstur deposu okunamadi:", e?.message || e);
+    return [];
+  }
+}
+
 // GET /api/daily-picks/singles?country=Türkiye
 router.get("/singles", async (req, res) => {
   const country = String(req.query.country || "").trim();
@@ -121,6 +184,13 @@ router.get("/singles", async (req, res) => {
       }
     }
 
+    // AF hiçbir şey vermediyse (anahtar yok / sağlayıcı askıda) depodan doldur.
+    if (all.length < limit) {
+      for (const f of await depodanMaclar(country, req.app?.locals?.db || null, limit)) {
+        if (!seen.has(f.fixtureId)) { seen.add(f.fixtureId); all.push(f); }
+      }
+    }
+
     all.sort((a, b) => b._attraction - a._attraction);
     const picks = all.slice(0, limit).map(f => {
       const { _attraction, ...rest } = f;
@@ -150,6 +220,13 @@ router.get("/quad", async (req, res) => {
       if (seen.size >= 20) break;
       const fixtures = await fetchLeagueFixtures(lid, dateStr);
       for (const f of fixtures) {
+        if (!seen.has(f.fixtureId)) { seen.add(f.fixtureId); all.push(f); }
+      }
+    }
+
+    // AF hiçbir şey vermediyse depodan doldur (bkz. depodanMaclar notu).
+    if (all.length < 4) {
+      for (const f of await depodanMaclar(country, req.app?.locals?.db || null, 4)) {
         if (!seen.has(f.fixtureId)) { seen.add(f.fixtureId); all.push(f); }
       }
     }
@@ -214,3 +291,8 @@ module.exports = router;
  * yazması, bu turda bir kez yeşil-ama-ölü sonuç üretti (bkz. tests/
  * vaat-edilen-odul.test.cjs notu). */
 module.exports._sonucOdulu = sonucOdulu;
+/* Sınama için: depo geri düşüşünün SEÇİM filtresi. Uçlar üzerinden sınamak
+ * yetmiyordu — başlamış/bitmiş bir maç listeye girse bile çekicilik
+ * sıralamasında sona düşüp kesiliyor, yani filtre bozulsa da test yeşil
+ * kalıyordu (negatif kontrol yakaladı). */
+module.exports._depodanMaclar = depodanMaclar;
