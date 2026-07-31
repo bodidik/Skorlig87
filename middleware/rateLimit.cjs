@@ -55,6 +55,10 @@ const RULES = [
   { re: /\/duels?\//,            max: 30, windowMs: 60_000 },
   { re: /\/mini\/create\b/,      max: 10, windowMs: 60_000 },
   { re: /\/friends\/invite\b/,   max: 20, windowMs: 60_000 },
+  /* /use-invite AYRI: yukaridaki `\/friends\/invite` kalibi "use-invite"i
+   * TUTMUYOR (yol /friends/use-invite). Bu uc LC BASIYOR — kuralsiz kalinca
+   * varsayilana (dk/120) dusuyordu. */
+  { re: /\/friends\/use-invite\b/, max: 10, windowMs: 60_000 },
 
   /* ⚠️ KOD DENEME UÇLARI — en dar sınır.
    * İkisi de `is1987` veriyor: açılış bakiyesi 60 LC (normalde 30), ücretsiz

@@ -30,6 +30,7 @@ const MUAF = {
   kuponlar: "haftalik kupon TANIMI (hangi maclar, bedel) — kullanici verisi degil; katilimlar kupon_katilim'da ve siliniyor",
   app_runtime: "runtime modu (profil/takim sayisi) — uygulama yapilandirmasi, kullanici verisi degil",
   tr_league_weeks: "hafta mührü — silinirse ödül tekrar dağıtılır",
+  invite_redeems: "davet odulu muhru; SILINMEMELI (silinirse hesap silip odulu tekrar almak mumkun olur, banned_users ile ayni gerekce). Ham kimlik SAKLANMIYOR: yalnizca SHA-256 ozeti tutuluyor, yani hesap silindikten sonra okunabilir kullanici verisi kalmiyor",
   push_sent: "bildirim gönderim mührü; anahtarlar `start:<fixtureId>` biçiminde ve KULLANICI TAŞIMIYOR (kime gönderildiği değil, hangi maç için gönderildiği tutuluyor). Silinirse aynı bildirim tekrar gider",
   invite_codes_1987: "davet kodu kotası — silinirse kota sıfırlanır",
   admin_users: "yetki listesi",

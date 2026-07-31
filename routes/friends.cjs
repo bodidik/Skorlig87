@@ -12,6 +12,8 @@ const DATA    = path.join(__dirname,"..","data");
 // üzerinden gider — orası Mongo varsa Mongo'yu kullanır.
 const SeasonTotals = require("../lib/season-totals.cjs");
 const SocialStore = require("../lib/social-store.cjs");
+const WalletCredit = require("../lib/wallet-credit.cjs");
+const DavetOdul = require("../lib/davet-odul-store.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
 const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const UsersStore = require("../lib/users-store.cjs");
@@ -615,30 +617,12 @@ router.get("/blocks/:userId", verifyToken, async (req,res)=>{
 
 // ─── DAVET SİSTEMİ ───────────────────────────────────────────────────────────
 const crypto = require("crypto");
-const WALLET_FILE = path.join(DATA, "lc-wallet.json");
 const INVITE_REWARD = 15; // her ikisine de verilecek LC
+/** Bir kullanicinin ODULLENDIRILEN davet sayisi ust siniri.
+ *  Veren tarafta dogal sinir YOK: kod herkese acik paylasilabilir. */
+const INVITE_ODUL_LIMIT = Number(process.env.SKORLIG_INVITE_ODUL_LIMIT || 10);
 
-async function loadWallet() {
-  const w = await readJson(WALLET_FILE, { users: [], ledger: [] });
-  if (!Array.isArray(w.users)) w.users = [];
-  if (!Array.isArray(w.ledger)) w.ledger = [];
-  return w;
-}
 
-async function addLc(wallet, userId, amount, reason, meta = {}) {
-  let u = wallet.users.find((x) => String(x.userId).toLowerCase() === userId.toLowerCase());
-  if (!u) {
-    u = { userId, balance: 0, totalEarned: 0, totalSpent: 0, createdAt: new Date().toISOString() };
-    wallet.users.push(u);
-  }
-  u.balance = Number(u.balance || 0) + amount;
-  u.totalEarned = Number(u.totalEarned || 0) + amount;
-  u.updatedAt = new Date().toISOString();
-  wallet.ledger.push({
-    id: "tx_" + Date.now().toString(36) + "_" + crypto.randomBytes(2).toString("hex"),
-    userId, kind: "reward", amount, reason, meta, createdAt: new Date().toISOString(),
-  });
-}
 
 // getUsersData/saveUsersData kaldırıldı: davet kodları artık
 // lib/users-store.cjs üzerinden okunup yazılıyor. Eski hâlinde bu dosya
@@ -733,19 +717,64 @@ router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
     await SocialStore.removeRequest(userId, ownerId, req.app?.locals?.db || null, true);
 
     // LC ödülü — ikisine de
+    /* UYARI: ODUL DOSYAYA YAZILIYORDU, KIMSE OKUMUYORDU.
+     *
+     * Eski kod `addLc(wallet, ...)` kullaniyordu: bellekteki nesneyi degistirip
+     * `lc-wallet.json`a yaziyor, Mongo'ya HIC dokunmuyordu. Oysa bakiye
+     * `lc_wallet_users` koleksiyonundan okunuyor. Sonuc: kullaniciya
+     * "Ikiniz de +15 LC kazandi" deniyordu ama bakiyesi degismiyordu.
+     *
+     * Ayni sinif hata tr-lig'de de bulunmustu (routes/tr-league.cjs
+     * awardWeeklyLc notu: "odul kimsenin okumadigi dosyaya dusuyor").
+     *
+     * UYARI: SINIR OLMADAN DUZELTMEK DAHA KOTU OLURDU. Odul calisir hale
+     * gelince davet kodu SINIRSIZ bir LC muslugu olurdu: kodunu herkese acik
+     * paylasan biri her kullanimda 15 LC bastirir (acilis bakiyesi 30 LC).
+     * Kullanan tarafta dogal sinir var (bir kisi bir kez arkadas olur), veren
+     * tarafta yoktu. Odullendirilen davet sayisi DEFTERDEN sayiliyor; ayri bir
+     * sayac alani cuzdanla ayrisabilecek ikinci bir dogruluk kaynagi olurdu. */
+    let odulVerildi = false;
     if (INVITE_REWARD > 0) {
-      const wallet = await loadWallet();
-      await addLc(wallet, ownerId, INVITE_REWARD, "invite_referral", { invitedUserId: userId });
-      await addLc(wallet, userId, INVITE_REWARD, "invite_welcome", { referrerId: ownerId });
-      wallet.updatedAt = new Date().toISOString();
-      await writeJson(WALLET_FILE, wallet);
+      const dbW = req.app?.locals?.db || null;
+      let kotaDoldu = true;
+      if (dbW) {
+        try {
+          const oncekiler = await dbW.collection("lc_wallet_ledger").countDocuments({
+            userIdLower: normLower(ownerId),
+            reason: "invite_referral",
+          });
+          kotaDoldu = oncekiler >= INVITE_ODUL_LIMIT;
+        } catch (e) {
+          // Sayilamiyorsa ODUL VERME (fail-closed): ters varsayim, veritabani
+          // sorunluyken sinirsiz LC basmak olurdu.
+          console.error("[friends] davet kotasi okunamadi, odul atlaniyor:", e?.message || e);
+        }
+      }
+
+      /* UYARI: MUHUR ODEMEDEN ONCE. "Zaten arkadas misiniz" kontrolu ATOMIK
+       * DEGIL: iki eszamanli istek ikisi de "degiller" gorur, ikisi de odul
+       * oder (30 yerine 60 LC). `addLink` bunu cozemez, HER ZAMAN true doner.
+       * bkz. lib/davet-odul-store.cjs */
+      const muhur = !kotaDoldu && (await DavetOdul.odulMuhurle(userId, dbW));
+
+      if (muhur) {
+        const a = await WalletCredit.creditLc(dbW, ownerId, INVITE_REWARD, "invite_referral", { invitedUserId: userId });
+        const b = await WalletCredit.creditLc(dbW, userId, INVITE_REWARD, "invite_welcome", { referrerId: ownerId });
+        odulVerildi = !!(a && b);
+        if (!odulVerildi) {
+          console.error(`[friends] DAVET ODULU EKSIK odendi owner=${ownerId} davetli=${userId}`);
+        }
+      }
     }
 
     return res.json({
       ok: true,
       ownerId,
-      message: `${ownerId} ile arkadaş oldunuz! İkiniz de +${INVITE_REWARD} LC kazandı. 🎉`,
-      reward: INVITE_REWARD,
+      odulVerildi,
+      message: odulVerildi
+        ? `${ownerId} ile arkadaş oldunuz! İkiniz de +${INVITE_REWARD} LC kazandı. 🎉`
+        : `${ownerId} ile arkadaş oldunuz!`,
+      reward: odulVerildi ? INVITE_REWARD : 0,
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: "USE_INVITE_FAILED", detail: String(e?.message || e) });

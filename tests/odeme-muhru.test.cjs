@@ -38,6 +38,10 @@ const ODUL = new Set([
   "tournament_payout",
   "kupon_odul",
   "tr_league_weekly",
+  // Davet odulu: "zaten arkadas" kontrolu atomik degildi, iki eszamanli
+  // istek 30 yerine 60 LC bastirabilirdi. Muhur: lib/davet-odul-store.cjs
+  "invite_referral",
+  "invite_welcome",
 ]);
 
 /**
@@ -70,7 +74,7 @@ const IADE = new Set([
  * Artık yalnızca GERÇEK kanıt sayılıyor: bir claim ÇAĞRISI ya da koşullu
  * yazmanın sonucunu denetleyen `modifiedCount`.
  */
-const MUHUR = /(claimAward|claimDuelSettle|claimTournamentSettle|claimWeek|kuponMuhurle|finishMini)\s*\(|modifiedCount/;
+const MUHUR = /(claimAward|claimDuelSettle|claimTournamentSettle|claimWeek|kuponMuhurle|finishMini|odulMuhurle)\s*\(|modifiedCount/;
 
 /** Bir kaynağı üst düzey bloklara böler (fonksiyon ya da router bildirimi). */
 function bloklaraBol(kaynak) {
