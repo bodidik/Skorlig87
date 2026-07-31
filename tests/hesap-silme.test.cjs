@@ -30,6 +30,7 @@ const MUAF = {
   kuponlar: "haftalik kupon TANIMI (hangi maclar, bedel) — kullanici verisi degil; katilimlar kupon_katilim'da ve siliniyor",
   app_runtime: "runtime modu (profil/takim sayisi) — uygulama yapilandirmasi, kullanici verisi degil",
   tr_league_weeks: "hafta mührü — silinirse ödül tekrar dağıtılır",
+  push_sent: "bildirim gönderim mührü; anahtarlar `start:<fixtureId>` biçiminde ve KULLANICI TAŞIMIYOR (kime gönderildiği değil, hangi maç için gönderildiği tutuluyor). Silinirse aynı bildirim tekrar gider",
   invite_codes_1987: "davet kodu kotası — silinirse kota sıfırlanır",
   admin_users: "yetki listesi",
   banned_users: "YASAK KAYDI KALMALI — silinirse hesap silip yasaktan kaçmak mümkün olur",

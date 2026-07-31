@@ -27,6 +27,7 @@ const PREDS        = path.join(DATA_DIR, "preds.json");
 const MatchResults = require("../lib/match-results.cjs");
 const WALLET       = path.join(DATA_DIR, "lc-wallet.json");
 const SENT_FILE    = path.join(DATA_DIR, "push-sent.json");
+const PushSent = require("../lib/push-sent-store.cjs");
 
 // Günlük LC hatırlatması bu saatte gider (sunucu saati, 0-23).
 // Gece yarısı bildirim atmak uygulamayı sildirir — akşam kullanım saati seçildi.
@@ -56,7 +57,33 @@ async function loadSent() {
 }
 
 /** Anahtarı işaretle. Zaten varsa false döner — çağıran gönderimi atlar. */
+/** Mongo bağlantısı (yoksa null) — dosya yedeğine düşmek için. */
+async function dbAl() {
+  try {
+    const { getDb } = require("../lib/mongo.cjs");
+    return await getDb();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Gönderim mührü.
+ *
+ * ⚠️ ÖNCE MONGO. Dosya yolu iki biçimde çöküyordu: Render'da `data/` her
+ * deploy'da silindiği için anahtarlar kaybolup bildirimler TEKRAR gidiyordu,
+ * ve `withFileLock` çok instance'ta hiçbir şey yapmıyordu. Aynı ders tr-lig'de
+ * de alınmıştı (süreç-içi Set → Mongo mührü).
+ *
+ * Dosya yedeği KORUNUYOR: Mongo erişilemezken bildirimleri tamamen durdurmak
+ * daha kötü olurdu.
+ */
 async function claimKeys(keys) {
+  const db = await dbAl();
+  if (db) {
+    const alinan = await PushSent.claimKeys(keys, db);
+    if (alinan) return alinan;
+  }
   return withFileLock(SENT_FILE, async () => {
     const store = await loadSent();
     const now = Date.now();
