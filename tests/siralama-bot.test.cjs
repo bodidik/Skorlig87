@@ -97,3 +97,54 @@ test("gerçek veride süzgecin etkisi ölçülebilir", () => {
   assert.equal(bot.length + insan.length, items.length, "suzgec kayip veri uretiyor");
   assert.ok(insan.length <= items.length);
 });
+
+/* ── Bot kadrosunun kaynağı ──────────────────────────────────────────────── */
+
+/**
+ * ⚠️ TÜM BOT SÜZGEÇLERİ İKİ DOSYAYA BAĞLI.
+ *
+ * `lib/botIds.cjs` kadroyu `data/bot-profiles.json` ve
+ * `data/bot-legacy-ids.json` dosyalarından okuyor. Dosya okunamazsa modül
+ * `console.warn` basıp BOŞ küme dönüyor — yani `isBot()` herkese `false` der
+ * ve bot süzgeçlerinin HEPSİ sessizce devre dışı kalır:
+ *   • settle2 botlara LC ödülü öder (1760 bot × maç başına ödül)
+ *   • mini turnuvada botlar "gerçek kazanan" sayılır
+ *   • sıralamalarda bot işareti kaybolur
+ *
+ * ŞU AN GÜVENLİ: `data/*` .gitignore'da ama bu iki dosya AÇIKÇA istisna
+ * tutulmuş (`!data/bot-profiles.json`), yani her deploy'da geliyorlar.
+ * Bağımlılık tam olarak o istisnaya dayanıyor — daha geniş bir ignore kuralı
+ * ya da dosyanın bozulması süzgeçleri fail-OPEN düşürür. Bu test o dayanağı
+ * koruyor.
+ */
+test("bot kadrosu dosyaları sürüm kontrolünde ve dolu", () => {
+  const { execFileSync } = require("child_process");
+  const dosyalar = ["data/bot-profiles.json", "data/bot-legacy-ids.json"];
+
+  let izlenen = "";
+  try {
+    izlenen = execFileSync("git", ["ls-files", ...dosyalar], { cwd: KOK, encoding: "utf8" });
+  } catch {
+    return; // git yoksa (paket kurulumu) atla — yanlış alarm üretme
+  }
+
+  for (const d of dosyalar) {
+    assert.ok(
+      izlenen.includes(d.split("/").pop()),
+      `${d} git tarafindan IZLENMIYOR — deploy'da gelmez, bot suzgecleri fail-open duser`
+    );
+    const tam = path.join(KOK, d);
+    assert.ok(fs.existsSync(tam), `${d} yok`);
+    // ⚠️ ŞEKİL KODDAN OKUNDU, TAHMİN EDİLMEDİ: `lib/botIds.cjs` hem düz dizi
+    // hem `{ ids: [...] }` kabul ediyor (aktif kadro dizi, emekli kimlikler
+    // sarmalı). İlk yazımda ikisini de dizi sandım ve test yanlış yere düştü.
+    const icerik = JSON.parse(fs.readFileSync(tam, "utf8"));
+    const kayitlar = Array.isArray(icerik)
+      ? icerik
+      : (Array.isArray(icerik?.ids) ? icerik.ids : null);
+    assert.ok(
+      Array.isArray(kayitlar) && kayitlar.length > 0,
+      `${d} bos ya da beklenen bicimde degil (dizi veya {ids:[...]})`
+    );
+  }
+});

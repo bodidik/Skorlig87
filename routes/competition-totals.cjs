@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const { BOT_ID_SET } = require("../lib/botIds.cjs");
 const router  = express.Router();
 const fs      = require("fs");
 const fsp     = fs.promises;
@@ -66,6 +67,35 @@ function extractPenaltyFromDetail(detail) {
  */
 router.get("/competition-totals", async (req, res) => {
   try {
+    /* UYARI: BOT ISARETI TEK BOGAZ NOKTASINDA.
+     *
+     * Bu uc DORT ayri yerden yanit donuyor (Mongo competition_totals, Mongo
+     * toplama, dosya toplama, bos sonuc) ve hepsi `items` uretiyor. Dordunu
+     * ayri ayri yamamak, birinde unutmak demektir — bu oturumun en sik
+     * tekrarlanan hatasi tam olarak bu ("bir yerde var, otekinde yok").
+     * O yuzden isaretleme cikista BIR KEZ yapiliyor.
+     *
+     * Neden gerekli: yarisma toplamlari `leaderboard` anlik goruntulerindeki
+     * `rows` uzerinden toplaniyor ve settle2 o satirlara BOTLARI da yaziyor.
+     * Ana siralamada olculmustu: 1707 kaydin 1706'si bot. Bu uc iki istemci
+     * ekrani tarafindan cagriliyor (stats.tsx, competition-kings.tsx) ve
+     * yanit bot olup olmadigini hic soylemiyordu.
+     *
+     * Karar leaderboard.cjs'ten (2026-07-29): botlari SILME, ISARETLE,
+     * `?humans=1` ile istege bagli suz.
+     */
+    const humansOnly = String(req.query.humans || "") === "1";
+    const _json = res.json.bind(res);
+    res.json = (govde) => {
+      if (!govde || !Array.isArray(govde.items)) return _json(govde);
+      const isaretli = govde.items.map((x) => ({
+        ...x,
+        isBot: BOT_ID_SET.has(String(x?.userId || "").trim().toLowerCase()),
+      }));
+      const items = humansOnly ? isaretli.filter((x) => !x.isBot) : isaretli;
+      return _json({ ...govde, items, count: items.length });
+    };
+
     const competitionId = String(req.query.competitionId || "").trim();
     const userIdRaw     = String(req.query.userId || "").trim();
     const userIdLower   = userIdRaw ? normUserId(userIdRaw) : null;
