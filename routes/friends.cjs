@@ -758,6 +758,17 @@ router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
       const muhur = !kotaDoldu && (await DavetOdul.odulMuhurle(userId, dbW));
 
       if (muhur) {
+        /* UYARI: DAVETLININ CUZDANI ONCE KURULUR.
+         *
+         * Davet linkiyle gelen kullanici uygulamayi ILK kez aciyor olabilir ve
+         * `applyPendingRef` acilista bu ucu cagiriyor. `creditLc` cuzdani
+         * yalnizca KREDI TUTARIYLA yaratiyor; acilis bakiyesini veren yollar
+         * ise "belge var mi" diye bakip atliyor. Olculdu: davetli 45 yerine
+         * 15 LC ile basliyordu — davet ozelliginin GETIRDIGI kullanici.
+         * bkz. lib/wallet-credit.cjs cuzdanKur */
+        await WalletCredit.cuzdanKur(dbW, userId);
+        await WalletCredit.cuzdanKur(dbW, ownerId);
+
         const a = await WalletCredit.creditLc(dbW, ownerId, INVITE_REWARD, "invite_referral", { invitedUserId: userId });
         const b = await WalletCredit.creditLc(dbW, userId, INVITE_REWARD, "invite_welcome", { referrerId: ownerId });
         odulVerildi = !!(a && b);
