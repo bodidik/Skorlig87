@@ -23,6 +23,7 @@ const DATA_DIR     = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", 
 const GROUPS_FILE  = path.join(DATA_DIR, "groups.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
 const SocialStore = require("../lib/social-store.cjs");
+const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 
 // 🔹 LigCoin başlangıç değeri (pred/settle2 ile uyumlu olmalı)
 // ⚠️ Tek kaynak: lib/ekonomi.cjs. Bu değer DÖRT dosyada İKİ AYRI ADLA
@@ -451,34 +452,36 @@ router.get("/groups/list", verifyToken, async (req, res) => {
  */
 router.post("/groups/create", verifyToken, express.json(), async (req, res) => {
   try {
-    const name = String(req.body?.name || "").trim();
+    /* ⚠️ BU UÇ SocialStore'A DEVREDİLDİ.
+     *
+     * `groups.cjs` ile `users.cjs` AYNI uçları tanımlıyor ve Express ilk
+     * eşleşeni kullanıyor: `/api/users/groups/*` isteklerini BU dosya
+     * karşılıyor — istemci de tam olarak bu yolu çağırıyor.
+     *
+     * İki kopya AYRIŞMIŞTI. Yarış düzeltmesi `SocialStore`a yazılmış ve
+     * belgelenmiş (lib/social-store.cjs: "eski kod ... kendisi de yarışlıydı"),
+     * ama bu kopya eski "tüm depoyu oku → bellekte değiştir → tüm depoyu yaz"
+     * desenini koruyordu. Yani belgelenen düzeltme gerçek kullanıcılar için
+     * yürürlükte DEĞİLDİ. Kopyayı yamamak ayrışmayı sürdürürdü. */
+    const name = String(req.body?.name || "").trim().slice(0, 40);
     const ownerId = req.uid;
-    if (!name || !ownerId) return res.status(400).json({ ok: false, error: "NAME_OWNER_REQUIRED" });
+    if (!name) return res.status(400).json({ ok: false, error: "NAME_REQUIRED" });
+    if (!ownerId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
 
     await ensureUser(ownerId, req);
 
-    const store = await loadGroupsStoreCompat();
-    let code;
-    do { code = code6(); } while (store[code]);
-
-    const nowISO = new Date().toISOString();
-    store[code] = { name, ownerId, members: [ownerId], opts: {}, createdAt: nowISO };
-
-    await saveGroupsStore(store);
-    return res.json({ ok: true, code, group: store[code] });
+    const r = await SocialStore.createGroup({ name, ownerId }, req.app?.locals?.db || null);
+    if (!r?.code) return res.status(500).json({ ok: false, error: "GROUP_CREATE_FAILED" });
+    return res.json({ ok: true, code: r.code, group: r.group });
   } catch (e) {
     console.error("GROUP_CREATE_ERR", e);
-    return res.status(500).json({ ok: false, error: "GROUP_CREATE_ERR", detail: String(e && (e.message || e)) });
+    return res.status(500).json({ ok: false, error: "GROUP_CREATE_FAILED", detail: String(e && (e.message || e)) });
   }
 });
 
-/**
- * POST /api/users/groups/join
- * body: { code, userId }
- * → /api/groups/join ile aynı davranış hedeflenir
- */
 router.post("/groups/join", verifyToken, express.json(), async (req, res) => {
   try {
+    // Devir gerekçesi için yukarıdaki /groups/create notuna bakın.
     const code = normCode(req.body?.code);
     const userId = req.uid;
     if (!code) return res.status(400).json({ ok: false, error: "CODE_REQUIRED" });
@@ -486,25 +489,17 @@ router.post("/groups/join", verifyToken, express.json(), async (req, res) => {
 
     await ensureUser(userId, req);
 
-    const store = await loadGroupsStoreCompat();
-    const g = store[code];
+    // Atomik: $addToSet hem yarışı hem mükerrer üyeliği kendisi engelliyor.
+    const g = await SocialStore.joinGroup(code, userId, req.app?.locals?.db || null);
     if (!g) return res.status(404).json({ ok: false, error: "GROUP_NOT_FOUND" });
 
-    g.members = Array.isArray(g.members) ? g.members.map(normUserId).filter(Boolean) : [];
-    if (!g.members.includes(userId)) g.members.push(userId);
-
-    await saveGroupsStore(store);
-    return res.json({ ok: true, group: { code, name: g.name, size: g.members.length } });
+    return res.json({ ok: true, group: { code, name: g.name, size: (g.members || []).length } });
   } catch (e) {
     console.error("GROUP_JOIN_ERR", e);
     return res.status(500).json({ ok: false, error: "GROUP_JOIN_FAILED", detail: String(e && (e.message || e)) });
   }
 });
 
-/**
- * GET /api/users/groups/:code/board
- * Grup içi leaderboard (groups.cjs ile aynı mantık)
- */
 router.get("/groups/:code/board", async (req, res) => {
   try {
     const code = normCode(req.params.code);
@@ -564,14 +559,14 @@ router.post("/groups/:code/opt", verifyToken, express.json(), async (req, res) =
       return res.status(400).json({ ok: false, error: "REQ" });
     }
 
-    const store = await loadGroupsStoreCompat();
-    const g = store[code];
-    if (!g) return res.status(404).json({ ok: false, error: "GROUP_NOT_FOUND" });
-
-    g.opts = g.opts && typeof g.opts === "object" ? g.opts : {};
-    g.opts[userId] = { includeInTotal: !!includeInTotal };
-
-    await saveGroupsStore(store);
+    /* ⚠️ Aynı ayrışma burada da vardı: bu kopya TÜM grup deposunu okuyup geri
+     * yazıyordu, `groups.cjs` ise `SocialStore.setGroupOpt` ile tek alanı
+     * güncelliyordu. Tüm depoyu yazmak, BAŞKA bir gruba yapılan eşzamanlı
+     * değişikliği de silebilirdi. */
+    const oldu = await SocialStore.setGroupOpt(
+      code, userId, !!includeInTotal, req.app?.locals?.db || null
+    );
+    if (!oldu) return res.status(404).json({ ok: false, error: "GROUP_NOT_FOUND" });
     return res.json({ ok: true });
   } catch (e) {
     console.error("GROUP_OPT_ERR", e);
