@@ -85,6 +85,31 @@ const PAYOUT_TABLE = {
 };
 const PAYOUT_8PLUS = [0.50, 0.25, 0.15, 0.10];
 
+/**
+ * Havuzu yüzdelere göre TAM SAYI olarak dağıtır (en büyük kalan yöntemi).
+ *
+ * Önce her pay aşağı yuvarlanır, artan LC kesirli kısmı en büyük olandan
+ * başlayarak birer birer dağıtılır. Toplam havuza tam eşitlenir, hiçbir zaman
+ * aşmaz. Eşit kesirde üst sıra önce gelir — dağıtım deterministik.
+ *
+ * ⚠️ AYRI FONKSİYON, ÇÜNKÜ SINANMASI GEREKİYOR. `settle` Mongo, mühür ve
+ * gerçek ödeme istiyor; saf matematiği 1440 senaryoda sınamanın yolu yoktu.
+ * İlk denemede testime mantığın KOPYASINI yazdım ve negatif kontrol yakaladı:
+ * kaynaktaki dağıtımı bozmak testi kırmıyordu — test kendi kopyasını
+ * ölçüyordu. Kopya silindi, test bu fonksiyonu çağırıyor.
+ */
+function odemeDagit(havuz, yuzdeler) {
+  const toplam = Math.max(0, Math.floor(Number(havuz) || 0));
+  const kalemler = (yuzdeler || []).map((pct, i) => {
+    const tam = toplam * Number(pct || 0);
+    return { i, taban: Math.floor(tam), kesir: tam - Math.floor(tam) };
+  });
+  let artan = toplam - kalemler.reduce((a, k) => a + k.taban, 0);
+  const sira = [...kalemler].sort((a, b) => b.kesir - a.kesir || a.i - b.i);
+  for (let j = 0; j < sira.length && artan > 0; j++, artan--) sira[j].taban++;
+  return kalemler.map((k) => k.taban);
+}
+
 const MIN_ENTRY = 5;
 const MAX_ENTRY = 100;
 const MAX_MATCHES = 6;
@@ -289,17 +314,51 @@ async function settle(code, results, db = null) {
   const n = sorted.length;
   const table = n >= 8 ? PAYOUT_8PLUS : (PAYOUT_TABLE[n] || PAYOUT_TABLE[2]);
 
-  t.payouts = table.map((pct, i) => {
-    const user = sorted[i];
-    if (!user) return null;
-    return {
-      rank: i + 1,
-      userId: user.userId,
-      score: user.totalScore,
-      lcWon: Math.round(t.pool * pct),
-      pct: Math.round(pct * 100),
-    };
-  }).filter(Boolean);
+  /* ⚠️ ÖDEMELER HAVUZLA UZLAŞTIRILIR — `Math.round` HAVUZDAN FAZLA ÖDÜYORDU.
+   *
+   * Her ödeme bağımsız yuvarlanıyor ve toplam havuzla hiç karşılaştırılmıyordu.
+   * ÖLÇÜLDÜ (oyuncu 2-16 × giriş 5-100 LC = 1440 senaryo):
+   *     %74.7 tam eşleşme
+   *     %25.0 FAZLA ödeme (+1 LC)   ← yoktan LC, dörtte bir turnuvada
+   *     %0.3  eksik ödeme (-1 LC)
+   * Örnek: 3 oyuncu × 5 LC = 15 havuz → round(10.5)=11 + round(4.5)=5 = 16.
+   *
+   * Aynı hatanın doğru karşılığı kod tabanında ZATEN vardı — `routes/mini.cjs`
+   * içindeki `kazananPayi` aşağı yuvarlıyor: "Yukarı yuvarlamak toplamı
+   * taşırırdı ... Enflasyon yönünde hata yapmamak, kuruş kuruşuna dağıtmaktan
+   * önemli." Turnuva o kuralı almamıştı.
+   *
+   * ⚠️ AMA YALNIZCA AŞAĞI YUVARLAMAK DA YETMEZ. Ölçtüm: her ödemeyi floor'a
+   * çekmek fazla ödemeyi bitiriyor ama 1440 senaryonun 1199'unda 3 LC'ye kadar
+   * YAKIYOR — mini'de tek bir pay hesaplandığı için kayıp önemsizdi, burada
+   * üç-dört kalem var. Bunun yerine EN BÜYÜK KALAN yöntemi: önce hepsi aşağı
+   * yuvarlanır, artan LC kesirli kısmı en büyük olandan başlayarak birer birer
+   * dağıtılır. Toplam havuza TAM eşitlenir, hiçbir zaman aşmaz.
+   *
+   * (Yüzdeler her zaman 1.00'e toplanıyor ve ödeme sayısı tablo uzunluğuna
+   * eşit — n < tablo durumu yok, çünkü tablo katılımcı sayısına göre seçiliyor.) */
+  const havuz = Math.max(0, Math.floor(Number(t.pool) || 0));
+  const paylar = odemeDagit(havuz, table.slice(0, sorted.length));
+
+  t.payouts = paylar.map((lcWon, i) => ({
+    rank: i + 1,
+    userId: sorted[i].userId,
+    score: sorted[i].totalScore,
+    lcWon,
+    pct: Math.round(table[i] * 100),
+  }));
+
+  /* Değişmez ödemeden ÖNCE doğrulanır: toplam havuzu AŞAMAZ. Aşağı yuvarlama
+   * bunu zaten sağlıyor; bu kontrol tablo ya da yuvarlama bir gün değişirse
+   * sessiz enflasyon yerine gürültü çıkarsın diye duruyor. */
+  const odenecek = t.payouts.reduce((a, p) => a + Number(p.lcWon || 0), 0);
+  if (odenecek > Number(t.pool || 0)) {
+    console.error(
+      `[tournament] ⛔ ODEME HAVUZU ASIYOR: ${t.code} havuz=${t.pool} odenecek=${odenecek} — ` +
+      "odeme yapilmadi"
+    );
+    throw new Error("PAYOUT_EXCEEDS_POOL");
+  }
 
   const nowISO = new Date().toISOString();
 
@@ -350,4 +409,9 @@ async function listByUser(userId) {
   );
 }
 
-module.exports = { create, join, predict, settle, getByCode, listByUser, MIN_ENTRY, MAX_ENTRY, MAX_MATCHES };
+module.exports = {
+  create, join, predict, settle, getByCode, listByUser,
+  MIN_ENTRY, MAX_ENTRY, MAX_MATCHES,
+  // Sınama için: saf dağıtım matematiği (bkz. odemeDagit notu).
+  _odemeDagit: odemeDagit, _PAYOUT_TABLE: PAYOUT_TABLE, _PAYOUT_8PLUS: PAYOUT_8PLUS,
+};
