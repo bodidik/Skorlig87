@@ -1,5 +1,6 @@
 "use strict";
 const express = require("express");
+const { BOT_ID_SET } = require("../lib/botIds.cjs");
 const router  = express.Router();
 const fs      = require("fs");
 const fsp     = fs.promises;
@@ -88,9 +89,27 @@ router.get("/totals", async (req, res) => {
 
   const { items, updatedAt } = await loadTotals(req.app?.locals?.db || null);
 
+  /* UYARI: BOT ISARETI + istege bagli suzgec — routes/leaderboard.cjs ile AYNI.
+   *
+   * Olculdu (2026-07-31): 1707 siralama kaydinin 1706'si BOT. Siralama ekrani
+   * (kings.tsx) bu ucu `?limit=300` ile cagiriyor, yani liste fiilen tamamen
+   * bot ve YANIT bunu hicbir yerde soylemiyordu: kullanici 300 kisiyle
+   * yaristigini saniyor.
+   *
+   * leaderboard.cjs ayni olcumu 2026-07-29'da yapmis ve karari vermis:
+   * botlari SILME, ISARETLE ve `?humans=1` ile istege bagli suz — "bot listeyi
+   * canli gosteriyor ama kiminle yaristigini gizlemek durust degil". O karar
+   * burada uygulanmamisti; ayni karari uyguluyoruz, tersine cevirmiyoruz.
+   */
+  const isaretli = items.map((x) => ({
+    ...x,
+    isBot: BOT_ID_SET.has(String(x.userId || "").trim().toLowerCase()),
+  }));
+  const humansOnly = String(req.query.humans || "") === "1";
+
   let out = userId
-    ? items.filter((x) => String(x.userId).toLowerCase() === userId.toLowerCase())
-    : items;
+    ? isaretli.filter((x) => String(x.userId).toLowerCase() === userId.toLowerCase())
+    : (humansOnly ? isaretli.filter((x) => !x.isBot) : isaretli);
 
   if (!userId && limit) {
     out = [...out]
