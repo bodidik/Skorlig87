@@ -6,6 +6,7 @@ const express = require("express");
 const router = express.Router();
 const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { istemciIp } = require("../lib/istemci-ip.cjs");
 
 // ---- paths / io helpers ----
 const dataDir = path.join(__dirname, "..", "data");
@@ -210,7 +211,11 @@ router.post("/user-presets/restore", verifyToken, (req, res) => {
 // GET /api/p/:id  (optional: ?pin=&captchaToken=&captcha=)
 router.get("/p/:id", (req, res) => {
   const id = String(req.params.id || "");
-  const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").toString();
+  /* ⚠️ HAM BAŞLIK KAPI ANAHTARIYDI. Aşağıdaki sayaç PIN denemesini 10 dakikada
+   * 5'le sınırlıyor, ama anahtar `x-forwarded-for`un TAMAMIYDI — istemci onu
+   * yazıyor. Her istekte farklı bir değer göndermek sayacı sıfırlar, yani PIN
+   * korumasi fiilen yoktu. bkz. lib/istemci-ip.cjs */
+  const ip = istemciIp(req);
   const pin = String(req.query.pin || "");
   const captchaToken = String(req.query.captchaToken || "");
   const captcha = String(req.query.captcha || "");

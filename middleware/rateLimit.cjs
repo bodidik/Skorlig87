@@ -132,12 +132,14 @@ function isInternal(req) {
  *   2) (IP) → yüksek tavan. Kimliği değiştirerek 1. katmanı atlayan saldırgan
  *      buraya takılır; normal kullanıcı asla göremez.
  */
-function ipOf(req) {
-  const xff = req.headers["x-forwarded-for"];
-  return String(
-    xff ? String(xff).split(",")[0].trim() : req.socket?.remoteAddress || "0.0.0.0"
-  );
-}
+/**
+ * ⚠️ ESKİDEN `xff.split(",")[0]` OKUYORDU — o giriş TAMAMEN İSTEMCİ
+ * DENETİMİNDE. Proxy başlığı silmez, SONUNA ekler; istemci uydurma bir değer
+ * yollayınca soldan okuma o uydurmayı verir ve saldırgan her istekte kendine
+ * YENİ KOVA açar. Aşağıdaki IP tavanı da aynı `ipOf`u kullandığı için yedek,
+ * yedeklediği şeyle aynı delikteydi. bkz. lib/istemci-ip.cjs
+ */
+const { istemciIp: ipOf } = require("../lib/istemci-ip.cjs");
 
 function keyFor(req, url) {
   // req.uid varsa (ileride limiter auth sonrasına taşınırsa) o tercih edilir.
