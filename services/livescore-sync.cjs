@@ -1,6 +1,11 @@
 "use strict";
 
 const fs = require("fs");
+const SkorUyusmazlik = require("../lib/skor-uyusmazlik.cjs");
+/** Mongo baglantisi (yoksa null) — uyusmazlik kaydi icin. */
+async function dbAlSafe() {
+  try { return await require("../lib/mongo.cjs").getDb(); } catch { return null; }
+}
 const fsp = fs.promises;
 const path = require("path");
 const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
@@ -334,6 +339,36 @@ async function sync() {
       // Write live state (HT+FT veya sadece LIVE)
       await writeLiveState(fid, liveMatch, scores, nowISO);
       if (ftGuvenilir) await writeResultsEntry(fixture, scores, nowISO);
+
+      /* UYARI: UZLASMA SONRASI SKOR DEGISIMI.
+       *
+       * Uzlasma `claimAward` ile muhurlu — ayni mac iki kez odeme yapmasin
+       * diye. Dogru bir koruma ama yan etkisi var: skor SONRADAN degisirse
+       * (VAR karari, kaynak duzeltmesi) yeniden uzlasma OLMUYOR ve puanlar/LC
+       * kalici olarak yanlis kaliyor. Bunu fark eden hicbir sey yoktu.
+       *
+       * Otomatik duzeltme YAPILMIYOR: dagitilmis LC'yi geri almak bakiyeyi
+       * eksiye dusurebilir. Karar operatorun; burada yalnizca kalici iz
+       * birakiliyor. bkz. lib/skor-uyusmazlik.cjs */
+      if (ftGuvenilir && settledIds.has(fid)) {
+        try {
+          const dbU = await dbAlSafe();
+          if (dbU) {
+            const snap = await MatchResults.getSnapshot(fid, dbU);
+            const guncel = { home: scores.home, away: scores.away };
+            if (snap && SkorUyusmazlik.farkliMi(snap.finalScore, guncel)) {
+              await SkorUyusmazlik.kaydet(dbU, {
+                fixtureId: fid,
+                mac: `${fixture.home} - ${fixture.away}`,
+                muhurluSkor: snap.finalScore,
+                guncelSkor: guncel,
+              });
+            }
+          }
+        } catch (e) {
+          console.error("[sync] skor uyusmazligi kontrolu basarisiz:", e?.message || e);
+        }
+      }
 
       // Settle trigger — sadece GUVENILIR FT + daha önce settle edilmemişse
       if (ftGuvenilir && !settledIds.has(fid) && !_settledThisSession.has(fid)) {
