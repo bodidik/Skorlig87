@@ -129,6 +129,24 @@ app.use(express.json({ limit: "64kb" }));
 app.use(rateLimit);
 
 /* ===== Mongo init (global) ===== */
+/**
+ * UYARI: BAGLANTI ATESLE-UNUT, LISTEN ISE HEMEN CALISIYOR.
+ *
+ * Bu blok `await` iceriyor ve donuyor; modulun geri kalani senkron devam edip
+ * `app.listen` cagiriyor. Yani sunucu, Mongo BAGLANMADAN once istek kabul
+ * etmeye basliyor ve o pencerede `app.locals.db` TANIMSIZ.
+ *
+ * Rotalarin cogu `req.app?.locals?.db || null` okuyup null gorunce DOSYA
+ * moduna dusuyor. Sonuc: deploy sonrasi ilk saniyelerde gonderilen bir tahmin
+ * yalnizca dosyaya yaziliyor, settle2 ise `predictions` koleksiyonunu okuyor —
+ * oyuncu 3 LC odemis ama tahmini hic sonuclanmiyor. Bu oturumda dosya/Mongo
+ * ayrismasinin ne kadar sessiz oldugunu defalarca gorduk.
+ *
+ * `/health` kosulsuz 200 donduğu icin Render trafigi hemen yonlendiriyor;
+ * yani pencere kuramsal degil, trafige acik.
+ */
+let _mongoInitBitti = false;
+
 (async () => {
   try {
     const db = await getDb();          // mongo.cjs içindeki connectOnce
@@ -139,9 +157,33 @@ app.use(rateLimit);
   } catch (e) {
     console.error("[mongo] initMongo error:", e && e.message ? e.message : e);
   } finally {
+    // BASARISIZLIKTA DA true: `connectOnce` denemeleri bitince null donuyor ve
+    // uygulama bilerek dosya modunda calisiyor. Burada takili kalmak, Mongo
+    // erisilemezken uygulamayi tamamen kapatmak olurdu.
+    _mongoInitBitti = true;
     console.log("[mongo] initMongo completed (or skipped)");
   }
 })();
+
+/**
+ * HAZIR OLMADAN API ISTEGI KABUL ETME.
+ *
+ * Yalnizca `/api` altini kapsiyor: `/health` ve `/__up` acik kaliyor ki surec
+ * izleme calismaya devam etsin.
+ *
+ * Istemci tarafi (mobile/lib/fetchPolicy.ts) 502/503/504'u GET/HEAD icin
+ * OTOMATIK yeniden deniyor (500ms, 1500ms) — okumalar kullaniciya hic
+ * yansimiyor. POST'lar bilerek YENIDEN DENENMIYOR (cift gonderim riski), yani
+ * yazma isteği durust bir hata aliyor. Bu, sessizce dosya moduna yazip 3 LC
+ * alarak tahmini hic sonuclandirmamaktan iyi: kullanici tekrar deniyor ve
+ * calisiyor.
+ */
+app.use((req, res, next) => {
+  if (_mongoInitBitti) return next();
+  if (!req.path.startsWith("/api")) return next();
+  res.set("Retry-After", "1");
+  return res.status(503).json({ ok: false, error: "NOT_READY" });
+});
 
 /* ===== Health ===== */
 app.get("/health", (req, res) =>
