@@ -124,30 +124,34 @@ const DUEL_LOCK_BEFORE_MIN = 10;
  * genel kodu donuyor, burada duelloya ozel koda geri cevriliyor.
  */
 /**
- * Maçın takım adlarını SUNUCUDAN çözer.
+ * Maçın takım adlarını ve başlama saatini SUNUCUDAN çözer.
  *
- * ⚠️ İstemciye asla düşmez: bu adlar `calcOdds` üzerinden düello puanını
- * belirliyor. Bilinmiyorsa `null` döner ve sonuçlandırma tarafsız orana düşer.
+ * ⚠️ ÜÇÜ DE İSTEMCİYE BIRAKILAMAZ:
+ *   • `home`/`away` → `calcOdds` üzerinden düello PUANINI belirliyor.
+ *   • `kickoffISO`  → bayat sayılan düello GEÇERSİZ olur ve iki tarafın bahsi
+ *     İADE EDİLİR (services/bayat-temizleyici.cjs). Geçmiş bir saat yazmak,
+ *     kabul edilmiş bir düelloyu istediği an dağıtmak demekti.
+ * Bilinmiyorsa `null` döner; sonuçlandırma tarafsız orana, bayatlık denetimi
+ * de `lib/bayat-mac.cjs`'in kendi depo aramasına düşer.
  *
- * `denge` (maç dengesi kapısının sonucu) çoğu zaman adları zaten taşıyor;
- * taşımadığı durumlar var (denetim kapalıysa erken dönüyor), o yüzden
- * gerekirse depo tekrar okunuyor — `getOne` indeksli tekil arama.
+ * `denge` (maç dengesi kapısının sonucu) çoğu zaman adları zaten taşıyor ama
+ * saati taşımıyor; o yüzden saat için depo her hâlükârda okunuyor —
+ * `getOne` indeksli tekil arama.
  */
 async function macTakimlari(fixtureId, db, denge) {
-  if (denge?.home && denge?.away) {
-    return { home: String(denge.home).trim() || null, away: String(denge.away).trim() || null };
-  }
+  const fid = String(fixtureId || "").trim();
+  let fx = null;
   try {
     const FixturesStore = require("../lib/fixtures-store.cjs");
-    const fx = await FixturesStore.getOne(String(fixtureId || "").trim(), db);
-    return {
-      home: String(fx?.home || fx?.homeTeam || "").trim() || null,
-      away: String(fx?.away || fx?.awayTeam || "").trim() || null,
-    };
+    fx = await FixturesStore.getOne(fid, db);
   } catch (e) {
-    console.error("[duels] takim adlari okunamadi:", e?.message || e);
-    return { home: null, away: null };
+    console.error("[duels] fikstur okunamadi:", fid, e?.message || e);
   }
+  return {
+    home: String(denge?.home || fx?.home || fx?.homeTeam || "").trim() || null,
+    away: String(denge?.away || fx?.away || fx?.awayTeam || "").trim() || null,
+    kickoffISO: fx?.kickoffISO || fx?.kickoff || null,
+  };
 }
 
 async function isFixtureLocked(fixtureId, db = null) {
@@ -503,8 +507,12 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
 router.post("/duels/create", verifyToken, async (req, res) => {
   try {
     const db = getDb(req);
-    // ⚠️ `home`/`away` BİLEREK OKUNMUYOR — sunucudan çözülüyor (bkz. macTakimlari).
-    const { fixtureId, stake, challengedId, creatorName, league, kickoffISO } = req.body || {};
+    /* ⚠️ `home`/`away`/`kickoffISO` BİLEREK OKUNMUYOR — sunucudan çözülüyor.
+     * `kickoffISO` para kararı: bayat sayılan düello GEÇERSİZ olur ve iki
+     * tarafın bahsi iade edilir (services/bayat-temizleyici.cjs). Gövdeden
+     * gelseydi kurucu, geçmiş bir saat yazarak kabul edilmiş bir düelloyu
+     * istediği an dağıtabilirdi. bkz. macTakimlari */
+    const { fixtureId, stake, challengedId, creatorName, league } = req.body || {};
     const creatorId = req.uid;
     const fx = String(fixtureId || "").trim();
     if (!fx) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
@@ -595,7 +603,7 @@ router.post("/duels/create", verifyToken, async (req, res) => {
       home: takim.home,
       away: takim.away,
       league: String(league || "").trim() || null,
-      kickoffISO: kickoffISO || null,
+      kickoffISO: takim.kickoffISO,
       creatorPoints: null, acceptorPoints: null, winnerId: null,
       pot, houseCut, winAmount,
       createdAt: nowISO, acceptedAt: null, settledAt: null,

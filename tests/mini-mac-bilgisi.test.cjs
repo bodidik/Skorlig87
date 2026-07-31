@@ -165,18 +165,33 @@ describe("bayatlık kararı", () => {
     assert.equal(d.bayat, false, `mac bayat sayildi (${d.sebep}) — turnuva hemen kapanirdi`);
   });
 
-  test("YALAN saat verilse bile bayatMi onu bayat SAYARDI (açığın mekanizması)", async () => {
+  test("YALAN saat verilse BİLE sunucu saati kazanır", async () => {
     /**
-     * Bu test düzeltmeyi sınamıyor; açığın nasıl çalıştığını gösteriyor.
-     * `bayatMi` kendisine verilen saate güveniyor — bu doğru, sorun ona YALAN
-     * saatin ulaşabilmesiydi. Düzeltme çağıranda: artık o saat sunucudan.
+     * ⚠️ ASIL DEĞİŞMEZ. `bayatMi` artık önce fikstür deposuna bakıyor;
+     * çağıranın verdiği saat yalnızca depoda karşılık yoksa kullanılıyor.
+     *
+     * Önceki hâli sunucuya YALNIZCA saat okunamazsa bakıyordu — geçerli ama
+     * yalan bir tarih o yedeği hiç çalıştırmıyordu. Bu, sadece mini turnuvayı
+     * değil DÜELLOYU da etkiliyordu: bayat sayılan düello geçersiz olup iki
+     * tarafın bahsini iade ediyor.
      */
     const { bayatMi } = require("../lib/bayat-mac.cjs");
     const d = await bayatMi({ fixtureId: MACLAR[0], kickoffISO: YALAN_SAAT, db });
     assert.equal(
-      d.bayat, true,
-      "yalan saat bayatlik uretmiyor — bulgunun mekanizmasi degismis olabilir"
+      d.bayat, false,
+      `yalan saat hala bayatlik uretiyor (${d.sebep}) — sunucu degeri kazanmiyor`
     );
+  });
+
+  test("depoda karşılığı YOKSA çağıranın saati kullanılır (para kilitlenmesin)", async () => {
+    /**
+     * Kapalı tarafa fazla kaçmak da hata olurdu: depoda olmayan eski bir maç
+     * hiç bayatlamazsa o kayda bağlı para SONSUZA KADAR kilitli kalır — bu
+     * dosyanın önlemek için yazıldığı durumun ta kendisi.
+     */
+    const { bayatMi } = require("../lib/bayat-mac.cjs");
+    const d = await bayatMi({ fixtureId: "depoda-yok-1", kickoffISO: YALAN_SAAT, db });
+    assert.equal(d.bayat, true, `depoda olmayan mac icin cagiranin saati yok sayildi (${d.sebep})`);
   });
 
   test("kayıtta yalan saat KALSA bile karar sunucudan okunur", async () => {
