@@ -587,9 +587,19 @@ router.post("/unblock", verifyToken, express.json(), async (req,res)=>{
  * GET /api/friends/blocks/:userId
  * - benim blockladıklarım
  */
-router.get("/blocks/:userId", async (req,res)=>{
+/**
+ * GET /api/friends/blocks/:userId — YALNIZCA KENDİ engel listesi.
+ *
+ * ⚠️ KİMLİK DENETİMİ YOKTU: herkes herkesin engel listesini okuyabiliyordu.
+ * Bu sıradan bir mahremiyet sızıntısı değil — taciz eden biri kurbanın kimleri
+ * engellediğini ve kendisinin engellenip engellenmediğini öğrenebiliyordu.
+ * Engellendiğini öğrenmek tırmandırmayı tetikleyen bilgidir.
+ */
+router.get("/blocks/:userId", verifyToken, async (req,res)=>{
   try{
-    const userId = String(req.params.userId||"").trim();
+    const _k = kimlikVeyaHata(req, res, req.params.userId);
+    if (!_k) return;
+    const userId = _k.uid;
     if (!userId) return res.status(400).json({ ok:false, error:"USER_REQUIRED" });
 
     const m = await loadFriends();
@@ -699,6 +709,22 @@ router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
       (normLower(l.a) === normLower(ownerId) && normLower(l.b) === normLower(userId))
     )) {
       return res.json({ ok: true, already: true, ownerId, message: "Zaten arkadaşsınız." });
+    }
+
+    /* ⚠️ ENGELLEME DENETİMİ — BU UÇTA YOKTU.
+     *
+     * Davet kodu doğrudan arkadaşlık KURUYOR. Kontrol olmadığı için
+     * engellenen biri, engelleyenin kodunu kullanarak arkadaş olabiliyordu —
+     * engelin tamamını atlayarak. Üstelik ikisine de LC yatıyordu, yani
+     * engelleyen kişi istemediği bir arkadaşlığı bildirimle birlikte alıyordu.
+     *
+     * Kodlar PAYLAŞILMAK İÇİN ÜRETİLİYOR: engellenen kişi kodu ortak bir
+     * arkadaştan ya da paylaşılmış bir gönderiden alabilir. Saldırı kuramsal değil.
+     *
+     * Yanıt `/request` ile AYNI (403 BLOCKED) — bu uçta farklı davranmak
+     * engelin varlığını dolaylı olarak sızdırırdı. */
+    if (isBlockedEither(m, userId, ownerId)) {
+      return res.status(403).json({ ok: false, error: "BLOCKED" });
     }
 
     // Arkadaşlık kur
