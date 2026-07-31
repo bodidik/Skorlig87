@@ -23,6 +23,8 @@ const UsersStore = require("../lib/users-store.cjs");
 //   blocks:   [ { by:"user1", target:"anyString", createdAt:"..." } ]
 // }
 
+const { withFileLock } = require("../lib/fileLock.cjs");
+
 async function readJson(file, fb){ try{ return JSON.parse(await fsp.readFile(file,"utf8")); }catch{ return fb; } }
 async function writeJson(file, data){
   await fsp.mkdir(path.dirname(file), { recursive:true });
@@ -736,6 +738,25 @@ router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
     let odulVerildi = false;
     if (INVITE_REWARD > 0) {
       const dbW = req.app?.locals?.db || null;
+      /* ⚠️ KOTA SAYIMI ÖDEMEYLE AYNI KİLİTTE OLMAK ZORUNDA.
+       *
+       * BULUNAN: "bu davet eden kaç ödül almış" SAYILIYOR, sonra ödeme
+       * YAPILIYOR — arada kilit yoktu. Aşağıdaki `odulMuhurle` mührü DAVET
+       * EDİLEN başına; davet EDENİN toplamını hiç bağlamıyor. Yani farklı
+       * davetliler aynı anda kodu kullanınca hepsi `oncekiler = 0` görüp
+       * hepsi ödeme alıyordu.
+       *
+       * ÖLÇÜLDÜ (bellek-içi Mongo, 20 davetli, kota 10, ödül 15 LC):
+       *     sıralı    → 10 ödül  (150 LC — tavan)
+       *     eşzamanlı → 20 ödül  (300 LC — 3 denemede de aynı)
+       * Yani kota fiilen yoktu: N eşzamanlı davetli = N ödül.
+       *
+       * Bu karşılığı olmayan LC üretimi; kotanın varlık sebebi tam olarak o.
+       *
+       * ⚠️ KİLİT DAVET EDEN BAŞINA: kota da öyle. Genel bir anahtar tüm davet
+       * kullanımlarını sıraya sokardı. (Bu uç başka bir kilit almıyor — iç içe
+       * kilit riski yok; `withFileLock` reentrant değildir.) */
+      await withFileLock(`davet-odul:${normLower(ownerId)}`, async () => {
       let kotaDoldu = true;
       if (dbW) {
         try {
@@ -787,6 +808,7 @@ router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
           });
         }
       }
+      }); // withFileLock(davet-odul:<ownerId>)
     }
 
     return res.json({
