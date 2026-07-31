@@ -5,7 +5,7 @@
  *
  * ⚠️ NEDEN VAR: bu oyunda para bir maçın sonucuna bağlı ve sonuç gelmezse
  * KENDİLİĞİNDEN ÇÖZÜLMÜYORDU. Kabul edilmiş düello iptal edilemiyor
- * (`claimDuelCancel` yalnızca `status: "open"` kabul ediyor), havuz yalnızca
+ * (`claimDuelCancel` yalnizca `status: "open"` kabul ediyor; kabul edilen duello "active" olur), havuz yalnızca
  * settle2 sonuç getirince dağıtılıyor. Yani ertelenen/iptal olan bir maçta
  * oyuncuların LC'si KALICI olarak kilitliydi.
  *
@@ -23,6 +23,7 @@
 
 const { bayatMi } = require("../lib/bayat-mac.cjs");
 const { creditLc, kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
+const { DURUM, PARA_TUTAN } = require("../lib/duel-durum.cjs");
 
 const COLL_DUELS = "duels";
 const COLL_POOLS = "pools";
@@ -70,7 +71,7 @@ async function kickoffHaritasi(db, ids) {
 async function duellolariTemizle(db, simdi = null) {
   const bekleyen = await db
     .collection(COLL_DUELS)
-    .find({ status: { $in: ["open", "accepted"] } })
+    .find({ status: { $in: PARA_TUTAN } })
     .toArray();
   if (!bekleyen.length) return { bakilan: 0, iptal: 0, iadeLc: 0 };
 
@@ -93,7 +94,7 @@ async function duellolariTemizle(db, simdi = null) {
       { id: d.id, status: d.status },
       {
         $set: {
-          status: "voided",
+          status: DURUM.GECERSIZ,
           voidedAt: nowISO,
           voidReason: "SONUC_GELMEDI",
           settledAt: nowISO,
@@ -106,8 +107,10 @@ async function duellolariTemizle(db, simdi = null) {
     const bahis = Number(d.stake || 0);
     if (bahis <= 0) continue;
 
+    // ⚠️ "active" = kabul edilmiş. İlk yazımda "accepted" sanıldı ve
+    // temizleyici kabul edilmiş düelloları HİÇ görmüyordu (bkz. lib/duel-durum.cjs).
     const alacaklilar = [d.creatorId];
-    if (d.status === "accepted" && d.acceptorId) alacaklilar.push(d.acceptorId);
+    if (d.status === DURUM.AKTIF && d.acceptorId) alacaklilar.push(d.acceptorId);
 
     for (const uid of alacaklilar) {
       if (!uid) continue;

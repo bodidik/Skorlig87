@@ -25,6 +25,7 @@ const assert = require("node:assert/strict");
 
 const Temizleyici = require("../services/bayat-temizleyici.cjs");
 const { bayatMi } = require("../lib/bayat-mac.cjs");
+const { DURUM, PARA_TUTAN } = require("../lib/duel-durum.cjs");
 const { creditLc, COLL_USERS } = require("../lib/wallet-credit.cjs");
 
 let mongod = null, client = null, db = null;
@@ -93,14 +94,14 @@ describe("düello iadesi", () => {
   const duelloEkle = (id, status, saatOnce, extra = {}) =>
     db.collection("duels").insertOne({
       id, fixtureId: "m1", stake: 25, status,
-      creatorId: "ali", acceptorId: status === "accepted" ? "veli" : null,
+      creatorId: "ali", acceptorId: status === DURUM.AKTIF ? "veli" : null,
       kickoffISO: GECMIS(saatOnce), ...extra,
     });
 
   test("kabul edilmiş düelloda İKİ tarafa da iade", async () => {
     // ⚠️ Bu para eskiden kalıcı kilitliydi: kabul edilmiş düello iptal
     // edilemiyor, sonuç da hiç gelmiyor.
-    await duelloEkle("d1", "accepted", 72);
+    await duelloEkle("d1", DURUM.AKTIF, 72);
     const r = await Temizleyici._duellolariTemizle(db);
 
     assert.equal(r.iptal, 1);
@@ -110,7 +111,7 @@ describe("düello iadesi", () => {
   });
 
   test("açık düelloda yalnızca kurucuya iade", async () => {
-    await duelloEkle("d2", "open", 72);
+    await duelloEkle("d2", DURUM.ACIK, 72);
     await Temizleyici._duellolariTemizle(db);
 
     assert.equal(await bakiye("ali"), 25);
@@ -118,7 +119,7 @@ describe("düello iadesi", () => {
   });
 
   test("bekleme dolmadan dokunulmaz", async () => {
-    await duelloEkle("d3", "accepted", 2);
+    await duelloEkle("d3", DURUM.AKTIF, 2);
     const r = await Temizleyici._duellolariTemizle(db);
     assert.equal(r.iptal, 0);
     assert.equal(await bakiye("ali"), 0);
@@ -128,14 +129,14 @@ describe("düello iadesi", () => {
     await db.collection("match_results").insertOne({
       fixtureId: "m1", finalScore: { home: 2, away: 1 },
     });
-    await duelloEkle("d4", "accepted", 72);
+    await duelloEkle("d4", DURUM.AKTIF, 72);
     const r = await Temizleyici._duellolariTemizle(db);
     assert.equal(r.iptal, 0);
     assert.equal(await bakiye("ali"), 0, "sonucu olan macta iade yapilmis");
   });
 
   test("ardışık ikinci tur tekrar iade etmez", async () => {
-    await duelloEkle("d5", "accepted", 72);
+    await duelloEkle("d5", DURUM.AKTIF, 72);
     await Temizleyici._duellolariTemizle(db);
     const araBakiye = await bakiye("ali");
 
@@ -147,7 +148,7 @@ describe("düello iadesi", () => {
   test("EŞZAMANLI iki tur çift iade yapmaz", async () => {
     /**
      * ⚠️ BU TESTİN ARDIŞIK HALİ MÜHÜRÜ HİÇ SINAMIYORDU. İlk turdan sonra
-     * düello artık "voided"; ikinci turun sorgusu (`status: open|accepted`)
+     * düello artık "voided"; ikinci turun sorgusu (`status: open|active`)
      * onu zaten bulmuyor. Yani mühürü kaldırınca bile test geçiyordu —
      * negatif kontrolle yakalandı.
      *
@@ -155,7 +156,7 @@ describe("düello iadesi", () => {
      * listeyi "accepted" görür, ikisi de iade etmeye kalkar. Koşulun yazmanın
      * İÇİNDE olması yalnızca birinin geçmesini sağlar.
      */
-    await duelloEkle("d7", "accepted", 72);
+    await duelloEkle("d7", DURUM.AKTIF, 72);
 
     const [a, b] = await Promise.all([
       Temizleyici._duellolariTemizle(db),
@@ -168,10 +169,10 @@ describe("düello iadesi", () => {
   });
 
   test("iptal edilen düello 'voided' olarak işaretlenir", async () => {
-    await duelloEkle("d6", "accepted", 72);
+    await duelloEkle("d6", DURUM.AKTIF, 72);
     await Temizleyici._duellolariTemizle(db);
     const d = await db.collection("duels").findOne({ id: "d6" });
-    assert.equal(d.status, "voided");
+    assert.equal(d.status, DURUM.GECERSIZ);
     assert.equal(d.voidReason, "SONUC_GELMEDI");
     assert.ok(d.settledAt, "settledAt yazilmamis — gec gelen sonuc tekrar odeyebilir");
   });
@@ -254,5 +255,57 @@ describe("havuz iadesi", () => {
     const r = await Temizleyici._havuzlariTemizle(db);
     assert.equal(r.iptal, 0);
     assert.equal(await bakiye("ali"), 0);
+  });
+});
+
+/* ── Durum adı kayması ───────────────────────────────────────────────────── */
+
+describe("düello durum adları", () => {
+  /**
+   * ⚠️ BU BÖLÜM GERÇEK BİR HATADAN DOĞDU. Temizleyici ilk yazıldığında para
+   * tutan düelloları `["open", "accepted"]` diye sorguluyordu. Kabul edilmiş
+   * düellonun durumu aslında **"active"** — yani temizleyici tam da kurtarmak
+   * için yazıldığı parayı HİÇ GÖRMÜYORDU.
+   *
+   * İlk testler bunu yakalamadı çünkü test verisi de `"accepted"` diye
+   * tohumlanmıştı: test, sistemin davranışını değil YAZARIN VARSAYIMINI
+   * doğruladı. O yüzden aşağıdaki test sabit uydurmuyor — gerçek kabul yolunu
+   * çalıştırıp sonucun temizleyicinin taradığı listede olduğunu doğruluyor.
+   */
+  const SocialStore = require("../lib/social-store.cjs");
+
+  test("gerçek kabul yolu, temizleyicinin taradığı bir durum üretir", async () => {
+    await db.collection("duels").insertOne({
+      id: "dx", fixtureId: "m1", stake: 10, status: DURUM.ACIK,
+      creatorId: "ali", acceptorId: null, kickoffISO: GECMIS(72),
+    });
+
+    const oldu = await SocialStore.claimDuelAccept(
+      "dx", { acceptorId: "veli", acceptorName: "Veli", acceptedAt: new Date().toISOString() }, db
+    );
+    assert.equal(oldu, true, "kabul yolu calismadi");
+
+    const d = await db.collection("duels").findOne({ id: "dx" });
+    assert.ok(
+      PARA_TUTAN.includes(d.status),
+      `kabul sonrasi durum "${d.status}" temizleyicinin taradigi listede yok: ${PARA_TUTAN.join(", ")}`
+    );
+  });
+
+  test("kabul edilmiş düello temizleyici tarafından gerçekten bulunur", async () => {
+    // Yukarıdakinin uçtan uca hâli: durum adı kayarsa bu test para iadesinin
+    // hiç yapılmadığını gösterir.
+    await db.collection("duels").insertOne({
+      id: "dy", fixtureId: "m1", stake: 10, status: DURUM.ACIK,
+      creatorId: "ali", acceptorId: null, kickoffISO: GECMIS(72),
+    });
+    await SocialStore.claimDuelAccept(
+      "dy", { acceptorId: "veli", acceptedAt: new Date().toISOString() }, db
+    );
+
+    const r = await Temizleyici._duellolariTemizle(db);
+    assert.equal(r.iptal, 1, "kabul edilmis duello temizleyici tarafindan bulunamadi");
+    assert.equal(await bakiye("ali"), 10);
+    assert.equal(await bakiye("veli"), 10, "kabul edene iade yapilmamis");
   });
 });
