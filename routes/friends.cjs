@@ -774,6 +774,17 @@ router.post("/use-invite", verifyToken, express.json(), async (req, res) => {
         odulVerildi = !!(a && b);
         if (!odulVerildi) {
           console.error(`[friends] DAVET ODULU EKSIK odendi owner=${ownerId} davetli=${userId}`);
+          /* ⚠️ MÜHÜR ZATEN ATILDI (`odulMuhurle` yukarıda) — bu ödül BİR DAHA
+           * denenmez. Eskiden tek iz bu log satırıydı; Render'da akıp gider ve
+           * `GET /api/health` sayacı 0 kalır, yani operatör borcu göremezdi. */
+          const eksik = [];
+          if (!a) eksik.push({ userIdLower: normLower(ownerId), tutar: INVITE_REWARD, rol: "davet_eden" });
+          if (!b) eksik.push({ userIdLower: normLower(userId), tutar: INVITE_REWARD, rol: "davetli" });
+          await WalletCredit.kayipOdulKaydet(dbW, {
+            kaynak: "invite_referral",
+            ownerId, invitedUserId: userId,
+            odemeler: eksik, beklenen: 2, eksik: eksik.length,
+          });
         }
       }
     }

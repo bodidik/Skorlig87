@@ -111,7 +111,16 @@ function odemeler() {
       if (!dosya.endsWith(".cjs")) continue;
       const kaynak = fs.readFileSync(path.join(dizin, dosya), "utf8");
       for (const blok of bloklaraBol(kaynak)) {
-        const re = /creditLc\([^,]+,[^,]+,[^,]+,\s*"([a-z_0-9]+)"/g;
+        /* ⚠️ SARMALAYICI BU NÖBETÇİYİ KÖRLEŞTİRMİŞTİ. `duels.cjs` ödemeleri
+         * `ode(db, uid, tutar, sebep, ...)` yardımcısına taşınınca `creditLc`
+         * kalıbı DÖRT sebebi birden görmez oldu. Ödeme sayısı sağlık denetimi
+         * (`>= 10`) bunu yakalayamadı — başka dosyalar sayıyı dolduruyordu;
+         * yakalayan "listeler bayat değil" testi oldu: kodda kalmayan sebepler
+         * listede öksüz kaldı. Sarmalayıcı da taranıyor.
+         *
+         * `\bode` sınırı `decode(`/`explode(` gibi adları dışarıda tutar:
+         * 'c' ile 'o' arasında kelime sınırı yoktur. */
+        const re = /(?:creditLc|\bode)\([^,]+,[^,]+,[^,]+,\s*"([a-z_0-9]+)"/g;
         let m;
         while ((m = re.exec(blok.metin))) {
           out.push({ dosya: `${d}/${dosya}`, sebep: m[1], blok: blok.metin, satir: blok.bas + 1 });

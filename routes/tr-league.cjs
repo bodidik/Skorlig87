@@ -33,7 +33,7 @@ const MatchResults = require("../lib/match-results.cjs");
 const LIVE_DIR = path.join(DATA_DIR, "live");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
-const { creditLc } = require("../lib/wallet-credit.cjs");
+const { creditLc, kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
 // settle2 ile AYNI bayrak: cüzdan dosyası aynası.
 const WALLET_FILE_MIRROR =
   String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0";
@@ -265,8 +265,27 @@ async function awardWeeklyLc(awards, weekKey, db) {
 
   const nowISO = new Date().toISOString();
 
+  /* ⚠️ DÖNÜŞ DEĞERİ OKUNMUYORDU. Hafta `tr_league_weeks` ile MÜHÜRLENİYOR
+   * (bkz. tests/hesap-silme.test.cjs MUAF listesi: "silinirse ödül tekrar
+   * dağıtılır"), yani ödeme başarısız olsa bile bir daha DENENMEZ. `creditLc`
+   * hatayı kendi içinde yutup `false` döndüğü için hiçbir belirti kalmıyordu:
+   * kullanıcı sıralamada birinci, LC'si hiç gelmiyor. Diğer ödeme noktaları
+   * bu durumu `failed_awards`e yazıyor ve `GET /api/health` onu sayıyor —
+   * haftalık ödül o sayaçta hiç görünmüyordu. */
+  const odenemeyen = [];
   for (const { userId: uid, amount } of real) {
-    await creditLc(db, uid, amount, "tr_league_weekly", { weekKey });
+    const ok = await creditLc(db, uid, amount, "tr_league_weekly", { weekKey });
+    if (!ok) odenemeyen.push({ userIdLower: String(uid).toLowerCase(), tutar: amount });
+  }
+  if (odenemeyen.length) {
+    console.error(`[tr-league] ⛔ HAFTALIK ODUL ODENEMEDI hafta=${weekKey} kisi=${odenemeyen.length}`);
+    await kayipOdulKaydet(db, {
+      kaynak: "tr_league_weekly",
+      weekKey,
+      odemeler: odenemeyen,
+      beklenen: real.length,
+      eksik: odenemeyen.length,
+    });
   }
 
   if (db && !WALLET_FILE_MIRROR) return;

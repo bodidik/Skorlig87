@@ -243,6 +243,48 @@ async function creditLc(db, uid, amount, reason, duelId) {
   return db ? creditLcMongo(db, uid, amount, reason, duelId) : creditLcFile(uid, amount, reason, duelId);
 }
 
+/**
+ * TEK BİR ÖDEMEYİ YALITARAK YAPAR; başarısızsa `odenemeyen`e yazar.
+ *
+ * ⚠️ İKİ AYRI HATA VARDI, İKİSİ DE PARA.
+ *
+ * 1) Ödemeler `claimDuelSettle` MÜHRÜNDEN SONRA yapılıyor (doğru sıra: çifte
+ *    ödeme olmasın). Ama dönüş değeri okunmuyor ve tüm blok tek bir
+ *    `catch { console.error }` ile sarılıydı. Mongo bir an tökezlerse kazanan
+ *    ÖDENMEZ, düello kalıcı olarak "settled" kalır, tek iz Render'da akıp
+ *    giden bir log satırıdır. Diğer dokuz ödeme noktası bu durumu
+ *    `failed_awards`e yazıyor ve `GET /api/health` onu sayıyor — düello,
+ *    uygulamanın amiral para modu, o sayaçta HİÇ görünmüyordu.
+ *
+ * 2) BERABERLİKTE HATA ZİNCİRLEME KESİYORDU: kurucunun iadesi patlarsa
+ *    `await` fırlıyor, karşı tarafın iadesi HİÇ denenmiyordu. Tek arıza iki
+ *    kişinin parasını götürüyordu. Artık her ödeme kendi başına yalıtık.
+ */
+async function ode(db, uid, tutar, sebep, duelId, odenemeyen) {
+  const miktar = Number(tutar || 0);
+  if (!uid || !(miktar > 0)) return;
+  try {
+    const r = await creditLc(db, uid, miktar, sebep, duelId);
+    if (r && r.ok === false) throw new Error(r.error || "CREDIT_FAILED");
+  } catch (e) {
+    console.error(`[duels] ⛔ ODEME YAPILAMADI ${sebep} ${uid} ${miktar} LC:`, e?.message || e);
+    odenemeyen.push({ userIdLower: String(uid).toLowerCase(), tutar: miktar, sebep });
+  }
+}
+
+/** Ödenemeyen düello parasını kalıcı ize yaz (bkz. lib/wallet-credit.cjs). */
+async function duelloBorcKaydet(db, { kaynak, duelId, fixtureId, beklenen }, odenemeyen) {
+  const { kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
+  await kayipOdulKaydet(db, {
+    kaynak,
+    duelId: duelId || null,
+    fixtureId: fixtureId || null,
+    odemeler: odenemeyen,
+    beklenen,
+    eksik: odenemeyen.length,
+  });
+}
+
 // ─── Exported: settle duels for a fixture (called from settle2.cjs) ──────────
 // scoresMap: { [userId]: points }
 // Düello puanı = kazanan tahminin decimal odds'ı (bilyoner tarzı)
@@ -372,14 +414,23 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
 
   // Credit winners outside lock (different file = safe)
   for (const duel of settled) {
+    const odenemeyen = [];
     try {
       if (duel.winnerId) {
         const prize = duel.winAmount ?? duel.pot;
-        await creditLc(db, duel.winnerId, prize, "duel_win", duel.id);
+        await ode(db, duel.winnerId, prize, "duel_win", duel.id, odenemeyen);
       } else {
         // Tie: full refund, no house cut
-        await creditLc(db, duel.creatorId, duel.stake, "duel_tie_refund", duel.id);
-        await creditLc(db, duel.acceptorId, duel.stake, "duel_tie_refund", duel.id);
+        await ode(db, duel.creatorId, duel.stake, "duel_tie_refund", duel.id, odenemeyen);
+        await ode(db, duel.acceptorId, duel.stake, "duel_tie_refund", duel.id, odenemeyen);
+      }
+      if (odenemeyen.length) {
+        await duelloBorcKaydet(db, {
+          kaynak: duel.winnerId ? "duel_win" : "duel_tie_refund",
+          duelId: duel.id,
+          fixtureId: duel.fixtureId,
+          beklenen: duel.winnerId ? 1 : 2,
+        }, odenemeyen);
       }
       if (db) {
         try { await db.collection("duels").updateOne({ id: duel.id }, { $set: duel }); } catch {}
@@ -588,13 +639,22 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
       db
     );
     if (!bizimki) {
-      // Başkası önce kabul etti — aldığımız bahsi GERİ VER.
-      const iade = await creditLc(db, acceptorId, result.duel.stake, "duel_accept_refund", did);
-      if (!iade) {
-        console.error(
-          `[duels] IADE EDILEMEDI duel=${did} kullanici=${acceptorId} ` +
-          `tutar=${result.duel.stake} — kabul alinamadi, LC elle telafi edilmeli`
-        );
+      /* Başkası önce kabul etti — aldığımız bahsi GERİ VER.
+       *
+       * ⚠️ ESKİ KORUMA ÇALIŞMIYORDU: `if (!iade)` yazıyordu ama buradaki yerel
+       * `creditLc` BAŞARIDA DA NESNE (`{ok:true}`) döner, yani koşul hiçbir
+       * zaman doğru olamazdı; başarısızlıkta ise dönmüyor, FIRLATIYOR — o da
+       * dıştaki catch'e gidip 500 oluyordu. Kısacası güvenlik ağı gibi duran
+       * bu blok hiçbir durumda çalışmıyordu. */
+      const odenemeyen = [];
+      await ode(db, acceptorId, result.duel.stake, "duel_accept_refund", did, odenemeyen);
+      if (odenemeyen.length) {
+        await duelloBorcKaydet(db, {
+          kaynak: "duel_accept_refund",
+          duelId: did,
+          fixtureId: result.duel.fixtureId,
+          beklenen: 1,
+        }, odenemeyen);
       }
       return res.status(400).json({ ok: false, error: "NOT_OPEN" });
     }
@@ -658,14 +718,21 @@ router.post("/duels/cancel", verifyToken, async (req, res) => {
       return res.status(400).json({ ok: false, error: "NOT_OPEN" });
     }
 
-    // İade mühürden SONRA: bu noktaya yalnızca bir çağrı gelebilir.
-    const iade = await creditLc(db, result.duel.creatorId, result.duel.stake, "duel_cancel_refund", did);
-    if (!iade) {
-      // Mühür atıldı ama para geri verilemedi — SESSİZ KALMA, borç doğdu.
-      console.error(
-        `[duels] IADE EDILEMEDI duel=${did} kullanici=${result.duel.creatorId} ` +
-        `tutar=${result.duel.stake} — duello iptal edildi, LC elle telafi edilmeli`
-      );
+    /* İade mühürden SONRA: bu noktaya yalnızca bir çağrı gelebilir.
+     *
+     * ⚠️ ESKİ KORUMA ÇALIŞMIYORDU: `if (!iade)` — yerel `creditLc` başarıda
+     * `{ok:true}` NESNESİ döndüğü için koşul hiçbir zaman doğru olamaz;
+     * başarısızlıkta ise fırlatır ve dıştaki catch 500 üretir. Mühür atılmış
+     * olduğu için iade TEKRAR DENENMEZ: kurucunun bahsi buharlaşır. */
+    const odenemeyen = [];
+    await ode(db, result.duel.creatorId, result.duel.stake, "duel_cancel_refund", did, odenemeyen);
+    if (odenemeyen.length) {
+      await duelloBorcKaydet(db, {
+        kaynak: "duel_cancel_refund",
+        duelId: did,
+        fixtureId: result.duel.fixtureId,
+        beklenen: 1,
+      }, odenemeyen);
     }
 
     const cikti = { ...result.duel, status: "cancelled", settledAt: nowISO };
