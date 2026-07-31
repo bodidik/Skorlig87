@@ -178,6 +178,11 @@ let _mongoInitBitti = false;
  * alarak tahmini hic sonuclandirmamaktan iyi: kullanici tekrar deniyor ve
  * calisiyor.
  */
+/* Hata ayrintilarini temizle: yanit yazilirken TEK yerde (bkz.
+ * lib/hata-temizle.cjs). Kod tabaninda 22 dosyada 100 uc hatayi oldugu gibi
+ * donduruyor ve olculdu: mutlak sunucu yolu ve Atlas kume adresi siziyor. */
+app.use(require("./lib/hata-temizle.cjs").hataTemizleyici);
+
 app.use((req, res, next) => {
   if (_mongoInitBitti) return next();
   if (!req.path.startsWith("/api")) return next();
