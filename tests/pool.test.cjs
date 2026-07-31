@@ -16,6 +16,18 @@
  * Çalıştırma:  npm test
  */
 
+/**
+ * ⚠️ VERİ DİZİNİ İZOLASYONU — require'DAN ÖNCE ayarlanmalı.
+ *
+ * Fikstür kilidi canlı durum dosyalarını `SKORLIG_DATA_DIR/live` altından
+ * okuyor ve bu değeri require anında yakalıyor. Ayarlanmazsa testler
+ * GERÇEK `data/live/` dizinini okur: bugün çakışma yok ama yarın `fx1.json`
+ * adlı bir dosya oluşursa testler sessizce başka bir şey ölçmeye başlar.
+ */
+const os = require("os");
+const nodePath = require("path");
+process.env.SKORLIG_DATA_DIR = nodePath.join(os.tmpdir(), "skorlig-pool-test-data");
+
 const { test, describe, before, after, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 
@@ -35,10 +47,25 @@ after(async () => {
   if (client) await client.close();
   if (mongod) await mongod.stop();
 });
+/**
+ * ⚠️ FIKSTURLER TOHUMLANIYOR — baypas değil.
+ *
+ * `placeBet` artık başlamış maça bahsi reddediyor ve kilit FAIL-CLOSED:
+ * fikstür bulunamazsa kilitli sayar. Testlerde kilidi kapatan bir bayrak
+ * açsakm, o bayrak üretimde de bulunabilirdi. Onun yerine gerçek
+ * fikstürler yazılıyor: testler kilidin GERÇEK yolundan geçiyor.
+ */
+const YARIN = () => new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+
 beforeEach(async () => {
-  for (const c of [Pool.COLL_BETS, Pool.COLL_POOLS, COLL_USERS]) {
+  for (const c of [Pool.COLL_BETS, Pool.COLL_POOLS, COLL_USERS, "fixtures"]) {
     await db.collection(c).deleteMany({});
   }
+  await db.collection("fixtures").insertMany(
+    ["fx1", "fx2", "big"].map((id) => ({
+      fixtureId: id, status: "NS", kickoffISO: YARIN(),
+    }))
+  );
 });
 
 const bakiye = async (uid) =>
@@ -267,5 +294,59 @@ describe("özet", () => {
     assert.equal(s.pool, 0);
     assert.equal(s.players, 0);
     assert.deepEqual(s.multipliers, { H: null, D: null, A: null });
+  });
+});
+
+/* ───────────────────── başlamış maça bahis kilidi ───────────────────── */
+
+describe("başlamış maça bahis", () => {
+  /**
+   * ⚠️ BU KONTROL HİÇ YOKTU. `placeBet` yalnızca "havuz sonuçlandı mı" diye
+   * bakıyordu. Oyuncu canlı skoru uygulamada görüp 89'da 2-0 olan maça kazanan
+   * tarafa bahis koyabiliyordu — sonuç belliyken bahis, bedava para demektir.
+   */
+  test("maç başlamışsa reddedilir", async () => {
+    await creditLc(db, "ali", 100, "test");
+    await db.collection("fixtures").updateOne(
+      { fixtureId: "fx1" }, { $set: { status: "1H" } });
+
+    const r = await Pool.placeBet({ fixtureId: "fx1", userId: "ali", side: "H", amount: 20 }, db);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "MATCH_LOCKED");
+    assert.equal(r.detail, "MATCH_ALREADY_STARTED");
+  });
+
+  test("kilitliyken LC DÜŞÜLMEZ", async () => {
+    // Asıl iddia bu: kilit tahsilattan ÖNCE. Sonra olsaydı reddedilen bahis
+    // yine de para götürürdü.
+    await creditLc(db, "veli", 100, "test");
+    await db.collection("fixtures").updateOne(
+      { fixtureId: "fx1" }, { $set: { status: "FT" } });
+
+    const once = await bakiye("veli");
+    const r = await Pool.placeBet({ fixtureId: "fx1", userId: "veli", side: "H", amount: 20 }, db);
+    assert.equal(r.ok, false);
+    assert.equal(await bakiye("veli"), once, "reddedilen bahis para goturmus");
+  });
+
+  test("kickoff geçmişse reddedilir (durum bayatsa bile)", async () => {
+    await creditLc(db, "ayse", 100, "test");
+    // status hâlâ "NS" — canlı durum güncellenmemiş. Saat yine de yakalamalı.
+    await db.collection("fixtures").updateOne(
+      { fixtureId: "fx1" },
+      { $set: { status: "NS", kickoffISO: new Date(Date.now() - 60 * 1000).toISOString() } });
+
+    const r = await Pool.placeBet({ fixtureId: "fx1", userId: "ayse", side: "H", amount: 20 }, db);
+    assert.equal(r.ok, false);
+    assert.equal(r.detail, "LOCKED_BEFORE_KICKOFF");
+  });
+
+  test("bilinmeyen fikstür KİLİTLİ sayılır (fail-closed)", async () => {
+    await creditLc(db, "mehmet", 100, "test");
+    const r = await Pool.placeBet(
+      { fixtureId: "boyle-bir-mac-yok", userId: "mehmet", side: "H", amount: 20 }, db);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "MATCH_LOCKED");
+    assert.equal(await bakiye("mehmet"), 100);
   });
 });

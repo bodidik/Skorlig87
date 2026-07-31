@@ -639,36 +639,43 @@ describe("kritik iş sayacı — kapanış yarıda kesmesin", () => {
 
 describe("fikstür kilidi — kapalı başarısızlık", () => {
   /**
-   * `isFixtureLocked` ÜÇ yerde açık bırakıyordu: durum dosyası yoksa, başlama
-   * saati yoksa, başlama saati bozuksa → "kilitli değil". Yani bilinmeyen bir
-   * maç sonsuza kadar bahse açıktı.
+   * Kilit ÜÇ yerde açık bırakıyordu: durum dosyası yoksa, başlama saati
+   * yoksa, başlama saati bozuksa → "kilitli değil". Yani bilinmeyen bir maç
+   * sonsuza kadar bahse açıktı.
    *
    * Kuramsal değildi: `data/live/*.json` Render'da kalıcı değil, her deploy
    * siliniyor — deploy sonrası TÜM geçmiş maçlar "kilitli değil" görünüyordu.
-   * Üstelik /duels/create maç bilgisini istemci gövdesinden alıyor, yani
-   * sonucu bilinen bir maç için düello açıp habersiz birine kabul ettirmek
-   * mümkündü.
    *
-   * Bu test dosya seviyesinde davranışı değil, KURALI korur: bilinmeyen ya da
-   * doğrulanamayan fikstür KİLİTLİ sayılmalı.
+   * ⚠️ BU TESTLER ÖNCE KAYNAK METNİ TARIYORDU (`duels.cjs` içinde şu string
+   * geçiyor mu diye). Mantık ortak `lib/fikstur-kilit.cjs`e taşınınca testler
+   * kırıldı — oysa DAVRANIŞ hiç değişmemişti. Metin arayan test, kodun
+   * nerede durduğuna bağlıdır; davranış arayan test bağlı değildir. Artık
+   * fonksiyon doğrudan çağrılıyor.
    */
-  const path = require("path");
-  const fs = require("fs");
+  const { fiksturKilidi } = require("../lib/fikstur-kilit.cjs");
 
-  test("duels.cjs kaynağında fail-open dönüşler kalmamalı", () => {
-    const src = fs.readFileSync(path.join(__dirname, "..", "routes", "duels.cjs"), "utf8");
-    const fn = src.slice(src.indexOf("async function isFixtureLocked"));
-    const govde = fn.slice(0, fn.indexOf("\n}\n"));
-    for (const sebep of ["NO_FIXTURE", "FIXTURE_NOT_FOUND", "NO_KICKOFF", "BAD_KICKOFF"]) {
-      const re = new RegExp(`locked:\s*false[^}]*${sebep}`);
-      assert.ok(!re.test(govde), `${sebep} hâlâ locked:false donuyor`);
-    }
+  test("bilinmeyen fikstür kilitli döner", async () => {
+    const s = await fiksturKilidi("boyle-bir-fikstur-asla-yok-12345", { db: null });
+    assert.equal(s.locked, true, "bilinmeyen fikstur acik kalmis");
+    assert.equal(s.reason, "FIXTURE_NOT_FOUND");
   });
 
-  test("bilinmeyen fikstür için kilitli dönülür", () => {
-    const src = fs.readFileSync(path.join(__dirname, "..", "routes", "duels.cjs"), "utf8");
-    assert.ok(/locked:\s*true,\s*reason:\s*"FIXTURE_NOT_FOUND"/.test(src),
-      "FIXTURE_NOT_FOUND kilitli donmuyor");
+  test("boş fikstür kimliği kilitli döner", async () => {
+    assert.equal((await fiksturKilidi("", { db: null })).locked, true);
+    assert.equal((await fiksturKilidi(null, { db: null })).locked, true);
+  });
+
+  test("kaynakta fail-open dönüş kalmamalı", () => {
+    // Kalan tek metin kontrolü: yeni bir "bilinmiyorsa açık" dalı eklenirse
+    // yakalar. Davranış testleri yalnızca bildiğim yolları kapsıyor.
+    const path = require("path");
+    const fs = require("fs");
+    const src = fs.readFileSync(
+      path.join(__dirname, "..", "lib", "fikstur-kilit.cjs"), "utf8");
+    for (const sebep of ["NO_FIXTURE", "FIXTURE_NOT_FOUND", "NO_KICKOFF", "BAD_KICKOFF", "FIXTURE_CHECK_FAILED"]) {
+      const re = new RegExp("locked:\s*false[^}]*" + sebep);
+      assert.ok(!re.test(src), sebep + " hala locked:false donuyor");
+    }
   });
 });
 

@@ -3,7 +3,7 @@
 const express = require("express");
 const router = express.Router();
 const path = require("path");
-const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
+const { fiksturKilidi } = require("../lib/fikstur-kilit.cjs");
 const fsp = require("fs").promises;
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
@@ -16,7 +16,6 @@ const DUELS_FILE = path.join(DATA_DIR, "duels.json");
 const SocialStore = require("../lib/social-store.cjs");
 // Fikstur dogrulamasi icin (bkz. isFixtureLocked): durum dosyasi Render'da
 // kalici degil, deposu yetkili kaynak.
-const FixturesStore = require("../lib/fixtures-store.cjs");
 const premium = require("../lib/premium.cjs");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const PREDS_FILE = path.join(DATA_DIR, "preds.json");
@@ -94,7 +93,6 @@ function getDb(req) {
 
 // 🔒 Kickoff kilidi: maç başladıysa düello kurulamaz / kabul edilemez.
 // (aksi halde skoru görüp bahse girmek mümkün olur)
-const LIVE_DIR = path.join(DATA_DIR, "live");
 const DUEL_LOCK_BEFORE_MIN = 10;
 
 /**
@@ -111,42 +109,24 @@ const DUEL_LOCK_BEFORE_MIN = 10;
  * Artık durum dosyası yoksa FİKSTÜR DEPOSUNA bakılıyor (Mongo birincil,
  * deploy'dan etkilenmez) ve maç orada da yoksa KİLİTLİ sayılıyor.
  */
+/**
+ * Duello icin fikstur kilidi.
+ *
+ * ⚠️ GOVDE lib/fikstur-kilit.cjs'E TASINDI. Ayni mantik duelloda,
+ * tahminde ve kuponda ayri ayri yazilmisti; HAVUZDA ISE HIC YOKTU ve oyuncu
+ * baslamis maca bahis koyabiliyordu. Kopyalanan savunma, kopyalanmayan yerde
+ * yok demektir.
+ *
+ * ⚠️ SEBEP KODU KORUNUYOR: istemci `DUEL_LOCKED_BEFORE_KICKOFF` kodunu
+ * metne cevirmek icin kullaniyor (mobile/lib/hataMesaji.ts). Ortak yardimci
+ * genel kodu donuyor, burada duelloya ozel koda geri cevriliyor.
+ */
 async function isFixtureLocked(fixtureId, db = null) {
-  const fid = String(fixtureId || "").trim();
-  if (!fid) return { locked: true, reason: "NO_FIXTURE" };
-
-  let st = await readJson(guvenliYol(LIVE_DIR, fid, ".json"), null);
-
-  if (!st || typeof st !== "object") {
-    // Durum dosyası yok (ya da deploy sildi) — fikstür deposu yetkili kaynak.
-    try {
-      const hepsi = await FixturesStore.loadAll(db);
-      const fx = (hepsi || []).find((f) => String(f?.fixtureId || "") === fid);
-      if (!fx) return { locked: true, reason: "FIXTURE_NOT_FOUND" };
-      st = { status: fx.status || "NS", kickoffISO: fx.kickoffISO || fx.kickoff || null };
-    } catch (e) {
-      // Depoya da ulaşamıyorsak karar veremeyiz → güvenli taraf: KİLİTLİ.
-      console.error("[duels] fikstur dogrulanamadi, kilitli sayiliyor:", e?.message || e);
-      return { locked: true, reason: "FIXTURE_CHECK_FAILED" };
-    }
+  const s = await fiksturKilidi(fixtureId, { oncekiDk: DUEL_LOCK_BEFORE_MIN, db });
+  if (s.locked && s.reason === "LOCKED_BEFORE_KICKOFF") {
+    return { ...s, reason: "DUEL_LOCKED_BEFORE_KICKOFF" };
   }
-
-  const status = String(st.status || "").toUpperCase();
-  if (status && status !== "NS") {
-    return { locked: true, reason: "MATCH_ALREADY_STARTED", status };
-  }
-
-  const kickoffISO = st.kickoffISO || st.kickoff || null;
-  if (!kickoffISO) return { locked: true, reason: "NO_KICKOFF" };
-
-  const koMs = new Date(String(kickoffISO)).getTime();
-  if (!Number.isFinite(koMs)) return { locked: true, reason: "BAD_KICKOFF" };
-
-  const lockAt = koMs - DUEL_LOCK_BEFORE_MIN * 60 * 1000;
-  if (Date.now() >= lockAt) {
-    return { locked: true, reason: "DUEL_LOCKED_BEFORE_KICKOFF", kickoffISO, lockAtISO: new Date(lockAt).toISOString() };
-  }
-  return { locked: false, reason: null };
+  return s;
 }
 
 // ─── File-based LC helpers ────────────────────────────────────────────────────
