@@ -245,6 +245,28 @@ router.post("/predict", verifyToken, async (req, res) => {
       return res.status(400).json({ ok: false, error: kilit.reason, fixtureId });
     }
 
+    /* ⚠️ OKU→ÜCRETLENDİR→YAZ BÜTÜNÜ TEK KİLİTTE.
+     *
+     * BULUNAN: "daha önce tahmin var mı" OKUNUYOR, sonra ücret KESİLİYOR —
+     * arada kilit yoktu. Eşzamanlı istekler hepsi `existing = null` görüp HER
+     * BİRİ ayrı ücret kesiyordu.
+     *
+     * ÖLÇÜLDÜ (bellek-içi Mongo, 8 eşzamanlı istek, 6 deneme):
+     *     /api/pred/submit          → 3 LC düştü, defterde 1 kayıt   (doğru)
+     *     /api/weekly-picks/predict → 24 LC düştü, defterde 8 kayıt  (8 KAT)
+     *
+     * `pred.cjs` aynı sırayı `withFileLock(PREDS_FILE)` içinde yapıyor ve
+     * yorumu bunu açıkça söylüyor: "eşzamanlı gönderimlerde tahmin kaybı /
+     * çift-harcama olmaz". Burada kilit VARDI ama yalnızca dosya yazımını
+     * sarıyordu — doğru araç, yanlış kapsam.
+     *
+     * ⚠️ AYNI ANAHTAR BİLEREK: iki uç da aynı `predictions` koleksiyonuna
+     * yazıyor. Ayrı anahtar kullansaydık kullanıcı iki uca aynı anda gönderip
+     * yine iki kez ödeyebilirdi.
+     *
+     * ⚠️ İÇERİDEKİ KİLİT KALDIRILDI: `withFileLock` reentrant DEĞİL; aynı
+     * anahtarı iç içe almak süreci kilitlerdi. */
+    await withFileLock(PREDS_FILE, async () => {
     const existing = await getUserPred(uid, fixtureId, db);
     const free     = await is1987User(uid, db);
     let lc         = 0;
@@ -290,7 +312,8 @@ router.post("/predict", verifyToken, async (req, res) => {
       }
     }
 
-    await withFileLock(PREDS_FILE, async () => {
+    // Dosya aynası — kilit ZATEN alınmış durumda (yukarıdaki blok).
+    {
       const predsRaw = await readJson(PREDS_FILE, []);
       const list     = Array.isArray(predsRaw) ? predsRaw : (predsRaw?.items ?? []);
       const uidLower = uid.toLowerCase();
@@ -316,9 +339,10 @@ router.post("/predict", verifyToken, async (req, res) => {
 
       const toWrite = Array.isArray(predsRaw) ? filtered : { ...predsRaw, items: filtered };
       await writeJsonAtomic(PREDS_FILE, toWrite);
-    });
+    }
 
     res.json({ ok: true, fixtureId, outcome, lc, lcCharged, free });
+    }); // withFileLock(PREDS_FILE)
   } catch (e) {
     console.error("[weekly-picks] predict error:", e);
     res.status(500).json({ ok: false, error: e.message });
