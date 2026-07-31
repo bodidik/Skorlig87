@@ -28,6 +28,7 @@ const crypto = require("crypto");
 // modül maç durum dosyasını FARKLI dizinlerde arıyordu.
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const SocialStore = require("../lib/social-store.cjs");
+const { withFileLock } = require("../lib/fileLock.cjs");
 // ⚠️ Bu import BİR KEZ ATLANMIŞTI: koşullu ekleme ("dosyada 'verifyToken'
 // geçmiyorsa ekle") kullanılmıştı, ama az önce eklenen rota tanımları o
 // metni zaten içerdiği için koşul yanlış çalıştı. Aynı hata settle2'de de
@@ -460,20 +461,55 @@ router.post("/create", verifyToken, express.json(), async (req, res) => {
       return res.status(400).json({ ok: false, error: "FIXTURE_COUNT_INVALID" });
     }
 
-    const items = await loadAll();
-    const codes = new Set(items.map((t) => t.code));
-    const t = {
-      id: "MINI-" + crypto.randomBytes(6).toString("hex"),
-      code: newCode(codes),
-      name,
-      ownerId: userId,
-      fixtures: clean,
-      members: [userId],
-      createdAt: new Date().toISOString(),
-    };
-    await SocialStore.createMini(t, db);
+    /* ⚠️ KOTA KAPISI YAZMAYLA AYNI KİLİTTE OLMAK ZORUNDA.
+     *
+     * Yukarıdaki sayım hızlı-ret için duruyor ama TEK BAŞINA yeterli değildi:
+     * "kaç açık turnuvan var" OKUNUYOR, sonra turnuva YAZILIYOR — arada kilit
+     * yoktu, yani eşzamanlı istekler hepsi aynı sayıyı görüp hepsi geçiyordu.
+     *
+     * ÖLÇÜLDÜ (bellek-içi Mongo, 8 eşzamanlı istek, 3 deneme, hepsinde aynı):
+     *     kota 2 · kurulan turnuva 8   → kota 4 KAT aşıldı
+     *
+     * Bu bir görgü kuralı değil KÖTÜYE KULLANIM ayarı: yukarıdaki nota göre
+     * mini turnuva girişi ÜCRETSİZ ama kazanana MINI_WIN_LC veriliyor, yani
+     * karşılığı olmayan LC üretimi. Kotayı delmek muslugu açık bırakmak demek.
+     *
+     * ⚠️ KİLİT KULLANICI BAŞINA: kota da kullanıcı başına. Genel bir anahtar
+     * tüm kullanıcıların turnuva kurmasını sıraya sokardı, gereksiz.
+     * (`SocialStore.createMini` kendi içinde kilit almıyor — iç içe kilit
+     * riski yok; `withFileLock` reentrant değildir.) */
+    let sonuc = null;
+    await withFileLock(`mini-create:${userId.toLowerCase()}`, async () => {
+      const guncel = await loadAll(db);
+      const acikSon = guncel.filter(
+        (x) => !x.finishedAt && String(x.ownerId || x.creatorId || "").toLowerCase() === userId.toLowerCase()
+      ).length;
+      if (acikSon >= maxOpen) {
+        sonuc = {
+          kod: 400,
+          govde: {
+            ok: false, error: "TOO_MANY_OPEN_MINI", open: acikSon, max: maxOpen,
+            detail: `Aynı anda en fazla ${maxOpen} bitmemiş mini turnuvan olabilir.`,
+          },
+        };
+        return;
+      }
 
-    return res.json({ ok: true, tournament: publicView(t) });
+      const codes = new Set(guncel.map((x) => x.code));
+      const t = {
+        id: "MINI-" + crypto.randomBytes(6).toString("hex"),
+        code: newCode(codes),
+        name,
+        ownerId: userId,
+        fixtures: clean,
+        members: [userId],
+        createdAt: new Date().toISOString(),
+      };
+      await SocialStore.createMini(t, db);
+      sonuc = { kod: 200, govde: { ok: true, tournament: publicView(t) } };
+    });
+
+    return res.status(sonuc.kod).json(sonuc.govde);
   } catch (e) {
     console.error("[mini] create error:", e);
     return res.status(500).json({ ok: false, error: "MINI_CREATE_FAILED", detail: String(e?.message || e) });
