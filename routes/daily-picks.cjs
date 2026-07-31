@@ -4,7 +4,20 @@ const express = require("express");
 const Season = require("../lib/season.cjs");
 const router = express.Router();
 const fetch = globalThis.fetch || require("node-fetch");
-const { calcOdds, lcReward } = require("../services/odds-engine.cjs");
+const { calcOdds } = require("../services/odds-engine.cjs");
+const MW = require("../services/match-weights.cjs");
+const { macOdulu, SONUC_TABAN_PUAN } = require("../lib/ekonomi.cjs");
+
+/**
+ * Sonucu doğru bilmenin GERÇEKTEN kazandıracağı LC.
+ *
+ * settle2 ile aynı zincir: `3 × oddsMultiplier(...)` → `base` → merdiven.
+ * `oddsMultiplier` ham oranı [0.34, 4.0] aralığına sıkıştırıyor; gösterimin
+ * sıkıştırmaması, ekranın ödeyemeyeceği sayılar vaat etmesi demekti.
+ */
+function sonucOdulu(home, away, oc) {
+  return macOdulu(SONUC_TABAN_PUAN * MW.oddsMultiplier(home, away, oc));
+}
 const { getStreak } = require("../services/streak.cjs");
 const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
 
@@ -12,8 +25,10 @@ const AF_BASE = process.env.AF_BASE || "https://v3.football.api-sports.io";
 const AF_KEY = process.env.AF_KEY || "";
 const AF_HDR = process.env.AF_HEADER_KEY || "x-apisports-key";
 
-const BASE_LC = 10;
-const QUAD_BONUS_MULTIPLIER = 1.5;
+/* ⚠️ İKİSİ DE KALDIRILDI — ekranın kendi ödül formülü buradan geliyordu.
+ * `BASE_LC × ham_oran` settle2'nin ödediğiyle ilgisizdi; `QUAD_BONUS_MULTIPLIER`
+ * ise hiç var olmayan bir dörtlü bonusunu vaat ediyordu (ödeme her maç için
+ * tek tek yapılıyor). Ödül artık `sonucOdulu` ile ödemeyle aynı zincirden. */
 
 const TEAM_RATINGS = require("../services/odds-engine.cjs").TEAM_RATINGS;
 
@@ -58,10 +73,15 @@ async function fetchLeagueFixtures(leagueId, dateStr) {
           country: f.league?.country || null,
           leagueId,
           odds,
+          /* ⚠️ ÖDÜL ARTIK ÖDEMEYLE AYNI ZİNCİRDEN. Eskiden burada
+           * `Math.round(10 * ham_oran)` hesaplanıyordu; settle2 ise puanı
+           * [0.34, 4.0] aralığına sıkıştırıp sabit bir merdivenden ödüyor.
+           * Ekranda yazan sayı cüzdana geçenin 2-200 katıydı (ölçüldü:
+           * GS–FB deplasman 38 vs ≤15; Real Madrid–Erokspor 3009 vs ≤15). */
           rewards: {
-            home: lcReward(BASE_LC, odds.home),
-            draw: lcReward(BASE_LC, odds.draw),
-            away: lcReward(BASE_LC, odds.away),
+            home: sonucOdulu(home, away, "H"),
+            draw: sonucOdulu(home, away, "D"),
+            away: sonucOdulu(home, away, "A"),
           },
           _attraction: matchAttraction(home, away),
         };
@@ -137,10 +157,15 @@ router.get("/quad", async (req, res) => {
     all.sort((a, b) => b._attraction - a._attraction);
     const quad = all.slice(0, 4).map(f => {
       const { _attraction, ...rest } = f;
+      /* ⚠️ DÖRTLÜ EKRANI DA AYNI ZİNCİRDEN. Burada ayrıca `QUAD_BONUS_MULTIPLIER`
+       * ile çarpılıyordu — ama settle2 dörtlü diye FAZLA ÖDEMİYOR: ödeme her maç
+       * için tek tek, aynı merdivenden yapılıyor. Yani çarpan da ekranın
+       * ödeyemeyeceği bir söz veriyordu. Çarpan kaldırıldı; "dörtlü" bir bonus
+       * değil, dikkat çeken dört maçın seçkisi. */
       rest.rewards = {
-        home: Math.round(lcReward(BASE_LC, rest.odds.home) * QUAD_BONUS_MULTIPLIER),
-        draw: Math.round(lcReward(BASE_LC, rest.odds.draw) * QUAD_BONUS_MULTIPLIER),
-        away: Math.round(lcReward(BASE_LC, rest.odds.away) * QUAD_BONUS_MULTIPLIER),
+        home: sonucOdulu(rest.home, rest.away, "H"),
+        draw: sonucOdulu(rest.home, rest.away, "D"),
+        away: sonucOdulu(rest.home, rest.away, "A"),
       };
       return rest;
     });
@@ -153,7 +178,17 @@ router.get("/quad", async (req, res) => {
     res.json({
       ok: true, date: dateStr, country: country || null,
       count: quad.length, matches: quad,
-      allCorrectBonus: Math.round(BASE_LC * combinedOdds * 2),
+      /* ⚠️ HAYALET BONUS — 0'a çekildi.
+       *
+       * Burası `BASE_LC * combinedOdds * 2` hesaplayıp istemciye gönderiyordu;
+       * `mobile/components/QuickPlaySection.tsx` de ekranda "4/4 → +N LC" rozeti
+       * olarak gösteriyor. Ama sunucuda dörtlüyü ödeyen HİÇBİR yol yok:
+       * settle2'nin tek bonusu `streak_bonus` (üst üste doğru tahmin) ve o da
+       * dörtlü seçkisinden habersiz. Yani rozet hiç ödenmeyecek bir söz veriyordu.
+       *
+       * İstemci `quadBonus > 0` ile koruduğu için 0 dönmek rozeti tamamen gizler;
+       * alan, gerçek bir dörtlü bonusu yazılırsa sözleşme bozulmasın diye duruyor. */
+      allCorrectBonus: 0,
       combinedOdds,
     });
   } catch (e) {
@@ -175,3 +210,7 @@ router.get("/streak", optionalToken, async (req, res) => {
 });
 
 module.exports = router;
+/* Sınama için: gösterilen ödülün gerçek hesabı. Testin kendi kopyasını
+ * yazması, bu turda bir kez yeşil-ama-ölü sonuç üretti (bkz. tests/
+ * vaat-edilen-odul.test.cjs notu). */
+module.exports._sonucOdulu = sonucOdulu;

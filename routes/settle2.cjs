@@ -88,6 +88,7 @@ const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 // (LC_START / INITIAL_DEFAULT) tanımlıydı; birini değiştiren diğerini
 // aramazdı ve açılış bakiyesi kod yoluna göre değişebilirdi.
 const { LC_START } = require("../lib/ekonomi.cjs");
+const Ekonomi = require("../lib/ekonomi.cjs");
 const LC_ENTRY_COST = 3;
 
 /**
@@ -440,15 +441,14 @@ const { getScoreWeight } = MW;
 // - Exact skor doğru = 7-30p (nadirlik çarpanı)
 // - Yan kalemler (FG/HT/red/pen) maç zorluğuyla çarpılı
 // Toplam üst sınır ~50p'a çıkabilir. Eşikler bu yeni yelpazeye göre.
+/**
+ * ⚠️ MERDİVEN `lib/ekonomi.cjs`'E TAŞINDI. Buradayken `routes/daily-picks.cjs`
+ * kullanıcıya gösterdiği ödülü bambaşka bir formülle hesaplıyordu ve ekranda
+ * yazan sayı cüzdana geçenin 2-200 katıydı. Ödeme ile gösterim artık aynı
+ * fonksiyondan geçiyor (bkz. oradaki `macOdulu` notu).
+ */
 function computeLcRewardFromDetail(detail) {
-  const base = Number(detail && detail.base != null ? detail.base : 0);
-  if (base >= 30) return 15;  // usta: skor + yan kalemler
-  if (base >= 20) return 10;  // çok iyi
-  if (base >= 12) return  7;  // underdog outcome veya iyi paket
-  if (base >=  6) return  4;  // mid-tier + yan kalem
-  if (base >=  3) return  2;  // favori outcome doğru
-  if (base >   0) return  1;  // bir şey bilmiş
-  return 0;
+  return Ekonomi.macOdulu(detail && detail.base != null ? detail.base : 0);
 }
 
 /**
