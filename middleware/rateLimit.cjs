@@ -70,6 +70,15 @@ const RULES = [
    * bırakılmışlardı; meşru kullanımın çok üstünde ama flood'u durduran sınır.
    */
   { re: /\/pool\/[^/]+\/bet\b/,  max: 20, windowMs: 60_000 },
+
+  /* Haftalik kupon: katilim GIRIS BEDELI dusuyor. Kural yokken varsayilana
+   * (dk/120) dusuyordu; her deneme LC dusup iade ettigi icin dakikada 120
+   * cuzdan yazmasi + defter kaydi demekti. Para kaybi yok, yuk gercek. */
+  { re: /\/kupon\/katil\b/,   max: 10, windowMs: 60_000 },
+  { re: /\/kupon\/tahmin\b/,  max: 30, windowMs: 60_000 },
+
+  /* 1987GS haftalik secim: LC_COST_NORMAL dusuyor. */
+  { re: /\/weekly-picks\/predict\b/, max: 20, windowMs: 60_000 },
   { re: /\/tournaments\/(create|join|settle)\b/, max: 10, windowMs: 60_000 },
   { re: /\/groups\/(create|join)\b/,             max: 10, windowMs: 60_000 },
 ];
@@ -191,3 +200,6 @@ async function rateLimit(req, res, next) {
 
 module.exports = rateLimit;
 module.exports.stats = stats;
+// Test icin: bir URL hangi kurala dusuyor (nobetci testi bunu kullaniyor).
+module.exports._ruleFor = ruleFor;
+module.exports._DEFAULT_RULE = DEFAULT_RULE;

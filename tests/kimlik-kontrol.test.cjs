@@ -39,6 +39,14 @@ test("büyük/küçük harf farkı engel değil", () => {
   assert.strictEqual(kendiKaydiMi(istek("Ali"), "ALI").ok, true);
 });
 
+test("dönen kimlik JETONDAN gelir, sorgudan değil", () => {
+  // ⚠️ `/lc-wallet/summary` yazma yapıyor (regen/aylık LC + defter kaydı).
+  // Sorgudaki yazılışı dönseydik istemci kendi kimliğinin defterdeki
+  // görünümünü seçebilirdi.
+  assert.strictEqual(kendiKaydiMi(istek("ali"), "ALI").uid, "ali");
+  assert.strictEqual(kendiKaydiMi(istek("Ali"), "aLi").uid, "Ali");
+});
+
 test("başkasının kaydı 403", () => {
   const s = kendiKaydiMi(istek("ali"), "veli");
   assert.deepStrictEqual(s, { ok: false, kod: 403, hata: "FORBIDDEN_OTHER_USER" });
