@@ -77,7 +77,13 @@ const IADE = new Set([
  * Artık yalnızca GERÇEK kanıt sayılıyor: bir claim ÇAĞRISI ya da koşullu
  * yazmanın sonucunu denetleyen `modifiedCount`.
  */
-const MUHUR = /(claimAward|claimDuelSettle|claimTournamentSettle|claimWeek|kuponMuhurle|finishMini|odulMuhurle)\s*\(|modifiedCount/;
+/**
+ * ⚠️ `matchedCount` DE GEÇERLİ. Günlük LC talebi kilidi "karşılaştır-ve-değiştir"
+ * biçiminde kuruyor: süzgeçte `lastDailyAt: <okunan değer>` var ve sonuç
+ * `matchedCount` ile denetleniyor. İlk sürüm yalnızca `modifiedCount` kabul
+ * ediyordu ve bu meşru mührü YANLIŞ ALARM olarak işaretledi.
+ */
+const MUHUR = /(claimAward|claimDuelSettle|claimTournamentSettle|claimWeek|kuponMuhurle|finishMini|odulMuhurle)\s*\(|modifiedCount|matchedCount/;
 
 /** Bir kaynağı üst düzey bloklara böler (fonksiyon ya da router bildirimi). */
 function bloklaraBol(kaynak) {
@@ -166,6 +172,11 @@ const CAGIRAN_MUHURU_SERBEST = new Set([
   // mini turnuva: `finishMini(t.id)` turnuvayı mühürler, dönüş değeri
   // kontrol edilir, sonra bu yardımcı çağrılır. Aynı kaynak, aynı biçim.
   "awardMiniWinLc",
+  // düello: `claimDuelSettle` mührü alınır, sonra bu yardımcı ödemeyi yazar.
+  "creditLcMongo",
+  // seri bonusu: `claimAward` mührü settle2'de alınır, bu yardımcı sonra çağrılır.
+  "awardStreakBonuses",
+  "_awardStreakBonusesUnlocked",
 ]);
 
 /**
@@ -175,11 +186,31 @@ const CAGIRAN_MUHURU_SERBEST = new Set([
  * kaynağın mührü bu ödemeyi çift dağıtımdan korumaz.
  */
 
-function cagiranlardaMuhurVar(ad, tumBloklar) {
-  if (!ad || !CAGIRAN_MUHURU_SERBEST.has(ad)) return false;
+/**
+ * ⚠️ DENETİM GEÇİŞLİ OLMALI. İlk sürüm yalnızca BİR seviye yukarı bakıyordu ve
+ * iki katmanlı zincirleri kaçırdı:
+ *
+ *     _awardStreakBonusesUnlocked ← awardStreakBonuses ← settle2 (claimAward)
+ *     creditLcMongo               ← creditLc (duels)   ← settleDuelsForFixture
+ *
+ * Ortadaki sarmalayıcıda mühür yok — mühür bir üstte. Tek seviyeli denetim
+ * ikisini de "mühürsüz" işaretledi; oysa ikisi de korumalı.
+ */
+function cagiranlardaMuhurVar(ad, tumBloklar, derinlik = 0, gorulen = new Set()) {
+  if (!ad || derinlik > 3 || gorulen.has(ad)) return false;
+  if (derinlik === 0 && !CAGIRAN_MUHURU_SERBEST.has(ad)) return false;
+  gorulen.add(ad);
+
   const cagri = new RegExp("\\b" + ad + "\\s*\\(");
   const cagiranlar = tumBloklar.filter((b) => blokAdi(b.metin) !== ad && cagri.test(b.metin));
-  return cagiranlar.length > 0 && cagiranlar.every((b) => MUHUR.test(b.metin));
+  if (!cagiranlar.length) return false;
+
+  // "Hepsi" şartı bilinçli: tek bir mühürsüz çağıran korumayı geçersiz kılar.
+  return cagiranlar.every(
+    (b) =>
+      MUHUR.test(b.metin) ||
+      cagiranlardaMuhurVar(blokAdi(b.metin), tumBloklar, derinlik + 1, gorulen)
+  );
 }
 
 test("ÖDÜL dağıtan her yerde ödemeden ÖNCE atomik mühür var", () => {
@@ -217,5 +248,101 @@ test("sınıflandırma listeleri bayat değil", () => {
     artikYok,
     [],
     "Bu sebepler kodda yok, listeden cikarilmali:\n" + artikYok.join("\n")
+  );
+});
+
+/* ── Doğrudan bakiye yazmaları ──────────────────────────────────────────── */
+
+/**
+ * ⚠️ NÖBETÇİNİN KENDİ KÖR NOKTASI. Yukarıdaki testler yalnızca `creditLc`
+ * çağrılarını tarıyor. Ama kod tabanında LC'yi `creditLc`'den GEÇMEDEN,
+ * doğrudan `$inc: { balance: +N }` ile veren YEDİ yer var:
+ *
+ *   settle2  — maç ödülü, seri (streak) bonusu, turnuva ödemesi
+ *   duels    — düello ödemesi (kendi creditLcMongo yardımcısı üzerinden)
+ *   lc-wallet — mağaza satın alımı, premium aylık kasa
+ *
+ * Hepsi denetlendi ve MÜHÜRLÜ. Ama nöbetçi onları görmüyordu: yeni bir
+ * doğrudan yazma mühürsüz eklenirse sessiz kalırdı. En kritik para
+ * değişmezini koruyan testin, korumanın atlanabildiği bir yolu görmemesi
+ * tam da bu oturumda tekrar tekrar bulduğum hata biçimi.
+ */
+/**
+ * Mağaza satın alımı: mühür YOK ama uç ÜRETİMDE KAPALI.
+ * `STORE_MODE === "disabled"` erken dönüyor; gerçek sağlayıcılar 501 alıyor,
+ * yalnızca `mock` modu LC yüklüyor. Makbuz doğrulaması zaten bilinen bir
+ * lansman maddesi. Muafiyet GEREKÇEYE BAĞLI: aşağıdaki test kapının hâlâ
+ * yerinde olduğunu doğruluyor — mağaza açılırsa muafiyet düşer.
+ */
+const MAGAZA_MUAF = "routes/lc-wallet.cjs";
+
+/** Bakiyeyi yazan ALT SEVİYE yardımcılar — çağrı yerleri ayrıca denetleniyor. */
+const ILKELLER = new Set(["creditLcMongo", "deductLcMongo"]);
+
+test("mağaza ucu hâlâ kapalı — muafiyetin dayanağı", () => {
+  const src = fs.readFileSync(path.join(KOK, "routes", "lc-wallet.cjs"), "utf8");
+  const i = src.indexOf('router.post("/lc-wallet/purchase"');
+  assert.ok(i > 0, "purchase ucu bulunamadi");
+  const govde = src.slice(i, i + 3000);
+  assert.ok(
+    /STORE_MODE\s*===\s*"disabled"/.test(govde),
+    "magaza ucu artik kapali degil — idempotans (makbuz) muhru gerekiyor"
+  );
+});
+
+test("doğrudan bakiye ARTIRAN her yazma mühürlü", () => {
+  const kusurlu = [];
+  let bakilan = 0;
+
+  // Yardımcı fonksiyonların çağıranını bulabilmek için TÜM blokları topla.
+  // (İlk sürümde boş dizi geçiliyordu; çağıran hiç aranamıyordu.)
+  const tumBloklar = [];
+  for (const d of DIZINLER) {
+    const dz = path.join(KOK, d);
+    if (!fs.existsSync(dz)) continue;
+    for (const f of fs.readdirSync(dz)) {
+      if (f.endsWith(".cjs")) {
+        tumBloklar.push(...bloklaraBol(fs.readFileSync(path.join(dz, f), "utf8")));
+      }
+    }
+  }
+
+  for (const d of DIZINLER) {
+    const dizin = path.join(KOK, d);
+    if (!fs.existsSync(dizin)) continue;
+    for (const dosya of fs.readdirSync(dizin)) {
+      if (!dosya.endsWith(".cjs")) continue;
+      // Para ilkelinin kendisi: bakiyeyi o yazacak.
+      if (dosya === "wallet-credit.cjs") continue;
+
+      const kaynak = fs.readFileSync(path.join(dizin, dosya), "utf8");
+      for (const blok of bloklaraBol(kaynak)) {
+        // `$inc: { balance: X` — X eksiyle başlıyorsa HARCAMA, atla.
+        const re = /\$inc:\s*\{\s*balance:\s*(-?)\s*([A-Za-z0-9_.]+)/g;
+        let m;
+        while ((m = re.exec(blok.metin))) {
+          if (m[1] === "-") continue;               // harcama
+          bakilan++;
+          if (MUHUR.test(blok.metin)) continue;
+          if (cagiranlardaMuhurVar(blokAdi(blok.metin), tumBloklar)) continue;
+          // ⚠️ İLKELİN TANIMI DEĞİL, ÇAĞRI YERİ DENETLENİR. `creditLcMongo`
+          // düellonun para ilkeli: hem mühürlü sonuçlandırma hem de mühür
+          // gerektirmeyen İADE yolları onu kullanıyor. Tanımına mühür şartı
+          // koymak, iade yollarını da mühürlü olmaya zorlardı. Çağrı yerleri
+          // zaten yukarıdaki `creditLc(` taramasıyla kapsanıyor —
+          // `wallet-credit.cjs` de aynı gerekçeyle dışarıda.
+          if (ILKELLER.has(blokAdi(blok.metin))) continue;
+          if (`${d}/${dosya}` === MAGAZA_MUAF && m[2] === "totalLc") continue;
+          kusurlu.push(`${d}/${dosya}:${blok.bas + 1} — "${m[2]}" muhursuz bakiye artiriyor`);
+        }
+      }
+    }
+  }
+
+  assert.ok(bakilan >= 5, `cok az dogrudan yazma bulundu (${bakilan}) — tarama kalibi bozulmus olabilir`);
+  assert.deepStrictEqual(
+    kusurlu,
+    [],
+    "creditLc'den GECMEDEN bakiye artiran ve muhursuz olan yazmalar:\n" + kusurlu.join("\n")
   );
 });
