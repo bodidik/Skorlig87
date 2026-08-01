@@ -395,34 +395,59 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
         ? calcOdds(duel.home, duel.away)
         : { home: 2.0, draw: 3.2, away: 2.0 };
 
-      // Düello puanı = tahmin edilen sonucun odds'ı — SADECE sonuç doğruysa.
-      // Doğruluk gerçek sonuçla karşılaştırılır (scoresMap puanıyla DEĞİL;
-      // o toplam puandır, yan kalemlerden pozitif olabilir).
-      function getOddsPoints(uid) {
+      /**
+       * ⚠️ BİRİM KARMAŞASI — İKİ TARAF FARKLI CETVELLE ÖLÇÜLÜYORDU.
+       *
+       * Eski kod düşüşü OYUNCU BAŞINA yapıyordu: sonuç tahmini olan taraf
+       * ODDS (medyan 3.8, tek maçta 104'e kadar), olmayan taraf `scoreFixture`
+       * TOPLAMI (0–10, yan kalemler: ilk gol, kırmızı, penaltı) alıyordu.
+       * `winnerId` bu iki sayıyı doğrudan karşılaştırıyor.
+       *
+       * ÖLÇÜLDÜ (gerçek `settleDuelsForFixture`, Man City – Coventry, odds
+       * H=1.41): sonucu DOĞRU bilen oyuncu 1.41 puan, sonucu hiç tahmin
+       * etmemiş ama yan kalemlerden 7 puan almış rakip 7 puan → düelloyu
+       * TAHMİN ETMEYEN kazanıyor ve 5.7 LC ona geçiyor.
+       *
+       * ⚠️ KURAL: BİRİM DÜELLO BAŞINA, OYUNCU BAŞINA DEĞİL.
+       *   • Gerçek sonuç biliniyorsa → İKİSİ DE odds cetvelinde. Kullanılabilir
+       *     sonuç tahmini olmayan taraf 0 alır: düellonun konusu 1X2 sonucu,
+       *     ona bahis girmemiş oyuncuya yan kalemlerden puan yazmak yarışı
+       *     başka bir oyuna çevirir.
+       *   • Gerçek sonuç bilinmiyorsa (settle2 outcome geçmediyse) → İKİSİ DE
+       *     scoreFixture cetvelinde. Bu bozulmuş yol zaten uyarı basıyor.
+       *
+       * Seçilen cetvel `puanBirimi` ile kayda YAZILIYOR: `creatorPoints`
+       * alanının hangi ölçekte olduğu, sonradan bakan için belirsiz kalmasın.
+       */
+      const macPuaniCetveli = !actual;
+
+      function macPuani(uid) {
+        const k = Object.keys(scoresMap).find(
+          k2 => k2.toLowerCase() === String(uid).toLowerCase()
+        );
+        return k != null ? Number(scoresMap[k] || 0) : 0;
+      }
+
+      function duelloPuani(uid) {
         if (!uid) return 0;
+        if (macPuaniCetveli) return macPuani(uid);
+
         const pred = getUserPred(uid);
         const oc = pred?.outcome ? String(pred.outcome).toUpperCase() : null;
-
-        // Sonuç tahmini yok VEYA gerçek sonuç bilinmiyor → scoreFixture toplamı
-        if (!oc || !actual) {
-          const k = Object.keys(scoresMap).find(
-            k2 => k2.toLowerCase() === String(uid).toLowerCase()
-          );
-          return k != null ? Number(scoresMap[k] || 0) : 0;
-        }
-
-        if (oc !== actual) return 0; // sonucu yanlış bildi
+        if (!oc) return 0;            // sonuca bahis girmemiş → bu düelloda puanı yok
+        if (oc !== actual) return 0;  // sonucu yanlış bildi
         if (oc === "H") return odds.home;
         if (oc === "D") return odds.draw;
         return odds.away;
       }
 
-      const cp = getOddsPoints(duel.creatorId);
-      const ap = getOddsPoints(duel.acceptorId);
+      const cp = duelloPuani(duel.creatorId);
+      const ap = duelloPuani(duel.acceptorId);
 
       const alanlar = {
         creatorPoints: Math.round(cp * 100) / 100,
         acceptorPoints: Math.round(ap * 100) / 100,
+        puanBirimi: macPuaniCetveli ? "macPuani" : "odds",
         settledAt: nowISO,
         winnerId: cp > ap ? duel.creatorId : ap > cp ? duel.acceptorId : null,
       };
