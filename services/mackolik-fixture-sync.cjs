@@ -111,6 +111,22 @@ function slugPart(s) {
  * BİTMİŞ olduğu ya da tarihi geçtiği için de elenebiliyor. Üretimde 49 maçın
  * tamamı elendi ve etiket bizi günlerce yanlış yere baktırdı.
  */
+/**
+ * Bitmiş bir cache satırının fikstür kimliği.
+ *
+ * ⚠️ KİMLİK ÜRETİMİ NORMAL YOLLA AYNI OLMAK ZORUNDA (`MK-<home>-<gün>-<away>`),
+ * yoksa kapatma hiçbir kayda denk gelmez ve sessizce hiçbir şey yapmaz.
+ * Bu yüzden aynı parçalardan üretiliyor; ayrı bir kimlik şeması YAZILMIYOR.
+ */
+function bitmisFixtureId(m) {
+  const home = r2(m?.homeTeam);
+  const away = r2(m?.awayTeam);
+  if (!home || !away) return null;
+  const kickoffISO = toIso(r2(m?.matchDate));
+  if (!kickoffISO) return null;
+  return `MK-${slugPart(home)}-${kickoffISO.slice(0, 10)}-${slugPart(away)}`;
+}
+
 function normalizeWithReason(m) {
   const country = resolveCountry(m?.country);
   if (!country) return { fixture: null, reason: "ulke:" + (r2(m?.country) || "(bos)") };
@@ -194,6 +210,47 @@ async function readCache() {
  * Tek senkron turu.
  * @param {{ dryRun?: boolean }} opts
  */
+/** Cache'teki bitmiş maçların fikstür kimlikleri. */
+function bitmisIdSeti(matches) {
+  const set = new Set();
+  for (const m of matches || []) {
+    if (!m?.isFinished) continue;
+    const fid = bitmisFixtureId(m);
+    if (fid) set.add(fid);
+  }
+  return set;
+}
+
+/**
+ * Listede, bitmiş maçlara denk gelen KENDİ kayıtlarımızı FT'ye çeker.
+ * Yeni kayıt AÇMAZ, başka kaynağın kaydına DOKUNMAZ.
+ * @returns {number} kapatılan kayıt sayısı
+ */
+function ftIsaretle(list, bitmisIdler) {
+  if (!bitmisIdler.size) return 0;
+  let n = 0;
+  for (const f of list || []) {
+    if (!f || r2(f.source) !== SOURCE) continue;
+    if (String(f.status || "").toUpperCase() === "FT") continue;
+    if (!bitmisIdler.has(r2(f.fixtureId))) continue;
+    f.status = "FT";
+    n++;
+  }
+  return n;
+}
+
+/** Kapatmayı tek başına yapar (cache'te puanlanabilir maç kalmadığı durum). */
+async function bitmisleriKapat(matches, dryRun) {
+  const idler = bitmisIdSeti(matches);
+  if (!idler.size) return 0;
+  return withFileLock(FIXTURES_FILE, async () => {
+    const list = await readFixtures();
+    const n = ftIsaretle(list, idler);
+    if (n && !dryRun) await writeFixtures(list);
+    return n;
+  });
+}
+
 async function syncOnce({ dryRun = false } = {}) {
   const t0 = Date.now();
   const { matches, leagues, updatedAt, reason } = await readCache();
@@ -221,19 +278,48 @@ async function syncOnce({ dryRun = false } = {}) {
   const items = Array.from(byId.values());
 
   if (!items.length) {
-    // Sebep dökümü olmadan bu durum "ülke eşleşmedi" sanılıyordu; gerçekte
-    // maçlar bitmiş/geçmiş de olabilir. Log artık hangisi olduğunu söylüyor.
+    /* ⚠️ ERKEN DÖNÜŞTEN ÖNCE DURUM KAPATMASI YAPILIR.
+     *
+     * Bu dal tam olarak "cache'deki maçların hepsi bitmiş" durumunda çalışıyor
+     * — yani kapatılacak kayıtların EN ÇOK olduğu an. Kapatmayı aşağıya
+     * koysaydım hiç çalışmazdı ve testte de öyle oldu. */
+    const kapatilan = await bitmisleriKapat(matches, dryRun);
     return {
-      ok: false, reason: "NO_MATCHING_COUNTRIES", elenme,
+      ok: false, reason: "NO_MATCHING_COUNTRIES", elenme, kapatilan,
       cacheMatches: matches.length, leagues, ms: Date.now() - t0,
     };
   }
 
+  /* ⚠️ BİTMİŞ MAÇLAR: YENİ KAYIT AÇMAZ, VAR OLANI KAPATIR.
+   *
+   * BULUNAN: bu senkron bitmiş maçları tamamen eliyor (yukarıdaki `bitmis`
+   * sebebi) — bu BİLİNÇLİ, dosya başlığı da öyle diyor: "bunlar zaten geçmiş,
+   * tahmin girilemez". Ama yan etkisi kapatılmamış: bir maç canlıyken `LIVE`
+   * yazılıyor, bittiğinde artık hiç görülmediği için durumu O HÂLDE KALIYOR.
+   *
+   * ÖLÇÜLDÜ (data/fixtures.json, 1458 kayıt): 431 maç `LIVE`, yalnızca 3'ü
+   * `FT`. LIVE olanların 389'u başlama saatinden 3 saatten fazla geçmiş —
+   * ortanca 16.6 saat, en fazla 64 saat.
+   *
+   * ⚠️ SÜZGEÇ GEVŞETİLMİYOR. Bitmiş maçı normal akışa sokmak "bitmiş maç
+   * yayınlama" kararını çiğnerdi ve geçmiş maçları fikstür listesine
+   * eklerdi. Burada yalnızca ZATEN VAR OLAN kaydın durumu kapatılıyor; yeni
+   * kayıt açılmıyor.
+   *
+   * Para etkisi yok (kilit zaten NS dışını kapatıyor, settle durum
+   * dosyasından okuyor, bayat temizleyici 48 saatte iade ediyor) — bu bir
+   * doğruluk düzeltmesi: fikstür deposu "bu maç bitti mi" sorusuna
+   * güvenilir cevap verebilsin.
+   */
   const result = await withFileLock(FIXTURES_FILE, async () => {
     const existing = await readFixtures();
     const m = merge(existing, items, SOURCE);
+    const kapatilan = ftIsaretle(m.list, bitmisIdSeti(matches));
     if (!dryRun) await writeFixtures(m.list);
-    return { total: m.list.length, added: m.added, updated: m.updated, other: m.manual };
+    return {
+      total: m.list.length, added: m.added, updated: m.updated,
+      other: m.manual, kapatilan,
+    };
   });
 
   return {
@@ -287,5 +373,7 @@ function start(intervalMs = 3 * 60 * 1000) {
 
 module.exports = {
   syncOnce, normalize, readCache, start,
+  // Sinama icin: bitmis mac kimligi (normal yolla AYNI semayi uretmeli).
+  _bitmisFixtureId: bitmisFixtureId,
   resolveCountry,
 };
