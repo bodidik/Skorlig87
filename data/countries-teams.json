@@ -119,7 +119,7 @@
     {
       "code": "BR", "name": "Brazil", "localName": "Brasil", "flag": "🇧🇷", "lang": "pt",
       "topLeague": "Brasileirão Série A",
-      "teams": ["Flamengo","Palmeiras","Santos","São Paulo","Corinthians","Athletico Paranaense","Fluminense","Grêmio","Internacional","Vasco da Gama","Botafogo","Cruzeiro","Atlético Mineiro","Fortaleza","Bahia","RB Bragantino","Cuiabá","Goiás","Coritiba","Juventude"]
+      "teams": ["Flamengo","Palmeiras","Santos","São Paulo","Corinthians","Athletico Paranaense","Fluminense","Grêmio","Internacional","Vasco da Gama","Botafogo","Cruzeiro","Atlético Mineiro","Fortaleza","Bahia","RB Bragantino","Cuiabá","Goiás","Coritiba","Juventude", "EC Vitória"]
     },
     {
       "code": "AR", "name": "Argentina", "localName": "Argentina", "flag": "🇦🇷", "lang": "es",

@@ -28,10 +28,10 @@
  * ülkem" grubuna girmiyor. Yanlış ülkeye atamaktansa atamamak yeğdir; aynı
  * karar bu oturumda `services/odds-engine.cjs getRating` için de verilmişti.
  *
- * ⚠️ KAPSAM DIŞI KALAN, DÜRÜSTÇE: "EC Vitória" hâlâ Portugal dönüyor. Bu bir
- * BELİRSİZLİK değil VERİ EKSİĞİ — Brezilya'nın Vitória'sı
- * `data/countries-teams.json` içinde yok, o yüzden tek aday Portekiz. Veri
- * dosyasına körlemesine takım eklemedim; aşağıda nöbetçi olarak işaretli.
+ * ⚠️ SONRADAN KAPATILDI: "EC Vitória" bir süre Portugal dönüyordu ve burada
+ * "bilinen sınır" olarak işaretliydi. Brezilya'nın Vitória'sı veri dosyasına
+ * eklendi, ama tek başına yetmedi — ek atma iki kulübü aynı çekirdeğe
+ * indiriyordu. Tam-ad katmanıyla çözüldü; aşağıdaki testte ayrıntısı var.
  */
 
 const test = require("node:test");
@@ -154,19 +154,45 @@ test("NÖBETÇİ: içerme araması ilk eşleşmede DURMUYOR", () => {
   );
 });
 
-test("NÖBETÇİ: EC Vitória veri eksiği hâlâ açık (bilinen sınır)", () => {
+test("İKİ AYRI VITÓRIA kendi ülkesine gidiyor", () => {
   /**
-   * ⚠️ BU TEST BİR KUSURU KİLİTLEMİYOR, BİLİNEN BİR SINIRI İŞARETLİYOR.
-   * "EC Vitória" Brezilya kulübü ama `countries-teams.json` içinde yalnızca
-   * Portekiz'in Vitória'sı var — tek aday olduğu için belirsizlik koruması
-   * devreye girmiyor ve Portugal dönüyor. Veri dosyasına körlemesine takım
-   * eklemek, ölçmediğim başka eşleşmeleri bozabilirdi.
+   * ⚠️ BU TEST ESKİDEN BİLİNEN BİR SINIRI İŞARETLİYORDU: "EC Vitória"
+   * (Brezilya) Portugal dönüyordu ve testte "veri düzelince beni SİL" yazılıydı.
+   * Düzeltildi — ama beklediğimden başka bir yerden.
    *
-   * Brezilya listesine Vitória eklenirse bu test kırılır ve o an SİLİNMELİDİR
-   * — kırılması iyi haberdir.
+   * VERİYE EKLEMEK TEK BAŞINA YETMİYORDU: ek atma iki kulübü aynı çekirdeğe
+   * indiriyor —
+   *     "EC Vitória" ("ec" atılır) → "vitoria"
+   *     "Vitória SC" ("sc" atılır) → "vitoria"
+   * Çekirdek indeksinde ilk gelen kazandığı için, Brezilya'yı listeye eklemek
+   * dosya sırası yüzünden sessizce yok sayılıyordu.
+   *
+   * ÇÖZÜM: ek ATILMADAN önceki tam ad da indeksleniyor ve önce ona bakılıyor
+   * (bkz. lib/team-country.cjs indeks()). İkisi de gerçek veride var —
+   * "EC Vitória" 5 maç, "Vitória SC" 3 maç — yani biri uğruna ötekini feda
+   * etmek gerçek bir bedeldi.
    */
-  assert.equal(
-    TC.teamCountry("EC Vitória"), "Portugal",
-    "EC Vitoria artik Portugal donmuyor — veri duzeltilmis olabilir, bu testi SIL"
-  );
+  assert.equal(TC.teamCountry("EC Vitória"), "Brazil", "Brezilya kulubu yanlis ulkede");
+  assert.equal(TC.teamCountry("Vitória SC"), "Portugal", "Portekiz kulubu yanlis ulkede");
+  // Aksansız yazımlar da aynı yere gitmeli (kaynaklar iki biçimi de gönderiyor).
+  assert.equal(TC.teamCountry("EC Vitoria"), "Brazil");
+  assert.equal(TC.teamCountry("Vitoria SC"), "Portugal");
+});
+
+test("NÖBETÇİ: belirsiz çekirdek indeksten DÜŞÜRÜLÜYOR", () => {
+  /**
+   * Tam-ad katmanı eklenirken çekirdek indeksine de belirsizlik koruması
+   * kondu: bir çekirdek birden çok ülkeye denk geliyorsa hiçbirine sayılmaz.
+   * Olmasaydı "Vitória" gibi çıplak bir ad, dosya sırasına göre rastgele bir
+   * ülkeye giderdi.
+   */
+  const src = fs.readFileSync(path.join(KOK, "lib", "team-country.cjs"), "utf8")
+    .split("\n")
+    .map((l) => {
+      const t = l.trim();
+      return t.startsWith("*") || t.startsWith("//") || t.startsWith("/*") ? "" : l;
+    })
+    .join("\n");
+  assert.ok(/for \(const k of cakisan\) cekirdekIx\.delete\(k\);/.test(src), "cakisan cekirdek dusurulmuyor");
+  assert.ok(/tamIx\.has\(tamAd\)/.test(src), "tam ad katmani kalkmis");
 });
