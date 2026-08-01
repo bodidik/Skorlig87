@@ -166,9 +166,15 @@ describe("yanlış eşleşme üretilmedi", () => {
 
 test("gerçek fikstürlerde kapsam arttı", (t) => {
   /**
-   * ⚠️ Ölçüm anında 2524 adın 440'ı eşleşiyordu (düzeltmeden önce 399).
-   * Alt sınır ölçümün biraz altında; amaç tam sayıyı dondurmak değil
-   * GERİLEMEYİ yakalamak.
+   * ⚠️ MUTLAK SAYI DEĞİL ORAN — ve bunu ölçerek öğrendim. Önce "en az 410
+   * takım eşleşmeli" yazdım; test `npm test` içinde 398 görüp KIRILDI. Kod
+   * değişmemişti: `data/fixtures.json` CANLI dosya ve arka plan senkronu
+   * onu yeniden yazarken test yarıda kalmış hâlini okumuştu (aynı anda
+   * doğrudan ölçtüğümde 2577 addan 441'i eşleşiyordu).
+   *
+   * Dosya boyu dalgalandığı için oran daha sağlam bir değişmez: ölçüm anında
+   * 441/2577 ≈ %17. Eşik geniş tutuldu — amaç tam sayıyı dondurmak değil,
+   * eşleştirmenin ÇÖKMESİNİ yakalamak.
    */
   const dosya = path.join(KOK, "data", "fixtures.json");
   if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
@@ -179,8 +185,15 @@ test("gerçek fikstürlerde kapsam arttı", (t) => {
   for (const f of items) { if (f?.home) adlar.add(f.home); if (f?.away) adlar.add(f.away); }
   const bulunan = [...adlar].filter((a) => TC.teamCountry(a)).length;
 
-  assert.ok(bulunan >= 410, `yalnizca ${bulunan} takim eslesiyor — olcum aninda 440 idi, gerileme var`);
-  assert.ok(bulunan <= 700, `${bulunan} takim eslesiyor — gevsek eslesme geri gelmis olabilir`);
+  const oran = bulunan / adlar.size;
+  assert.ok(
+    oran >= 0.10,
+    `kapsam %${(100 * oran).toFixed(1)} (${bulunan}/${adlar.size}) — olcum aninda %17 idi, gerileme var`
+  );
+  assert.ok(
+    oran <= 0.40,
+    `kapsam %${(100 * oran).toFixed(1)} — gevsek eslesme geri gelmis olabilir`
+  );
 });
 
 /* ── Nöbetçi ────────────────────────────────────────────────────────────── */

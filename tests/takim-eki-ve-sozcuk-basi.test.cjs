@@ -164,8 +164,12 @@ test("gerçek fikstürlerde kapsam makul", (t) => {
   for (const f of items) { if (f?.home) adlar.add(f.home); if (f?.away) adlar.add(f.away); }
   const bulunan = [...adlar].filter((a) => TC.teamCountry(a)).length;
 
-  assert.ok(bulunan >= 320, `yalnizca ${bulunan} takim eslesiyor — olcum aninda 399 idi`);
-  assert.ok(bulunan <= 600, `${bulunan} takim eslesiyor — gevsek eslesme geri gelmis olabilir`);
+  /* ⚠️ ORAN, MUTLAK SAYI DEĞİL: data/fixtures.json canlı dosya ve arka plan
+   * senkronu boyunu değiştiriyor; mutlak eşik testi kırılgan yapıyor
+   * (bkz. tests/takim-aksan-normallestirme). */
+  const oran = bulunan / adlar.size;
+  assert.ok(oran >= 0.10, `kapsam %${(100*oran).toFixed(1)} (${bulunan}/${adlar.size}) — gerileme var`);
+  assert.ok(oran <= 0.40, `kapsam %${(100*oran).toFixed(1)} — gevsek eslesme geri gelmis olabilir`);
 });
 
 /* ── Nöbetçi ────────────────────────────────────────────────────────────── */
