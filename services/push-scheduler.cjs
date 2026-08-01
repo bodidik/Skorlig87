@@ -199,6 +199,41 @@ function todayKey(d = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Cüzdan kullanıcıları — MONGO BİRİNCİL.
+ *
+ * ⚠️ BULUNAN: günlük hatırlatma listeyi YALNIZCA `data/lc-wallet.json`dan
+ * okuyordu. Bakiye Mongo'ya taşındı ve `SKORLIG_WALLET_FILE_MIRROR=0` iken o
+ * dosya HİÇ YAZILMIYOR — üstelik Render'ın diski kalıcı da değil. Sonuç:
+ * liste boş, hatırlatma kimseye gitmiyor ve hiçbir yerde hata görünmüyor.
+ *
+ * ÖLÇÜLDÜ (bellek-içi Mongo, ayna kapalı): günlük hakkını almamış 20 aktif
+ * kullanıcı varken hedef sayısı 0.
+ *
+ * Aynı sınıf bu oturumda ikinci kez: ana ekranın hızlı-oyun bölümü de artık
+ * beslenmeyen bir kaynaktan okuduğu için boş kalıyordu. Mühür tarafı (`dbAl`)
+ * zaten Mongo kullanıyordu — okuma tarafı geçirilmeyi unutmuş.
+ *
+ * ⚠️ DOSYA YEDEĞİ KORUNUYOR: Mongo erişilemezken hatırlatmayı tamamen
+ * durdurmak daha kötü olurdu (aynı gerekçe `claimKeys`te de yazılı).
+ */
+async function cuzdanKullanicilari() {
+  const db = await dbAl();
+  if (db) {
+    try {
+      const docs = await db
+        .collection("lc_wallet_users")
+        .find({}, { projection: { userId: 1, lastDailyAt: 1, updatedAt: 1, createdAt: 1, _id: 0 } })
+        .toArray();
+      if (docs.length) return docs;
+    } catch (e) {
+      console.error("[push-scheduler] cuzdan Mongo'dan okunamadi:", e?.message || e);
+    }
+  }
+  const wallet = await readJson(WALLET, null);
+  return Array.isArray(wallet?.users) ? wallet.users : [];
+}
+
 async function runDailyReminder(now = new Date()) {
   // Sadece belirlenen saat diliminde çalış
   if (now.getHours() !== DAILY_HOUR) return { sent: 0, skipped: "saat-dışı" };
@@ -207,8 +242,7 @@ async function runDailyReminder(now = new Date()) {
   const claimed = await claimKeys([`daily:${today}`]);
   if (!claimed.length) return { sent: 0, skipped: "bugün-gönderildi" };
 
-  const wallet = await readJson(WALLET, null);
-  const users = Array.isArray(wallet?.users) ? wallet.users : [];
+  const users = await cuzdanKullanicilari();
   if (!users.length) return { sent: 0 };
 
   const activeSince = now.getTime() - DAILY_ACTIVE_DAYS * 24 * 60 * 60 * 1000;
