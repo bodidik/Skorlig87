@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const SeasonTotals = require("../lib/season-totals.cjs");
 const router  = express.Router();
 const path    = require("path");
 const fs      = require("fs");
@@ -184,10 +185,14 @@ router.get("/", async (req,res)=>{
       const suzgec = sezon === Season.seasonKey()
         ? { $or: [{ season: sezon }, { season: { $exists: false } }] }
         : { season: sezon };
-      const docs = await col
-        .find(suzgec)
-        .sort({ totalPoints: -1 })
-        .toArray();
+      /* ⚠️ ESKI (sezonsuz) + YENI belge ayni kullaniciya aitse BIRLESTIR.
+       * Yazma tarafi `filter: { season, userIdLower }` kullaniyor; eski
+       * belgede `season` olmadigi icin eslesmiyor ve ikinci belge yaratiliyor.
+       * Birlestirmezsek ayni kullanici siralamada IKI KEZ gorunur ve puani
+       * bolunur. bkz. lib/season-totals.cjs belgeleriBirlestir */
+      const ham = await col.find(suzgec).toArray();
+      const docs = SeasonTotals.belgeleriBirlestir(ham)
+        .sort((a, b) => Number(b.totalPoints || 0) - Number(a.totalPoints || 0));
 
       // ⚠️ BOŞ SEZON GEÇERLİ — dosyaya düşülmez. Aksi hâlde 1 Ağustos'ta
       // yeni sezon boş olduğu için totals.json'daki TEMMUZ verisi AĞUSTOS
