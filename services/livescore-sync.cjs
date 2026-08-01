@@ -176,6 +176,45 @@ function parseHT(htScore) {
 // ──────────────────────────────────────────────
 // Write live state so settle2 can read it
 // ──────────────────────────────────────────────
+/**
+ * FT SONRASI BEKLEME SÜRESİ (dakika).
+ *
+ * ⚠️ SAYI TAHMİNLE SEÇİLDİ, VE BUNU AÇIKÇA YAZIYORUM. Üretimde 636 uzlaşmış
+ * maçın 4'ünde ödenen skor bugünkü skordan farklı çıktı (%0.63) ve ikisinde
+ * 1X2 sonucu değişmişti — yani sorun gerçek. Ama düzeltmenin NE KADAR sonra
+ * geldiğini ölçemedim: durum dosyasındaki `updatedAt` her turda yeniden
+ * yazılıyor, yani "en son ne zaman görüldü" demek, "ne zaman değişti" değil.
+ *
+ * Bu yüzden 10 dakika bir BAŞLANGIÇ değeri. `ftSonrasiDegisim` sayacı ve
+ * `ilkFtAt` damgası tam da bu soruyu ölçülebilir kılmak için yazılıyor:
+ * birkaç gün sonra "FT sonrası değişimler ilk FT'den kaç dakika sonra geldi"
+ * sorusunun gerçek cevabı olacak ve süre ona göre ayarlanacak.
+ */
+const FT_BEKLEME_DK = Number(process.env.SKORLIG_FT_BEKLEME_DK || 10);
+
+/**
+ * Uzlaşma için skor yeterince kararlı mı?
+ *
+ * Saf fonksiyon — testten doğrudan çağrılabilsin diye dışa açık.
+ *
+ * @param {object|null} st  canlı durum dosyası içeriği
+ * @param {number} simdiMs
+ * @returns {{hazir:boolean, sebep:string, kalanDk?:number}}
+ */
+function ftBeklemesiDoldu(st, simdiMs = Date.now()) {
+  if (FT_BEKLEME_DK <= 0) return { hazir: true, sebep: "bekleme-kapali" };
+  if (!st) return { hazir: true, sebep: "durum-yok" }; // eski davranış: engelleme
+
+  const damga = Date.parse(st.skorSabitAt || st.ilkFtAt || "");
+  // Damga yoksa bu kayıt bu özellikten ÖNCE yazılmış — bekletme.
+  if (!Number.isFinite(damga)) return { hazir: true, sebep: "damga-yok" };
+
+  const gecen = simdiMs - damga;
+  const gerek = FT_BEKLEME_DK * 60 * 1000;
+  if (gecen >= gerek) return { hazir: true, sebep: "kararli" };
+  return { hazir: false, sebep: "bekliyor", kalanDk: Math.ceil((gerek - gecen) / 60000) };
+}
+
 async function writeLiveState(fixtureId, liveMatch, scores, nowISO) {
   const stateFile = liveStateFile(fixtureId);
   const prev = await readJson(stateFile, {});
@@ -188,6 +227,43 @@ async function writeLiveState(fixtureId, liveMatch, scores, nowISO) {
     updatedAt: nowISO,
     source: "livescore-sync",
   };
+
+  /* ⚠️ FT KARARLILIK DAMGALARI — uzlaşmayı geciktirmek için.
+   *
+   * NEDEN: `claimAward` mührü yüzünden uzlaşma bir kez olur; skor sonradan
+   * düzelirse puanlar ve LC kalıcı olarak yanlış kalır. ÖLÇÜLDÜ (üretim,
+   * 636 uzlaşmış maç): 4'ünde ödenen skor bugünkü skordan FARKLI ve
+   * İKİSİNDE 1X2 SONUCU DEĞİŞMİŞ (1-0→2-2, 2-3→2-2).
+   *
+   * ⚠️ SABİT SAYAÇ DEĞİL KARARLILIK: `skorSabitAt` skor HER DEĞİŞTİĞİNDE
+   * sıfırlanıyor. Böylece bekleme süresi kendi kendine uyarlanıyor — skor
+   * oturmuşsa hemen, oynuyorsa oturana kadar. Düz "FT+10dk" sayacı skorun
+   * hâlâ değiştiğini göremezdi.
+   *
+   * ⚠️ `updatedAt` BU İŞE YARAMAZ: her turda yeniden yazılıyor, yani "en son
+   * ne zaman görüldü" demek. İlk ölçümümde onu düzeltme zamanı sanmıştım.
+   *
+   * `ftSonrasiDegisim` yalnızca ÖLÇÜM için: N'i tahminle değil veriyle
+   * seçebilelim diye FT'den sonra skorun kaç kez değiştiğini sayıyor.
+   */
+  if (scores.isFT) {
+    const oncekiSkor = prev?.score || {};
+    const skorAyni =
+      Number(oncekiSkor.home) === Number(scores.home) &&
+      Number(oncekiSkor.away) === Number(scores.away);
+    const oncedenFT = String(prev?.status || "").toUpperCase() === "FT";
+
+    st.ilkFtAt = oncedenFT && prev?.ilkFtAt ? prev.ilkFtAt : nowISO;
+    st.skorSabitAt = oncedenFT && skorAyni && prev?.skorSabitAt ? prev.skorSabitAt : nowISO;
+    if (oncedenFT && !skorAyni) {
+      st.ftSonrasiDegisim = Number(prev?.ftSonrasiDegisim || 0) + 1;
+      console.warn(
+        `[sync] FT sonrasi skor degisti -> ${fixtureId}: ` +
+        `${oncekiSkor.home}-${oncekiSkor.away} => ${scores.home}-${scores.away} ` +
+        `(ilkFT ${st.ilkFtAt}) — bekleme sayaci sifirlandi`
+      );
+    }
+  }
   if (scores.htHome != null) st.htScore = { home: scores.htHome, away: scores.htAway };
   if (liveMatch.homeRed) st.redHome = liveMatch.homeRed;
   if (liveMatch.awayRed) st.redAway = liveMatch.awayRed;
@@ -277,6 +353,7 @@ async function sync() {
 
     let newFT = 0;
     let newLive = 0;
+    let bekleyen = 0;   // kararlilik kapisinda bekleyen mac sayisi
     const settleQueue = [];
 
     for (const fixture of fixtureList) {
@@ -372,8 +449,22 @@ async function sync() {
 
       // Settle trigger — sadece GUVENILIR FT + daha önce settle edilmemişse
       if (ftGuvenilir && !settledIds.has(fid) && !_settledThisSession.has(fid)) {
-        settleQueue.push(fid);
-        newFT++;
+        /* ⚠️ KARARLILIK KAPISI: skor SABİTLENELİ en az FT_BEKLEME_DK olmalı.
+         *
+         * Uzlaşma mühürlü ve geri alınamıyor; bir kez ödedikten sonra skor
+         * düzelse bile puan/LC yanlış kalıyor. Bu kapı, kaynağın erken FT
+         * demesi ya da skoru düzeltmesi için pencere bırakıyor.
+         *
+         * Bekleme KAYBA yol açmaz: sonraki tur aynı maçı yeniden görüyor ve
+         * kapı açıldığında uzlaştırıyor. Sonuç hiç oturmazsa `lib/bayat-mac`
+         * 48 saatte parayı iade ediyor. */
+        const beklendi = ftBeklemesiDoldu(await readJson(liveStateFile(fid), null), Date.now());
+        if (beklendi.hazir) {
+          settleQueue.push(fid);
+          newFT++;
+        } else {
+          bekleyen++;
+        }
       } else if (!ftGuvenilir && hasScore) {
         newLive++;
       }
@@ -413,4 +504,9 @@ function start(intervalMs = 30 * 1000, apiPort = 4102) {
 
 // normalizeTeam/findLiveMatch test edilebilir olsun diye export edilir —
 // eşleştirme hataları sessizce yanlış skor yazdırdığı için doğrulanabilir olmalı.
-module.exports = { sync, getLastSync, start, normalizeTeam, findLiveMatch, TEAM_MAP };
+module.exports = {
+  sync, getLastSync, start, normalizeTeam, findLiveMatch, TEAM_MAP,
+  // Test icin: kararlilik kapisi saf fonksiyon, kendi kopyasini yazmak yerine
+  // gercegi cagrilsin (bu oturumda kopya-mantik iki kez yesil-ama-olu test uretti).
+  ftBeklemesiDoldu, FT_BEKLEME_DK,
+};
