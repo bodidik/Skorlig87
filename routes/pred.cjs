@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const { ensurePredIndexes } = require("../lib/preds-index.cjs");
 const router = express.Router();
 
 const fs = require("fs");
@@ -467,6 +468,10 @@ function botScoreGuess(rng, favOnHome, favOnAway) {
 
 async function upsertPredictionMongo(db, rec, opts = {}) {
   if (!db || !rec) return;
+  // ⚠️ İNDEKS ONARIMI: tahmin YAZMA yolu da `models/preds.cjs`'i kullanmıyor.
+  // Onarım tek yerde asılı kalınca en çok sorgulanan koleksiyon indekssiz
+  // kalıyordu (bkz. lib/preds-index.cjs).
+  await ensurePredIndexes(db);
   const col = db.collection("predictions");
   const uid = String(rec.userId || "").trim();
   if (!uid) return;

@@ -9,6 +9,7 @@
  */
 
 const express = require("express");
+const { ensurePredIndexes } = require("../lib/preds-index.cjs");
 const router  = express.Router();
 const fsp     = require("fs").promises;
 const path    = require("path");
@@ -67,6 +68,9 @@ async function getUserPred(userId, fixtureId, db) {
 
   if (db) {
     try {
+// ⚠️ İNDEKS ONARIMI: bu yol `models/preds.cjs`'i kullanmıyor, yani
+// oradaki kendi kendini onarma hiç çalışmıyordu (bkz. lib/preds-index.cjs).
+await ensurePredIndexes(db);
       const doc = await db.collection("predictions").findOne({
         fixtureId: String(fixtureId),
         userIdLower: uid,

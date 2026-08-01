@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const { ensurePredIndexes } = require("../lib/preds-index.cjs");
 const router = express.Router();
 const fs = require("fs");
 const fsp = fs.promises;
@@ -143,6 +144,9 @@ function stateFile(fid) {
 // her settle'da tüm dosyayı okur — Mongo'da yalnızca ilgili fixture döner.
 async function loadFixturePreds(fid, db) {
   if (db) {
+    // ⚠️ İNDEKS ONARIMI: bu yol `models/preds.cjs`'i kullanmıyor, yani
+    // oradaki kendi kendini onarma hiç çalışmıyordu (bkz. lib/preds-index.cjs).
+    await ensurePredIndexes(db);
     return db.collection("predictions").find({ fixtureId: String(fid) }).toArray();
   }
   const predsRaw = await readJson(PREDS_FILE, []);

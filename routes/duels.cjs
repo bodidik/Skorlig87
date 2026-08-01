@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const { ensurePredIndexes } = require("../lib/preds-index.cjs");
 const router = express.Router();
 const path = require("path");
 const { fiksturKilidi } = require("../lib/fikstur-kilit.cjs");
@@ -357,6 +358,9 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
   let fixPreds = [];
   try {
     if (db) {
+      // ⚠️ İNDEKS ONARIMI: bu yol `models/preds.cjs`'i kullanmıyor, yani
+      // oradaki kendi kendini onarma hiç çalışmıyordu (bkz. lib/preds-index.cjs).
+      await ensurePredIndexes(db);
       fixPreds = await db.collection("predictions").find({ fixtureId: fid }).toArray();
     } else {
       const raw = JSON.parse(await fsp.readFile(PREDS_FILE, "utf8"));

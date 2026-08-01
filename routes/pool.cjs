@@ -15,6 +15,7 @@
  */
 
 const express = require("express");
+const { ensurePredIndexes } = require("../lib/preds-index.cjs");
 const router = express.Router();
 
 const Pool = require("../lib/pool-store.cjs");
@@ -33,6 +34,9 @@ async function tahminDagilimi(fixtureId, db) {
   const bos = { H: 0, D: 0, A: 0, total: 0, humans: 0, bots: 0 };
   if (!db) return bos;
   try {
+    // ⚠️ İNDEKS ONARIMI: bu yol `models/preds.cjs`'i kullanmıyor, yani
+    // oradaki kendi kendini onarma hiç çalışmıyordu (bkz. lib/preds-index.cjs).
+    await ensurePredIndexes(db);
     const docs = await db
       .collection("predictions")
       .find({ fixtureId: String(fixtureId) }, { projection: { outcome: 1, userIdLower: 1, _id: 0 } })

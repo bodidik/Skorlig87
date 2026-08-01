@@ -22,6 +22,7 @@
  */
 
 const { bayatMi } = require("../lib/bayat-mac.cjs");
+const { ensurePredIndexes } = require("../lib/preds-index.cjs");
 const { creditLc, kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
 const { kritikIs } = require("../lib/kritik-is.cjs");
 const { DURUM, PARA_TUTAN } = require("../lib/duel-durum.cjs");
@@ -163,6 +164,9 @@ async function duellolariTemizle(db, simdi = null) {
  * iade etmek karsiliksiz LC basmak olurdu.
  */
 async function tahminleriTemizle(db, simdi = null) {
+// ⚠️ İNDEKS ONARIMI: bu yol `models/preds.cjs`'i kullanmıyor, yani
+// oradaki kendi kendini onarma hiç çalışmıyordu (bkz. lib/preds-index.cjs).
+await ensurePredIndexes(db);
   const col = db.collection("predictions");
 
   // Iadesi yapilmamis, bot olmayan tahminlerin maclari
