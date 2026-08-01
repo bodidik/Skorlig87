@@ -253,8 +253,22 @@ async function writeLiveState(fixtureId, liveMatch, scores, nowISO) {
       Number(oncekiSkor.away) === Number(scores.away);
     const oncedenFT = String(prev?.status || "").toUpperCase() === "FT";
 
-    st.ilkFtAt = oncedenFT && prev?.ilkFtAt ? prev.ilkFtAt : nowISO;
-    st.skorSabitAt = oncedenFT && skorAyni && prev?.skorSabitAt ? prev.skorSabitAt : nowISO;
+    /* ⚠️ `ilkFtAt` YALNIZCA LIVE→FT GEÇİŞİNDE damgalanır.
+     *
+     * İlk yazımımda "önceden FT ama damga yok" durumunda `nowISO` yazıyordum.
+     * Bu, özellik devreye girmeden ÖNCE bitmiş maçlara (ölçüm anında 1111
+     * durum dosyasının hepsi böyle) sahte bir "ilk FT" zamanı basardı ve
+     * gecikme ölçümünü kirletirdi — süreyi veriyle seçmek için yazdığım
+     * damganın kendisi yanlış olurdu.
+     *
+     * Damgasız kalan eski kayıtlar kapıdan zaten GEÇİYOR (`damga-yok`), yani
+     * bekletilmiyorlar. */
+    if (prev?.ilkFtAt) st.ilkFtAt = prev.ilkFtAt;
+    else if (!oncedenFT) st.ilkFtAt = nowISO;      // gerçek LIVE→FT geçişi
+
+    if (st.ilkFtAt) {
+      st.skorSabitAt = skorAyni && prev?.skorSabitAt ? prev.skorSabitAt : nowISO;
+    }
     if (oncedenFT && !skorAyni) {
       st.ftSonrasiDegisim = Number(prev?.ftSonrasiDegisim || 0) + 1;
       console.warn(

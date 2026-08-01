@@ -167,8 +167,15 @@ test("NÖBETÇİ: skor değişince sayaç sıfırlanıyor", () => {
    */
   assert.ok(/skorAyni/.test(kaynak), "skor karsilastirmasi kalkmis");
   assert.ok(
-    /st\.skorSabitAt = oncedenFT && skorAyni && prev\?\.skorSabitAt \? prev\.skorSabitAt : nowISO;/.test(kaynak),
+    /st\.skorSabitAt = skorAyni && prev\?\.skorSabitAt \? prev\.skorSabitAt : nowISO;/.test(kaynak),
     "skorSabitAt skor degisince sifirlanmiyor"
+  );
+  /* ⚠️ `ilkFtAt` yalnızca gerçek LIVE→FT geçişinde damgalanmalı; aksi hâlde
+   * özellikten önce bitmiş maçlara sahte zaman basılır ve gecikme ölçümü
+   * kirlenir (ilk yazımımdaki hata tam buydu). */
+  assert.ok(
+    /else if \(!oncedenFT\) st\.ilkFtAt = nowISO;/.test(kaynak),
+    "ilkFtAt LIVE->FT gecisi disinda da damgalaniyor — olcum kirlenir"
   );
 });
 
