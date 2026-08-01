@@ -44,6 +44,9 @@ const SAAT = (() => {
 
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 
+const skorOk = (s) =>
+  s && Number.isFinite(Number(s.home)) && Number.isFinite(Number(s.away));
+
 /**
  * İKİNCİ KANIT KAYNAĞI: `data/live/<fixtureId>.json` durum dosyaları.
  *
@@ -93,9 +96,6 @@ async function sonucHaritasi(db) {
   } catch { /* dosya yoksa sorun değil */ }
   return harita;
 }
-
-const skorOk = (s) =>
-  s && Number.isFinite(Number(s.home)) && Number.isFinite(Number(s.away));
 
 async function main() {
   let db = null;
