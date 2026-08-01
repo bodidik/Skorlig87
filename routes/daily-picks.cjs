@@ -4,7 +4,8 @@ const express = require("express");
 const Season = require("../lib/season.cjs");
 const router = express.Router();
 const fetch = globalThis.fetch || require("node-fetch");
-const { calcOdds } = require("../services/odds-engine.cjs");
+/* `calcOdds` artik dogrudan kullanilmiyor: gosterilen oran da odul de
+ * `MW.oddsMultiplier` (sikistirilmis) uzerinden — bkz. gosterilenOranlar. */
 const MW = require("../services/match-weights.cjs");
 const { macOdulu, SONUC_TABAN_PUAN } = require("../lib/ekonomi.cjs");
 
@@ -17,6 +18,27 @@ const { macOdulu, SONUC_TABAN_PUAN } = require("../lib/ekonomi.cjs");
  */
 function sonucOdulu(home, away, oc) {
   return macOdulu(SONUC_TABAN_PUAN * MW.oddsMultiplier(home, away, oc));
+}
+
+/**
+ * Ekranda GÖSTERİLEN oran.
+ *
+ * ⚠️ ÖDÜLLE AYNI TABANDAN OLMAK ZORUNDA. Kart (mobile/components/
+ * QuickPickCard.tsx) oranı ve ödülü YAN YANA basıyor:
+ *     <Text>{odd.toFixed(2)}</Text>   <Text>+{reward} LC</Text>
+ *
+ * Ödül bir önceki turda `oddsMultiplier` ([0.34, 4.0] aralığına sıkıştırılmış)
+ * üzerinden dürüst hâle getirildi ama oran HAM `calcOdds` olarak kalmıştı.
+ * Sonuç: ekranda birbiriyle çelişen iki sayı.
+ *
+ * ÖLÇÜLDÜ (altı gerçekçi durum): ikisi tutarsız — en kötüsü
+ * "Real Madrid–Erokspor deplasman: oran 300.94, ödül +7 LC".
+ *
+ * Artık gösterilen oran, ödülü belirleyen çarpanın ta kendisi.
+ */
+function gosterilenOranlar(home, away) {
+  const r = (oc) => Math.round(MW.oddsMultiplier(home, away, oc) * 100) / 100;
+  return { home: r("H"), draw: r("D"), away: r("A") };
 }
 const { getStreak } = require("../services/streak.cjs");
 const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
@@ -60,7 +82,7 @@ async function fetchLeagueFixtures(leagueId, dateStr) {
       .map(f => {
         const home = f.teams?.home?.name || "?";
         const away = f.teams?.away?.name || "?";
-        const odds = calcOdds(home, away);
+        const odds = gosterilenOranlar(home, away);
         return {
           fixtureId: String(f.fixture?.id),
           home,
@@ -137,7 +159,7 @@ async function depodanMaclar(country, db, limit) {
         league: f.league || null,
         country: f.country || null,
         leagueId: f.leagueId || null,
-        odds: calcOdds(home, away),
+        odds: gosterilenOranlar(home, away),
         rewards: {
           home: sonucOdulu(home, away, "H"),
           draw: sonucOdulu(home, away, "D"),
@@ -291,6 +313,7 @@ module.exports = router;
  * yazması, bu turda bir kez yeşil-ama-ölü sonuç üretti (bkz. tests/
  * vaat-edilen-odul.test.cjs notu). */
 module.exports._sonucOdulu = sonucOdulu;
+module.exports._gosterilenOranlar = gosterilenOranlar;
 /* Sınama için: depo geri düşüşünün SEÇİM filtresi. Uçlar üzerinden sınamak
  * yetmiyordu — başlamış/bitmiş bir maç listeye girse bile çekicilik
  * sıralamasında sona düşüp kesiliyor, yani filtre bozulsa da test yeşil

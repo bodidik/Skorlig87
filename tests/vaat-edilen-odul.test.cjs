@@ -120,6 +120,60 @@ describe("vaat = ödeme", () => {
   });
 });
 
+/* ── Gösterilen oran ─────────────────────────────────────────────────────── */
+
+describe("ekranda oran ile ödül aynı hikâyeyi anlatıyor", () => {
+  /**
+   * ⚠️ BU, YUKARIDAKİ DÜZELTMENİN YAN ETKİSİYDİ. Ödül dürüst hâle getirildi
+   * ama gösterilen oran HAM `calcOdds` olarak kaldı; kart ikisini YAN YANA
+   * basıyor (mobile/components/QuickPickCard.tsx):
+   *     <Text>{odd.toFixed(2)}</Text>   <Text>+{reward} LC</Text>
+   *
+   * ÖLÇÜLDÜ: altı gerçekçi durumun ikisi çelişiyordu — en kötüsü
+   * "Real Madrid–Erokspor deplasman: oran 300.94, ödül +7 LC". Düzeltmeden
+   * sonra o oran 4.00.
+   */
+  const gosterilen = require("../routes/daily-picks.cjs")._gosterilenOranlar;
+
+  test("gösterilen oran, ödülü belirleyen çarpanın kendisi", () => {
+    assert.equal(typeof gosterilen, "function", "_gosterilenOranlar disa acilmamis");
+    for (const [h, a] of MACLAR) {
+      const o = gosterilen(h, a);
+      for (const [oc, k] of [["H", "home"], ["D", "draw"], ["A", "away"]]) {
+        const beklenen = Math.round(MW.oddsMultiplier(h, a, oc) * 100) / 100;
+        assert.equal(o[k], beklenen, `${h}-${a} ${oc}: gosterilen oran odulun tabaniyla ayni degil`);
+      }
+    }
+  });
+
+  test("gösterilen oran ham oranın üst sınırını aşmıyor", () => {
+    // Ham `calcOdds` 300'e cikabiliyor; gosterim sikistirilmis araligin
+    // disina TASMAMALI, yoksa celiski geri gelir.
+    const TAVAN = 4.0;
+    for (const [h, a] of MACLAR) {
+      const o = gosterilen(h, a);
+      for (const k of ["home", "draw", "away"]) {
+        assert.ok(o[k] <= TAVAN + 1e-9, `${h}-${a} ${k}: gosterilen oran ${o[k]} > ${TAVAN}`);
+      }
+    }
+  });
+
+  test("ESKİ gösterim çelişkiliydi (bulgunun büyüklüğü)", () => {
+    const celiskili = [];
+    for (const [h, a] of MACLAR) {
+      const ham = calcOdds(h, a);
+      for (const [oc, k] of [["H", "home"], ["A", "away"]]) {
+        const kisik = MW.oddsMultiplier(h, a, oc);
+        if (Math.abs(ham[k] - kisik) > 0.01) celiskili.push(`${h}-${a} ${oc}: ${ham[k]} vs ${kisik}`);
+      }
+    }
+    assert.ok(
+      celiskili.length >= 2,
+      `eski gosterim artik celiskili degil — olcum bayatlamis olabilir: ${JSON.stringify(celiskili)}`
+    );
+  });
+});
+
 /* ── Nöbetçi ────────────────────────────────────────────────────────────── */
 
 /** Yorumları boşaltır. */
