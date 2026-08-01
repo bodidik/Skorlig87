@@ -17,6 +17,7 @@ const { rankRows, rankingMeta } = require("../lib/ranking.cjs");
 // Bot ayrimi: kullanici kiminle yaristigini gormeli (bkz. scopedRank).
 const { BOT_PROFILE_MAP } = require("../lib/botIds.cjs");
 const { attachCountries, countryOfUser } = require("../lib/user-country.cjs");
+const { normalizeCountry } = require("../lib/countries.cjs");
 const Season = require("../lib/season.cjs");
 const premium = require("../lib/premium.cjs");
 
@@ -56,15 +57,37 @@ async function scopedRank(rawRows, { scope, country, humansOnly }, db) {
   // sıralamada rakip olmak için değil.
   const insanFiltreli = humansOnly ? isaretli.filter((r) => !r.isBot) : isaretli;
 
+  /* ⚠️ ÜLKE KARŞILAŞTIRMASI KANONİK AD ÜZERİNDEN.
+   *
+   * BULUNAN: filtre HAM eşitlikti (`r.country === wantCountry`). `country`
+   * parametresi istemciden geliyor ve ucun kendi belgesi `country=Japan`
+   * diyor — yani ad bekleniyor, ama takma adı gönderen sessizce BOŞ liste
+   * alıyordu.
+   *
+   * ÖLÇÜLDÜ (gerçek rota, üç Türkiyeli oyuncu):
+   *     ?country=Türkiye  → 3 satır
+   *     ?country=Turkey   → 0 satır   applied:"country", poolSize:0
+   *     ?country=Turkiye  → 0 satır
+   *     ?country=TÜRKİYE  → 0 satır
+   * Hata yok, uyarı yok — yalnızca boş tablo.
+   *
+   * `lib/countries.cjs` tam bu iş için var ve kullanıcı ülkesi yazılırken
+   * (routes/live2.cjs) zaten kullanılıyordu; OKUMA tarafında kullanılmıyordu.
+   *
+   * ⚠️ İKİ TARAF DA NORMALLEŞTİRİLİYOR: satırdaki ülke eski/ham yazımda
+   * kalmış olabilir (bot segment haritası, göç öncesi kayıtlar). Tek tarafı
+   * çevirmek aynı bölünmeyi başka yönden üretirdi. */
   const wantCountry = scope === "country" ? String(country || "").trim() : null;
-  const pool = wantCountry
-    ? insanFiltreli.filter((r) => r.country === wantCountry)
+  const wantKanonik = wantCountry ? normalizeCountry(wantCountry) : null;
+  const pool = wantKanonik
+    ? insanFiltreli.filter((r) => r.country && normalizeCountry(r.country) === wantKanonik)
     : insanFiltreli;
 
   return {
     rows: rankRows(pool),
     scope: wantCountry ? "country" : "global",
-    country: wantCountry || null,
+    // Yanıtta KANONİK ad dönüyor: istemci ne gönderirse göndersin aynı etiket.
+    country: wantKanonik || null,
     poolSize: pool.length,
     humansOnly: !!humansOnly,
     botCount: isaretli.filter((r) => r.isBot).length,
