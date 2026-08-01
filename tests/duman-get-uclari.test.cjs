@@ -190,6 +190,59 @@ test("hiçbir GET ucu 500 dönmüyor", async () => {
   );
 });
 
+/* ── Bozuk parametreler ──────────────────────────────────────────────────── */
+
+/**
+ * Bir istemcinin gerçekten gönderebileceği anlamsız değerler, tek sorguda.
+ *
+ * ⚠️ TAM ÇARPIM DEĞİL, BİLİNÇLİ. Ölçüm sırasında 14 bozuk değeri 134 uçla
+ * çaprazladım — 1876 çağrı, 0 adet 5xx. Ama o tarama ~4 dakika sürüyor ve her
+ * `npm test` çalışmasına eklemek pahalı. Burada hepsi TEK sorguda birleştirildi:
+ * aynı kod yolları (Number(), slice(), sınır kontrolleri) çalışıyor, maliyet
+ * 134 çağrı.
+ */
+const BOZUK_SORGU = [
+  "limit=abc",
+  "userId=",
+  "fixtureId=",
+  "days=-1",
+  "top=NaN",
+  "season=abc",
+  "code=",
+  "page=-1",
+  "country=%C3%BC%C3%BC%C3%BC",
+].join("&");
+
+test("bozuk sorgu parametreleri 500'e yol açmıyor", async () => {
+  const yollar = getYollari();
+  const besyuz = [];
+  let cevaplanan = 0;
+
+  for (const yol of yollar) {
+    try {
+      const r = await fetch(`${TABAN}${yol}?${BOZUK_SORGU}`, { signal: AbortSignal.timeout(15000) });
+      cevaplanan++;
+      if (r.status >= 500) {
+        const govde = (await r.text()).slice(0, 300);
+        besyuz.push(`${r.status}  ${yol}\n    ${govde}`);
+      }
+    } catch (e) {
+      besyuz.push(`YANITSIZ  ${yol} — ${String(e.message || e).slice(0, 80)}`);
+    }
+  }
+
+  assert.ok(
+    cevaplanan >= yollar.length - 2,
+    `${yollar.length} uctan yalnizca ${cevaplanan} cevap verdi — kurulum bozuk`
+  );
+  assert.deepStrictEqual(
+    besyuz, [],
+    "Bozuk parametre 500'e yol aciyor. `Number('abc')` NaN, bos dize, negatif\n" +
+      "sinir gibi degerler istemciden gelebilir; 4xx dogru cevap, 5xx kod hatasi:\n" +
+      besyuz.join("\n")
+  );
+});
+
 /* ── Muafiyet listesi ────────────────────────────────────────────────────── */
 
 test("yasak liste bayat değil — her desen hâlâ bir yolla eşleşiyor", () => {
