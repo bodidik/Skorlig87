@@ -44,6 +44,35 @@ const SAAT = (() => {
 
 const DATA_DIR = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 
+/**
+ * İKİNCİ KANIT KAYNAĞI: `data/live/<fixtureId>.json` durum dosyaları.
+ *
+ * ⚠️ NEDEN GÜVENİLİR: `routes/settle2.cjs` maçın skorunu TAM BU DOSYADAN
+ * okuyup parayı ona göre dağıtıyor. Yani "durum dosyası FT ve skor tam" demek,
+ * ödeme zincirinin kanıt saydığı şeyin ta kendisi.
+ *
+ * ⚠️ YALNIZCA `FT`. Ölçüldü: kalan 83 kaydın 54'ünde durum dosyası var ama
+ * 16'sında durum hâlâ `LIVE` — oradaki skor MAÇ ORTASI olabilir (ör.
+ * "Gornik Zabrze 1-1 Fenerbahce", senkron durduğu andaki skor). Onu final
+ * saymak yanlış skor yazmak olurdu. 38'i `FT` ve skoru tam; yalnızca onlar
+ * kullanılıyor.
+ */
+function durumDosyasiSonuclari(idler) {
+  const harita = new Map();
+  const dizin = path.join(DATA_DIR, "live");
+  for (const id of idler) {
+    const p = path.join(dizin, String(id) + ".json");
+    if (!fs.existsSync(p)) continue;
+    try {
+      const st = JSON.parse(fs.readFileSync(p, "utf8"));
+      if (String(st?.status || "").toUpperCase() !== "FT") continue;
+      if (!skorOk(st?.score)) continue;
+      harita.set(String(id), st.score);
+    } catch { /* bozuk dosya — yok say */ }
+  }
+  return harita;
+}
+
 /** Sonuç kaynağı: fixtureId → finalScore. Mongo varsa oradan, yoksa dosyadan. */
 async function sonucHaritasi(db) {
   const harita = new Map();
@@ -90,19 +119,28 @@ async function main() {
   const simdi = Date.now();
   const sinir = SAAT * 3600 * 1000;
 
-  const kapatilacak = [];
-  const sonucsuz = [];
+  // Önce eski LIVE kayıtları belirle, sonra ikinci kaynağı YALNIZCA onlar için oku.
+  const eskiler = [];
   let live = 0;
-
   for (const f of kayitlar) {
     if (String(f?.status || "").toUpperCase() !== "LIVE") continue;
     live++;
     const ko = Date.parse(f.kickoffISO || f.kickoff || "");
-    if (!Number.isFinite(ko) || simdi - ko < sinir) continue;
+    if (Number.isFinite(ko) && simdi - ko >= sinir) eskiler.push(f);
+  }
+  const durumSonuc = durumDosyasiSonuclari(eskiler.map((f) => f.fixtureId));
 
-    const skor = sonuclar.get(String(f.fixtureId));
-    if (skorOk(skor)) kapatilacak.push({ f, skor });
-    else sonucsuz.push(f);
+  const kapatilacak = [];
+  const sonucsuz = [];
+  let kaynakMR = 0, kaynakDurum = 0;
+
+  for (const f of eskiler) {
+    const id = String(f.fixtureId);
+    const mr = sonuclar.get(id);
+    if (skorOk(mr)) { kapatilacak.push({ f, skor: mr, kaynak: "match_results" }); kaynakMR++; continue; }
+    const ds = durumSonuc.get(id);
+    if (skorOk(ds)) { kapatilacak.push({ f, skor: ds, kaynak: "durum-dosyasi" }); kaynakDurum++; continue; }
+    sonucsuz.push(f);
   }
 
   console.log(`kaynak            : ${db ? "MongoDB" : FIX_FILE}`);
@@ -110,13 +148,15 @@ async function main() {
   console.log(`LIVE kayit        : ${live}`);
   console.log(`${SAAT} saatten eski   : ${kapatilacak.length + sonucsuz.length}`);
   console.log(`  sonucu BILINEN  : ${kapatilacak.length}  → FT yapilacak`);
+  console.log(`     match_results : ${kaynakMR}`);
+  console.log(`     durum dosyasi : ${kaynakDurum}  (yalnizca status=FT olanlar)`);
   console.log(`  sonucu bilinmeyen: ${sonucsuz.length}  → DOKUNULMAYACAK`);
 
   if (kapatilacak.length) {
     console.log("\nornek (ilk 5):");
-    for (const { f, skor } of kapatilacak.slice(0, 5)) {
+    for (const { f, skor, kaynak } of kapatilacak.slice(0, 5)) {
       const yas = ((simdi - Date.parse(f.kickoffISO || f.kickoff)) / 3600000).toFixed(1);
-      console.log(`   ${f.fixtureId}  ${f.home} - ${f.away}  ${skor.home}-${skor.away}  (${yas} saat once)`);
+      console.log(`   ${f.fixtureId}  ${f.home} - ${f.away}  ${skor.home}-${skor.away}  (${yas} saat once, ${kaynak})`);
     }
   }
 
