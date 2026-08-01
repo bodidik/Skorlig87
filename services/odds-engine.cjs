@@ -535,13 +535,80 @@ const TEAM_RATINGS = {
 const DEFAULT_RATING = 65;
 const HOME_ADVANTAGE = 3;
 
+/* ── Takım adı çözümleme ─────────────────────────────────────────────────────
+ *
+ * ⚠️ BULUNAN: `getRating` yalnızca BİREBİR ve büyük/küçük harf eşleşmesi
+ * yapıyordu. Gerçek fikstür verisi ise tam resmî adlarla geliyor
+ * ("Manchester United FC", "Grêmio FBPA", "SC Corinthians Paulista") —
+ * tablodaki kısa adlarla eşleşmiyor ve hepsi DEFAULT_RATING'e düşüyordu.
+ *
+ * ÖLÇÜLDÜ (data/fixtures.json, 1449 maç, 2514 tekil takım adı):
+ *     derecelendirmesi bulunan : 321  (%12.8)
+ *     varsayilana düşen        : 2193 (%87.2)
+ *
+ * Sonuç yalnızca kozmetik değil: `calcOdds` iki takımı da aynı güçte sayınca
+ * o maçın TÜM sonuçları eşit oran alıyor. Bu da düello puanını
+ * (`routes/duels.cjs` → calcOdds), gösterilen ödülü (`routes/daily-picks.cjs`
+ * → oddsMultiplier) ve düello denge kapısını (`lib/mac-denge.cjs`
+ * favoriOlasiligi) birden etkiliyor — dengesiz bir maç "dengeli" görünüyor.
+ *
+ * ⚠️ NORMALLEŞTİRME `livescore-sync.cjs`'te ZATEN VARDI, burada yoktu — bu
+ * oturumun tekrar eden kalıbı: aynı savunma bir yerde var, ötekinde yok.
+ *
+ * Kazanç ölçüldü: +148 takım (%12.8 → %18.7). Kalan %81 tabloda gerçekten
+ * yok (dünya çapında alt ligler); onlar için varsayılan doğru davranış.
+ *
+ * ⚠️ BELİRSİZ ANAHTARLAR DIŞLANIYOR. Normalleştirme iki FARKLI kulübü aynı
+ * ada indirebiliyor — ölçüldü, tam iki tane: "Barcelona"(95) ile
+ * "Barcelona SC"(68, Ekvador), ve "Nacional"(64) ile "Club Nacional"(71).
+ * Bunları tahmin etmek yanlış oran üretirdi; normalleştirilmiş indekse
+ * alınmıyorlar, birebir adlarıyla zaten çözülüyorlar.
+ */
+const AFFIX_RE =
+  /\b(fc|sc|sk|cf|ac|as|afc|cd|ud|sv|vfb|vfl|fk|if|bk|nk|hk|ks|cs|rc|sd|ca|cr|ec|af|fr|fbpa|fbc|club|clube|futebol|futbol|calcio|spor|kulubu|sad|aa)\b/g;
+
+function normAd(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[İı]/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
+    .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[._\-]/g, " ")
+    .replace(AFFIX_RE, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/* İndeksler bir kez kurulur — eski kod her çağrıda 1006 girdiyi tarıyordu. */
+let _kucukIdx = null;
+let _normIdx = null;
+function _indeksler() {
+  if (_kucukIdx) return;
+  _kucukIdx = new Map();
+  const gecici = new Map();
+  for (const [k, v] of Object.entries(TEAM_RATINGS)) {
+    const kucuk = k.toLowerCase();
+    if (!_kucukIdx.has(kucuk)) _kucukIdx.set(kucuk, v);
+    const n = normAd(k);
+    if (!n) continue;
+    if (!gecici.has(n)) gecici.set(n, new Set());
+    gecici.get(n).add(v);
+  }
+  _normIdx = new Map();
+  for (const [n, degerler] of gecici) {
+    // Tek bir derecelendirmede uzlaşıyorsa güvenli; değilse tahmin etme.
+    if (degerler.size === 1) _normIdx.set(n, [...degerler][0]);
+  }
+}
+
 function getRating(teamName) {
   if (!teamName) return DEFAULT_RATING;
   if (TEAM_RATINGS[teamName] != null) return TEAM_RATINGS[teamName];
-  const lower = teamName.toLowerCase();
-  for (const [k, v] of Object.entries(TEAM_RATINGS)) {
-    if (k.toLowerCase() === lower) return v;
-  }
+  _indeksler();
+  const kucuk = String(teamName).toLowerCase();
+  if (_kucukIdx.has(kucuk)) return _kucukIdx.get(kucuk);
+  const n = normAd(teamName);
+  if (n && _normIdx.has(n)) return _normIdx.get(n);
   return DEFAULT_RATING;
 }
 
