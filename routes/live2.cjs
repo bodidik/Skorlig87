@@ -172,9 +172,15 @@ async function readJson(file, fb) {
   }
 }
 
+/**
+ * ⚠️ ATOMİK: geçici dosyaya yaz + rename. Doğrudan hedefe yazmak, aynı dosyayı
+ * (özellikle providers.json kota sayacını) okuyan başka bir modüle YARIM JSON
+ * gösteriyordu — ölçüldü: 662 okumanın 81'i JSON.parse ile patladı ve her
+ * okuyucu hatayı yutup varsayılana düşüyor, yani kota SIFIR görünüyor.
+ */
+const { writeJsonAtomic } = require("../lib/fileLock.cjs");
 async function writeJson(file, data) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
+  return writeJsonAtomic(file, data);
 }
 
 function parseKickoffMs(item) {

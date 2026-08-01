@@ -57,10 +57,12 @@ async function readJson(file, fb) {
     return fb;
   }
 }
-async function writeJson(file, data) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
-}
+/**
+ * ⚠️ ATOMİK YAZMA. Doğrudan hedefe yazmak, aynı dosyayı okuyan başka bir
+ * modüle YARIM JSON gösteriyordu (ölçüldü: 662 okumanın 81'i patladı) ve her
+ * okuyucu hatayı yutup varsayılana düşüyor — kota sayacı sıfır görünüyor.
+ */
+const { withFileLock, writeJsonAtomic: writeJson } = require("../lib/fileLock.cjs");
 
 function ymdInTZ(ms, tz) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -78,7 +80,17 @@ async function afBudget() {
   return { ok: used < daily - DAILY_RESERVE, used, daily };
 }
 
+/**
+ * ⚠️ KİLİTLİ. Bu sayaç, ücretsiz AF kotasını (100 istek/gün) koruyan tek şey.
+ * Kilitsiz "oku → +1 → yaz" iken eşzamanlı çağrılar birbirini eziyordu
+ * (ölçüldü: 40 istek → sayaçta 1). Anahtar aynı dosya yolu, yani
+ * lib/providers.cjs ile AYNI sıraya giriyor.
+ */
 async function bumpAf(ok, ms) {
+  return withFileLock(PROV_FILE, () => _bumpAf(ok, ms));
+}
+
+async function _bumpAf(ok, ms) {
   try {
     const m = (await readJson(PROV_FILE, null)) || {};
     m.quotas ||= {};
