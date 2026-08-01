@@ -23,6 +23,7 @@
 
 const { bayatMi } = require("../lib/bayat-mac.cjs");
 const { creditLc, kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
+const { kritikIs } = require("../lib/kritik-is.cjs");
 const { DURUM, PARA_TUTAN } = require("../lib/duel-durum.cjs");
 
 const { MAC_GIRIS_BEDELI } = require("../lib/ekonomi.cjs");
@@ -270,7 +271,30 @@ async function havuzlariTemizle(db, simdi = null) {
 
 /* ── Tur ─────────────────────────────────────────────────────────────────── */
 
+/**
+ * ⚠️ KRİTİK İŞ SAYACINA DAHİL — EKSİKTİ.
+ *
+ * BULUNAN: `lib/kritik-is.cjs` tam bu durum için yazılmış; kendi başlığı
+ * "sorun ARKA PLAN servislerinde: zamanlayıcıyla çalışır, hiçbir isteğe bağlı
+ * değildir" diyor. Ama sayacı yalnızca `routes/settle2.cjs` kullanıyordu.
+ * Bu servis de zamanlayıcıyla çalışıyor (6 saatte bir) ve ÜÇ yerde LC iade
+ * ediyor (`duel_void_refund`, `pool_void_refund`, `pred_void_refund`).
+ *
+ * ÖLÇÜLDÜ (tur çalışırken sayaç örneklendi):
+ *     önce : aktifKritikIs() = 0  → kapanış beklemeden çıkardı
+ *     sonra: aktifKritikIs() = 1
+ *
+ * ⚠️ NEDEN ÖNEMLİ: bu servis de "MÜHÜR ÖNCE, ÖDEME SONRA" sırasını kullanıyor
+ * (dosya başlığı). SIGTERM ödeme sırasında düşerse düello/havuz iptal
+ * MÜHÜRLÜ kalır ama iade yatmaz — mühür yüzünden tekrar da denenmez.
+ * Render ücretsiz katmanda SIGTERM her deploy'da ve boşta uyutmada geliyor,
+ * yani çakışma kuramsal değil.
+ */
 async function tur(dbDisaridan = null, simdi = null) {
+  return kritikIs("bayat-temizleyici", () => _tur(dbDisaridan, simdi));
+}
+
+async function _tur(dbDisaridan = null, simdi = null) {
   const db = dbDisaridan || (await getDbSafe());
   if (!db) return { ok: false, reason: "NO_DB" };
 
