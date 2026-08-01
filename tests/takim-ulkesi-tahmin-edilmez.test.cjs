@@ -68,7 +68,17 @@ describe("kurulum", () => {
 /* ── Asıl değişmez ───────────────────────────────────────────────────────── */
 
 describe("belirsiz adlar tahmin edilmiyor", () => {
-  const BELIRSIZ = ["Inter", "Atlético", "Port", "Union", "Lokomotiv", "Athletic Club", "Aris"];
+  /**
+   * ⚠️ "Aris" BU LİSTEDEN ÇIKARILDI — ve nedeni bu testin iddiasını
+   * güçlendiriyor. Ölçüm sırasında "Aris" iki adaylıydı (Greece, France) ama
+   * Fransa adayı UYDURMAYDI: "aris" çekirdeği "p-ARIS" içinde, sözcüğün
+   * ORTASINDA eşleşiyordu. Sonraki turda içerme kuralı sözcük başına
+   * bağlanınca sahte aday düştü ve "Aris" → Greece tek doğru cevap oldu
+   * (bkz. tests/takim-eki-ve-sozcuk-basi.test.cjs).
+   *
+   * Yani belirsizlik korumasının kendisi doğru; girdi belirsiz DEĞİLDİ.
+   */
+  const BELIRSIZ = ["Inter", "Atlético", "Port", "Union", "Lokomotiv", "Athletic Club"];
 
   for (const ad of BELIRSIZ) {
     test(`"${ad}" ülke ATAMIYOR`, () => {
