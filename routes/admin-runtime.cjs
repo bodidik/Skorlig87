@@ -63,6 +63,8 @@ async function writeJsonAtomic(file, data) {
    - fixtures.json formatı projende bazen {fixtures:[...]} / {items:[...]} / direkt [...]
    ========================================================= */
 const FixturesStore = require("../lib/fixtures-store.cjs");
+const MatchResults = require("../lib/match-results.cjs");
+const SkorUyusmazlik = require("../lib/skor-uyusmazlik.cjs");
 
 // Fikstürler Mongo birincil (bkz. lib/fixtures-store.cjs). Admin'in elle
 // eklediği/sildiği maçlar da oraya gider; eskiden yalnızca dosyaya yazılıyordu
@@ -467,7 +469,44 @@ router.post("/results/set", requireAdminToken, express.json(), async (req, res) 
       console.error("RESULTS_SET_RT_LIVE_GS_SYNC_FAILED", e);
     }
 
-    return res.json({ ok: true, fixtureId, saved: rec });
+    /* ⚠️ UZLAŞMIŞ MAÇIN SKORUNU DEĞİŞTİRMEK İZ BIRAKMALI.
+     *
+     * BULUNAN: `lib/skor-uyusmazlik.cjs` tam bu senaryo için yazılmış — kendi
+     * başlığı "VAR kararı, kaynak düzeltmesi, YANLIŞ EŞLEŞEN MAÇIN
+     * DÜZELTİLMESİ" diyor. Ama yalnızca OTOMATİK yola bağlanmıştı
+     * (services/livescore-sync.cjs). Yöneticinin ELLE düzeltmesi — yani post
+     * settle skor değişiminin en olası kaynağı — hiçbir iz bırakmıyordu.
+     *
+     * ÖLÇÜLDÜ (gerçek rota): uzlaşmış maç 1-0 → 2-2 yapıldı,
+     *     yanıt {ok:true}, score_mismatch kaydı 0, uyarı yok.
+     *
+     * OTOMATİK DÜZELTME YOK, BİLEREK — modülün kararı: dağıtılmış LC'yi geri
+     * almak bakiyeyi eksiye düşürebilir. Burada yapılan tek şey durumu
+     * GÖRÜNÜR kılmak, üstelik iki yönlü: kalıcı kayıt + yanıtta uyarı, ki
+     * yöneticiye "bu maç zaten ödendi" desin.
+     */
+    let uyari = null;
+    try {
+      const dbU = req.app?.locals?.db || null;
+      if (dbU) {
+        const snap = await MatchResults.getSnapshot(fixtureId, dbU);
+        if (snap?.awardedAt && SkorUyusmazlik.farkliMi(snap.finalScore, { home, away })) {
+          await SkorUyusmazlik.kaydet(dbU, {
+            fixtureId,
+            mac: `${fx.home || "?"} - ${fx.away || "?"}`,
+            muhurluSkor: snap.finalScore,
+            guncelSkor: { home, away },
+            kaynak: "admin-results-set",
+          });
+          uyari = "UZLASMA_SONRASI_SKOR_DEGISTI";
+        }
+      }
+    } catch (e) {
+      // Kayıt tutulamaması, sonucun yazılmasını engellememeli.
+      console.error("RESULTS_SET_MISMATCH_LOG_FAILED", e?.message || e);
+    }
+
+    return res.json({ ok: true, fixtureId, saved: rec, uyari });
   } catch (e) {
     console.error("ADMIN_RESULTS_SET_FAILED", e);
     return res.status(500).json({
