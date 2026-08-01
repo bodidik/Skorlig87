@@ -73,6 +73,12 @@ async function recordCorrect(userId, fixtureId, odds) {
     s.activeSeries = true;
     s.seriesCumOdds = 0;
     s.seriesCount = 0;
+    /* ⚠️ `recordBatch` bunu yapıyordu, burada EKSİKTİ. Normal akışta
+     * `recordWrong` seriyi kırarken zaten -1'e çekiyor, o yüzden ölçülebilir
+     * bir kayıp bulamadım — abartmıyorum. Ama `activeSeries: false` ile
+     * `lastTier >= 0` bir arada kalan eski bir kayıt gelirse yeni seri,
+     * hak edilmemiş bir eşikten devam ederdi. İki kopya AYNI olmalı. */
+    s.lastTier = -1;
   }
   s.seriesCumOdds = +(s.seriesCumOdds + odds).toFixed(2);
   s.seriesCount += 1;
