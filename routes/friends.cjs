@@ -483,7 +483,9 @@ router.get("/search", async (req, res) => {
 
     if (!q) return res.status(400).json({ ok:false, error:"Q_REQUIRED" });
 
-    const ql = q.toLowerCase();
+    /* Türkçe-duyarsız desen — depo katmanıyla AYNI fonksiyon.
+     * `ql` düz küçültme yapıyordu ve aramayı Türkçe adlarda kırıyordu. */
+    const TR_DESEN = UsersStore._trAramaDeseni(q);
 
     // Depoda arama — eskiden TÜM kullanıcılar belleğe alınıp JS'te süzülüyordu.
     // Sonuç sayısı sınırlı; aşağıdaki döngü ayrıca engelli/kendisi elemesi
@@ -529,12 +531,36 @@ router.get("/search", async (req, res) => {
       // kendisi
       if (me && uid === me) continue;
 
-      const name = String(u.name || "").trim();
+      /**
+       * ⚠️ YALNIZCA ESKİ `name` ALANINA BAKIYORDU — ARAMA HERKESİ KAÇIRIYORDU.
+       *
+       * Kullanıcı adı `/set-nickname` ile `nickname` alanına yazılıyor; `name`
+       * eski şemadan kalma ve yeni hesaplarda BOŞ. Depo katmanı (`searchUsers`)
+       * nickname üzerinden doğru buluyordu, sonra buradaki süzgeç yalnızca
+       * `uid` ve `name`e bakıp hepsini atıyordu.
+       *
+       * ÖLÇÜLDÜ (2026-08-02, sunucu yeniden başlatıldıktan sonra CANLI):
+       *     depo  : ara("ali") -> Ali,  ara("ismail") -> İsmail
+       *     rota  : count: 0, items: []          <- hepsi düştü
+       * Yani arkadaş arama, adı nickname'de olan herkes için sessizce boş
+       * dönüyordu — Türkçe harfle ilgisi olmayan, daha geniş bir kırık.
+       */
+      const name = String(u.nickname || u.displayName || u.name || "").trim();
 
-      // match
-      const hit =
-        uid.toLowerCase().includes(ql) ||
-        name.toLowerCase().includes(ql);
+      /**
+       * ⚠️ BU SATIR DEPODAKİ TÜRKÇE DÜZELTMESİNİ GERİ ALIYORDU.
+       *
+       * `UsersStore.searchUsers` Türkçe-duyarsız desenle arıyor (bkz.
+       * trAramaDeseni) ve "ismail" için "İsmail"i buluyor. Sonra burası
+       * sonucu DÜZ `toLowerCase().includes()` ile yeniden süzüyordu:
+       *     "İsmail".toLowerCase() === "i" + U+0307 + "smail"
+       *     -> .includes("ismail") === false  -> kayit ATILIYOR
+       *
+       * Yani uçtan uca arama hâlâ kırıktı; depo katmanındaki düzeltme
+       * kullanıcıya hiç ulaşmıyordu. Canlı sunucuda doğrulanınca çıktı.
+       * Aynı desen paylaşılıyor ki iki katman bir daha ayrışmasın.
+       */
+      const hit = TR_DESEN.test(uid) || TR_DESEN.test(name);
 
       if (!hit) continue;
 

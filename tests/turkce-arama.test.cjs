@@ -127,6 +127,48 @@ describe("Türkçe arama", () => {
     assert.deepEqual(await ara(".*"), [], "joker sorgu tum listeyi donduruyor");
   });
 
+  test("UÇTAN UCA: /api/friends/search gerçekten buluyor", { skip: atla() && sebep }, async () => {
+    /**
+     * ⚠️ DEPO KATMANINI SINAMAK YETMEDİ — ilk düzeltmem KULLANICIYA HİÇ
+     * ULAŞMIYORDU. Sunucu yeniden başlatılıp CANLI sınandığında çıktı:
+     *
+     *     depo : ara("ali") -> Ali,  ara("ismail") -> İsmail
+     *     rota : count: 0, items: []            <- hepsi düşüyordu
+     *
+     * İKİ ayrı sebep vardı, ikisi de rotada:
+     *   1) Rota sonucu DÜZ `toLowerCase().includes(ql)` ile yeniden süzüyordu;
+     *      "İsmail".toLowerCase() = "i"+U+0307+"smail", `includes("ismail")`
+     *      false. Depodaki Türkçe düzeltmesi geri alınıyordu.
+     *   2) Süzgeç yalnızca ESKİ `name` alanına bakıyordu; kullanıcı adı
+     *      `nickname`e yazılıyor ve yeni hesaplarda `name` BOŞ. Yani adı
+     *      nickname'de olan HERKES aranamıyordu — Türkçe harfle ilgisi
+     *      olmayan, daha geniş bir kırık.
+     *
+     * Bu test o yüzden UCU dövüyor, fonksiyonu değil.
+     */
+    const express = require("express");
+    const app = express();
+    app.use((q, _r, n) => { q.app.locals.db = db; n(); });
+    app.use("/api/friends", require("../routes/friends.cjs"));
+    const srv2 = app.listen(0);
+    const port = srv2.address().port;
+    try {
+      const uc = async (q) => {
+        const r = await fetch(`http://127.0.0.1:${port}/api/friends/search?q=${encodeURIComponent(q)}&limit=10`,
+          { signal: AbortSignal.timeout(6000) });
+        const j = await r.json();
+        return (j.items || []).map((x) => x.name);
+      };
+      assert.deepEqual(await uc("ali"), ["Ali"], "ASCII ad UCTAN UCA bulunamadi");
+      assert.deepEqual(await uc("ismail"), ["İsmail"], "Turkce ad UCTAN UCA bulunamadi — rota depoyu geri aliyor");
+      assert.deepEqual(await uc("Ismail"), ["İsmail"], "buyuk harfli ASCII sorgu uctan uca bulamadi");
+      assert.deepEqual(await uc("sule"), ["Şule"]);
+      assert.deepEqual(await uc("zzz"), [], "alakasiz sorgu sonuc donduruyor");
+    } finally {
+      srv2.close();
+    }
+  });
+
   test("Mongo yolu ile dosya yedeği AYNI sonucu verir", { skip: atla() && sebep }, async () => {
     /**
      * ⚠️ İLK DÜZELTMEM YALNIZCA DOSYA YEDEĞİNE UYGULANMIŞTI ve ölçüm
