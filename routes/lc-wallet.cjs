@@ -1274,6 +1274,22 @@ router.post("/lc-wallet/premium/subscribe", verifyToken, express.json(), async (
 });
 
 module.exports = router;
-// Test icin: magaza modunun VARSAYILANI kapali olmali. Varsayilan 
+// Test icin: magaza modunun VARSAYILANI kapali olmali. Varsayilan
 // iken degiskeni ayarlamayi unutmak "herkese bedava LC" demekti.
 module.exports._STORE_MODE = STORE_MODE;
+
+/* ⚠️ GÜNLÜK HAK FONKSİYONLARI DIŞA AÇILDI — TEST KENDİ KOPYASINI
+ * YAZIYORDU. `tests/economy.test.cjs` içinde
+ *     const gunluk = (bakiye, taban) => bakiye >= taban ? 0 : taban - bakiye;
+ * satırı vardı: üretimdeki `gunlukMiktar` değişse test YİNE YEŞİL kalırdı.
+ * Yani ekonominin en kritik anti-enflasyon kuralı ("zengine verme") fiilen
+ * denetimsizdi. Artık test gerçek fonksiyonu çağırıyor.
+ *
+ * Kademe sabitleri de açıldı ki testler değişmezleri VERİYLE doğrulasın:
+ * taban, maç giriş bedelinin 3 katından az kalmalı — yoksa her şeyini
+ * kaybeden oyuncu ertesi gün tam tamamlanır ve KAYBETMEK BEDAVA olur. */
+module.exports._gunlukMiktar = gunlukMiktar;
+module.exports._gunlukTaban = gunlukTaban;
+module.exports._TABANLAR = {
+  DAILY_FLOOR, DAILY_FLOOR_3, DAILY_FLOOR_7, DAILY_FLOOR_PREM,
+};

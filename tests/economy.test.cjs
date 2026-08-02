@@ -69,11 +69,30 @@ describe("günlük hak — tabana tamamlama", () => {
   // Kullanıcı isteği (2026-07-30): temel miktar 3-4 LC yeterli, üst üste
   // alana bonus olsun. Bonus TABANI YÜKSELTEREK verilir — koşulsuz ekleme
   // birikir, tamamlama birikmez.
-  const TABAN = 3;        // 1-2. gün
-  const TABAN_3 = 5;      // 3-6. gün
-  const TABAN_7 = 7;      // 7+ gün
-  const gunluk = (bakiye, taban = TABAN) =>
-    bakiye >= taban ? 0 : Math.round((taban - bakiye) * 10) / 10;
+  /**
+   * ⚠️ BU BLOK KURALI YENİDEN YAZIYORDU — YANİ BOŞ YERE YEŞİLDİ.
+   * Eskiden burada üretimdeki formülün bir KOPYASI vardı:
+   *     const gunluk = (b, taban) => b >= taban ? 0 : taban - b;
+   * `routes/lc-wallet.cjs gunlukMiktar` değişse bu test YİNE geçerdi; yani
+   * ekonominin en kritik anti-enflasyon kuralı ("zengine verme") fiilen
+   * denetimsizdi. Artık GERÇEK fonksiyon çağrılıyor.
+   * Kapsamlı değişmezler: tests/ekonomi-enflasyon-guvencesi.test.cjs
+   */
+  const Wallet = require("../routes/lc-wallet.cjs");
+  const TABANLAR = Wallet._TABANLAR;
+  const TABAN = TABANLAR.DAILY_FLOOR;      // 1-2. gün
+  const TABAN_3 = TABANLAR.DAILY_FLOOR_3;  // 3-6. gün
+  const TABAN_7 = TABANLAR.DAILY_FLOOR_7;  // 7+ gün
+  /**
+   * Gerçek üretim fonksiyonu. Çağıranlar TABANI veriyor; `gunlukMiktar` ise
+   * (bakiye, premium, seri) alıyor — taban oradan türetiliyor. Bu sarmalayıcı
+   * istenen tabanı üretecek girdiyi seçiyor.
+   */
+  const gunluk = (bakiye, taban = TABAN) => {
+    if (taban === TABANLAR.DAILY_FLOOR_PREM) return Wallet._gunlukMiktar(bakiye, true, 0);
+    const seri = taban === TABAN_7 ? 7 : taban === TABAN_3 ? 3 : 0;
+    return Wallet._gunlukMiktar(bakiye, false, seri);
+  };
 
   test("parasız oyuncuya tabana kadar verilir", () => {
     assert.equal(gunluk(0), 3, "1-2. günde temel taban");
