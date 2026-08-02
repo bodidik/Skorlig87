@@ -172,8 +172,38 @@ async function runResultNotices() {
     // En yüksek puandan sıralayıp herkese kendi sırasını bildir
     const ranked = [...s.rows].sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
     const total  = ranked.length;
+    /**
+     * ⚠️ ADSIZ BİLDİRİM GÖNDERME — ÇÖP PUSH, PUSH'U TÜMDEN KAPATTIRIR.
+     *
+     * ÖLÇÜLDÜ (2026-08-02, 1186 gerçek snapshot): 4 tanesi bozuk başlık
+     * üretiyordu ve bunlar kullanıcının KİLİT EKRANINA gidiyordu:
+     *
+     *     "Ev – Deplasman bitti 3-1"          (meta var, takım adı yok  ×3)
+     *     "MK-LAGALA-2026-08-02-DALLAS bitti " (meta yok + skor yok     ×1)
+     *
+     * `fmtMatch` boş alanları "Ev"/"Deplasman" ile dolduruyor; kod içinde
+     * makul bir yedek ama BİLDİRİM METNİNDE anlamsız.
+     *
+     * Önce fikstür kaydından tamamlanıyor (settle2'de puanlama için aynı
+     * yöntem kullanıldı: canlı durum dosyası home/away taşımıyor, fikstür
+     * kaydı taşıyor). Hâlâ adlandırılamıyorsa bildirim ATLANIYOR —
+     * yanlış bilgi vermektense susmak doğru.
+     */
     const score  = s.finalScore ? `${s.finalScore.home}-${s.finalScore.away}` : "";
-    const name   = s.meta ? fmtMatch(s.meta) : String(s.fixtureId);
+    let meta = s.meta;
+    if (!meta || !(meta.home || meta.homeTeam) || !(meta.away || meta.awayTeam)) {
+      try {
+        const FixturesStore = require("../lib/fixtures-store.cjs");
+        const fx = await FixturesStore.getOne(s.fixtureId, null);
+        if (fx && fx.home && fx.away) meta = { ...(meta || {}), home: fx.home, away: fx.away };
+      } catch { /* fikstur okunamadi — asagidaki kapi yakalar */ }
+    }
+    const adlandirildi = !!(meta && (meta.home || meta.homeTeam) && (meta.away || meta.awayTeam));
+    if (!adlandirildi || !score) {
+      console.warn(`[push-sched] sonuc bildirimi ATLANDI (adsiz/skorsuz) fixture=${s.fixtureId}`);
+      continue;
+    }
+    const name = fmtMatch(meta);
 
     for (let i = 0; i < ranked.length; i++) {
       const row = ranked[i];
