@@ -849,10 +849,29 @@ router.get("/duels/open", async (req, res) => {
      * yalnızca arayüz ipucu, kapının kendisi /duels/create içinde. */
     const denge = await duelloyaUygunMu(fx, getDb(req));
 
+    /* ⚠️ KESİNTİ ORANI VE BAHİS SINIRLARI İSTEMCİYE BİLDİRİLİYOR.
+     *
+     * Mobil düello ekranı kazancı KENDİ hesaplıyordu:
+     *     Math.round(selectedStake * 2 * 0.95 * 10) / 10       (üç yerde)
+     * ve bahis seçeneklerini sabit tutuyordu: `STAKES = [1,2,3,5,8,10,12]`.
+     * Yani `HOUSE_CUT_PCT` ya da `MAX_STAKE` burada değişirse ekran kullanıcıya
+     * YANLIŞ kazanç vaat eder — üstelik bu vaat, bahsi KOYMADAN ÖNCE
+     * gösteriliyor (düello daha yok, `winAmount` da yok).
+     *
+     * ÖLÇÜLDÜ: bugün değerler birebir uyuşuyor (1–12 aralığında 0 fark), yani
+     * canlı bir kusur YOK. Kapatılan şey sapma ihtimali. Aynı sınıf bu depoda
+     * bir kez pahalıya patlamıştı: `lib/ekonomi.cjs macOdulu` notu, ekranın
+     * 3009 LC vaat edip cüzdana ≤15 geçtiğini ölçüyor.
+     *
+     * Yukarıdaki `duelloyaUygun` da aynı gerekçeyle gönderiliyor: kuralı
+     * sunucu bilir, istemci tahmin etmesin. */
     return res.json({
       ok: true, count: open.length, items: open,
       duelloyaUygun: denge.uygun,
       dengeOlasilik: denge.olasilik,
+      houseCutPct: HOUSE_CUT_PCT,
+      minStake: MIN_STAKE,
+      maxStake: MAX_STAKE,
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });

@@ -119,14 +119,34 @@ describe("ekran ile sunucu sözleşmesi", () => {
     );
   });
 
-  test("ekrandaki sabit kesinti oranı sunucununkiyle aynı", (t) => {
+  test("ekran kesinti oranını SUNUCUDAN alıyor (sabit çarpan YOK)", (t) => {
+    /**
+     * ⚠️ BU TESTİN İDDİASI TERSİNE DÖNDÜ — VE BU BİR İYİLEŞME.
+     *
+     * Eski hâli, ekranda `* 0.95` çarpanının BULUNMASINI şart koşuyordu:
+     * o gün elde tek koruma, iki sabitin eşit kaldığını doğrulamaktı. Ama
+     * eşitliği doğrulamak sapmayı ÖNLEMİYOR, yalnızca fark edilmesini
+     * sağlıyordu — üstelik sunucudaki oran env ile değiştirilirse
+     * (`SKORLIG_*`) test yeşil kalırken ekran yanlış kazanç vaat ederdi.
+     *
+     * 2026-08-03: `/duels/open` artık `houseCutPct`, `minStake`, `maxStake`
+     * gönderiyor ve ekran onu kullanıyor. Sapma STRUKTUREL olarak imkânsız;
+     * dolayısıyla artık sabit çarpanın YOKLUĞUNU doğruluyoruz.
+     *
+     * Ekranın hesabının sunucuyla aynı sonucu verdiği testi (yukarıdaki
+     * "ekran parayi yatirmadan ONCE...") yerinde duruyor — asıl güvence o.
+     */
     if (!fs.existsSync(EKRAN)) return t.skip("mobil deposu yok");
     const { CUT } = sunucuSabitleri();
     const src = ekranKaynagi();
-    const beklenen = String(1 - CUT);            // 0.05 → "0.95"
+    const eskiCarpan = String(1 - CUT);          // 0.05 → "0.95"
     assert.ok(
-      src.includes(`* ${beklenen} *`) || src.includes(`* ${beklenen})`),
-      `ekran ${beklenen} carpanini kullanmiyor — sunucudaki kesinti ${CUT} ile ayrismis olabilir`
+      !src.includes(`* ${eskiCarpan} *`) && !src.includes(`* ${eskiCarpan})`),
+      `ekran hala sabit ${eskiCarpan} carpani kullaniyor — sunucudaki kesinti degisirse yanlis odul gosterir`
+    );
+    assert.ok(
+      /houseCutPct/.test(src),
+      "ekran kesinti oranini sunucudan okumuyor"
     );
   });
 });
