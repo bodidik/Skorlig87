@@ -2,7 +2,7 @@
 
 const express = require("express");
 const router  = express.Router();
-const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
 const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const path    = require("path");
 const fs      = require("fs");
@@ -286,7 +286,28 @@ async function loadUserStatsCore(req, userId) {
  * Full JSON:
  *  { ok, userId, source, season, recentMatches, wallet, walletLedger }
  */
-router.get("/user", async (req, res) => {
+/**
+ * ⚠️ CÜZDAN VE DEFTER HERKESE AÇIKTI — DENETİMLİ OLARAK ÜRETİLDİ.
+ *
+ * `loadUserStatsCore` yanıta `wallet` (bakiye, toplam kazanç/harcama) ve
+ * `walletLedger` (TÜM işlem geçmişi) koyuyor. Uçta kimlik denetimi yoktu:
+ *     SAHİBİ     → bakiye 137 · 2 defter kaydı
+ *     SALDIRGAN  → AYNI
+ *     KİMLİKSİZ  → AYNI
+ * Kullanıcı kimlikleri sıralama tablosunda zaten görünür, yani herkesin
+ * parası ve harcama geçmişi okunabiliyordu.
+ *
+ * ⚠️ `lib/kimlik-kontrol.cjs` TAM BU KUSUR İÇİN YAZILMIŞ ve notu şöyle:
+ * "cüzdan uçlarında YAZMALARIN hepsinde verifyToken vardı, OKUMALARIN
+ * hiçbirinde yoktu." Düzeltme `lc-wallet` uçlarına uygulanmış, buraya
+ * dönülmemiş — aynı yarım-düzeltme izi.
+ *
+ * ⚠️ İSTATİSTİK GİZLİ DEĞİL, CÜZDAN GİZLİ. Profil ekranı başkasının puanını/
+ * formunu göstermeli (sıralamadan tıklanıyor); gizli olan yalnızca para.
+ * Bu yüzden uç kapatılmıyor, para alanları SAHİBİ DIŞINDA çıkarılıyor.
+ * `optionalToken`: misafir de profil görebilir.
+ */
+router.get("/user", optionalToken, async (req, res) => {
   try {
     const userId = String(req.query.userId || "").trim();
     if (!userId) {
@@ -297,8 +318,18 @@ router.get("/user", async (req, res) => {
 
     const core = await loadUserStatsCore(req, userId);
 
+    const kimlik = String(req.uid || "").trim();
+    const kendisi = !!kimlik && kimlik.toLowerCase() === userId.toLowerCase();
+    if (!kendisi) {
+      /* Para alanları yalnızca sahibine. Alanı `null` bırakmak yerine
+       * SİLMEK, istemcinin "0 LC" gibi yanlış bir şey göstermesini önler. */
+      delete core.wallet;
+      delete core.walletLedger;
+    }
+
     return res.json({
       ok: true,
+      kendisi,
       ...core,
     });
   } catch (e) {

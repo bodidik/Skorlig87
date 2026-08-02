@@ -19,7 +19,7 @@ const { ensurePredIndexes } = require("../lib/preds-index.cjs");
 const router = express.Router();
 
 const Pool = require("../lib/pool-store.cjs");
-const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
 const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const { BOT_PROFILE_MAP } = require("../lib/botIds.cjs");
 
@@ -61,13 +61,39 @@ async function tahminDagilimi(fixtureId, db) {
  * GET /api/pool/:fixtureId?userId=...
  * Havuz durumu + tahmin dağılımı + (userId verilmişse) kendi bahsi.
  */
-router.get("/:fixtureId", async (req, res) => {
+/**
+ * ⚠️ BAŞKASININ BAHSİ SIZIYORDU — DENETİMLİ OLARAK ÜRETİLDİ.
+ *
+ * `myBet` alanı `?userId=` parametresine güveniyordu; kimlik denetimi yoktu.
+ * Kickoff'a 3 saat kalan AÇIK bir maçta:
+ *     SAHİBİ     → {"outcome":"H","stake":5}
+ *     SALDIRGAN  → AYNI
+ *     KİMLİKSİZ  → AYNI
+ * Yani rakibin hangi sonuca ne kadar yatırdığı okunabiliyordu — havuzda
+ * bilgi, doğrudan paraya dönüşen bir avantaj.
+ *
+ * ⚠️ HAVUZ ÖZETİ VE DAĞILIM GİZLİ DEĞİL: ekranın işi zaten onları
+ * göstermek. Gizli olan yalnızca KİMİN ne yatırdığı. Bu yüzden uç
+ * kapatılmıyor, `myBet` sahibi dışında verilmiyor. `optionalToken`:
+ * misafir havuzu görebilir.
+ *
+ * Aynı sınıf `weekly-picks` ve `stats/user` uçlarında da bulundu;
+ * `lib/kimlik-kontrol.cjs` bu dersi zaten yazmış.
+ */
+router.get("/:fixtureId", optionalToken, async (req, res) => {
   try {
     const db = getDb(req);
     const fid = String(req.params.fixtureId || "").trim();
     if (!fid) return res.status(400).json({ ok: false, error: "FIXTURE_ID_REQUIRED" });
 
-    const uid = String(req.query.userId || "").trim();
+    /* Kimlik JETONDAN. `?userId=` yalnızca kendi kimliğiyle eşleşirse
+     * dikkate alınıyor; eşleşmezse `myBet` boş döner. */
+    const istenen = String(req.query.userId || "").trim();
+    const kimlik  = String(req.uid || "").trim();
+    const uid = (kimlik && (!istenen || istenen.toLowerCase() === kimlik.toLowerCase()))
+      ? kimlik
+      : "";
+
     const [pool, distribution, mine] = await Promise.all([
       Pool.summary(fid, db),
       tahminDagilimi(fid, db),
