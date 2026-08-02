@@ -68,10 +68,27 @@ router.get("/", async (req, res) => {
   // Ayarlar Mongo birincil — bkz. lib/settings-store.cjs. Dosyada tutulurken
   // her deploy siliniyor ve admin ayarları sessizce varsayılana dönüyordu.
   const s = await SettingsStore.load(req.app?.locals?.db || null);
+  /**
+   * ⚠️ AÇILIŞ BAKİYESİ SAKLANAN AYARLA EZİLEMEZ — TEK KAYNAK KAZANIR.
+   *
+   * Varsayılanı `lib/ekonomi.cjs`e bağlamak YETMEDİ: `data/settings.json`
+   * içinde eski bir `startBalance: 500` duruyordu ve `s.scoring || def.scoring`
+   * onu olduğu gibi yayınlıyordu. Sunucu yeniden başlatılıp CANLI
+   * doğrulanınca çıktı — uç hâlâ 500 diyordu, gerçek değer 30.
+   *
+   * ⚠️ BU ALAN AYARLANABİLİR DEĞİL. Cüzdanı açan kod `ekonomi.cjs`i okuyor;
+   * yöneticinin buradan değiştirdiği sayı hiçbir yere geçmiyor, yalnızca
+   * yanıtta yanlış bir vaat olarak görünüyor. Diğer `scoring` alanları
+   * (K_outcome, epsilon, unknownPenaltyPct) gerçekten ayarlanabilir ve
+   * saklanan değerleri korunuyor.
+   *
+   * Aynı ders bugün üç kez çıktı: fonksiyonu düzeltmek yetmiyor, UCUN
+   * gerçekten ne döndürdüğünü ölçmek gerekiyor.
+   */
   const out = s
     ? {
         features: s.features || def.features,
-        scoring: s.scoring || def.scoring,
+        scoring: { ...(s.scoring || def.scoring), startBalance: ACILIS_BAKIYESI },
       }
     : def;
 

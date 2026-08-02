@@ -55,6 +55,49 @@ describe("config açılış bakiyesi", () => {
       "varsayilan acilis bakiyesi tek kaynaktan gelmiyor");
   });
 
+  test("SAKLANAN AYAR açılış bakiyesini EZEMEZ (asil boslugu buydu)", async () => {
+    /**
+     * ⚠️ İLK DÜZELTMEM YARIM KALDI VE CANLI DOĞRULAMA ORTAYA ÇIKARDI.
+     * Varsayılanı tek kaynağa bağlamak yetmedi: `data/settings.json` içinde
+     * eski bir `startBalance: 500` duruyordu ve rota `s.scoring || def.scoring`
+     * ile onu olduğu gibi yayınlıyordu. Sunucu yeniden başlatıldıktan sonra
+     * uç HÂLÂ 500 diyordu.
+     *
+     * Bu test saklanan ayarı taklit ediyor ve tek kaynağın kazandığını
+     * doğruluyor; gerçekten ayarlanabilir alanların korunduğunu da.
+     */
+    const express = require("express");
+    const yol = require.resolve(path.join(KOK, "lib", "settings-store.cjs"));
+    const asil = require.cache[yol];
+    require.cache[yol] = { id: yol, filename: yol, loaded: true, exports: {
+      load: async () => ({
+        features: { mode: "TEST" },
+        scoring: { startBalance: 500, K_outcome: 9, epsilon: 0.07 },
+      }),
+      save: async () => true,
+    } };
+    const rotaYol = require.resolve(path.join(KOK, "routes", "config.cjs"));
+    delete require.cache[rotaYol];
+
+    const app = express();
+    app.use((q, _r, n) => { q.app.locals.db = null; n(); });
+    app.use("/api/config", require(rotaYol));
+    const srv = app.listen(0);
+    try {
+      const port = srv.address().port;
+      const j = await fetch(`http://127.0.0.1:${port}/api/config`,
+        { signal: AbortSignal.timeout(8000) }).then((r) => r.json());
+      const sc = j.config.scoring;
+      assert.equal(sc.startBalance, ACILIS_BAKIYESI,
+        `saklanan 500 tek kaynagi EZDI (uc ${sc.startBalance} donduruyor) — acilis bakiyesi ayarlanabilir degil`);
+      assert.equal(sc.K_outcome, 9, "gercekten ayarlanabilir alan kaybolmus — asiri duzeltme");
+    } finally {
+      srv.close();
+      if (asil) require.cache[yol] = asil; else delete require.cache[yol];
+      delete require.cache[rotaYol];
+    }
+  });
+
   test("İSTEMCİ varsayılanı da aynı değerde (yarım düzeltme olmasın)", () => {
     /* ⚠️ Sunucuyu düzeltip istemci varsayılanını bırakmak, sunucu yanıtı
      * gelmediğinde yine yanlış rakam gösterirdi. Bugün üç kez bu
