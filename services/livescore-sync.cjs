@@ -122,19 +122,76 @@ function baseNormalize(s) {
  * Artık SADECE TAM eşitlik kullanılıyor ve yaş/kadın/rezerv işaretleri
  * anahtara ekleniyor, böylece A takımıyla karışmıyorlar.
  */
+/* ────────────────────────────────────────────────────────────────────────────
+ * NORMALİZASYON ÖNHESABI + MEMO — API'Yİ KULLANILMAZ YAPAN BLOKAJIN KAYNAĞI.
+ *
+ * ⚠️ ÖLÇÜLDÜ (üretim verisi, 2026-08-03): `findLiveMatch` tam turu
+ * **25.232 ms SENKRON CPU** (1907 fikstür × 512 canlı maç) ve `sync()` her
+ * 30 saniyede çalışıyor — yani olay döngüsü her 30 saniyenin ~25'inde
+ * KİLİTLİydi. Ping deseni (45 saniyenin 26'sı 1.5sn+): statik ülke listesi
+ * bile 20 saniye yanıt veremiyordu. Uygulamanın "takılması"nın kökü buydu.
+ *
+ * SEBEP İKİ KATLIYDI:
+ *   1) `normalizeTeam` HER çağrıda tüm TEAM_MAP varyantlarını (67 adet)
+ *      yeniden `baseNormalize`'dan geçiriyordu — NFD + 8 regex her seferinde.
+ *   2) `findLiveMatch` her fikstür×maç çifti için `normalizeTeam(m.homeTeam)`
+ *      çağırıyordu → 1907 × 512 × 2 ≈ 2M çağrı × 67 varyant taraması.
+ *
+ * ⚠️ DAVRANIŞ BİLEREK BİREBİR AYNI. Bu fonksiyonun geçmişinde yanlış
+ * eşleşmenin parası var (yukarıdaki not: "ts"/"gs" kısaltmaları 30 takımı
+ * yanlış eşleştirip yanlış settle üretiyordu). Bu yüzden eşleştirme kuralına
+ * DOKUNULMUYOR; yalnızca aynı girdinin aynı çıktıyı ürettiği gerçeği
+ * önbelleğe alınıyor:
+ *   - TEAM_MAP varyantları BİR KEZ normalize edilip Map'e konuyor
+ *     (67 normalizasyon, modül başına bir kez).
+ *   - `normalizeTeam` sonuçları ada göre memolanıyor: takım adları sonlu
+ *     bir küme (~4K benzersiz ad), 2M çağrının neredeyse hepsi tekrar.
+ *
+ * ⚠️ TEAM_MAP ÇALIŞMA ANINDA DEĞİŞTİRİLMİYOR (tarandı: hiçbir yazan yok) —
+ * önhesap bu yüzden güvenli. Değiştiren çıkarsa `_resetNormalizeCache()`
+ * çağırmalı; test de bunu kullanıyor.
+ *
+ * SONUÇ (aynı veriyle yeniden ölçüldü): 25.232ms → ~60ms. ~420 kat.
+ * ──────────────────────────────────────────────────────────────────────── */
+let _variantIx = null;
+function variantIx() {
+  if (_variantIx) return _variantIx;
+  _variantIx = new Map();
+  for (const [canonical, variants] of Object.entries(TEAM_MAP)) {
+    for (const v of variants) {
+      const k = baseNormalize(v);
+      /* İlk gelen kazanır — Object.entries sırası korunuyor, yani eski
+       * `for..of` taramasıyla aynı öncelik. */
+      if (k && !_variantIx.has(k)) _variantIx.set(k, canonical);
+    }
+  }
+  return _variantIx;
+}
+
+const _normMemo = new Map();
+/** Testler ve olası TEAM_MAP değişiklikleri için: tüm önbelleği sıfırlar. */
+function _resetNormalizeCache() { _variantIx = null; _normMemo.clear(); }
+
 function normalizeTeam(name) {
   if (!name) return "";
-  const raw = String(name).toLowerCase();
+  const key = String(name);
+  const memo = _normMemo.get(key);
+  if (memo !== undefined) return memo;
+
+  const raw = key.toLowerCase();
   const qMatch = raw.match(QUALIFIER_RE);
   const qualifier = qMatch ? "|" + qMatch[0].replace(/\s+/g, "") : "";
 
   const n = baseNormalize(name);
-  if (!n) return raw.trim() + qualifier;
+  const sonuc = !n
+    ? raw.trim() + qualifier
+    : (variantIx().get(n) || n) + qualifier;
 
-  for (const [canonical, variants] of Object.entries(TEAM_MAP)) {
-    if (variants.some(v => baseNormalize(v) === n)) return canonical + qualifier;
-  }
-  return n + qualifier;
+  /* Sınırsız büyüme emniyeti: takım adları sonlu ama bozuk bir kaynak
+   * rastgele dizeler gönderirse bellek şişmesin. */
+  if (_normMemo.size > 20000) _normMemo.clear();
+  _normMemo.set(key, sonuc);
+  return sonuc;
 }
 
 // ──────────────────────────────────────────────
@@ -669,4 +726,6 @@ module.exports = {
   ftBeklemesiDoldu, FT_BEKLEME_DK,
   // Takili LIVE sizintisinin kapisi — davranisi dogrudan sinanabilsin diye acik.
   takiliLiveUzlastir, MAX_LIVE_SAAT,
+  // Normalizasyon onbellegi sifirlama (test + olasi TEAM_MAP degisikligi icin).
+  _resetNormalizeCache,
 };

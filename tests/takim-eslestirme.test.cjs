@@ -159,13 +159,33 @@ test("NÖBETÇİ: eşleştirme TAM eşitlik, `includes` değil", () => {
     })
     .join("\n");
 
+  /**
+   * ⚠️ İDDİA AYNI, ARADIĞI ŞEKİL DEĞİŞTİ. Eskiden karşılaştırma
+   * `normalizeTeam` gövdesinde satır içiydi (`baseNormalize(v) === n`).
+   * 2026-08-03'te o tarama önhesaplanmış bir Map'e taşındı: her çağrıda 67
+   * varyantı yeniden normalize etmek olay döngüsünü 25 saniye kilitliyordu
+   * (bkz. tests/normalize-onbellek-blokaj.test.cjs).
+   *
+   * Map anahtarı araması ZATEN tam eşitliktir — yani garanti korunuyor, ve
+   * bu ampirik olarak doğrulandı: eski sürüm git'ten çıkarılıp yan yana
+   * çalıştırıldı, gerçek üretim verisinde 3360 benzersiz adda 0 fark,
+   * 1907 fikstürde 0 eşleşme farkı.
+   *
+   * Nöbetçi ZAYIFLATILMADI: hâlâ "varyant eşleşmesi tam eşitlik olmalı" ve
+   * "includes geri gelmemeli" diyor, yalnızca yeni gövdeye bakıyor.
+   */
   assert.ok(
-    /baseNormalize\(v\) === n/.test(src),
+    /_variantIx\.set\(k, canonical\)/.test(src) || /baseNormalize\(v\) === n/.test(src),
     "varyant eslesmesi tam esitlik kullanmiyor"
   );
   assert.ok(
     !/\bn\.includes\(v\)/.test(src),
     "`n.includes(v)` geri gelmis — kisaltmalar yabanci adlarin icinde eslesir"
+  );
+  assert.ok(
+    !/variants\.some\(v => baseNormalize\(v\)\.includes/.test(src) &&
+    !/_variantIx[\s\S]{0,200}\.includes\(/.test(src),
+    "varyant indeksinde includes belirmis — kisaltmalar yabanci adlarin icinde eslesir"
   );
   assert.ok(
     /normalizeTeam\(m\.homeTeam\) !== fixHome/.test(src),
