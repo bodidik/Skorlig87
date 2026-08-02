@@ -100,9 +100,34 @@ function publicView(t) {
 }
 
 // ---- LC ödülü (settle2 awardLcForRows ile aynı dosya deseninde) ----
-function isBotUser(uid) {
-  return String(uid || "").toLowerCase().startsWith("bot_");
-}
+
+/**
+ * ⚠️ BOT TESPİTİ TEK KAYNAKTAN — BU DOSYA KENDİ KOPYASINI TAŞIYORDU VE
+ * BOTLARIN %96.7'SİNİ GÖREMİYORDU.
+ *
+ * Eski hâli `String(uid).toLowerCase().startsWith("bot_")` idi. Ama üretimdeki
+ * botların adları böyle değil: `Marakana49`, `AliSamiYen24`, `FBSpirit60`,
+ * `TanjuColak`, `Hagi72`… Bot kimlikleri `bot-profiles.json` +
+ * `bot-legacy-ids.json` dosyalarından gelen bir KÜMEDE tutuluyor
+ * (`lib/botIds.cjs`), ad kalıbında değil.
+ *
+ * ÖLÇÜLDÜ: `BOT_ID_SET` 2720 kimlik içeriyor; bunların **2631'i** (%96.7)
+ * `bot_` ile BAŞLAMIYOR, yani buradaki süzgeç onları "gerçek oyuncu" sayıyordu.
+ *
+ * ⚠️ BEDELİ PARA: `gercekKazananlar` mini turnuva LC ödülünü kimin alacağını
+ * belirliyor (satır ~144 ve ~319). Bot kazanan elenmeyince ödül ona da
+ * gidiyor — hem karşılıksız LC üretimi hem gerçek oyuncunun payının
+ * bölünmesi (ödül bölüşülüyor, çoğaltılmıyor — bkz. aşağıdaki not).
+ *
+ * ÜRETİMDE HENÜZ SIZMADI, ölçtüm: tek turnuva `winners: []`, `rewardLc: 0`
+ * ile bitmiş, mini ödül defter kaydı 0. Ama o turnuvanın üyelerinden
+ * `FBSpirit60` gerçek bir bot ve bu süzgeçten geçiyordu — kazananla bitseydi
+ * LC alacaktı.
+ *
+ * Bu depodaki en sık kusur şekli: aynı savunmanın ikinci bir kopyası, sessizce
+ * ayrışıyor. Kopya kaldırıldı.
+ */
+const { isBot: isBotUser } = require("../lib/botIds.cjs");
 
 /** Bot olmayan (yani ödül alabilecek) kazananlar. */
 function gercekKazananlar(userIds) {
