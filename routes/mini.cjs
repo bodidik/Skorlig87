@@ -641,6 +641,64 @@ router.get("/mine", verifyToken, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/mini/public?userId=  → katılınabilir turnuvalar
+ *
+ * ⚠️ NEDEN YENİ: mobil `app/(tabs)/live.tsx:954` bu ucu ÇAĞIRIYORDU ama uç
+ * hiç yazılmamıştı. `apiJson` 404'te hata fırlatmayıp `{ok:false}` döndüğü
+ * için çökme olmuyordu; "AÇIK TURNUVALAR" bölümü sadece KALICI OLARAK BOŞ
+ * kalıyordu. Kullanıcı hiçbir turnuvayı keşfedemiyor, yalnızca kod elle
+ * paylaşılırsa katılabiliyordu.
+ *
+ * ⚠️ "AÇIK" KAVRAMI VERİDE YOKTU, TANIMI BURADA YAPILIYOR. Turnuva belgesinde
+ * görünürlük alanı yok (alanlar: id, code, name, ownerId, fixtures, members,
+ * createdAt, finishedAt, winners, rewardLc). Katılım tek yoldan oluyor:
+ * `POST /join` + `code`. Dolayısıyla "açık turnuva" = bitmemiş, dolmamış ve
+ * kullanıcının zaten üye OLMADIĞI turnuva.
+ *
+ * ⚠️ LİSTELEMEK, KATILIM KODUNU YAYINLAMAKTIR — ve bu bilinçli bir karar.
+ * `publicView` `code` alanını içeriyor ve mobil katılırken onu kullanıyor
+ * (`/api/mini/join` yalnızca `code` kabul ediyor), yani kodsuz listeleme
+ * işe yaramazdı. Sonuç: her turnuva fiilen herkese açık hâle geliyor.
+ * Davet akışı (`POST /invite`) hâlâ çalışıyor ama artık tek keşif yolu değil.
+ *
+ * ⚠️ ÖZEL TURNUVA KAPISI ŞİMDİDEN VAR. Bugün hiçbir belgede `private` /
+ * `visibility` alanı YOK, yani süzgeç hiçbir şeyi elemiyor. İleride "yalnızca
+ * davetle" turnuva istenirse tek yapılacak `create`'te bu alanı yazmak;
+ * listeleme tarafı hazır. Alanı sonradan eklerken burayı bulmak gerekmesin
+ * diye baştan kondu.
+ */
+router.get("/public", async (req, res) => {
+  try {
+    /* Kimlik ZORUNLU DEĞİL: yalnızca "zaten üye olduklarını gizle" için
+     * kullanılıyor, hiçbir gizli veri buna göre açılmıyor. Misafir de
+     * turnuvaları görebilmeli — keşif ekranının amacı bu. */
+    const userId = String(req.query.userId || "").trim();
+    const uidLower = userId.toLowerCase();
+
+    const items = await loadAll();
+    const acik = items
+      .filter((t) => {
+        if (t.finishedAt) return false;                       // bitmiş
+        if (t.private === true) return false;                 // ileriye dönük kapı
+        if (String(t.visibility || "").toLowerCase() === "private") return false;
+        const uyeler = t.members || [];
+        if (uyeler.length >= MAX_MEMBERS) return false;        // dolu — katılınamaz
+        if (uidLower && uyeler.some((m) => String(m).toLowerCase() === uidLower)) {
+          return false;                                        // zaten üye → /mine'da
+        }
+        return true;
+      })
+      .map(publicView)
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+
+    return res.json({ ok: true, items: acik });
+  } catch (e) {
+    console.error("[mini] public error:", e);
+    return res.status(500).json({ ok: false, error: "MINI_PUBLIC_FAILED", detail: String(e?.message || e) });
+  }
+});
+
 // ---- GET /api/mini/wins?userId= : kazanılan turnuvalar (profil vitrini) ----
 router.get("/wins", async (req, res) => {
   try {

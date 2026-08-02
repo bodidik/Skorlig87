@@ -126,7 +126,9 @@ function eslesir(cy, sunucu) {
  * bozuk" sanmistim; tarayici yorum satirlarini atlayinca gercek tablo cikti.
  * Bu, nobetci yazarken yorum/kod ayrimini yapmamanin bedeli. */
 const BILINEN_OLU = new Set([
-  "/api/mini/public",          // live.tsx — açık mini turnuvalar hiç gelmiyor
+  /* "/api/mini/public" CIKARILDI — 2026-08-03te yazildi (routes/mini.cjs).
+   * Duzeltilen ucu olu listede birakmak, listenin yalan soylemesi demek;
+   * bayatlama nobetcisi bunu team-ranks ornekinde zaten yakalamisti. */
   "/api/rt/team-totals",       // stats/team.tsx
   /* "/api/stats/team-ranks" ÇIKARILDI — 2026-08-01'de yazıldı
    * (routes/stats.cjs). Bu satırın burada kalması, bayatlama nöbetçisinin
