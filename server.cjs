@@ -271,10 +271,19 @@ app.get("/api/health", async (req, res) => {
    * İz yalnızca log'da kalsaydı kimse görmezdi. Burada sayılıyor: sıfırdan
    * büyükse elle telafi edilecek PARA var demektir.
    */
+  /* ⚠️ SAYIM YALNIZCA ÇÖZÜLMEMİŞ BORCU KAPSAR.
+   *
+   * Eskiden `countDocuments({})` idi: kayıtlar hiç kapanmadığı için sayaç
+   * yalnızca BÜYÜYORDU. Operatör borcu elle telafi etse bile sayı aynı
+   * kalıyor, dolayısıyla YENİ bir kayıp (3 → 4) gürültüden ayırt
+   * edilemiyordu. Kapatma yolu da yoktu — ne alan, ne uç.
+   * Kapatma: POST /api/admin/failed-awards/resolve (routes/admin-users.cjs)
+   */
   let odenmemisOdul = null;
   if (db) {
     try {
-      odenmemisOdul = await db.collection("failed_awards").countDocuments({}, { maxTimeMS: 2000 });
+      odenmemisOdul = await db.collection("failed_awards")
+        .countDocuments({ cozuldu: { $ne: true } }, { maxTimeMS: 2000 });
     } catch {
       odenmemisOdul = "okunamadi";
     }
@@ -287,6 +296,23 @@ app.get("/api/health", async (req, res) => {
   const kimlik = require("./middleware/verifyToken.cjs").kimlikModu();
 
   const sorunVar = MOUNTS.skipped.length > 0 || kimlik === "kapali";
+
+  /* ⚠️ KAYIP PARA, DURUM KODUNU DEĞİŞTİRMEDEN ALARM VERMELİ.
+   *
+   * BULUNAN: ödenmemiş ödül sayısı `sorunVar`a HİÇ girmiyordu — uç `ok:true`
+   * ve HTTP 200 dönüyordu. İzleme araçları durum koduna ya da `ok` alanına
+   * bakar; yani karşılığı ödenmemiş para SESSİZDİ. Bu uca yazılmasının tek
+   * sebebi görünürlüktü ve tam orada görünmüyordu.
+   *
+   * ⚠️ AMA 503 DÖNMEK YANLIŞ ÇÖZÜM OLURDU. Bu servis Render'da çalışıyor ve
+   * sağlık ucu 503 verince örnek SAĞLIKSIZ sayılıp yeniden başlatılabilir —
+   * muhasebe sorununu KESİNTİYE çevirirdi. Süreç yaşıyor ve istek karşılıyor;
+   * canlılık (liveness) ile para alarmı ayrı şeyler.
+   *
+   * Bu yüzden ayrı bir bayrak: izleme `paraUyarisi` alanına bağlanır,
+   * yük dengeleyici durum koduna bakmaya devam eder.
+   */
+  const paraUyarisi = typeof odenmemisOdul === "number" ? odenmemisOdul > 0 : odenmemisOdul === "okunamadi";
   res.status(sorunVar ? 503 : 200).json({
     ok: !sorunVar,
     mountedCount: MOUNTS.ok.length,
@@ -297,6 +323,8 @@ app.get("/api/health", async (req, res) => {
     kimlikModu: kimlik,
     // >0 ise: bkz. routes/settle2.cjs "ODUL YAZIMI EKSIK"
     odenmemisOdulKaydi: odenmemisOdul,
+    // ⚠️ İZLEME BUNA BAĞLANSIN. Durum kodu bilerek 200 kalıyor (yukarıdaki not).
+    paraUyarisi,
     uptimeSec: Math.round(process.uptime()),
   });
 });
