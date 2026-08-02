@@ -7,6 +7,13 @@
 "use strict";
 
 const express = require("express");
+/* ⚠️ AÇILIŞ BAKİYESİ TEK KAYNAKTAN. Bu uç `startBalance: 500` yayınlıyordu;
+ * gerçek değer `lib/ekonomi.cjs` içinde 30 (1987 üyeleri için 60). Sayı
+ * hiçbir yerde tüketilmiyordu ama TIPLI, ÇEKILIYOR ve yetkili görünüyor:
+ * `mobile/lib/runtimeConfig.ts` onu bir model alanı olarak taşıyor. Biri
+ * ekrana bağlarsa yeni kullanıcıya 16 KAT yanlış bir rakam söylenirdi.
+ * Aynı sınıf bugün premium tablosunda CANLI bir kusur olarak çıktı. */
+const { ACILIS_BAKIYESI } = require("../lib/ekonomi.cjs");
 const router = express.Router();
 const fs = require("fs");
 const fsp = fs.promises;
@@ -50,7 +57,7 @@ router.get("/", async (req, res) => {
       enableCoupons: false,
     },
     scoring: {
-      startBalance: 500,
+      startBalance: ACILIS_BAKIYESI,
       useProbabilityEngine: false,
       K_outcome: 3,
       epsilon: 0.05,
@@ -104,7 +111,7 @@ router.post("/update", _adminAuth, express.json(), async (req, res) => {
         enableCoupons: !!features.enableCoupons,
       },
       scoring: {
-        startBalance: Number(scoring.startBalance ?? 500),
+        startBalance: Number(scoring.startBalance ?? ACILIS_BAKIYESI),
         useProbabilityEngine: !!scoring.useProbabilityEngine,
         K_outcome: Number(scoring.K_outcome ?? 3),
         epsilon: Number(scoring.epsilon ?? 0.05),
