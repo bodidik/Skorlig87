@@ -6,7 +6,7 @@ const fs      = require("fs");
 const fsp     = fs.promises;
 const path    = require("path");
 const crypto  = require("crypto");
-const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
 
 function requireAdminToken(req, res, next) {
   const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
@@ -201,12 +201,41 @@ async function loadTotalsItems(db) {
    ========================= */
 
 // GET /api/users/profile?userId=...
-router.get("/profile", async (req, res) => {
+/**
+ * ⚠️ İKİ KUSUR BİRDEN — DENETİMLİ OLARAK ÜRETİLDİ.
+ *
+ * 1) BAŞKASININ BAKİYESİ OKUNABİLİYORDU. Profil `lc` alanında YETKİLİ cüzdan
+ *    bakiyesini döndürüyor ve kimlik denetimi yoktu:
+ *        SAHİBİ → lc=137 · SALDIRGAN → 137 · KİMLİKSİZ → 137
+ *    `lib/kimlik-kontrol.cjs` bu sınıf için yazılmış; aynı sızıntı
+ *    `stats/user`, `pool` ve `weekly-picks` uçlarında da bulundu.
+ *
+ * 2) OKUMA UCU KAYIT YARATIYORDU. `ensureUser` bulunamayan kimliği
+ *    OLUŞTURUYOR. Ölçüldü: kimliksiz 5 istek → `users` koleksiyonu 1'den
+ *    6'ya çıktı. Yani herhangi biri uydurma kimliklerle sınırsız kayıt
+ *    üretebiliyordu; sıralama/istatistik sayımlarını kirletir ve depoyu
+ *    şişirir. Bir GET, veri YARATMAMALI.
+ *
+ * ⚠️ PROFİL KAPATILMIYOR: sıralamadan başkasının profiline tıklanabiliyor,
+ * takma ad/takım/ülke herkese açık kalmalı. Gizli olan yalnızca PARA.
+ */
+router.get("/profile", optionalToken, async (req, res) => {
   try {
     const userId = String(req.query.userId || "").trim();
     if (!userId) return res.status(400).json({ ok: false, error: "USER_REQUIRED" });
 
-    const u = await ensureUser(userId, req);
+    const kimlik  = String(req.uid || "").trim();
+    const kendisi = !!kimlik && kimlik.toLowerCase() === userId.toLowerCase();
+
+    /* Kayıt YALNIZCA kendi profilini isteyen doğrulanmış kullanıcı için
+     * oluşturulur (ilk açılışta profil kurma yolu bu). Başkası ya da
+     * misafir sorarsa yalnızca OKUNUR; yoksa 404. */
+    const u = kendisi
+      ? await ensureUser(userId, req)
+      : await UsersStore.getUser(userId, req.app?.locals?.db || null);
+
+    if (!u) return res.status(404).json({ ok: false, error: "USER_NOT_FOUND" });
+
     const profile = {
       userId,
       nickname: u.nickname || null,
@@ -221,13 +250,16 @@ router.get("/profile", async (req, res) => {
       // yaratılırken yazılan başlangıç değerinde donup kalır. Yarış ekranı bu
       // alanı "LC bakiye" diye gösteriyordu — yani gerçek bakiyesi ne olursa
       // olsun kullanıcı hep 30 görüyordu.
-      lc: await lcBakiyesi(userId, req, u),
+      /* ⚠️ BAKİYE YALNIZCA SAHİBİNE. Alanı `null` bırakmak yerine HİÇ
+       * eklemiyoruz: `lc: null` gören istemci "0 LC" gösterebilirdi.
+       * (Aynı karar `stats/user` cüzdan alanlarında da verildi.) */
+      ...(kendisi ? { lc: await lcBakiyesi(userId, req, u) } : {}),
       is1987: !!(u.is1987 || String(u.segment || "").toLowerCase() === "1987"),
       preferredLeagues: Array.isArray(u.preferredLeagues) ? u.preferredLeagues : [],
       preferredLang: u.preferredLang || null,
     };
 
-    return res.json({ ok: true, profile });
+    return res.json({ ok: true, kendisi, profile });
   } catch (e) {
     console.error("USER_PROFILE_ERR", e);
     return res.status(500).json({

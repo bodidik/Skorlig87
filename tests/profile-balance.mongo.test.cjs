@@ -32,6 +32,23 @@ const KUM = fs.mkdtempSync(path.join(os.tmpdir(), "skorlig-profil-"));
 process.env.SKORLIG_DATA_DIR = KUM;
 process.env.SKORLIG_USERS_FILE_MIRROR = "0";
 
+/* ⚠️ KİMLİK TAKLİDİ — profil `lc` alanı artık SAHİBİNE özel.
+ * 2026-08-03'te ölçüldü: bakiye kimliksiz okunabiliyordu (SALDIRGAN ve
+ * KİMLİKSİZ istekler de 137 görüyordu). Uç kilitlenince bu test de kimlik
+ * göndermek zorunda kaldı. Gerçek `optionalToken` istemci başlığına
+ * GÜVENMİYOR (o da ayrı bir düzeltmeydi), o yüzden modül taklit ediliyor —
+ * depodaki diğer uç testlerinin kullandığı desenin aynısı.
+ * Testin İDDİASI değişmedi: bakiye cüzdandan okunmalı. */
+const _vt = require.resolve(path.join(__dirname, "..", "middleware", "verifyToken.cjs"));
+require.cache[_vt] = { id: _vt, filename: _vt, loaded: true, exports: {
+  verifyToken: (q, r, n) => {
+    if (!q.headers["x-user-id"]) return r.status(401).json({ ok: false, error: "AUTH" });
+    q.uid = q.headers["x-user-id"]; n();
+  },
+  optionalToken: (q, _r, n) => { q.uid = q.headers["x-user-id"] || null; n(); },
+  getFirebaseAuth: () => null, kimlikModu: () => "test",
+} };
+
 let _srv = null, _cli = null, db = null, app = null, sunucu = null, port = 0;
 
 before(async () => {
@@ -66,8 +83,21 @@ beforeEach(async () => {
   try { fs.unlinkSync(path.join(KUM, "lc-wallet.json")); } catch {}
 });
 
+/**
+ * ⚠️ KİMLİK BAŞLIĞI ŞART OLDU — testin İDDİASI değişmedi.
+ *
+ * 2026-08-03: profil ucu `lc` alanını yalnızca SAHİBİNE veriyor. Ölçüldü,
+ * eskiden herkes okuyabiliyordu (SALDIRGAN ve KİMLİKSİZ istekler de 137
+ * görüyordu) — bkz. tests/profil-sahiplik-ve-kayit.test.cjs.
+ *
+ * Bu testin işi "bakiye CÜZDANDAN okunuyor mu" ve o iddia aynen duruyor;
+ * yalnızca isteğin kendi kullanıcısı adına yapılması gerekiyor.
+ */
 async function profil(userId) {
-  const r = await fetch(`http://127.0.0.1:${port}/api/users/profile?userId=${encodeURIComponent(userId)}`);
+  const r = await fetch(
+    `http://127.0.0.1:${port}/api/users/profile?userId=${encodeURIComponent(userId)}`,
+    { headers: { "x-user-id": userId } }
+  );
   return (await r.json()).profile;
 }
 
