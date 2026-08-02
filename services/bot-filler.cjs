@@ -43,12 +43,36 @@ const LOCK_GUARD_MS = 12 * 60 * 1000;
 // yüzlerce isteğe boğulmamak için.
 const MAX_PER_TICK = Number(process.env.SKORLIG_BOT_FILL_MAX || 25);
 
+/**
+ * Yakın zamanda doldurulan maç bu süre boyunca aday listesine girmez.
+ *
+ * ⚠️ NEDEN VAR — "EN YAKIN 25" TIKANIYORDU. `pickFixtures` kickoff'a göre
+ * sıralayıp ilk 25'i alıyordu ama DOLMUŞ maçları ELEMİYORDU. Her 10 dakikada
+ * aynı en yakın 25 yeniden taranıyor ("hedef dolu, bot eklenmedi" ile
+ * geçiliyor), 26. sıradan sonraki maçlar ise kilide girene kadar HİÇ sıra
+ * alamıyordu.
+ *
+ * ÖLÇÜLDÜ (üretim, 2026-08-02): 24 saatlik pencerede ~270 açık maç.
+ * Öğlen oynanan Çin maçları 40'ar bot almış; Türk kullanıcının listesinin
+ * TEPESİNDEKİ akşam maçlarında (Trabzonspor–Udinese, Rizespor, Galatasaray)
+ * 0 tahmin. Yani pano tam da en görünür maçlarda boştu — botların varlık
+ * sebebi olan "kullanıcı yalnız kalmasın" tam tersine dönmüştü.
+ *
+ * ⚠️ TTL SÜRESİZ DEĞİL: gerçek kullanıcılar geldikçe uç fazla botu her
+ * çağrıda geri çekiyor (hedef = max(0, HEDEF − gerçek)). Dolmuş maçı bir
+ * süre atlamak o dengelemeyi geciktirir; 60 dakika, "her maça sıra gelsin"
+ * ile "yoğunluk gerçek kullanıcıya uyum sağlasın" arasındaki bilinçli nokta.
+ */
+const REFILL_MS = Number(process.env.SKORLIG_BOT_REFILL_MIN || 60) * 60 * 1000;
+
 let _timer = null;
 let _port = null;
 let _running = false;
 
+/** fixtureId → son başarılı doldurma zamanı (ms). */
+const _sonDolum = new Map();
 
-/** Doldurulacak maçlar: kickoff penceresi içinde ve kilide girmemiş. */
+/** Doldurulacak maçlar: pencere içinde, kilide girmemiş, yakınlarda doldurulmamış. */
 async function pickFixtures() {
   // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
   const list = await FixturesStore.loadAll();
@@ -64,7 +88,16 @@ async function pickFixtures() {
     if (untilKickoff > FILL_WINDOW_MS) continue;   // henüz çok erken
     if (untilKickoff <= LOCK_GUARD_MS) continue;   // kilide girdi/giriyor
 
+    /* Yakınlarda dolduruldu → bu tur sırayı BAŞKASINA bırak. */
+    const son = _sonDolum.get(fid);
+    if (son && now - son < REFILL_MS) continue;
+
     out.push({ fixtureId: fid, kickoff: ko });
+  }
+
+  /* Bellek temizliği: penceresi geçmiş kayıtlar birikmesin. */
+  if (_sonDolum.size > 2000) {
+    for (const [fid, ts] of _sonDolum) if (now - ts > FILL_WINDOW_MS) _sonDolum.delete(fid);
   }
 
   // En yakın maç önce: tur limiti dolarsa en acil olanlar dolmuş olur.
@@ -153,10 +186,17 @@ async function tick() {
       try {
         const r = await fillOne(fx.fixtureId);
         if (!r) { skipped++; continue; }
-        filled++;
-        added += Number(r.botCount || 0);
-        // Hedef gerçek kullanıcılarla dolduysa bot eklenmemiştir.
-        if (r.botCount === 0) skipped++;
+        /* Başarılı çağrı (bot eklensin ya da hedef zaten dolu olsun) bu maçı
+         * REFILL_MS boyunca aday listesinden çıkarır — sıra ötekilere geçer. */
+        _sonDolum.set(String(fx.fixtureId), Date.now());
+        if (Number(r.botCount || 0) > 0) {
+          filled++;
+          added += Number(r.botCount || 0);
+        } else {
+          /* Hedef gerçek kullanıcılarla dolu — sayaçlar eskiden bunu HEM
+           * doldurulan HEM atlanan sayıyordu ve log kafa karıştırıyordu. */
+          skipped++;
+        }
       } catch (e) {
         failed++;
         console.error(`[bot-filler] ${fx.fixtureId}:`, e.message || e);
@@ -200,4 +240,4 @@ function stop() {
   _timer = null;
 }
 
-module.exports = { start, stop, tick, pickFixtures };
+module.exports = { start, stop, tick, pickFixtures, _sonDolum, REFILL_MS };
