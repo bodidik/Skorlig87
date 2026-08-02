@@ -1471,7 +1471,14 @@ router.post("/pred/bots-generate", requireAdminToken, async (req, res) => {
     // üretebiliyordu. Dosya modunda her çağrı 17MB okuma/yazma demek, yani
     // ucuz bir DoS; ayrıca maçta hangi botların görüneceği dışarıdan
     // değiştirilebiliyordu. settle2 ile aynı koruma uygulanır.
-    // (bot-filler loopback'ten çağırdığı için etkilenmez.)
+    //
+    // ⚠️ BURADA "bot-filler loopback'ten çağırdığı için etkilenmez" YAZIYORDU
+    // VE YANLIŞTI. Bu uçta İKİ muhafız var; yukarıdaki `requireAdminToken`
+    // ara katmanı ÖNCE çalışıyor ve jetonsuz loopback isteğini reddediyor,
+    // yani aşağıdaki `isInternalCaller` gevşemesine hiç sıra gelmiyor.
+    // Sonuç ölçüldü: bot doldurma her turda 25/25 ADMIN_TOKEN_REQUIRED ile
+    // düşüyordu. bot-filler artık x-admin-token gönderiyor.
+    // İki muhafız bilerek duruyor (derinlemesine savunma).
     if (!isInternalCaller(req)) {
       return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
     }

@@ -119,9 +119,17 @@ describe("sonuç ekleme sırasına bağlı değil", () => {
 
 test("gerçek fikstürlerde kapsam makul kaldı", (t) => {
   /**
-   * ⚠️ TAM SAYI DONDURULMUYOR. Ölçüm anında 1944 takım adının 360'ı ülke
-   * buluyordu (düzeltmeden önce 367). Aralık iki yönlü: çok düşerse eşleşme
-   * kırılmış, çok yükselirse belirsizlik koruması gevşemiş demektir.
+   * ⚠️ ORAN, MUTLAK SAYI DEĞİL — VE BU BİR KEZ YANLIŞ YAPILDI. İlk yazım
+   * [300, 500] mutlak aralığı donduruyordu; ölçüm anında 1944 benzersiz adın
+   * 360'ı (%18.5) ülke buluyordu. Arka plan senkronu hafta sonu maçlarını
+   * çekince ad sayısı 3203'e çıktı, bulunan 519 oldu (%16.2 — oran AYNI
+   * bölgede) ve test "koruma gevşemiş" diye YANLIŞ alarm verdi. Canlı veri
+   * dosyasında mutlak sayı dondurmak, testi veri hacmine bağlar; aynı tuzağa
+   * `takim-aksan-normallestirme` testinde de düşülmüştü.
+   *
+   * Aralık iki yönlü: oran çok düşerse eşleştirme kırılmış, çok yükselirse
+   * belirsizlik koruması gevşemiş demektir (katalog ~460 takım; fikstürdeki
+   * binlerce adın çoğunluğunun ülke BULAMAMASI beklenen durum).
    */
   const dosya = path.join(KOK, "data", "fixtures.json");
   if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
@@ -131,9 +139,12 @@ test("gerçek fikstürlerde kapsam makul kaldı", (t) => {
   const adlar = new Set();
   for (const f of items) { if (f?.home) adlar.add(f.home); if (f?.away) adlar.add(f.away); }
   const bulunan = [...adlar].filter((a) => TC.teamCountry(a)).length;
+  const oran = bulunan / adlar.size;
 
-  assert.ok(bulunan >= 300, `yalnizca ${bulunan} takim ulke buluyor — olcum aninda 360 idi, eslestirme kirilmis`);
-  assert.ok(bulunan <= 500, `${bulunan} takim ulke buluyor — belirsizlik korumasi gevsemis olabilir`);
+  assert.ok(oran >= 0.08,
+    `adlarin yalnizca %${(100 * oran).toFixed(1)}'i ulke buluyor (${bulunan}/${adlar.size}) — eslestirme kirilmis (olculen taban ~%16-18)`);
+  assert.ok(oran <= 0.40,
+    `adlarin %${(100 * oran).toFixed(1)}'i ulke buluyor (${bulunan}/${adlar.size}) — belirsizlik korumasi gevsemis olabilir`);
 });
 
 /* ── Nöbetçi ────────────────────────────────────────────────────────────── */

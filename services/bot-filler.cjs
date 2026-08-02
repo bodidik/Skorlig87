@@ -72,10 +72,56 @@ async function pickFixtures() {
   return out.slice(0, MAX_PER_TICK);
 }
 
+/**
+ * ⚠️ ADMIN JETONU ZORUNLU — VE BU BİR KEZ UNUTULDUĞU İÇİN SERVİS TAMAMEN
+ * ÖLMÜŞTÜ.
+ *
+ * ÖLÇÜLDÜ (çalışan sunucu logu, 2026-08-02):
+ *     [bot-filler] 25 mac tarandi · doldurulan 0 · eklenen bot 0 · hata 25
+ *     [bot-filler] MK-SOUTHM-2026-08-02-STALBA: ADMIN_TOKEN_REQUIRED
+ * Yani her turda taranan 25 maçın 25'i başarısız; bot doldurma %100 ölü.
+ *
+ * SEBEP: `/pred/bots-generate` ucuna yetki koruması eklendi (haklı — yorumu
+ * "herkes herhangi bir maça bot üretebiliyordu... ucuz bir DoS" diyor). Ama
+ * o değişikliğin yanındaki not "bot-filler loopback'ten çağırdığı için
+ * etkilenmez" diyordu ve BU YANLIŞTI: uçta İKİ muhafız var ve dıştaki
+ * `requireAdminToken` ara katmanı ÖNCE çalışıp jetonsuz loopback çağrısını
+ * reddediyor — içerideki `isInternalCaller` gevşemesine hiç sıra gelmiyor.
+ * Güvenlik düzeltmesi iç çağıranı sessizce kırmış.
+ *
+ * ⚠️ ÇÖZÜM LOOPBACK'E GÜVENMEK DEĞİL, JETONU GÖNDERMEK. Muhafızı gevşetmek
+ * de mümkündü ama o, korumayı ağ şekline bağlı bir tahmine indirir; jeton
+ * göndermek hem daha açık hem hangi muhafız kullanılırsa kullanılsın çalışır.
+ *
+ * ⚠️ JETON ADI TEK YERDEN ÇÖZÜLÜYOR (`beklenenToken`). Bu dosyada
+ * `process.env.SKORLIG_ADMIN_TOKEN` yazsaydım dördüncü kopya olurdu:
+ * `middleware/requireAdmin.cjs` ÜÇ ad kabul ediyor (eski kurulumlar için
+ * `ADMIN_TOKEN`, `EXPO_PUBLIC_ADMIN_TOKEN` da), `routes/pred.cjs`in yerel
+ * kopyası yalnızca birini. Ayrışan listeler, jetonun bir uçta çalışıp
+ * ötekinde 401 vermesi demek.
+ */
+const { beklenenToken } = require("../middleware/requireAdmin.cjs");
+
+let _jetonUyarisiVerildi = false;
+
 async function fillOne(fixtureId) {
+  const jeton = beklenenToken();
+  if (!jeton && !_jetonUyarisiVerildi) {
+    /* Yalnızca bir kez: aksi hâlde her turda 25 satır tekrarlanır ve asıl
+     * sebep gürültüde kaybolur — kırık hâlin belirtisi tam olarak buydu. */
+    _jetonUyarisiVerildi = true;
+    console.error(
+      "[bot-filler] SKORLIG_ADMIN_TOKEN tanimsiz — bot doldurma CALISMAYACAK. " +
+      "Uc jeton olmadan 503/401 doner; .env dosyasina ekleyin."
+    );
+  }
+
   const res = await fetch(`http://127.0.0.1:${_port}/api/pred/bots-generate`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(jeton ? { "x-admin-token": jeton } : {}),
+    },
     body: JSON.stringify({ fixtureId }),
   });
 
