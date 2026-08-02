@@ -356,13 +356,39 @@ const RESERVED_NICKNAMES = new Set([
   "1987gs", "gs1987", "ben", "sen",
 ]);
 
-// Türkçe karakterleri sadeleştirip normalize et (İ/I, ş, ü... rezerve/karşılaştırma için)
+/**
+ * Türkçe karakterleri sadeleştirip normalize et.
+ *
+ * ⚠️ NOKTALI BÜYÜK İ HEM REZERVE ADI HEM BENZERSİZLİĞİ DELİYORDU.
+ *
+ * Eski sıra `.toLowerCase()` ile BAŞLIYORDU ve `.replace(/İ/g,"i")` ondan
+ * SONRA geliyordu — ama JavaScript'te `"İ".toLowerCase()` düz bir "i"
+ * üretmez, İKİ kod noktası üretir: "i" + U+0307 (birleşik nokta). Sonraki
+ * `replace` artık eşleşecek bir İ bulamıyor. Ölçüldü (2026-08-02):
+ *
+ *     "YÖNETİCİ" -> "yoneti̇ci̇"   (79 6f 6e 65 74 69 [307] 63 69 [307])
+ *     "yonetici" -> "yonetici"
+ *     "ADMİN"    -> "admi̇n"      ≠ "admin"
+ *
+ * İKİ AYRI ETKİ, İKİSİ DE TAKLİT:
+ *   1) REZERVE AD: `ADMİN`, `SİSTEM`, `YÖNETİCİ` kabul ediliyordu — oysa
+ *      liste tam olarak personel taklidini önlemek için var. Türkçe bir
+ *      uygulamada bu doğrudan sömürülebilir.
+ *   2) BENZERSİZLİK: aynı fonksiyon `isNicknameTaken` için de kullanılıyor,
+ *      yani `ALİ` ile `ali` FARKLI normalize oluyor ve görsel olarak aynı ad
+ *      iki kişide birden durabiliyordu.
+ *
+ * ⚠️ SIRA ARTIK ÖNEMLİ VE KASITLI: İ/I/ı önce düz "i"ye çekiliyor, sonra
+ * küçültme, en sonda NFD ile birleşik işaretler atılıyor. NFD adımı ş/ğ/ü/ö/ç
+ * dönüşümlerini de kapsıyor (hepsi harf + birleşik işaret olarak ayrışır),
+ * ayrıca é/ñ gibi başka dillerin işaretlerini de temizler.
+ */
 function normNick(s) {
   return String(s || "")
+    // ⚠️ toLowerCase'DEN ÖNCE: sonra yapılırsa İ zaten i+U+0307 olmuş olur.
+    .replace(/İ/g, "i").replace(/I/g, "i").replace(/ı/g, "i")
     .toLowerCase()
-    .replace(/ı/g, "i").replace(/İ/g, "i")
-    .replace(/ş/g, "s").replace(/ğ/g, "g")
-    .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
     .trim();
 }
 
