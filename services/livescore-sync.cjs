@@ -288,6 +288,133 @@ async function writeLiveState(fixtureId, liveMatch, scores, nowISO) {
 // ──────────────────────────────────────────────
 // Also write to results.json so settle2 bootstrap picks it up
 // ──────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────────────────────
+ * BESLEMEDEN DÜŞEN MAÇLARI UZLAŞTIR — "takılı LIVE" sızıntısının kaynağı.
+ *
+ * ⚠️ KUSUR: `sync()` içindeki ana döngü `if (!liveMatch) continue;` diyor —
+ * yani bir maç kaynağın canlı beslemesinden çıktığı anda BİR DAHA ASLA ele
+ * alınmıyor. Maç bitip kaynağın "bugün" sayfasından düşerse durum dosyası
+ * sonsuza dek `status: "LIVE"` kalıyor. Güncelleme yok, hata yok, iz yok.
+ *
+ * ÖLÇÜLDÜ (üretim, 2026-08-02): 6 saatten eski 160 takılı LIVE durum dosyası.
+ * Yaş dağılımı 6-24sa: 87 · 1-3gün: 21 · 3-7gün: 51 · 7gün+: 1 — yani
+ * tarihî artık değil, AKTİF sızıntı. Hepsinin kaynağı `livescore-sync`.
+ * 1 Ağustos'ta 456 kayıt elle kapatılmıştı; sebep kapatılmadığı için geri
+ * geldi. En yaşlısı 360 saat (15 gün) boyunca uygulamada "CANLI" görünüyordu.
+ *
+ * ⚠️ 16'SINDA ÖDÜL ZATEN DAĞITILMIŞTI (`match_results.awardedAt` damgalı,
+ * `meta.status: "FT"`) — yani maç uzlaşmış, para ödenmiş, ama kullanıcı
+ * ekranında hâlâ canlı görünüyordu.
+ *
+ * ⚠️ SKOR UYDURULMUYOR. Bu dosyanın kendi kuralı: güvenilmez skorla FT
+ * yazmak, `claimAward` mührü yüzünden KALICI yanlış ödeme demek. Bu yüzden
+ * iki ayrı yol var:
+ *   (a) `match_results` içinde gerçek `finalScore` VARSA → FT yazılır ve
+ *       normal uzlaşma boru hattı çalışır.
+ *   (b) Kanıt YOKSA → skor yazılmaz; durum `OVERDUE_NO_RESULT` olur.
+ *       "Maç bitti, sonuç alınamadı" demek — LIVE göstermek düpedüz yanlış
+ *       bilgi. Para tarafı ayrıca korunuyor: `lib/bayat-mac.cjs` 48 saatte
+ *       bahisleri iade ediyor.
+ *
+ * ⚠️ YAPIŞKAN DEĞİL. Maç beslemede yeniden görünürse ana döngü durumu
+ * normal şekilde üzerine yazar (kaynak kesintisi geçiciyse kendini onarır).
+ *
+ * ⚠️ EŞİK CÖMERT: Bir futbol maçı uzatma + devre arası + gecikmeyle bile
+ * 5 saati bulmaz. Erken davranmak, hâlâ oynayan maçı "bitti" göstermek
+ * olurdu — bu yönde yanılmak daha pahalı.
+ * ──────────────────────────────────────────────────────────────────────── */
+const MAX_LIVE_SAAT = Number(process.env.SKORLIG_MAX_LIVE_SAAT || 5);
+
+/** Fikstürün başlama anı (ms) — birden çok alan adı kullanılıyor. */
+function kickoffMs(fixture) {
+  return Date.parse(fixture?.kickoffISO || fixture?.kickoff || fixture?.dateISO || "");
+}
+
+/**
+ * Beslemede olmayan ama durumu LIVE kalmış maçları kapatır.
+ * @returns {Promise<{kapanan:number, kanitli:number, kanitsiz:number}>}
+ */
+async function takiliLiveUzlastir(fixtureList, gorulen, nowISO, settleQueue) {
+  const simdi = Date.now();
+  const sinir = MAX_LIVE_SAAT * 3600 * 1000;
+  let kanitli = 0, kanitsiz = 0;
+
+  /* Yalnızca aday olabilecekler için durum dosyası okunuyor: her turda 1400
+   * dosya açmak gereksiz. Fikstür listesi zaten bellekte. */
+  const adaylar = fixtureList.filter((f) => {
+    const fid = String(f?.fixtureId || "");
+    if (!fid || gorulen.has(fid)) return false;
+    const ko = kickoffMs(f);
+    return Number.isFinite(ko) && simdi - ko >= sinir;
+  });
+
+  let db = null;
+  try { db = await dbAlSafe(); } catch { /* kanıt aranamaz, (b) yoluna düşer */ }
+
+  for (const f of adaylar) {
+    const fid = String(f.fixtureId);
+    const st = await readJson(liveStateFile(fid), null);
+    if (!st || String(st.status || "").toUpperCase() !== "LIVE") continue;
+
+    // (a) Gerçek sonuç var mı?
+    let skor = null;
+    if (db) {
+      try {
+        const snap = await MatchResults.getSnapshot(fid, db);
+        const h = Number(snap?.finalScore?.home);
+        const a = Number(snap?.finalScore?.away);
+        if (Number.isFinite(h) && Number.isFinite(a)) skor = { home: h, away: a };
+      } catch (e) {
+        console.error(`[sync/takili] ${fid} sonuc okunamadi:`, e?.message || e);
+      }
+    }
+
+    if (skor) {
+      /* FT'ye çeviriliyor. `writeLiveState` yolundan geçmiyoruz çünkü elimizde
+       * `liveMatch` yok; damgalar burada elle set ediliyor. */
+      const oncekiSkor = st.score || {};
+      const skorAyni =
+        Number(oncekiSkor.home) === skor.home && Number(oncekiSkor.away) === skor.away;
+      await writeJsonAtomic(liveStateFile(fid), {
+        ...st,
+        status: "FT",
+        isLive: false,
+        score: skor,
+        updatedAt: nowISO,
+        source: "livescore-sync/takili-uzlastir",
+        ilkFtAt: st.ilkFtAt || nowISO,
+        skorSabitAt: skorAyni && st.skorSabitAt ? st.skorSabitAt : nowISO,
+      });
+      kanitli++;
+      /* Uzlaşma kuyruğuna EKLENMİYOR: bu maçların sonucu zaten
+       * `match_results` içinde, yani uzlaşma olmuş demektir (ölçümde 16'sının
+       * `awardedAt` damgası vardı). Tekrar tetiklemek `claimAward` mührüne
+       * çarpar — zararsız ama gereksiz iş. Kuyruk parametresi, ileride
+       * kanıt uzlaşmadan ÖNCE gelirse diye imzada duruyor. */
+      void settleQueue;
+    } else {
+      // (b) Kanıt yok — skora DOKUNULMUYOR, yalnızca yanlış "canlı" iddiası kalkıyor.
+      await writeJsonAtomic(liveStateFile(fid), {
+        ...st,
+        status: "OVERDUE_NO_RESULT",
+        isLive: false,
+        updatedAt: nowISO,
+        source: "livescore-sync/takili-uzlastir",
+        sonucBeklemedeAt: st.sonucBeklemedeAt || nowISO,
+      });
+      kanitsiz++;
+    }
+  }
+
+  if (kanitli || kanitsiz) {
+    console.log(
+      `[sync/takili] beslemeden dusen ${kanitli + kanitsiz} mac kapatildi ` +
+      `(sonucu bilinen ${kanitli} -> FT, bilinmeyen ${kanitsiz} -> OVERDUE_NO_RESULT)`
+    );
+  }
+  return { kapanan: kanitli + kanitsiz, kanitli, kanitsiz };
+}
+
 async function writeResultsEntry(fixture, scores, nowISO) {
   const results = await readJson(RESULTS_FILE, []);
   const list = Array.isArray(results) ? results : (results?.items || []);
@@ -370,10 +497,16 @@ async function sync() {
     let bekleyen = 0;   // kararlilik kapisinda bekleyen mac sayisi
     const settleQueue = [];
 
+    /* Beslemede görülen maçlar. Görülmeyenler döngü sonunda uzlaştırılıyor —
+     * bkz. takiliLiveUzlastir: `continue` yüzünden onlar bir daha hiç ele
+     * alınmıyordu ve durumları sonsuza dek LIVE kalıyordu. */
+    const gorulen = new Set();
+
     for (const fixture of fixtureList) {
       const fid      = fixture.fixtureId;
       const liveMatch = findLiveMatch(fixture, allLive);
       if (!liveMatch) continue;
+      gorulen.add(String(fid));
 
       const htParsed = parseHT(liveMatch.htScore);
       const hasScore = liveMatch.homeScore != null && liveMatch.awayScore != null;
@@ -484,6 +617,17 @@ async function sync() {
       }
     }
 
+    /* ⚠️ SIZINTI KAPISI. Yukarıdaki döngü yalnızca BESLEMEDE OLAN maçları
+     * günceller; beslemeden düşen bir maç sonsuza dek LIVE kalıyordu
+     * (ölçüldü: 160 kayıt, en yaşlısı 15 gün). Hata fırlatmasın — ana
+     * senkron akışı bundan etkilenmemeli. */
+    let takiliSonuc = { kapanan: 0, kanitli: 0, kanitsiz: 0 };
+    try {
+      takiliSonuc = await takiliLiveUzlastir(fixtureList, gorulen, nowISO, settleQueue);
+    } catch (e) {
+      console.error("[sync/takili] uzlastirma basarisiz:", e?.message || e);
+    }
+
     // Settle sırayla (flood önlemi)
     for (const fid of settleQueue) {
       _settledThisSession.add(fid); // optimistic lock
@@ -496,7 +640,7 @@ async function sync() {
       console.log(`[sync] ${nowISO} — FT settle: ${newFT}, live updates: ${newLive} (${duration}ms)`);
     }
 
-    _lastSync = { ts: nowISO, newFT, newLive, duration };
+    _lastSync = { ts: nowISO, newFT, newLive, duration, takili: takiliSonuc };
     return _lastSync;
   } catch (e) {
     console.error("[sync] error:", e.message);
@@ -523,4 +667,6 @@ module.exports = {
   // Test icin: kararlilik kapisi saf fonksiyon, kendi kopyasini yazmak yerine
   // gercegi cagrilsin (bu oturumda kopya-mantik iki kez yesil-ama-olu test uretti).
   ftBeklemesiDoldu, FT_BEKLEME_DK,
+  // Takili LIVE sizintisinin kapisi — davranisi dogrudan sinanabilsin diye acik.
+  takiliLiveUzlastir, MAX_LIVE_SAAT,
 };
