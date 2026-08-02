@@ -90,6 +90,14 @@ function istemciCagrilari() {
 
       for (const m of satir.matchAll(/["`](\/api\/[A-Za-z0-9_\-/.${}[\]]+)/g)) {
         const yol = m[1]
+          /* ⚠️ EĞİK ÇİZGİ İLE BAŞLAMAYAN `${...}` YOL PARÇASI DEĞİL, SORGUDUR.
+           * `/api/weekly-picks${qs}` içindeki değişken `?userId=...` taşıyor;
+           * onu `:p` yapmak yolu `/api/weekly-picks:p` gösteriyor ve sunucuda
+           * karşılığı yokmuş gibi YANLIŞ ALARM üretiyordu. Yol parametresi
+           * (`/api/users/${id}`) her zaman `/` ile ayrılır — ayrım bu.
+           * Tarayıcı `?` sonrasını zaten atıyor; sorun `?`nin değişkenin
+           * İÇİNDE kalmasıydı. */
+          .replace(/(?<!\/)\$\{[^}]*\}.*$/, "")
           .replace(/\$\{[^}]*\}/g, ":p")
           .split("?")[0]
           .replace(/\/+$/, "");
@@ -138,7 +146,12 @@ const BILINEN_OLU = new Set([
   "/api/auth1987gs/status",    // mystatus.tsx (uçlar: verify/diag/members)
   "/api/skorlig/next",         // predict.tsx (skorlig.cjs /api'ye monte)
   "/api/users/get",            // profile/[userId].tsx — yalnızca yedek yol
-  "/api/leaderboard:p",        // stats.tsx — şablon birleştirme, tarayıcı eseri
+  /* "/api/leaderboard:p" ÇIKARILDI — 2026-08-03. Zaten "tarayıcı eseri"
+   * diye işaretlenmiş bir YANLIŞ POZİTİFTİ: `/api/leaderboard${qs}` gibi
+   * bir çağrıda değişken SORGU taşıyor, yol parçası değil. Tarayıcının
+   * normalleştirmesi düzeltilince (eğik çizgiyle başlamayan `${...}`
+   * sorgudur) bu giriş kendiliğinden gereksizleşti ve bayatlama nöbetçisi
+   * onu yakaladı. */
 ]);
 
 /* ── Testler ─────────────────────────────────────────────────────────────── */

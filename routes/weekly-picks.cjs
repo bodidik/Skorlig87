@@ -14,7 +14,7 @@ const router  = express.Router();
 const fsp     = require("fs").promises;
 const path    = require("path");
 const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
-const { verifyToken }              = require("../middleware/verifyToken.cjs");
+const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 
 // ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
@@ -179,9 +179,36 @@ async function spendLc(db, userId, amount) {
  * Önümüzdeki 7 günde olan tüm maçları döndürür.
  * 24 saat penceresi başlamışsa open:true.
  */
-router.get("/", async (req, res) => {
+/**
+ * ⚠️ BAŞKASININ AÇIK TAHMİNİ SIZIYORDU — REKABET BÜTÜNLÜĞÜ AÇIĞI.
+ *
+ * Uç `?userId=` parametresine güvenip O KULLANICININ tahminlerini yanıta
+ * koyuyordu; hiçbir kimlik denetimi yoktu. Denetimli olarak ÜRETİLDİ
+ * (kickoff'a 3 saat, maç `open: true`):
+ *     KURBAN kendi sorgusu     → {"outcome":"H","firstGoal":"H",...}
+ *     SALDIRGAN kimliğiyle     → AYNI cevap
+ *     KİMLİKSİZ istek          → AYNI cevap
+ * Yani kullanıcı kimlikleri sıralama tablosunda zaten görünürken, herkes
+ * rakibinin daha OYNANMAMIŞ maçtaki tahminini okuyup ona göre oynayabiliyordu.
+ *
+ * ⚠️ LİSTE KAPATILMIYOR, YALNIZCA TAHMİN. Maç listesi herkese açık kalmalı
+ * (misafir de görebilmeli); gizli olan yalnızca KİMİN NE OYNADIĞI. Bu yüzden
+ * `verifyToken` değil `optionalToken`: kimliksiz istek listeyi alır, `pred`
+ * alanı null gelir.
+ *
+ * ⚠️ KİMLİK JETONDAN, SORGUDAN DEĞİL. `req.uid` doğrulanmış kimlik;
+ * `?userId=` istemcinin yazdığı bir dize. `lib/kimlik-kontrol.cjs` aynı
+ * dersi anlatıyor ve on rotada kullanılıyor — burada eksikti.
+ */
+router.get("/", optionalToken, async (req, res) => {
   try {
-    const userId = String(req.query.userId || "").trim();
+    const istenen = String(req.query.userId || "").trim();
+    const kimlik  = String(req.uid || "").trim();
+    /* Yalnızca KENDİ tahminleri döner. Kimlik yoksa ya da başkasının
+     * kimliği istenmişse tahmin alanı boş kalır — liste yine gelir. */
+    const userId = (kimlik && (!istenen || istenen.toLowerCase() === kimlik.toLowerCase()))
+      ? kimlik
+      : "";
     const db     = req.app?.locals?.db || null;
     const now    = Date.now();
 
