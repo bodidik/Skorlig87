@@ -1061,7 +1061,63 @@ router.get("/daily-menu", async (req, res) => {
       }
     }
 
+    /**
+     * ⚠️ 3. DEPO YEDEĞİ — ÖZELLİK AY(LAR)DIR ÖLÜYDÜ.
+     *
+     * Yukarıdaki iki adım fikstürleri API-Football'dan çekiyor ve
+     * `fetchPlayable` ilk satırında `if (!AF_KEY) return []` diyor. AF askıya
+     * alındığından beri (bkz. services/af-sync.cjs — anahtar yokken start
+     * erken dönüyor) bu uç HERKESE boş liste veriyordu.
+     *
+     * ÖLÇÜLDÜ (2026-08-02, canlı sunucu): daily-menu her ülke için 0 maç
+     * döndürüyor — country parametresiyle de, parametresiz de. Oysa aynı anda
+     * depoda 1963 fikstür ve 629 tahmin edilebilir (NS) maç var.
+     * `components/DailyMenuStrip.tsx` bu listeyi basıyor, yani ana ekrandaki
+     * şerit boş kalıyordu ve hata da görünmüyordu.
+     *
+     * ⚠️ VERİ YOKLUĞU DEĞİL, KAPATILMIŞ SAĞLAYICIDAN OKUMA. Uygulamanın kendi
+     * fikstür deposu (Maçkolik + FDO) doluydu; uç oraya hiç bakmıyordu.
+     *
+     * ⚠️ SIRALAMA UYDURULMUYOR: `lib/fixture-priority.cjs` zaten "hangi maç
+     * daha çekici" kuralını taşıyor (kullanıcının ülkesi > global > büyük lig)
+     * ve ana ekran onu kullanıyor. Aynı kuralı burada da kullanmak, iki yerin
+     * ayrışmasını önlüyor.
+     */
+    if (results.length < SLOTS) {
+      try {
+        const FixturesStore = require("../lib/fixtures-store.cjs");
+        const { sortByPriority, isAcceptableFixture } = require("../lib/fixture-priority.cjs");
+        const hepsi = await FixturesStore.loadAll(req.app?.locals?.db || null);
+        const bugun = todayStr;
+        const oynanabilir = (hepsi || []).filter((f) => {
+          const durum = String(f.status || "NS").toUpperCase();
+          if (!["NS", "1H", "2H", "HT", "LIVE"].includes(durum)) return false;
+          const ko = String(f.kickoffISO || "");
+          if (!ko.startsWith(bugun)) return false;          // YALNIZCA bugün
+          return isAcceptableFixture ? isAcceptableFixture(f) : true;
+        });
+        addFixtures(
+          sortByPriority(oynanabilir, country || null).map((f, i) => ({
+            fixtureId: String(f.fixtureId),
+            home: f.home || "?",
+            away: f.away || "?",
+            kickoffISO: f.kickoffISO || null,
+            status: String(f.status || "NS").toUpperCase(),
+            league: f.league || null,
+            country: f.country || null,
+            leagueId: null,
+            /* Sıra `sortByPriority`den geliyor; `addFixtures` _score'a göre
+             * azalan sıralıyor, o yüzden sırayı skora çeviriyoruz. */
+            _score: 1_000_000 - i,
+          }))
+        );
+      } catch (e) {
+        console.error("[daily-menu] depo yedegi basarisiz:", e?.message || e);
+      }
+
     return res.json({ ok: true, date: todayStr, country: country || null, fixtures: results });
+    }
+
   } catch (e) {
     res.status(500).json({ ok: false, error: "DAILY_MENU_ERR", detail: String(e.message || e) });
   }
