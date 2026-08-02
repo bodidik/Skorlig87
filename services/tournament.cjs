@@ -65,13 +65,47 @@ async function ucretTahsilEt(db, userId, tutar) {
   return conn;
 }
 
-/** Turnuvaya yazma başarısız olursa ücreti geri ver. */
+/**
+ * Turnuvaya yazma başarısız olursa ücreti geri ver.
+ *
+ * ⚠️ BURADAKİ SAVUNMA ETKİSİZDİ — YANLIŞ BAŞARISIZLIK MODUNU BEKLİYORDU.
+ *
+ * Eski hâli `creditLc`'yi try/catch'e sarıp FIRLATMA durumunda logluyordu.
+ * Ama `creditLc` hiç fırlatmaz: hatayı kendi içinde yutar ve `false` döner
+ * (lib/wallet-credit.cjs:206). Ampirik olarak ölçüldü (2026-08-02):
+ *     db yok       → false, fırlatmadı
+ *     mongo çöktü  → false, fırlatmadı
+ * Yani `catch` bloğu ÖLÜ KODDU ve iade sessizce düşüyordu.
+ *
+ * ⚠️ ETKİSİ GERÇEK PARA: oyuncu giriş ücretini ÖDEMİŞ (`ucretTahsilEt`
+ * başarılı), turnuvaya yazma patlamış, iade de patlamış. Bu dal zaten Mongo
+ * tökezlediği için çalışıyor — yani iadenin de patlaması EN OLASI senaryo,
+ * kenar durum değil.
+ *
+ * ⚠️ AYNI DOSYA DOĞRUSUNU ZATEN YAPIYOR: ödül ödemesi başarısız olunca
+ * `kayipOdulKaydet` ile kalıcı ize yazılıyor (aşağıda) ve `GET /api/health`
+ * onu sayıyor. Kupon, havuz, mini turnuva ve bayat temizleyici de öyle.
+ * Eksik olan tek yol buydu. Log yeterli değil: Render'da disk geçici,
+ * dosyanın kendi niyeti "elle telafi edilebilsin" ve bu ancak kalıcı izle
+ * mümkün.
+ */
 async function ucretIadeEt(conn, userId, tutar, neden) {
+  const ok = await creditLc(conn, userId, tutar, "tournament_entry_refund", { neden });
+  if (ok) return;
+
+  console.error(`[tournament] ⛔ IADE EDILEMEDI ${userId} ${tutar} LC (${neden})`);
   try {
-    await creditLc(conn, userId, tutar, "tournament_entry_refund", { neden });
+    const { kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
+    await kayipOdulKaydet(conn, {
+      kaynak: "tournament_entry_refund",
+      neden,
+      odemeler: [{ userIdLower: String(userId || "").toLowerCase(), tutar }],
+      beklenen: 1,
+      eksik: 1,
+    });
   } catch (e) {
-    // İade edilemezse KAYBOLMASIN: log'a düşsün, elle telafi edilebilsin.
-    console.error(`[tournament] IADE EDILEMEDI ${userId} ${tutar} LC (${neden}):`, e?.message || e);
+    // İz bırakma da başarısızsa yapacak bir şey kalmadı; en azından logla.
+    console.error("[tournament] kayip iade izi yazilamadi:", e?.message || e);
   }
 }
 
@@ -413,5 +447,8 @@ module.exports = {
   create, join, predict, settle, getByCode, listByUser,
   MIN_ENTRY, MAX_ENTRY, MAX_MATCHES,
   // Sınama için: saf dağıtım matematiği (bkz. odemeDagit notu).
+  /* ⚠️ İADE YOLU DA SINANMALI: buradaki savunma bir kez ETKİSİZ yazılmıştı
+   * (yanlış başarısızlık modunu bekliyordu) ve hiçbir test görmedi. */
+  _ucretIadeEt: ucretIadeEt,
   _odemeDagit: odemeDagit, _PAYOUT_TABLE: PAYOUT_TABLE, _PAYOUT_8PLUS: PAYOUT_8PLUS,
 };
