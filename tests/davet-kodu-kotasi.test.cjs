@@ -57,8 +57,32 @@ function kodlar() {
     kodDosyasi()
   );
   if (!fs.existsSync(dosya)) return null;
-  const raw = JSON.parse(fs.readFileSync(dosya, "utf8"));
-  return Array.isArray(raw) ? raw : (raw.items || raw.codes || []);
+  /**
+   * ⚠️ CANLI `data/` DİZİNİYLE YARIŞ — SÜİTİ ARADA BİR KIRIYORDU.
+   *
+   * Sunucu çalışırken bu dizine sürekli yazılıyor ve yazma ATOMİK: önce
+   * `*.tmp`, sonra rename. `existsSync` ile `readFileSync` arasına rename
+   * denk gelirse dosya bir an yok olur ya da yarım görünür ve test ÜRÜN
+   * KUSURU OLMADAN kırılır.
+   *
+   * ÖLÇÜLDÜ (2026-08-02): aynı kökten üç ayrı kırılganlık bulundu
+   * (`guvenli-yol-siniri`, `bildirim-icerigi`, `sezon-siniri`); bu dördüncüsü.
+   *
+   * ⚠️ SESSİZCE GEÇMİYOR: okunamazsa `null` döner, çağıran iddiayı ATLAR ve
+   * sebep loga yazılır.
+   */
+  for (let deneme = 0; deneme < 2; deneme++) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(dosya, "utf8"));
+      return Array.isArray(raw) ? raw : (raw.items || raw.codes || []);
+    } catch (e) {
+      if (deneme === 1) {
+        console.warn(`[test] canli kod dosyasi okunamadi (${dosya}): ${e.message} — iddia atlaniyor`);
+        return null;
+      }
+    }
+  }
+  return null;
 }
 
 /* ── Kurulum sağlam mı ───────────────────────────────────────────────────── */
