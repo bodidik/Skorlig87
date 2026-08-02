@@ -1342,7 +1342,43 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
   // tarafındaki read-modify-write ise kullanıcı sayısıyla büyür.
   if (db) {
     try {
-      const sezon = Season.seasonKey();
+      /**
+       * ⚠️ SEZON MAÇIN SEZONU, ÖDÜLÜN DEĞİL.
+       *
+       * `Season.seasonKey()` argümansız çağrılıyordu, yani ŞU AN. Ayın son
+       * akşamı oynanan bir maç gece yarısını geçince ödülü ertesi aya —
+       * yani BİR SONRAKİ SEZONA — yazılıyordu.
+       *
+       * ÖLÇÜLDÜ (2026-08-02, 1024 eşleşen snapshot): 9 uzlaştırma yanlış
+       * sezona düşmüş. Hepsi aynı desende:
+       *     MK-LLANEL-2026-07-31-NEWPOR  mac=2026-07  odul=2026-08
+       * Nadir bir kaza değil, HER AY tekrarlayan sınır davranışı: ayın son
+       * günü geç başlayan maçların tamamı.
+       *
+       * Etkisi sıralamada: o puanlar Temmuz'un tablosunda hiç görünmüyor,
+       * Ağustos'unkini şişiriyor. Oyuncu maçı Temmuz'da oynadı.
+       *
+       * ⚠️ KICKOFF FİKSTÜR KAYDINDAN OKUNUYOR: canlı durum dosyası taşımıyor
+       * (ölçüldü: 200 dosyanın 199'unda `kickoffISO` yok). Aynı sebeple
+       * home/away de fikstürden tamamlanıyor — bkz. yukarıdaki `st` zenginleştirme.
+       *
+       * ⚠️ OKUNAMAZSA ŞU ANKİ SEZONA DÜŞÜLÜYOR: puanı hiç yazmamaktansa
+       * muhtemelen doğru olan sezona yazmak iyidir.
+       */
+      let sezon = Season.seasonKey();
+      try {
+        const fxSezon = await FixturesStore.getOne(fid, db);
+        const ko = fxSezon?.kickoffISO || null;
+        if (ko) {
+          const macSezon = Season.seasonKey(new Date(ko));
+          if (macSezon && macSezon !== sezon) {
+            console.warn(`[settle2] sezon sinirinda: ${fid} macSezon=${macSezon} simdi=${sezon} — MAC sezonuna yaziliyor`);
+            sezon = macSezon;
+          }
+        }
+      } catch (e) {
+        console.error("[settle2] mac sezonu okunamadi, simdiki sezona yaziliyor:", e?.message || e);
+      }
       const ops = rows.map((r) => {
         const uid = String(r.userId);
         const ceza =
