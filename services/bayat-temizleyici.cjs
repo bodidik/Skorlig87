@@ -45,21 +45,106 @@ async function getDbSafe() {
   }
 }
 
-/** fixtureId → kickoffISO (fikstür deposundan). Bulunamazsa null. */
+/**
+ * Tahmin, başlamasına en fazla bu kadar kalan maça girilebiliyor.
+ *
+ * ⚠️ İKİNCİ KOPYA, VE BİLEREK: kaynak `routes/live2.cjs` içindeki
+ * `PREDICT_OPEN_AHEAD_HOURS` (96). Bir servisin route dosyasını require
+ * etmesi döngüsel bağımlılık riski taşıyor, o yüzden değer burada duruyor —
+ * ama `tests/bayat-fikstursuz-mac.test.cjs` iki sayının EŞİT kaldığını
+ * doğruluyor. Bu depoda kopyaların sessizce ayrışması en sık kusur şekli;
+ * kopya kaçınılmazsa en azından ölçülür.
+ */
+const TAHMIN_PENCERE_SAAT = Number(process.env.SKORLIG_PRED_AHEAD_SAAT || 96);
+
+/**
+ * fixtureId → kickoffISO. Bulunamazsa null.
+ *
+ * ⚠️ FİKSTÜR SİLİNİNCE PARA KİLİTLİ KALIYORDU. Bu harita yalnızca `fixtures`
+ * koleksiyonunu okuyordu; fikstür deposu TAM DEĞİŞTİRME semantiğinde
+ * (`saveAll` listede olmayanı siler) ve eski maçlar listeden düşüyor.
+ * Kayıt silinince saat `null` dönüyor, `bayatMi` ise FAIL-CLOSED — "başlama
+ * saati okunamıyorsa maç BAYAT SAYILMAZ" — yani iade HİÇ tetiklenmiyordu.
+ * Sonuç: sonucu hiç gelmemiş bir maçta oyuncunun LC'si KALICI kilitli.
+ *
+ * ÖLÇÜLDÜ (üretim, 2026-08-02): tahmin almış 242 maçın 168'inin fikstür
+ * kaydı yok. Şu an insan parası açısından maruziyet SIFIR (iade edilmemiş
+ * insan tahmini olan 6 maçtan fikstürsüz 3'ü de uzlaşmış), ama yol açık ve
+ * fikstürler sürekli düşüyor.
+ *
+ * ⚠️ DÜELLOLAR ETKİLENMİYOR: `duels` belgesi kendi `kickoffISO`sunu taşıyor
+ * ve fikstür silinse de duruyor. Açık kalan tahmin ve havuz yollarıydı.
+ *
+ * ÜÇ KADEMELİ ZİNCİR — hepsi ÜST SINIR yönünde, yani asla ERKEN iade yok:
+ *   1) `fixtures` kaydı (yetkili kaynak)
+ *   2) `match_results.meta.kickoffISO` — fikstür silinse de sonuç kaydı kalır
+ *   3) Son çare: `max(predictions.at) + 96 saat`. Tahmin yalnızca başlamasına
+ *      96 saatten az kalan maça girilebildiği için (`PREDICT_OPEN_AHEAD_HOURS`)
+ *      bu, kickoff için GEÇERLİ BİR ÜST SINIRDIR. Üst sınır kullanmak
+ *      bekleme süresini uzatır, kısaltmaz — erken iade edip gerçek sonuç
+ *      gelince ikinci kez ödeme yapma riski YOK.
+ */
 async function kickoffHaritasi(db, ids) {
   const harita = new Map();
   if (!ids.length) return harita;
+  const hepsi = ids.map(String);
+
+  // 1) Yetkili kaynak: fikstür deposu
   try {
     const docs = await db
       .collection(COLL_FIXTURES)
-      .find({ fixtureId: { $in: ids.map(String) } }, { projection: { fixtureId: 1, kickoffISO: 1, kickoff: 1, _id: 0 } })
+      .find({ fixtureId: { $in: hepsi } }, { projection: { fixtureId: 1, kickoffISO: 1, kickoff: 1, _id: 0 } })
       .toArray();
     for (const d of docs) {
-      harita.set(String(d.fixtureId), d.kickoffISO || d.kickoff || null);
+      const v = d.kickoffISO || d.kickoff || null;
+      if (v) harita.set(String(d.fixtureId), v);
     }
   } catch (e) {
     console.error("[bayat-temizleyici] fikstur saatleri okunamadi:", e?.message || e);
   }
+
+  const eksik = () => hepsi.filter((id) => !harita.get(id));
+
+  // 2) Sonuç kaydının meta'sı — fikstür silinse de kalıyor
+  let kalan = eksik();
+  if (kalan.length) {
+    try {
+      const docs = await db
+        .collection("match_results")
+        .find({ fixtureId: { $in: kalan } }, { projection: { fixtureId: 1, "meta.kickoffISO": 1, _id: 0 } })
+        .toArray();
+      for (const d of docs) {
+        if (d?.meta?.kickoffISO) harita.set(String(d.fixtureId), d.meta.kickoffISO);
+      }
+    } catch (e) {
+      console.error("[bayat-temizleyici] sonuc meta saatleri okunamadi:", e?.message || e);
+    }
+  }
+
+  // 3) Son çare: en geç tahminin zamanı + tahmin penceresi (üst sınır)
+  kalan = eksik();
+  if (kalan.length) {
+    try {
+      const grup = await db.collection("predictions").aggregate([
+        { $match: { fixtureId: { $in: kalan } } },
+        { $group: { _id: "$fixtureId", sonAt: { $max: "$at" } } },
+      ]).toArray();
+      for (const g of grup) {
+        const t = Date.parse(g?.sonAt || "");
+        if (!Number.isFinite(t)) continue;
+        harita.set(String(g._id), new Date(t + TAHMIN_PENCERE_SAAT * 3600 * 1000).toISOString());
+      }
+      if (grup.length) {
+        console.warn(
+          `[bayat-temizleyici] ${grup.length} macin fikstur kaydi YOK — ` +
+          `kickoff, son tahmin + ${TAHMIN_PENCERE_SAAT}sa ust siniriyla tahmin edildi`
+        );
+      }
+    } catch (e) {
+      console.error("[bayat-temizleyici] tahmin zamanlari okunamadi:", e?.message || e);
+    }
+  }
+
   return harita;
 }
 
@@ -334,4 +419,6 @@ function stop() {
 
 module.exports = { start, stop, tur, sonTur: () => _sonTur,
   _duellolariTemizle: duellolariTemizle, _havuzlariTemizle: havuzlariTemizle,
-  _tahminleriTemizle: tahminleriTemizle };
+  _tahminleriTemizle: tahminleriTemizle,
+  // Fikstursuz macta parayi kilitleyen yol — dogrudan sinanabilsin diye acik.
+  _kickoffHaritasi: kickoffHaritasi, TAHMIN_PENCERE_SAAT };
