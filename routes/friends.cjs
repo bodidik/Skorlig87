@@ -302,8 +302,32 @@ router.post("/remove-request", verifyToken, express.json(), async (req, res) => 
  * GET /api/friends/list/:userId
  * Arkadaş listesi + bekleyen istekler
  */
-router.get("/list/:userId", async (req,res)=>{
+/**
+ * ⚠️ KİMLİK DENETİMİ HİÇ YOKTU — ARKADAŞ LİSTESİ HERKESE AÇIKTI.
+ *
+ * `userId` doğrudan YOL PARAMETRESİNDEN alınıyordu; ne `verifyToken` vardı
+ * ne sahiplik kontrolü. Bir kullanıcı kimliğini bilen (ya da açık bir
+ * sıralama ucundan toplayan) herkes o kişinin TÜM sosyal grafiğini —
+ * arkadaşları, bekleyen istekleri, adları, bayrakları, puanları —
+ * okuyabiliyordu.
+ *
+ * ÖLÇÜLDÜ (2026-08-02): 215 uç gerçek mount önekleriyle kimliksiz dövüldü;
+ * bu iki uç 200 döndü.
+ *
+ * ⚠️ AYNI SINIFIN YEDİNCİ ÖRNEĞİ. Bugün havuzda (`myBet`), `weekly-picks`te,
+ * `stats/user`da, profilde ve 1987 üyeliğinde aynı kusur bulundu:
+ * "kimlik gövdeden/parametreden geliyor, jetondan değil".
+ * `lib/kimlik-kontrol.cjs` bu dersi zaten yazmış.
+ *
+ * ⚠️ İSTEMCİ KIRILMIYOR, DOĞRULANDI: mobil taraftaki DÖRT çağrının
+ * (me.tsx, friends/list.tsx, friends/board.tsx, mini/[id].tsx) hepsi
+ * KENDİ kimliğini geçiyor. "Arkadaşın tablosuna bak" diye bir akış yok —
+ * list.tsx'teki board kısayolu da aynı userId'yi taşıyor.
+ */
+router.get("/list/:userId", verifyToken, async (req,res)=>{
   try{
+    const _k = kimlikVeyaHata(req, res, req.params.userId);
+    if (!_k) return;
     const userId = String(req.params.userId || "").trim();
     if (!userId) return res.status(400).json({ ok:false, error:"USER_REQUIRED" });
 
@@ -378,8 +402,32 @@ router.get("/list/:userId", async (req,res)=>{
  * → Kişi + tüm arkadaşları için mini puan tablosu
  * (Me.tsx: FriendRow ile uyumlu)
  */
-router.get("/board/:userId", async (req,res)=>{
+/**
+ * ⚠️ KİMLİK DENETİMİ HİÇ YOKTU — ARKADAŞ LİSTESİ HERKESE AÇIKTI.
+ *
+ * `userId` doğrudan YOL PARAMETRESİNDEN alınıyordu; ne `verifyToken` vardı
+ * ne sahiplik kontrolü. Bir kullanıcı kimliğini bilen (ya da açık bir
+ * sıralama ucundan toplayan) herkes o kişinin TÜM sosyal grafiğini —
+ * arkadaşları, bekleyen istekleri, adları, bayrakları, puanları —
+ * okuyabiliyordu.
+ *
+ * ÖLÇÜLDÜ (2026-08-02): 215 uç gerçek mount önekleriyle kimliksiz dövüldü;
+ * bu iki uç 200 döndü.
+ *
+ * ⚠️ AYNI SINIFIN YEDİNCİ ÖRNEĞİ. Bugün havuzda (`myBet`), `weekly-picks`te,
+ * `stats/user`da, profilde ve 1987 üyeliğinde aynı kusur bulundu:
+ * "kimlik gövdeden/parametreden geliyor, jetondan değil".
+ * `lib/kimlik-kontrol.cjs` bu dersi zaten yazmış.
+ *
+ * ⚠️ İSTEMCİ KIRILMIYOR, DOĞRULANDI: mobil taraftaki DÖRT çağrının
+ * (me.tsx, friends/list.tsx, friends/board.tsx, mini/[id].tsx) hepsi
+ * KENDİ kimliğini geçiyor. "Arkadaşın tablosuna bak" diye bir akış yok —
+ * list.tsx'teki board kısayolu da aynı userId'yi taşıyor.
+ */
+router.get("/board/:userId", verifyToken, async (req,res)=>{
   try{
+    const _k = kimlikVeyaHata(req, res, req.params.userId);
+    if (!_k) return;
     const userId = String(req.params.userId || "").trim();
     if (!userId) return res.status(400).json({ ok:false, error:"USER_REQUIRED" });
 
