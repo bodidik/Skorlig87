@@ -105,10 +105,57 @@ async function scopedRank(rawRows, { scope, country, humansOnly }, db) {
  * düşer ve `requestedScope` alanıyla bunu istemciye bildirir — sessizce boş
  * liste dönmek, ekranda "kimse yok" gibi görünürdü.
  */
+/**
+ * İstenen satır sınırını okur. Yoksa `null` — yani KIRPMA YOK.
+ * ⚠️ Varsayılan bilinçli olarak sınırsız: sessizce kırpmak, alt sıradaki
+ * oyuncunun kendini hiç görememesi demek. Kırpma çağıranın açık tercihi.
+ */
+function limitOku(req) {
+  const ham = String(req.query.limit || "").trim();
+  if (!ham) return null;
+  const n = Number(ham);
+  if (!Number.isFinite(n) || n === 0) return null;
+  return Math.max(1, Math.min(5000, Math.floor(n)));
+}
+
+/**
+ * Satırları kırpar. ⚠️ META VERİ ÖNCE HESAPLANMIŞ OLMALI: `ranking` ve
+ * `scope` (poolSize/botCount/humanCount) TAM kümeden gelir, kırpılmıştan
+ * değil — ters sıra sıraları ve havuz sayısını bozar.
+ *
+ * ⚠️ MODÜL DÜZEYİNDE, bilerek: üç ayrı yanıt yolu var (Mongo, ara yol,
+ * dosya yedeği) ve ilk yazımda bunu tek bir handler'ın içinde tanımlamıştım —
+ * diğer iki yol `kirp is not defined` fırlatıp yanıtı HİÇ göndermedi, istek
+ * asıldı. Aynı dersin bugünkü üçüncü hâli: bir dalı düzeltip öbürünü bırakmak.
+ */
+function kirp(satirlar, limit) {
+  if (!limit || !Array.isArray(satirlar) || satirlar.length <= limit) return satirlar;
+  return satirlar.slice(0, limit);
+}
+
 async function resolveScope(req, db) {
   // ?humans=1 → botları sıralamadan çıkar. Bot kadrosu maçları doldurmak için
   // var; sıralamada rakip olmak için değil.
   const humansOnly = String(req.query.humans || "") === "1";
+
+  /**
+   * ⚠️ YANIT SINIRSIZDI — TABLO BÜYÜDÜKÇE İSTEMCİ ŞİŞER.
+   *
+   * ÖLÇÜLDÜ (2026-08-02, canlı sunucu): varsayılan istek 1575 satır,
+   * 256 KB, 660 ms. `app/(tabs)/stats.tsx` bunun İLK 100'ünü çiziyor
+   * ("Daha fazla göster" ile 100'er açılıyor) — yani 16 katı veri
+   * indiriliyordu. Ekran tarafındaki donma zaten bir kez düzeltilmiş
+   * (bkz. stats.tsx `gosterilecek` notu) ama AĞ tarafı öylece kalmış.
+   *
+   * ⚠️ VARSAYILAN DEĞİŞTİRİLMİYOR: sınır yalnızca İSTENİRSE uygulanıyor.
+   * Sessizce kırpmak, 2000. sıradaki oyuncunun kendini hiç görememesi
+   * demekti — bu yüzden kırpma çağıranın açık tercihi.
+   *
+   * ⚠️ SIRALAMA META VERİSİ TAM KÜMEDEN hesaplanır, kırpılmıştan değil:
+   * `ranking` ve `scope` (poolSize, humanCount, botCount) önce hesaplanıp
+   * satırlar SONRA kesiliyor. Ters sıra, sıraları ve havuz sayısını bozardı.
+   */
+
 
   const scope = String(req.query.scope || "global").trim().toLowerCase();
   if (scope !== "country") return { scope: "global", country: null, fellBack: false, humansOnly };
@@ -255,7 +302,7 @@ router.get("/", async (req,res)=>{
 
         return res.json({
           ok: true,
-          leaderboard: r.rows,
+          leaderboard: kirp(r.rows, limitOku(req)),
           ranking: rankingMeta(r.rows),
           scope: scopeInfo(r),
           updatedAt,
@@ -284,7 +331,7 @@ router.get("/", async (req,res)=>{
 
     return res.json({
       ok: true,
-      leaderboard: r.rows,
+      leaderboard: kirp(r.rows, limitOku(req)),
       ranking: rankingMeta(r.rows),
       scope: scopeInfo(r),
       updatedAt: totals.updatedAt || null,
@@ -313,7 +360,7 @@ router.get("/", async (req,res)=>{
 
   return res.json({
     ok:true,
-    leaderboard: r.rows,
+    leaderboard: kirp(r.rows, limitOku(req)),
     ranking: rankingMeta(r.rows),
     scope: scopeInfo(r),
     updatedAt: lb.updatedAt || null,
