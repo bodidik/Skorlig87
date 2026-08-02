@@ -93,7 +93,24 @@ const MATCH_RESULTS_FILE = path.join(DATA_DIR, "match-results.json");
 // aramazdı ve açılış bakiyesi kod yoluna göre değişebilirdi.
 const { LC_START } = require("../lib/ekonomi.cjs");
 const Ekonomi = require("../lib/ekonomi.cjs");
-const LC_ENTRY_COST = 3;
+/**
+ * ⚠️ MAÇ GİRİŞ BEDELİ TEK KAYNAKTAN — BURADA SABİT KODLUYDU.
+ *
+ * Bu değer İADE hesabında kullanılıyor (aşağıda `refund`). Tahsilat ise
+ * `routes/pred.cjs` üzerinden `lib/ekonomi.cjs`in `LC_MATCH_COST`unu
+ * kullanıyor ve o `SKORLIG_MATCH_COST` ile yapılandırılabiliyor.
+ *
+ * Yani operatör bedeli 5 yaparsa:
+ *     tahsilat  : 5 LC  (ekonomi.cjs)
+ *     iade      : 3 LC  (buradaki sabit)
+ * ve her iadede 2 LC sessizce kaybolurdu. Kusur yalnızca varsayılan
+ * DIŞINDA bir yapılandırmada ortaya çıkar — aynı biçim bugün
+ * `SKORLIG_DAILY_FLOOR` için de bulundu (ödeme yolu 3, satış ekranı 6).
+ *
+ * `routes/weekly-picks.cjs` bu sabitin DÖRDÜNCÜ adını taşıdığını zaten
+ * not etmiş; tek kaynağa bağlamak o zincirin son halkası.
+ */
+const { MAC_GIRIS_BEDELI: LC_ENTRY_COST } = require("../lib/ekonomi.cjs");
 
 /**
  * Giriş bedelinin İADE eşiği (tahmin puanı `base` bunun altındaysa iade yok).
