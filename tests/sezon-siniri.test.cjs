@@ -84,6 +84,43 @@ describe("sezon sınırı", () => {
     }
   });
 
+  test("season_totals'a YAZAN HERKES sezonu olaydan türetir", () => {
+    /**
+     * ⚠️ TEK KURAL, İKİ YAZAN. Bu koleksiyona yalnızca `routes/settle2.cjs`
+     * ve `lib/kupon-settle.cjs` yazıyor. settle2 maçın kickoff'una geçtiğinde
+     * kupon tarafı "şimdi"de kalmıştı ve ikisi AYRIŞMIŞTI — aynı tabloya iki
+     * farklı kuralla yazmak sıralamayı sessizce tutarsız yapar.
+     *
+     * ⚠️ ÜÇÜNCÜ BİR YAZAN EKLENİRSE bu test onu yakalar. Kusurun bugünkü
+     * biçimi tam olarak buydu: savunma bir yerde var, öbüründe yok.
+     */
+    const yazanlar = [];
+    for (const dizin of ["lib", "routes", "services"]) {
+      const d = path.join(KOK, dizin);
+      if (!fs.existsSync(d)) continue;
+      for (const ad of fs.readdirSync(d)) {
+        if (!ad.endsWith(".cjs")) continue;
+        const src = fs.readFileSync(path.join(d, ad), "utf8");
+        // Yorum satırlarını sayma; yalnızca gerçek yazma çağrıları.
+        const yaziyor = /collection\("season_totals"\)\s*\.\s*(bulkWrite|updateOne|updateMany|insertOne|insertMany)/.test(src);
+        if (yaziyor) yazanlar.push({ yol: `${dizin}/${ad}`, src });
+      }
+    }
+
+    assert.ok(yazanlar.length >= 2,
+      `season_totals'a yazan ${yazanlar.length} dosya bulundu — tarama bozuk, test bir sey olcmuyor`);
+
+    const kurallsiz = [];
+    for (const { yol, src } of yazanlar) {
+      /* Olaydan türetme izi: seasonKey'e BİR ARGÜMAN veriliyor mu?
+       * `Season.seasonKey()` tek başına "şimdi" demektir. */
+      if (!/Season\.seasonKey\(\s*[^)\s]/.test(src)) kurallsiz.push(yol);
+    }
+    assert.deepEqual(kurallsiz, [],
+      "season_totals a SIMDIKI sezonla yazan dosya(lar): " + kurallsiz.join(", ") +
+      "  — ay sonu puanlari yanlis aya duser");
+  });
+
   test("GERÇEK veri: sapma oranı küçük kalmalı", () => {
     /**
      * Sapma büyükse sorun sınır değil, uzlaştırmanın topluca gecikmesidir —
