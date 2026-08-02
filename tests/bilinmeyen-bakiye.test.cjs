@@ -92,6 +92,36 @@ describe("bilinmeyen bakiye", () => {
       "bilinmeyen bakiye 0 LC olarak basiliyor — kullanici parasinin bittigini sanir:\n" + suclu.join("\n"));
   });
 
+  test("HAVUZ ekranı yüklenmemiş veriyi 0 LC / kesinti %0 diye BASMIYOR", { skip: !varMi && sebep }, () => {
+    /**
+     * ⚠️ İKİNCİSİ DAHA AĞIR: "kesinti %0" demek, para şartı hakkında YANLIŞ
+     * BEYAN. Kesinti gerçekte var; kullanıcı kesintisiz sanarak bahis
+     * yatırabilirdi. Düello ekranında kesinti oranı tam bu sebeple sunucudan
+     * alınıyor (bkz. duello-kesinti-istemciye-bildirilir testi).
+     *
+     * `pool` null başlıyor, yalnızca başarılı yüklemede yazılıyor ve iki
+     * yükleme yolunun ikisi de sessiz catch — yani bu hâl erişilebilir.
+     */
+    const p = path.join(MOBIL, "app", "pool", "[fixtureId].tsx");
+    if (!fs.existsSync(p)) return;
+    const src = fs.readFileSync(p, "utf8");
+    /* ⚠️ ÇIPA AYIRT EDİCİ OLMALI: ilk yazımım `indexOf("HAVUZ")` kullanıyordu
+     * ve dosya BAŞLIĞINDAKİ yorumu buluyordu ("HAVUZU EKRANI ..."), render
+     * bloğunu değil — iddia bambaşka bir metni sınıyordu. */
+    /* ⚠️ ÇIPA YORUMA DÜŞMEMELİ. "oyuncu ·" denedim; kusuru ANLATAN kendi
+     * açıklamamda da geçiyordu ve pencere render yerine yorumu kapsıyordu.
+     * `"— LC"` yalnızca gerçek render'da var. */
+    const i = src.indexOf('"— LC"');
+    assert.ok(i > 0, "havuz render blogu bulunamadi — test bir sey olcmuyor");
+    const blok = src.slice(Math.max(0, i - 900), i + 400);
+
+    assert.ok(!/\{pool\?\.pool\s*\?\?\s*0\}\s*LC/.test(blok),
+      "yuklenmemis havuz 0 LC diye basiliyor — havuz dolu olabilir");
+    assert.ok(!/pool\?\.cutPct\s*\?\?\s*0/.test(blok),
+      "yuklenmemis kesinti %0 diye basiliyor — para sarti hakkinda YANLIS BEYAN");
+    assert.ok(/pool\s*\?/.test(blok), "havuzun VARLIGI kontrol edilmiyor");
+  });
+
   test("predict ekranı BİLİNMEYENİ ayrı gösteriyor", { skip: !varMi && sebep }, () => {
     /**
      * ⚠️ Yalnızca "?? 0 yok" demek yetmez: satır tümden silinmiş de olabilir.
