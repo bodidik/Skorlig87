@@ -39,7 +39,10 @@ const premium = require("../lib/premium.cjs");
 
 const KULLANICI = "kota-kurucu";
 const OTEKI = "baska-kurucu";
-const MACLAR = ["mkfx-1", "mkfx-2", "mkfx-3"];
+/* ⚠️ HAVUZ GENİŞ TUTULUYOR: her turnuva AYRI maç seti almalı (aynı setle
+ * ikinci açık turnuva artık reddediliyor — bkz. kur yardımcısının notu).
+ * 8 eşzamanlı istek için 8 ayrı çift gerekiyor. */
+const MACLAR = Array.from({ length: 24 }, (_, i) => `mkfx-${i + 1}`);
 
 let mongod = null, client = null, db = null, server = null, taban = "";
 let aktifUid = KULLANICI;
@@ -86,11 +89,27 @@ beforeEach(async () => {
   fs.writeFileSync(nodePath.join(TMP, "mini-tournaments.json"), JSON.stringify({ items: [] }));
 });
 
-const kur = (ad) => fetch(`${taban}/api/mini/create`, {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({ name: ad, fixtures: MACLAR.map((f) => ({ fixtureId: f })) }),
-}).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }));
+/**
+ * ⚠️ HER TURNUVA FARKLI MAÇ SETİ KULLANIR — testin konusu KOTA, set kuralı değil.
+ *
+ * 2026-08-02'de `mini/create` aynı maç setiyle ikinci AÇIK turnuvayı
+ * reddetmeye başladı (ödül çoğaltmayı kapatan düzeltme; bkz.
+ * tests/mini-ayni-mac-seti.test.cjs). Bu yardımcı hepsini AYNI setle
+ * kuruyordu, dolayısıyla ikinci istek artık `TOO_MANY_OPEN_MINI` yerine
+ * `AYNI_MAC_SETI_ACIK` alıyor ve kota hiç sınanamıyordu.
+ *
+ * Ad başına iki farklı fikstür üretiliyor; kota sınırı olduğu gibi sınanıyor.
+ */
+let _setSayac = 0;
+const kur = (ad) => {
+  const n = _setSayac++;
+  const seti = [MACLAR[(n * 2) % MACLAR.length], MACLAR[(n * 2 + 1) % MACLAR.length]];
+  return fetch(`${taban}/api/mini/create`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: ad, fixtures: seti.map((f) => ({ fixtureId: f })) }),
+  }).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }));
+};
 
 const sayi = (sahip) =>
   db.collection("mini_tournaments").countDocuments(

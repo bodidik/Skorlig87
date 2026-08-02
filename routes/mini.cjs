@@ -419,9 +419,40 @@ router.post("/create", verifyToken, express.json(), async (req, res) => {
      */
     const maxOpen = premium.miniMaxOpen(isPrem);
     const hepsi = await loadAll(db);
-    const acik = hepsi.filter(
+    const acikTurnuvalar = hepsi.filter(
       (t) => !t.finishedAt && String(t.ownerId || t.creatorId || "").toLowerCase() === userId.toLowerCase()
-    ).length;
+    );
+    const acik = acikTurnuvalar.length;
+
+    /**
+     * ⚠️ AYNI MAÇ SETİYLE İKİNCİ TURNUVA — ÖDÜLÜ ÇOĞALTIYORDU.
+     *
+     * Dosyanın kendi ilkesi: "ÖDÜL BÖLÜŞÜLÜR, ÇOĞALTILMAZ" (bkz. kazananPayi).
+     * Ama o kural turnuvanın İÇİNDE uygulanıyordu; turnuvalar ARASI delikti.
+     *
+     * ÖLÇÜLDÜ (2026-08-02, ücretsiz kademe): aynı iki maçla ART ARDA iki
+     * turnuva kuruldu, üçüncüsü TOO_MANY_OPEN_MINI ile durdu. Yani TEK tahmin
+     * seti iki kez ödül alıyordu:
+     *     2 maç x 3 LC giriş = 6 LC maliyet  →  2 x 20 = 40 LC ödül
+     *     premium (6 açık)                   →  6 x 20 = 120 LC
+     * `miniMaxOpen` musluğun HIZINI gerçek fikstüre bağlıyor ama aynı maçları
+     * tekrar kullanmayı engellemiyordu — oysa asıl maliyet tahminler.
+     *
+     * ⚠️ YALNIZCA BİREBİR AYNI SET engelleniyor, kısmi örtüşme DEĞİL.
+     * "Bugünün maçları" ve "hafta sonu" turnuvaları ortak maç taşıyabilir ve
+     * bu meşru kullanım; hepsini kapatmak oyunu kırardı. Kısmi örtüşme hâlâ
+     * çoğaltabilir — bu bir ÜRÜN kararı ve bilinçli olarak açık bırakıldı.
+     */
+    const setAnahtari = (liste) =>
+      [...new Set(liste.map((f) => String(f?.fixtureId || f || "")).filter(Boolean))].sort().join("|");
+    const yeniSet = setAnahtari(fixtures);
+    if (yeniSet && acikTurnuvalar.some((t) => setAnahtari(t.fixtures || []) === yeniSet)) {
+      return res.status(409).json({
+        ok: false,
+        error: "AYNI_MAC_SETI_ACIK",
+        detail: "Bu maçlarla zaten açık bir turnuvan var; bitmesini bekle ya da farklı maç seç.",
+      });
+    }
     if (acik >= maxOpen) {
       return res.status(400).json({
         ok: false,
