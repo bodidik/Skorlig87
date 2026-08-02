@@ -837,5 +837,8 @@ module.exports = router;
 // asamaz). Router'i ayaga kaldirmadan dogrulanabilsin diye disa aciliyor.
 module.exports._kazananPayi = kazananPayi;
 module.exports._MINI_WIN_LC = MINI_WIN_LC;
+/* ⚠️ TEST GERCEK FONKSIYONU CAGIRSIN diye acildi. tests/mini-bot-odul-suzgeci
+ * kendi kopyasini yaziyordu; buradaki suzgec bozulsa test YINE gecerdi. */
+module.exports._gercekKazananlar = gercekKazananlar;
 // Test icin: bitme sarti (bayat mac yok sayilmasi) dogrudan sinanabilsin.
 module.exports._bitmeyeHazirMi = bitmeyeHazirMi;

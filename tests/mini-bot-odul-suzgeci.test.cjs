@@ -61,9 +61,17 @@ describe("kurulum", () => {
 /* ── Asıl değişmez ───────────────────────────────────────────────────────── */
 
 describe("ödül süzgeci", () => {
-  /* Rota modülünü yüklemeden saf davranışı sınamak için aynı bağı kuruyoruz:
-   * mini.cjs artık botIds.isBot kullanıyor (nöbetçi bunu kilitliyor). */
-  const gercekKazananlar = (ids) => (ids || []).filter((u) => u && !isBot(u));
+  /**
+   * ⚠️ BURADA KENDİ KOPYAMI YAZMIŞTIM — VE BU TAM DA AVLADIĞIM KUSUR ŞEKLİ.
+   * Gerekçem "rota modülünü yüklemeden saf davranışı sınamak"tı, ama sonuç
+   * şuydu: `routes/mini.cjs` içindeki süzgeç bozulsa bu testler YİNE
+   * geçerdi. Yalnızca kaynak tarayan nöbetçi yakalardı; davranış testleri
+   * hiçbir şey kanıtlamazdı.
+   *
+   * Aynı hatayı `tests/economy.test.cjs` günlük hak ve ödül merdiveninde
+   * yapmıştı. Artık GERÇEK fonksiyon çağrılıyor.
+   */
+  const gercekKazananlar = require("../routes/mini.cjs")._gercekKazananlar;
 
   test("ÖNEKSİZ bot kimliği eleniyor", () => {
     const bot = [...BOT_ID_SET].find((id) => !String(id).startsWith("bot_"));

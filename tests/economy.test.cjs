@@ -23,10 +23,17 @@ const assert = require("node:assert/strict");
 
 const { _dagilim, _akis } = require("../lib/economy-report.cjs");
 
-// settle2'deki kuralın birebir kopyası — orada değişirse burada da değişmeli.
-const LC_ENTRY_COST = 3;
-const odul = (b) =>
-  b >= 30 ? 15 : b >= 20 ? 10 : b >= 12 ? 7 : b >= 6 ? 4 : b >= 3 ? 2 : b > 0 ? 1 : 0;
+/**
+ * ⚠️ BURADA ÖDÜL MERDİVENİNİN KOPYASI VARDI — VE YORUMU İTİRAF EDİYORDU:
+ * "settle2'deki kuralın birebir kopyası — orada değişirse burada da
+ * değişmeli." Elle senkron gerektiren her kopya, sapmayı bekleyen bir
+ * hatadır: merdiven `lib/ekonomi.cjs macOdulu` içinde değişse bu test ESKİ
+ * değerlerle YİNE geçerdi — üstelik tek işi ekonomi değişmezlerini
+ * korumak olan bir test.
+ *
+ * `LC_ENTRY_COST = 3` de aynı durumdaydı; `MAC_GIRIS_BEDELI` tek kaynak.
+ */
+const { macOdulu: odul, MAC_GIRIS_BEDELI: LC_ENTRY_COST } = require("../lib/ekonomi.cjs");
 
 function netLc(base, esik) {
   const iade = base >= esik ? LC_ENTRY_COST : 0;
