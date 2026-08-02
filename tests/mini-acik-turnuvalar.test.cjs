@@ -56,8 +56,25 @@ app.use("/api/mini", require(path.join(KOK, "routes", "mini.cjs")));
 const srv = app.listen(0);
 const port = srv.address().port;
 
-const cagir = (yol) =>
-  fetch(`http://127.0.0.1:${port}${yol}`).then(async (r) => ({ s: r.status, j: await r.json().catch(() => null) }));
+/**
+ * ⚠️ `listening` OLAYI BEKLENMELİ — SÜİT ARADA BİR KIRILIYORDU.
+ *
+ * `app.listen(0)` port'u hemen atar ama soket kabul etmeye HAZIR olmaz. Tam
+ * süit yükü altında ilk istek bağlantı reddi alıyor: `fetch failed` (undici).
+ * ÖLÇÜLDÜ (2026-08-02): 8-10 koşuda 1 kırılma, iki farklı testte aynı hata.
+ * Eşzamanlılığı 8'e düşürmek YETMEDİ — sebep paralellik miktarı değil,
+ * beklenmemiş `listen`.
+ *
+ * Modül düzeyinde `await` yok, o yüzden söz olarak tutulup her istekten önce
+ * bekleniyor (ilk istekten sonra zaten çözülmüş olur).
+ */
+const HAZIR = new Promise((c) => (srv.listening ? c() : srv.once("listening", c)));
+
+const cagir = async (yol) => {
+  await HAZIR;                       // soket kabul etmeye hazir olsun
+  const r = await fetch(`http://127.0.0.1:${port}${yol}`);
+  return { s: r.status, j: await r.json().catch(() => null) };
+};
 
 const turnuva = (id, o = {}) => ({
   id, code: "K" + id, name: "T" + id, ownerId: "sahip",

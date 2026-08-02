@@ -146,13 +146,35 @@ test("NÖBETÇİ: predictions'a DOĞRUDAN erişen her çalışma zamanı modül�
    */
   const suclu = [];
   const gez = (dizin) => {
-    for (const ad of fs.readdirSync(dizin)) {
+      /**
+       * ⚠️ readdirSync + statSync YARIŞI — SÜİTİ ARADA BİR KIRIYORDU.
+       *
+       * Sunucu çalışırken `data/` altına atomik yazılıyor: önce `*.tmp`,
+       * sonra rename. `readdirSync` dosyayı görüyor, `statSync`e gelene kadar
+       * rename tamamlanıyor ve ENOENT atıyor:
+       *     ENOENT: no such file or directory, stat 'data/results.json.tmp'
+       *
+       * ÖLÇÜLDÜ (2026-08-02): 8-10 tam koşuda 1 kırılma. Aynı kök bu sabah
+       * `guvenli-yol-siniri` testinde de bulunmuştu; orada try/catch ile
+       * TOLERE edilmişti ama sınıf taranmadığı için bu iki dosya kalmıştı.
+       *
+       * ⚠️ BU KEZ TOLERE ETMİYORUZ, YARIŞI KALDIRIYORUZ: `withFileTypes`
+       * dizin bilgisini readdir'in KENDİ sonucundan veriyor, yani ikinci bir
+       * sistem çağrısı ve arada kalan pencere yok.
+       */
+    for (const girdi of fs.readdirSync(dizin, { withFileTypes: true })) {
+      const ad = girdi.name;
       if (["node_modules", "scripts", "tests", "models"].includes(ad) || ad.startsWith(".")) continue;
       const tam = path.join(dizin, ad);
-      if (fs.statSync(tam).isDirectory()) { gez(tam); continue; }
+      if (girdi.isDirectory()) { gez(tam); continue; }
       if (!ad.endsWith(".cjs")) continue;
 
-      const src = fs.readFileSync(tam, "utf8")
+      /* Okuma da yarışabilir (dosya rename anında). Kaynak dosyaları
+       * sunucu yazmıyor ama kural aynı: kaybolan girdi taranacak bir
+       * kaynak değildir, atlanır. */
+      let ham;
+      try { ham = fs.readFileSync(tam, "utf8"); } catch { continue; }
+      const src = ham
         .split("\n")
         .map((l) => {
           const t = l.trim();

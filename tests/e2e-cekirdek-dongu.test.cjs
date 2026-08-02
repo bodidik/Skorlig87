@@ -97,7 +97,20 @@ before(async () => {
   app.use("/api", require("../routes/pred.cjs"));
   app.use("/api/rt", require("../routes/settle2.cjs"));
   app.use("/api/leaderboard", require("../routes/leaderboard.cjs"));
+  /**
+   * ⚠️ `listening` OLAYI BEKLENMELİ — SÜİT ARADA BİR KIRILIYORDU.
+   *
+   * `app.listen(0)` port'u hemen atar ama soket kabul etmeye HAZIR olmaz.
+   * Tam süit yükü altında (20 çekirdekte ~20 test dosyası, 64'ü bellek-içi
+   * Mongo açıyor) olay döngüsü meşgulken ilk istek bağlantı reddi alıyor:
+   *     TypeError: fetch failed   (undici)
+   *
+   * ÖLÇÜLDÜ (2026-08-02): 8-10 tam koşuda 1 kırılma; iki farklı testte aynı
+   * hata yakalandı. Eşzamanlılığı 8'e düşürmek YETMEDİ — sebep paralellik
+   * miktarı değil, beklenmemiş `listen`.
+   */
   server = app.listen(0);
+  if (!server.listening) await new Promise((hazir) => server.once("listening", hazir));
   taban = `http://127.0.0.1:${server.address().port}`;
 });
 

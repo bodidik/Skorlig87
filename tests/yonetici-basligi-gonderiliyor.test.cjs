@@ -129,11 +129,27 @@ test("NÖBETÇİ: mobil taraf korumalı uca yönetici başlığı gönderiyor", 
   const suclu = [];
 
   const gez = (dizin) => {
-    for (const ad of fs.readdirSync(dizin)) {
+      /**
+       * ⚠️ readdirSync + statSync YARIŞI — SÜİTİ ARADA BİR KIRIYORDU.
+       *
+       * Sunucu çalışırken `data/` altına atomik yazılıyor: önce `*.tmp`,
+       * sonra rename. `readdirSync` dosyayı görüyor, `statSync`e gelene kadar
+       * rename tamamlanıyor ve ENOENT atıyor:
+       *     ENOENT: no such file or directory, stat 'data/results.json.tmp'
+       *
+       * ÖLÇÜLDÜ (2026-08-02): 8-10 tam koşuda 1 kırılma. Aynı kök bu sabah
+       * `guvenli-yol-siniri` testinde de bulunmuştu; orada try/catch ile
+       * TOLERE edilmişti ama sınıf taranmadığı için bu iki dosya kalmıştı.
+       *
+       * ⚠️ BU KEZ TOLERE ETMİYORUZ, YARIŞI KALDIRIYORUZ: `withFileTypes`
+       * dizin bilgisini readdir'in KENDİ sonucundan veriyor, yani ikinci bir
+       * sistem çağrısı ve arada kalan pencere yok.
+       */
+    for (const girdi of fs.readdirSync(dizin, { withFileTypes: true })) {
+      const ad = girdi.name;
       if (ad === "node_modules" || ad.startsWith(".")) continue;
       const tam = path.join(dizin, ad);
-      const st = fs.statSync(tam);
-      if (st.isDirectory()) { gez(tam); continue; }
+      if (girdi.isDirectory()) { gez(tam); continue; }
       if (!/\.(ts|tsx)$/.test(ad)) continue;
 
       /**
