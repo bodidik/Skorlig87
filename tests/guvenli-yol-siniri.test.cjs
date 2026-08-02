@@ -191,7 +191,24 @@ test("NÖBETÇİ: çalışma zamanında dinamik yol hep guvenliYol'dan geçiyor"
     for (const ad of fs.readdirSync(dizin)) {
       if (ad === "node_modules" || ad === "scripts" || ad === "tests" || ad.startsWith(".")) continue;
       const tam = path.join(dizin, ad);
-      if (fs.statSync(tam).isDirectory()) { gez(tam); continue; }
+      /**
+       * ⚠️ CANLI DİZİNDE YARIŞ — TEST ARADA BİR KIRILIYORDU.
+       *
+       * Tarama `data/` altını da geziyor ve orada ATOMİK YAZMANIN geçici
+       * dosyaları var (`writeJsonAtomic` önce `*.tmp` yazıp sonra yeniden
+       * adlandırıyor). `readdirSync` dosyayı görüyor, `statSync`e gelene
+       * kadar rename tamamlanıyor ve ENOENT atıyor:
+       *
+       *     ENOENT: no such file or directory, stat 'data/results.json.tmp'
+       *
+       * Üç koşudan birinde patlıyordu. Ürün kusuru DEĞİL, testin canlı
+       * veriyle yarışması — ama arada bir kırılan bir süit, verdiği tüm
+       * sayıları şüpheli yapar. Kaybolan dosya zaten taranacak bir kaynak
+       * dosya değil; atlanıyor.
+       */
+      let st;
+      try { st = fs.statSync(tam); } catch { continue; }
+      if (st.isDirectory()) { gez(tam); continue; }
       if (!ad.endsWith(".cjs")) continue;
 
       const src = fs.readFileSync(tam, "utf8")
