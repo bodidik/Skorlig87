@@ -24,6 +24,7 @@ const GROUPS_FILE  = path.join(DATA_DIR, "groups.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
 const SocialStore = require("../lib/social-store.cjs");
 const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
+const TakimKatalog = require("../lib/takim-katalog.cjs");
 
 // 🔹 LigCoin başlangıç değeri (pred/settle2 ile uyumlu olmalı)
 // ⚠️ Tek kaynak: lib/ekonomi.cjs. Bu değer DÖRT dosyada İKİ AYRI ADLA
@@ -241,11 +242,24 @@ router.get("/profile", async (req, res) => {
 router.post("/set-main-team", verifyToken, express.json(), async (req, res) => {
   try {
     const userId = req.uid;
-    const team   = String(req.body?.team || "").trim();
-    if (!userId || !team) return res.status(400).json({ ok: false, error: "USER_OR_TEAM_MISSING" });
+    const ham    = String(req.body?.team || "").trim();
+    if (!userId || !ham) return res.status(400).json({ ok: false, error: "USER_OR_TEAM_MISSING" });
+
+    /* ⚠️ KANONİKLEŞTİRME — `set-country` bunu yıllardır yapıyordu, takım
+     * tarafında hiç yazılmamıştı. Ham kaydedilince "Galatasaray",
+     * "galatasaray" ve "Galatasaray SK" AYRI değerler oluyor; `listByTeam`
+     * tam eşleşme yaptığı için takım sıralaması sessizce bölünür.
+     *
+     * ⚠️ TANINMAYAN AD REDDEDİLMİYOR. Katalog 461 takım; dünyadaki her kulüp
+     * orada değil ve bu uç başka ekranlardan da çağrılıyor. Reddetmek
+     * çalışan bir akışı kırardı — bu yüzden bulunursa kanonik ad, yoksa
+     * kırpılmış ham ad yazılıyor. `canonical` bayrağı istemciye hangisinin
+     * olduğunu söylüyor. bkz. lib/takim-katalog.cjs */
+    const kanonik = TakimKatalog.kanonikTakim(ham);
+    const team = kanonik || ham;
 
     await UsersStore.updateUser(userId, { mainTeam: team }, USER_DEFAULTS, req.app.locals.db);
-    return res.json({ ok: true, userId, mainTeam: team });
+    return res.json({ ok: true, userId, mainTeam: team, canonical: !!kanonik });
   } catch (e) {
     console.error("SET_MAIN_TEAM_ERR", e);
     return res.status(500).json({

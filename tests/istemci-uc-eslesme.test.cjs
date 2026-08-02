@@ -128,7 +128,10 @@ function eslesir(cy, sunucu) {
 const BILINEN_OLU = new Set([
   "/api/mini/public",          // live.tsx — açık mini turnuvalar hiç gelmiyor
   "/api/rt/team-totals",       // stats/team.tsx
-  "/api/stats/team-ranks",     // stats.tsx
+  /* "/api/stats/team-ranks" ÇIKARILDI — 2026-08-01'de yazıldı
+   * (routes/stats.cjs). Bu satırın burada kalması, bayatlama nöbetçisinin
+   * yakaladığı tam durumdu: düzeltilen uç ölü listede kalırsa liste
+   * "bilinen eksikler" olmaktan çıkıp yalan söylemeye başlar. */
   "/api/rt/admin-fixture",     // live.tsx
   "/api/auth1987gs/status",    // mystatus.tsx (uçlar: verify/diag/members)
   "/api/skorlig/next",         // predict.tsx (skorlig.cjs /api'ye monte)

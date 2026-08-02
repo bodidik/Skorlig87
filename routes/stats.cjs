@@ -7,6 +7,10 @@ const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const path    = require("path");
 const fs      = require("fs");
 const fsp     = fs.promises;
+const UsersStore   = require("../lib/users-store.cjs");
+const SeasonTotals = require("../lib/season-totals.cjs");
+const Season       = require("../lib/season.cjs");
+const TakimKatalog = require("../lib/takim-katalog.cjs");
 
 // ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
 const DATA_DIR         = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
@@ -367,13 +371,45 @@ router.get("/me", verifyToken, async (req, res) => {
       .map((m) => Number(m.points || 0))
       .slice(-10);
 
+    /* Kullanıcının tuttuğu takım. Eskiden burası `null` sabitiydi ve yanında
+     * "frontend default olarak Galatasaray kullanmaya devam edecek" notu
+     * vardı — yani HERKESİN takımı Galatasaray görünüyordu. Depoda alan
+     * (`mainTeam`) ve indeks zaten vardı, yalnızca okunmuyordu.
+     * `favTeam` mobilin beklediği ad; `team` ile aynı değer. */
+    let mainTeam = null;
+    let takimOzet = null;
+    try {
+      const u = await UsersStore.getUser(userId, req.app.locals.db);
+      mainTeam = u?.mainTeam || null;
+
+      /* ⚠️ `team` ALANI NESNE, STRING DEĞİL. Mobil `MeStats` tipi
+       * `{team, rank, count, myTeamTotal}` bekliyor ve `meStats.team.team`
+       * okuyor; buraya düz metin koymak sessizce `undefined` üretirdi.
+       *
+       * Sıralama `takimSiralamasi()` ile hesaplanıyor — /team-ranks ucuyla
+       * AYNI fonksiyon. İkinci bir kopya yazsaydım sezon birleştirme ya da
+       * kanonikleştirme düzeltmesi birinde yapılıp öbüründe unutulurdu. */
+      if (mainTeam) {
+        const s = await takimSiralamasi(req.app.locals.db, mainTeam, req.query.season);
+        const sira = s.items.findIndex((x) => String(x.userId).toLowerCase() === String(userId).toLowerCase());
+        takimOzet = {
+          team: s.team,
+          rank: sira >= 0 ? sira + 1 : null,
+          count: s.items.length,
+          myTeamTotal: sira >= 0 ? s.items[sira].total : null,
+        };
+      }
+    } catch (e) {
+      /* Profil ya da sıralama okunamazsa istatistik ekranı komple
+       * çökmemeli — takım boş geçer, puanlar yine gösterilir. */
+      console.error("STATS_ME_MAINTEAM_ERR", e?.message || e);
+    }
+
     return res.json({
       ok: true,
       userId: core.userId,
-      // Şimdilik takım bilgilerini doldurmuyoruz,
-      // frontend default olarak "Galatasaray" kullanmaya devam edecek.
-      favTeam: null,
-      team: null,
+      favTeam: mainTeam,
+      team: takimOzet,
       totalPoints: season.total,
       played: season.played,
       avg: season.avg,
@@ -391,6 +427,144 @@ router.get("/me", verifyToken, async (req, res) => {
       error: code,
       detail: String(e && (e.message || e)),
     });
+  }
+});
+
+/**
+ * GET /api/stats/team-ranks?team=Galatasaray
+ * → { ok, team, canonical, items: [{ userId, total, played, flag, team }], updatedAt }
+ *
+ * AYNI TAKIMI TUTANLARIN PUAN SIRALAMASI.
+ *
+ * ⚠️ NEDEN YENİ: mobil `app/(tabs)/stats.tsx:353` bu ucu ÇAĞIRIYORDU ama uç
+ * hiç yazılmamıştı — kullanıcının telefon günlüğünde `404 ... böyle bir uç
+ * YOK` satırı buradan geliyor. İstemci 404'ü yutup listeyi boş bırakıyordu
+ * (`setTeamRanks([])`), o yüzden çökme değil SESSİZ BOŞ EKRAN olarak
+ * görünüyordu.
+ *
+ * ⚠️ YANIT SÖZLEŞMESİ İSTEMCİDEN SABİT, ONU DEĞİŞTİRMİYORUM: mobil
+ * `j?.ok && Array.isArray(j.items)` kontrolü yapıp `{userId,total,flag,team}`
+ * okuyor. Alan adlarını "daha güzel" diye değiştirmek yayınlanmış istemciyi
+ * kırardı.
+ */
+async function takimSiralamasi(db, hamAd, sezonIstek) {
+    const ham = String(hamAd || "").trim();
+
+    /* Sorgu da kaydetme yolu gibi kanonikleştiriliyor. İkisi aynı fonksiyondan
+     * geçmezse "Galatasaray SK" arayan kullanıcı boş liste görürdü. */
+    const kanonik = TakimKatalog.kanonikTakim(ham);
+    const team = kanonik || ham;
+
+    const uyeler = await UsersStore.listByTeam(team, db);
+    if (!uyeler.length) {
+      return { team, canonical: !!kanonik, items: [], updatedAt: null };
+    }
+
+    const idler = uyeler.map((u) => String(u?.userId || "")).filter(Boolean);
+    const bayrakla = new Map(
+      uyeler.map((u) => [
+        String(u?.userId || "").toLowerCase(),
+        u?.country ? TakimKatalog.ulkeBayragi(u.country) : "",
+      ])
+    );
+
+    /* ── Puanlar ──────────────────────────────────────────────────────────
+     * routes/leaderboard.cjs ile AYNI okuma yolu. İki tuzağı da oradan
+     * devralıyorum, çünkü ikisi de sessiz:
+     *   1) Sezon alanı eklenmeden önceki kayıtlarda `season` YOK; geçiş
+     *      döneminde onlar da güncel sezona sayılmalı ($or).
+     *   2) Eski (sezonsuz) + yeni belge aynı kullanıcıya aitse BİRLEŞTİRİLMELİ
+     *      — yoksa kullanıcı sıralamada İKİ KEZ görünür ve puanı bölünür.
+     *      bkz. lib/season-totals.cjs belgeleriBirlestir
+     * ──────────────────────────────────────────────────────────────────── */
+    const sezon = String(sezonIstek || "").trim() || Season.seasonKey();
+    const puan = new Map();   // userIdLower → { total, played }
+    let updatedAt = null;
+
+    if (db) {
+      const suzgec = sezon === Season.seasonKey()
+        ? { $or: [{ season: sezon }, { season: { $exists: false } }] }
+        : { season: sezon };
+      const alt = idler.map((x) => x.toLowerCase());
+      const ham2 = await db.collection("season_totals")
+        .find({ ...suzgec, userIdLower: { $in: alt } })
+        .toArray();
+      for (const d of SeasonTotals.belgeleriBirlestir(ham2)) {
+        const k = String(d.userIdLower || d.userId || "").toLowerCase();
+        if (!k) continue;
+        puan.set(k, {
+          // Kesirli puanlar $inc ile birikince kayan nokta artığı bırakıyor
+          // (10.700000000000001) — bkz. lib/season-totals.cjs
+          total: Math.round(Number(d.totalPoints || 0)),
+          played: Number(d.matches || 0),
+        });
+        const t = d.updatedAt || d.lastAt || null;
+        if (t && (!updatedAt || t > updatedAt)) updatedAt = t;
+      }
+    } else {
+      const map = await SeasonTotals.totalsMap();
+      for (const id of idler) {
+        const d = map?.[id] || map?.[id.toLowerCase()];
+        if (!d) continue;
+        puan.set(id.toLowerCase(), {
+          total: Math.round(Number(d.total ?? d.totalPoints ?? 0)),
+          played: Number(d.played ?? d.matches ?? 0),
+        });
+      }
+    }
+
+    /* ⚠️ PUANI OLMAYAN ÜYE DE LİSTEDE, 0 ile. Süzmek "takımın kadrosu"
+     * ekranını yeni katılanlara boş gösterirdi; kullanıcı kendini
+     * bulamayınca özelliği bozuk sanar. */
+    const items = uyeler
+      .map((u) => {
+        const id = String(u?.userId || "");
+        const p = puan.get(id.toLowerCase()) || { total: 0, played: 0 };
+        return {
+          userId: id,
+          total: p.total,
+          played: p.played,
+          flag: bayrakla.get(id.toLowerCase()) || "",
+          team,
+        };
+      })
+      .sort((a, b) => b.total - a.total || a.userId.localeCompare(b.userId));
+
+  return { team, canonical: !!kanonik, items, updatedAt };
+}
+
+router.get("/team-ranks", async (req, res) => {
+  try {
+    const ham = String(req.query.team || "").trim();
+    if (!ham) return res.status(400).json({ ok: false, error: "TEAM_REQUIRED" });
+
+    const r = await takimSiralamasi(req.app.locals.db, ham, req.query.season);
+    return res.json({ ok: true, ...r });
+  } catch (e) {
+    console.error("TEAM_RANKS_ERR", e);
+    return res.status(500).json({
+      ok: false,
+      error: "TEAM_RANKS_ERR",
+      detail: String(e && (e.message || e)),
+    });
+  }
+});
+
+/**
+ * GET /api/stats/teams?country=Türkiye
+ * → { ok, teams: [{ team, country, flag }] }
+ *
+ * Onboarding takım seçicisinin kaynağı. `/api/live2/countries` ile aynı rol:
+ * istemci serbest metin göndermesin, listeden seçsin — böylece kaydedilen ad
+ * zaten kanonik olur. bkz. lib/takim-katalog.cjs
+ */
+router.get("/teams", (req, res) => {
+  try {
+    const ulke = String(req.query.country || "").trim();
+    return res.json({ ok: true, country: ulke || null, teams: TakimKatalog.takimlar(ulke || null) });
+  } catch (e) {
+    console.error("TEAMS_LIST_ERR", e);
+    return res.status(500).json({ ok: false, error: "TEAMS_LIST_ERR", detail: String(e?.message || e) });
   }
 });
 
