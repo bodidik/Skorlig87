@@ -372,7 +372,34 @@ async function settle(code, results, db = null) {
    * (Yüzdeler her zaman 1.00'e toplanıyor ve ödeme sayısı tablo uzunluğuna
    * eşit — n < tablo durumu yok, çünkü tablo katılımcı sayısına göre seçiliyor.) */
   const havuz = Math.max(0, Math.floor(Number(t.pool) || 0));
-  const paylar = odemeDagit(havuz, table.slice(0, sorted.length));
+
+  /**
+   * ⚠️ KESİLEN YÜZDELER NORMALLEŞTİRİLİR — yoksa havuzun bir kısmı BUHARLAŞIR.
+   *
+   * Yukarıdaki not "n < tablo durumu yok" diyor ve n>=2 için doğru: tablo
+   * zaten `n`'e göre seçiliyor. AMA n=1'de `PAYOUT_TABLE[1]` yok, kod
+   * `PAYOUT_TABLE[2]`ye ([0.70, 0.30]) düşüyor ve dilim 1 kaleme iniyor:
+   * yüzdeler artık 0.70, yani havuzun %30'u kimseye gitmiyor.
+   *
+   * ÖLÇÜLDÜ (2026-08-02): n=1, havuz 10 LC -> dağıtılan 8, KAYIP 2 LC.
+   * Tek katılımcı kendi giriş bedelinin %20'sini kaybediyordu ve `settle`
+   * için asgari katılımcı kapısı da yok.
+   *
+   * ⚠️ TASARIMDA KASA PAYI YOK: n>=2'de yüzdeler her zaman 1.00'e toplanıyor
+   * (düellodaki `houseCutPct` gibi bir kesinti turnuvada bulunmuyor). Yani bu
+   * yakma bilinçli bir kesinti değil, ele alınmamış bir durum.
+   *
+   * Normalleştirme genel: tablo ile katılımcı sayısı ileride yine ayrışırsa
+   * havuz yine tam dağıtılır. `odemeDagit` en büyük kalan yöntemiyle tam
+   * sayıya oturttuğu için toplam havuzu AŞMAZ.
+   */
+  const kesikTablo = table.slice(0, sorted.length);
+  const yuzdeToplam = kesikTablo.reduce((a, b) => a + Number(b || 0), 0);
+  const normalTablo =
+    yuzdeToplam > 0 && Math.abs(yuzdeToplam - 1) > 1e-9
+      ? kesikTablo.map((x) => Number(x || 0) / yuzdeToplam)
+      : kesikTablo;
+  const paylar = odemeDagit(havuz, normalTablo);
 
   t.payouts = paylar.map((lcWon, i) => ({
     rank: i + 1,
