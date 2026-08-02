@@ -190,8 +190,20 @@ async function writeFixtures(list) {
   return FixturesStore.saveAll(list);
 }
 
+/**
+ * ⚠️ TAZE OKUMA — ÖNBELLEK ATLANIYOR, BİLİNÇLİ.
+ *
+ * Bu yardımcı DÖRT oku-değiştir-yaz noktasını besliyor (`syncOnce`,
+ * `mackolik-fixture-sync` ×2, `manual-fixtures-restore`) ve hepsi tam
+ * değiştirme yapan `writeFixtures`/`saveAll` ile bitiyor — listede olmayan
+ * belge SİLİNİYOR. Bayat liste okunup üzerine yazılırsa arada eklenen
+ * maçlar sessizce kaybolur.
+ *
+ * Salt-okuyan sıcak yollar (live2/schedule, mini, team) `loadAll()`
+ * önbelleğini kullanmaya devam ediyor; hız kazancı zaten oradan geliyor.
+ */
 async function readFixtures() {
-  return FixturesStore.loadAll();
+  return FixturesStore.loadAll(undefined, { taze: true });
 }
 
 /**

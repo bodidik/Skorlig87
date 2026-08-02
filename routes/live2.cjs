@@ -652,6 +652,14 @@ async function readFxCache(isoDate) {
   return c.items;
 }
 
+/** TTL'i geçmiş de olsa diskteki son kopya — bayat servis için. */
+async function readFxCacheBayat(isoDate) {
+  const f = guvenliYol(FX_CACHE_DIR, `fx-${isoDate}`, ".json");
+  const c = await readJson(f, null);
+  if (!c || !Array.isArray(c.items)) return null;
+  return c.items;
+}
+
 async function writeFxCache(isoDate, items) {
   const f = guvenliYol(FX_CACHE_DIR, `fx-${isoDate}`, ".json");
   try {
@@ -661,11 +669,30 @@ async function writeFxCache(isoDate, items) {
   }
 }
 
-// TSDB → AF kompozit
-async function fixturesByDate(isoDate) {
-  const cached = await readFxCache(isoDate);
-  if (cached) return cached;
+/* ────────────────────────────────────────────────────────────────────────────
+ * BAYAT SERVİS ET, ARKADA TAZELE.
+ *
+ * ⚠️ NEDEN: TTL dolduğu anda gelen İSTEK, ölü sağlayıcıların zaman aşımını
+ * KULLANICI BEKLERKEN ödüyordu. Ölçüldü: `tsdbByDate` ve `afByDate` 12'şer
+ * saniye zaman aşımlı, üç gün için çağrılıyor → tek istekte 6 çağrı, en
+ * kötü halde ~72 sn. Bugünün TTL'i 30 dakika olduğu için yarım saatte bir
+ * bir kullanıcı bu faturayı ödüyordu. TSDB kapalı, AF askıda (bkz.
+ * lib/providers.cjs sağlık sayaçları) — yani fatura neredeyse HER SEFERİNDE
+ * en kötü hâle yakın.
+ *
+ * ⚠️ BAYAT VERİ, BOŞ EKRANDAN İYİDİR — ama sınırsız değil: `EN_FAZLA_BAYAT`
+ * üstündeki kopya kullanılmıyor, o noktada beklemek doğrusu. Fikstür listesi
+ * (kim kiminle, saat kaçta) saatler içinde değişmiyor; CANLI SKOR bu yoldan
+ * gelmiyor (o `data/live/*.json` durum dosyalarından okunuyor,
+ * `effectiveStatusForFixture`), yani bayat kopya yanlış skor göstermez.
+ *
+ * ⚠️ AYNI GÜN İÇİN TEK TAZELEME UÇUŞTA. Yoksa TTL dolar dolmaz gelen her
+ * istek ayrı bir tazeleme başlatır ve kotayı yakardı.
+ * ──────────────────────────────────────────────────────────────────────── */
+const EN_FAZLA_BAYAT_MS = Number(process.env.SKORLIG_FX_MAX_STALE_H || 12) * 3600 * 1000;
+const _fxTazeleme = new Map(); // isoDate → Promise
 
+async function _fxTaze(isoDate) {
   const res = [];
   try {
     res.push(...(await tsdbByDate(isoDate)));
@@ -679,9 +706,71 @@ async function fixturesByDate(isoDate) {
   }
   const out = dedupeFixtures(res);
 
+  /* ⚠️ BOŞ SONUÇ, DOLU ÖNBELLEĞİ EZMEZ.
+   *
+   * ÖLÇÜLDÜ (2026-08-02): arka plan tazelemesi çalıştı ve bugünün listesi
+   * için `0 kayıt` döndü — TSDB kapalı, AF askıda. Önceki kopyada 3 maç
+   * vardı ve üzerine yazılınca listeden düştüler. Yani ölü sağlayıcılar
+   * elimizdeki veriyi zamanla SİLİYOR.
+   *
+   * Aynı kural depoda zaten var: `services/fixture-sync.cjs` içinde
+   * "Hiç maç gelmediyse YAZMA: geçici bir ağ/kota hatası, gelecekteki tüm
+   * FDO maçlarını silerdi." Burada da aynısı uygulanıyor.
+   *
+   * ⚠️ ZAMAN DAMGASI YİNE DE TAZELENİYOR: aksi hâlde her istek yeniden
+   * tazeleme başlatır ve ölü sağlayıcı beklemesine geri döneriz. Yani
+   * "kontrol ettik, yeni bir şey yok" deniyor — veri silinmiyor.
+   *
+   * ⚠️ GERÇEKTEN BOŞ BİR GÜN (maç yok) ile ÖLÜ SAĞLAYICI ayırt edilemiyor;
+   * ikisinde de eldeki kopya korunuyor. Bilinçli seçim: maç listesini
+   * boşaltmanın bedeli (uygulama kullanılamaz), birkaç bayat kaydı
+   * göstermenin bedelinden büyük. `EN_FAZLA_BAYAT_MS` üst sınırı duruyor. */
+  if (!out.length) {
+    const eski = await readFxCacheBayat(isoDate);
+    if (eski && eski.length) {
+      console.warn(`[live2] ${isoDate}: saglayicilar bos dondu, ${eski.length} kayitlik onbellek KORUNDU`);
+      await writeFxCache(isoDate, eski);
+      return eski;
+    }
+  }
+
   // Boş sonucu da kısa süreliğine cache'le ki arka arkaya gelen istekler kota yakmasın
   await writeFxCache(isoDate, out);
   return out;
+}
+
+/** Aynı gün için tek uçuşan tazeleme; sonucu paylaşır. */
+function _fxTazelemeBaslat(isoDate) {
+  let p = _fxTazeleme.get(isoDate);
+  if (!p) {
+    p = _fxTaze(isoDate).finally(() => _fxTazeleme.delete(isoDate));
+    _fxTazeleme.set(isoDate, p);
+  }
+  return p;
+}
+
+// TSDB → AF kompozit
+async function fixturesByDate(isoDate) {
+  const cached = await readFxCache(isoDate);
+  if (cached) return cached;
+
+  /* TTL dolmuş: elde kullanılabilir bir kopya varsa ONU dön, tazelemeyi
+   * arkada başlat. Kullanıcı beklemez. */
+  const bayat = await readFxCacheBayat(isoDate);
+  if (bayat) {
+    const f = guvenliYol(FX_CACHE_DIR, `fx-${isoDate}`, ".json");
+    const c = await readJson(f, null);
+    const yas = Number.isFinite(c?.at) ? Date.now() - c.at : Infinity;
+    if (yas <= EN_FAZLA_BAYAT_MS) {
+      _fxTazelemeBaslat(isoDate).catch((e) =>
+        console.warn(`[live2] arka plan tazeleme (${isoDate}):`, e?.message || e)
+      );
+      return bayat;
+    }
+  }
+
+  // Hiç kopya yok ya da çok bayat — beklemek zorundayız.
+  return _fxTazelemeBaslat(isoDate);
 }
 
 function dedupeFixtures(arr) {
@@ -1003,6 +1092,61 @@ async function appendAdminAlert(kind, scope, message, meta) {
   return appendAlert(kind, scope, message, meta);
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * SAĞLAYICIDA EKSİK MAÇ UYARISI — /schedule ve /open için TEK gövde.
+ *
+ * ⚠️ BU DÖNGÜ UYARI SİSTEMİNİ TAMAMEN YOK ETMİŞTİ. ÖLÇÜLDÜ (üretim,
+ * 2026-08-02): `data/admin-alerts.json` 500 kaydın 499'u bu türden ve tamamı
+ * **3 DAKİKALIK** pencereye sığıyordu. Tavan 500, TTL 14 gün — ama dosya
+ * dakikalar içinde tümüyle devriliyor, yani `mongo_down` dahil GERÇEK her
+ * uyarı görülmeden siliniyor. Performanstan önce bir TEŞHİS KÖRLÜĞÜ.
+ *
+ * ⚠️ SEBEP: UYARININ İDDİASI BAŞTAN YANLIŞTI. Sağlayıcı listesi yalnızca
+ * DÜN/BUGÜN/YARIN çekiliyor (`fixturesByDate` üç gün); manuel pencere ise
+ * -1..+60 gün. O üç günün dışındaki manuel maçın "provider'da olmaması"
+ * ANOMALİ DEĞİL, TASARIM. Ölçüldü: istek başına ~102 maç bu duruma girip
+ * uyarı yazıyordu. Artık yalnızca sağlayıcının GERÇEKTEN kapsadığı günler
+ * değerlendiriliyor — orada eksiklik gerçek sinyaldir.
+ *
+ * ⚠️ TEK ÖZET UYARI, N TANE DEĞİL; ve yanıt BEKLETİLMİYOR (her uyarı 268KB
+ * dosyada kilit alıyordu).
+ *
+ * ⚠️ ORTAK GÖVDE, ÇÜNKÜ İKİ KOPYA VARDI. `/schedule` ve `/open` aynı döngüyü
+ * ayrı ayrı taşıyordu; birini düzeltip ötekini unutmak bu depodaki en sık
+ * kusur şekli. Tek yer.
+ * ──────────────────────────────────────────────────────────────────────── */
+function saglayiciEksikleriniBildir({ manuel, saglayici, kapsananGunler, kind, scope, etiket, profile }) {
+  /* O(n×m) → O(n+m): eskiden her manuel maç için TÜM sağlayıcı listesi
+   * taranıp `sameFixtureKey` yeniden hesaplanıyordu (≈1300×1250 = 1.6M dize
+   * birleştirme, istek başına). */
+  const anahtarlar = new Set(saglayici.map(sameFixtureKey));
+
+  const eksikler = manuel.filter((mf) => {
+    if (anahtarlar.has(sameFixtureKey(mf))) return false;
+    const koMs = parseKickoffMs(mf);
+    if (!Number.isFinite(koMs)) return false;   // saati belirsiz — yargılanamaz
+    return kapsananGunler.has(ymdInTZ(koMs, TZ));
+  });
+
+  if (!eksikler.length) return 0;
+
+  const ornek = eksikler.slice(0, 5).map((m) => `${m.fixtureId} (${m.home} - ${m.away})`).join(", ");
+  // Bilinçli olarak beklenmiyor; hata yalnızca loglanır.
+  appendAdminAlert(
+    kind,
+    scope,
+    `Sağlayıcının kapsadığı 3 günde ${eksikler.length} maç ${etiket} penceresinde provider'dan gelmedi; manuel listeden alındı. Örnek: ${ornek}`,
+    {
+      adet: eksikler.length,
+      ornekIdler: eksikler.slice(0, 20).map((m) => m.fixtureId),
+      gunler: [...kapsananGunler],
+      profile,
+    }
+  ).catch((e) => console.warn(`[live2/${scope}] uyari yazilamadi:`, e?.message || e));
+
+  return eksikler.length;
+}
+
 // Open listesinde kilit: kickoffISO varsa gerçek lock uygula.
 // kickoffDate-only (saat belirsiz) için: lock false (yanlış kilitleme yapmayalım).
 function withLockFlag(item, nowMs) {
@@ -1188,25 +1332,38 @@ router.get("/schedule", async (req, res) => {
     // Takım önceliklendirmesi: ?team= verildiyse kullanıcının takımı en üste
     const userTeam = String(req.query.team || "").trim().toLowerCase();
 
-    // Admin uyarısı: manuel olup provider’da olmayanlar
-    for (const mf of manualFiltered) {
-      const key = sameFixtureKey(mf);
-      const providerHas = filtered.some((p) => sameFixtureKey(p) === key);
-      if (!providerHas) {
-        await appendAdminAlert(
-          "provider_missing_schedule",
-          "schedule",
-          `Maç schedule penceresinde provider'dan gelmedi; manuel listeden alındı. (fixtureId=${mf.fixtureId}, ${mf.home} - ${mf.away})`,
-          {
-            fixtureId: mf.fixtureId,
-            home: mf.home,
-            away: mf.away,
-            kickoffISO: kickoffComparableISO(mf),
-            profile: runtimeMode.profile,
-          }
-        );
-      }
-    }
+    /* ────────────────────────────────────────────────────────────────────
+     * Admin uyarısı: manuel olup provider'da olmayanlar.
+     *
+     * ⚠️ BU DÖNGÜ UYARI SİSTEMİNİ TAMAMEN YOK ETMİŞTİ. ÖLÇÜLDÜ (üretim,
+     * 2026-08-02): `data/admin-alerts.json` 500 kaydın 499'u bu tek türden
+     * ve tamamı **3 DAKİKALIK** bir pencereye sığıyordu. Tavan 500, TTL 14
+     * gün — ama dosya dakikalar içinde tamamen devriliyor, yani `mongo_down`
+     * dahil GERÇEK her uyarı görülmeden siliniyor. Teşhis körlüğü.
+     *
+     * ⚠️ SEBEP: UYARININ İDDİASI BAŞTAN YANLIŞTI. Sağlayıcı listesi yalnızca
+     * DÜN/BUGÜN/YARIN çekiliyor (`fixturesByDate` üç gün), manuel pencere ise
+     * varsayılan -1..+60 GÜN. Yani o üç günün dışındaki her manuel maçın
+     * "provider'da olmaması" ANOMALİ DEĞİL, TASARIM. Ölçüldü: istek başına
+     * ~102 maç bu duruma giriyor ve her biri uyarı yazıyordu.
+     * Uyarı artık yalnızca sağlayıcının GERÇEKTEN kapsadığı üç gün için
+     * üretiliyor; orada eksiklik gerçek bir sinyaldir.
+     *
+     * ⚠️ TEK ÖZET UYARI, N TANE DEĞİL. Aynı sistemik durumu maç maç yazmak
+     * dosyayı dolduruyordu; sayı + birkaç örnek yeterli.
+     *
+     * ⚠️ YANIT BEKLETİLMİYOR (await YOK). Her uyarı 268KB'lık dosyada kilit
+     * alıyordu; bu, yanıt yolunda olmaması gereken bir iş.
+     * ──────────────────────────────────────────────────────────────────── */
+    saglayiciEksikleriniBildir({
+      manuel: manualFiltered,
+      saglayici: filtered,
+      kapsananGunler: new Set([yesterday, today, tomorrow]),
+      kind: "provider_missing_schedule",
+      scope: "schedule",
+      etiket: "schedule",
+      profile: runtimeMode.profile,
+    });
 
     // CAP + sıralama: kullanıcının takımı → diğerleri (kickoff sırası)
     function teamScore(it) {
@@ -1335,25 +1492,16 @@ router.get("/open", async (req, res) => {
       if (!withLock.lock) windowed.push(withLock);
     }
 
-    // Admin uyarısı: manuel olup provider’da olmayanlar
-    for (const mf of manualFiltered) {
-      const key = sameFixtureKey(mf);
-      const providerHas = baseFiltered.some((p) => sameFixtureKey(p) === key);
-      if (!providerHas) {
-        await appendAdminAlert(
-          "provider_missing_open",
-          "open",
-          `Maç open penceresinde provider'dan gelmedi; manuel listeden alındı. (fixtureId=${mf.fixtureId}, ${mf.home} - ${mf.away})`,
-          {
-            fixtureId: mf.fixtureId,
-            home: mf.home,
-            away: mf.away,
-            kickoffISO: kickoffComparableISO(mf),
-            profile: runtimeMode.profile,
-          }
-        );
-      }
-    }
+    // Admin uyarısı — ortak gövde. bkz. saglayiciEksikleriniBildir
+    saglayiciEksikleriniBildir({
+      manuel: manualFiltered,
+      saglayici: baseFiltered,
+      kapsananGunler: new Set([yesterday, today, tomorrow]),
+      kind: "provider_missing_open",
+      scope: "open",
+      etiket: "open",
+      profile: runtimeMode.profile,
+    });
 
     // Ülke tavanı ÇEŞİTLİLİK içindir; taban altına düşerse tamamlanır.
     // (Aynı gerekçe /schedule'da: boş ekran uygulamayı kullanılamaz yapıyordu.)
