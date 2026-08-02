@@ -50,12 +50,15 @@ const USERS_FILE  = path.join(DATA_DIR, "users.json");
  * İlk gün tek seferlik ~3.185 LC basılır (mevcut 838 cüzdanın çoğu taban
  * altında); sonrası oyuncunun harcamasına bağlı ve üst sınırı 6/gün.
  */
-const DAILY_FLOOR      = Number(process.env.SKORLIG_DAILY_FLOOR || 3);
-const DAILY_FLOOR_PREM = Number(process.env.SKORLIG_DAILY_FLOOR_PREMIUM || 12);
+/* ⚠️ TEK KAYNAK: lib/ekonomi.cjs. Bu dort deger burada yereldi ve
+ * lib/premium.cjs ayni env degiskenini FARKLI varsayilanla (6) okuyordu —
+ * satis ekrani 6 gosterirken odeme yolu 3 veriyordu. */
+const DAILY_FLOOR      = require("../lib/ekonomi.cjs").GUNLUK_TABAN;
+const DAILY_FLOOR_PREM = require("../lib/ekonomi.cjs").GUNLUK_TABAN_PREM;
 // Üst üste gün kademeleri (bkz. gunlukTaban). Kullanıcı isteği: temel miktar
 // 3-4 LC, süreklilik ödüllensin.
-const DAILY_FLOOR_3 = Number(process.env.SKORLIG_DAILY_FLOOR_STREAK3 || 5);
-const DAILY_FLOOR_7 = Number(process.env.SKORLIG_DAILY_FLOOR_STREAK7 || 7);
+const DAILY_FLOOR_3 = require("../lib/ekonomi.cjs").GUNLUK_TABAN_SERI3;
+const DAILY_FLOOR_7 = require("../lib/ekonomi.cjs").GUNLUK_TABAN_SERI7;
 
 /**
  * Bugün verilecek LC miktarı.
