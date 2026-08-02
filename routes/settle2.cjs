@@ -1746,7 +1746,7 @@ router.get("/pred/preview-match-board", async (req, res) => {
  * Yan etkisizdir (totals'a yazmaz). Az-sorgu modeliyle uyumlu: veri
  * data/live state dosyasından gelir; sağlayıcıya istek atmaz.
  */
-router.get("/match-race", async (req, res) => {
+router.get("/match-race", optionalToken, async (req, res) => {
   try {
     const fixtureId = String(req.query.fixtureId || "").trim();
     const userId = String(req.query.userId || "").trim();
@@ -1793,11 +1793,43 @@ router.get("/match-race", async (req, res) => {
     // Pre-match: scoreFixture başarısız → katılımcı listesi döndür
     if (!result) {
       // Sadece skor tahmini yapanlar yarışa dahil
+      /**
+       * ⚠️ MAÇ BAŞLAMADAN HERKESİN TAM SKOR TAHMİNİ SIZIYORDU.
+       *
+       * Uçta hiçbir kimlik denetimi yoktu ve `predScore` TÜM katılımcılar
+       * için dönüyordu. Ölçüldü (2026-08-02, kickoff'a 3 saat kalan NS maç,
+       * ilgisiz kimlikle istek):
+       *     RAKIP1  predScore={"home":3,"away":1}
+       *     RAKIP2  predScore={"home":0,"away":2}
+       *     BEN     predScore={"home":1,"away":1}
+       *
+       * Rakiplerin skorunu görüp ona göre tahmin girmek doğrudan avantaj;
+       * düelloda ve havuzda paraya dönüşür. Aynı sınıf aynı gün `pool.myBet`,
+       * `weekly-picks`, `stats/user`, `friends/list` ve mini profil bakiyesinde
+       * bulundu — `lib/kimlik-kontrol.cjs` bu dersi yazmış.
+       *
+       * ⚠️ YALNIZCA MAÇ ÖNCESİ KISITLANIYOR. Maç başladıktan sonra tahminler
+       * KİLİTLİ (bkz. TAHMIN_KILIT_DK) — o noktada kimin ne dediğini görmek
+       * yarışın kendisi, gizlenecek bir şey değil. Bu yüzden `phase: "race"`
+       * yolundaki `predScore` olduğu gibi kalıyor.
+       *
+       * ⚠️ KATILIMCI LİSTESİ GİZLENMİYOR: "kim yarışta" bilgisi ekranın işi;
+       * gizli olan yalnızca NE tahmin ettiği.
+       */
+      const istekSahibi = String(req.uid || "").trim().toLowerCase();
       const participants = fixturePreds
         .filter((p) => p.home != null && p.away != null)
         .map((p) => {
           const uid = String(p.userId || p.user || "");
-          return { userId: uid, displayName: getName(uid), joinedAt: p.createdAt || p.timestamp || null, predScore: { home: p.home, away: p.away } };
+          const benim = !!istekSahibi && uid.toLowerCase() === istekSahibi;
+          return {
+            userId: uid,
+            displayName: getName(uid),
+            joinedAt: p.createdAt || p.timestamp || null,
+            /* Alan HİÇ gönderilmiyor (null değil): istemci koşullu basıyor,
+             * null göndermek de "tahmin yok" gibi yanlış okunurdu. */
+            ...(benim ? { predScore: { home: p.home, away: p.away } } : {}),
+          };
         });
       const meJoined = userId
         ? participants.some((p) => p.userId.toLowerCase() === userId.toLowerCase())
