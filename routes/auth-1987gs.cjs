@@ -6,6 +6,8 @@ const fs      = require("fs");
 const fsp     = fs.promises;
 
 const InviteStore = require("../lib/invite-store.cjs");
+/* Üyelik yazması yalnızca doğrulanmış kimliğe — bkz. POST /verify notu. */
+const { optionalToken } = require("../middleware/verifyToken.cjs");
 
 function requireAdminToken(req, res, next) {
   const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
@@ -74,12 +76,51 @@ async function markUser1987(userId, code, db) {
  *   - gs1987-codes.json içinde used++ yapar
  *   - userId varsa users.json içinde is1987:true ve ek alanları günceller
  */
-router.post("/verify", express.json(), async (req, res) => {
+/**
+ * ⚠️ ÜYELİĞİ İSTENEN HERKESE VEREBİLİYORDU — kimlik GÖVDEDEN geliyordu.
+ *
+ * `userId` doğrulanmadan `markUser1987` çağrılıyordu; yani geçerli bir kod
+ * bilen kişi üyeliği KENDİ HESABI YERİNE başkasına yazdırabiliyordu. 1987
+ * üyeliği bedava değil — dosyanın kendi notu sayıyor: açılış bakiyesi 60 LC
+ * (normalde 30) ve haftalık seçimler ücretsiz. Kod kotası da o hesap için
+ * harcanıyordu.
+ *
+ * ⚠️ KOD DOĞRULAMA KISMI KİMLİKSİZ KALIYOR. `optionalToken` seçildi çünkü
+ * kodun geçerliliğini sormak (kotayı görmek) oturum gerektirmemeli; üyelik
+ * YAZMASI ise yalnızca doğrulanmış kimliğe yapılıyor. `verifyToken` koymak
+ * kod girme ekranını oturumdan önce kullanılamaz hâle getirirdi.
+ *
+ * ⚠️ İSTEMCİ ZATEN JETON GÖNDERİYOR: `gs1987-verify.tsx` ve `mystatus.tsx`
+ * ikisi de `apiFetch` kullanıyor ve giriş yapmış kullanıcıdan çağrılıyor —
+ * yani kilitlemek hiçbir ekranı bozmuyor.
+ *
+ * Kaba kuvvet ayrı bir katmanda: `server.cjs` global `rateLimit` uyguluyor
+ * ve kodlar 11 karakter.
+ */
+router.post("/verify", optionalToken, express.json(), async (req, res) => {
   const rawCode = String(req.body?.code || "").trim();
-  const userId  = String(req.body?.userId || "").trim() || null;
+  /* Kimlik JETONDAN. Gövdedeki `userId` yalnızca kendi kimliğiyle
+   * eşleşiyorsa dikkate alınır; eşleşmezse üyelik YAZILMAZ. */
+  const istenen = String(req.body?.userId || "").trim();
+  const kimlik  = String(req.uid || "").trim();
+  const userId  = (kimlik && (!istenen || istenen.toLowerCase() === kimlik.toLowerCase()))
+    ? kimlik
+    : null;
 
   if (!rawCode) {
     return res.status(400).json({ ok: false, error: "CODE_REQUIRED" });
+  }
+
+  /* ⚠️ KİMLİK YOKSA KOD TÜKETİLMEZ — SIRA ÖNEMLİ.
+   *
+   * `redeem` kotayı ATOMİK olarak harcıyor. Kimlik denetimini ondan SONRA
+   * yapsaydım (ilk yazımım öyleydi), eşleşmeyen istek üyelik almadan
+   * kullanım hakkını YAKARDI: saldırgan başkasının kodunu boşa harcayabilir,
+   * jetonu düşmüş meşru kullanıcı ise hakkını kaybederdi.
+   * Kod bedava değil — kota 1987 üyeliğinin (60 LC açılış + ücretsiz
+   * haftalık seçim) fiyatı. */
+  if (!userId) {
+    return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
   }
 
   const codeNorm = rawCode.toUpperCase();
