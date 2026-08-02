@@ -1023,7 +1023,23 @@ function stateFile(fid) {
  * 2) state yoksa kickoff geçmişse "OVERDUE_NO_STATE" de (NS kalmasın)
  * 3) aksi halde mevcut item.status (default NS)
  */
-async function effectiveStatusForFixture(it) {
+/**
+ * Maçın gerçek durumu VE skoru — tek durum dosyası okumasından.
+ *
+ * ⚠️ SKOR OKUNUYORDU AMA ATILIYORDU. Bu fonksiyon eskiden yalnızca durum
+ * dizesini döndürüyordu; durum dosyasında yanı başında duran `score` ve
+ * `htScore` çöpe gidiyordu. Sonuç: ana ekran maçları DOĞRU durumla ama
+ * SKORSUZ gösteriyordu.
+ *
+ * ÖLÇÜLDÜ (üretim, 2026-08-03 ana ekran yanıtı): 250 FT + 3 LIVE maçın
+ * **hiçbirinde** skor yok. Mobil `scoreText` `fx.score?.home ?? fx.homeGoals`
+ * okuyor, ikisi de yok, ekranda " - " çıkıyor. Yani kullanıcı
+ * "Kasımpaşa - Hull City   -   " görüyor; oysa durum dosyasında skor
+ * 1-1 olarak DURUYOR.
+ *
+ * ⚠️ EK MALİYET YOK: dosya zaten okunuyordu, yalnızca dönen bilgi genişledi.
+ */
+async function effectiveStateForFixture(it) {
   const fid = String(it?.fixtureId || "").trim();
   const koMs = parseKickoffMs(it);
   const nowMs = Date.now();
@@ -1033,17 +1049,32 @@ async function effectiveStatusForFixture(it) {
     const st = await readJson(stateFile(fid), null);
     if (st && typeof st === "object") {
       const stStatus = String(st.status || "").trim().toUpperCase();
-      if (stStatus) return stStatus;
+      if (stStatus) {
+        return {
+          status: stStatus,
+          score: st.score || null,
+          htScore: st.htScore || null,
+        };
+      }
     }
   }
 
   // 2) kickoff geçmiş ama state yok → NS kalmasın
   if (Number.isFinite(koMs) && nowMs > koMs) {
-    return "OVERDUE_NO_STATE";
+    return { status: "OVERDUE_NO_STATE", score: null, htScore: null };
   }
 
   // 3) fallback
-  return String(it?.status || "NS").trim().toUpperCase();
+  return {
+    status: String(it?.status || "NS").trim().toUpperCase(),
+    score: null,
+    htScore: null,
+  };
+}
+
+/** Geriye uyum: yalnızca durum isteyen çağıranlar için ince sarmalayıcı. */
+async function effectiveStatusForFixture(it) {
+  return (await effectiveStateForFixture(it)).status;
 }
 
 async function loadManualFixtures() {
@@ -1409,9 +1440,28 @@ router.get("/schedule", async (req, res) => {
 
     const capped = [];
     for (const it of secilen) {
-      const effStatus = await effectiveStatusForFixture(it);
+      const eff = await effectiveStateForFixture(it);
+      /* ⚠️ SKOR DA GÖNDERİLİYOR. Eskiden yalnızca `status` alınıyordu ve
+       * durum dosyasındaki skor atılıyordu; ana ekranda 250 bitmiş + 3 canlı
+       * maç SKORSUZ görünüyordu ("Kasımpaşa - Hull City   -   ").
+       * Mobil `fx.score?.home ?? fx.homeGoals` okuyor — ikisini de veriyoruz
+       * ki eski/yeni istemci aynı sonucu görsün.
+       * `it` içinde zaten skor varsa (manuel giriş) EZİLMİYOR. */
+      const skor = eff.score && Number.isFinite(Number(eff.score.home))
+        ? { home: Number(eff.score.home), away: Number(eff.score.away) }
+        : null;
+
       capped.push({
-        ...finalizeFixtureForOutput({ ...it, status: effStatus }),
+        ...finalizeFixtureForOutput({
+          ...it,
+          status: eff.status,
+          ...(skor ? {
+            score: it.score || skor,
+            homeGoals: Number.isFinite(Number(it.homeGoals)) ? it.homeGoals : skor.home,
+            awayGoals: Number.isFinite(Number(it.awayGoals)) ? it.awayGoals : skor.away,
+          } : {}),
+          ...(eff.htScore ? { htScore: it.htScore || eff.htScore } : {}),
+        }),
         // Grup başlığı için — arayüz sıra değiştiğinde başlık basar.
         // Sunucu üretiyor: istemcide yeniden hesaplamak iki ayrı tanım demek.
         priorityGroup: priorityGroupOf(it, userCountry),
