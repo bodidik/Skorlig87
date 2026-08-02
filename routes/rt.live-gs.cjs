@@ -8,6 +8,8 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
+/* Tahmin kilidi TEK KAYNAK — bkz. lib/ekonomi.cjs TAHMIN_KILIT_DK. */
+const { TAHMIN_KILIT_DK } = require("../lib/ekonomi.cjs");
 
 // Node 18+ global fetch; yoksa node-fetch fallback
 const _fetch = globalThis.fetch || require("node-fetch");
@@ -465,6 +467,15 @@ router.get("/live-gs", async (req, res) => {
       source: state.source || "manual",
       updatedAt: state.updatedAt || null,
       kickoffISO: state.kickoffISO || null,
+
+      /* ⚠️ KİLİT KURALI SUNUCUDAN. `app/(tabs)/predict.tsx computePredLock`
+       * kilit anını KENDİ hesaplıyordu: `kickoffMs - 10 * 60 * 1000`.
+       * Sunucu tarafındaki DÖRT kopya 2026-08-03'te `lib/ekonomi.cjs
+       * TAHMIN_KILIT_DK` altında birleştirildi; istemcideki BEŞİNCİ kopya
+       * kalmıştı. Bugün değer aynı (10) ama sabit değişirse ekran maçı
+       * açık gösterip gönderim reddedilirdi — bu ürün o hatayı bir kez
+       * yaşadı (bkz. ekonomi.cjs TAHMIN_KILIT_DK notu). */
+      lockBeforeMin: TAHMIN_KILIT_DK,
 
       country: state.country || null,
       league: state.league || null,

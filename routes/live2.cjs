@@ -1054,6 +1054,7 @@ async function effectiveStateForFixture(it) {
           status: stStatus,
           score: st.score || null,
           htScore: st.htScore || null,
+          minute: Number.isFinite(Number(st.minute)) ? Number(st.minute) : null,
         };
       }
     }
@@ -1061,7 +1062,7 @@ async function effectiveStateForFixture(it) {
 
   // 2) kickoff geçmiş ama state yok → NS kalmasın
   if (Number.isFinite(koMs) && nowMs > koMs) {
-    return { status: "OVERDUE_NO_STATE", score: null, htScore: null };
+    return { status: "OVERDUE_NO_STATE", score: null, htScore: null, minute: null };
   }
 
   // 3) fallback
@@ -1069,6 +1070,7 @@ async function effectiveStateForFixture(it) {
     status: String(it?.status || "NS").trim().toUpperCase(),
     score: null,
     htScore: null,
+    minute: null,
   };
 }
 
@@ -1461,6 +1463,9 @@ router.get("/schedule", async (req, res) => {
             awayGoals: Number.isFinite(Number(it.awayGoals)) ? it.awayGoals : skor.away,
           } : {}),
           ...(eff.htScore ? { htScore: it.htScore || eff.htScore } : {}),
+          /* Canli dakika — yoksa alan hic eklenmiyor (bitmis maca dakika
+           * yazmak yanlis bilgi olurdu). */
+          ...(eff.minute != null ? { minute: eff.minute } : {}),
         }),
         // Grup başlığı için — arayüz sıra değiştiğinde başlık basar.
         // Sunucu üretiyor: istemcide yeniden hesaplamak iki ayrı tanım demek.

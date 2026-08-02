@@ -230,6 +230,36 @@ function parseHT(htScore) {
   return { home: parseInt(m[1], 10), away: parseInt(m[2], 10) };
 }
 
+/**
+ * Canlı maç dakikası — kaynak onu AYRI BİR ALANDA VERMİYOR.
+ *
+ * ⚠️ ÖLÇÜLDÜ (scraper önbelleği): canlı maçlarda `minute` alanı `undefined`;
+ * dakika `status` DİZESİNİN İÇİNDE geliyor:
+ *     status="62'"   → 62. dakika
+ *     status="İY"    → devre arası (dakika yok)
+ *     status="45+2'" → uzatma
+ *
+ * Bu yüzden ana ekranda canlı maç "62'" yerine düz "CANLI" görünüyordu:
+ * mobil `statusLabel` `fx.minute` sayısını arıyor, o da hiç yazılmıyordu
+ * (`Fx` tipinin okuduğu ama sunucunun hiç göndermediği alanlardan biri).
+ *
+ * ⚠️ UYDURMA YOK: yalnızca rakamla başlayan bir dakika işareti kabul
+ * ediliyor. "İY", "MS", "Ert." gibi durumlarda `null` dönüyor — sıfır ya da
+ * tahmini bir sayı yazmak, kullanıcıya oynanmayan bir dakikayı göstermek
+ * olurdu. Uzatmada ana dakika alınıyor (45+2 → 45); toplama yapmak 47.
+ * dakika gibi var olmayan bir an üretirdi.
+ */
+function parseMinute(status) {
+  const s = String(status || "").trim();
+  if (!s) return null;
+  const m = s.match(/^(\d{1,3})(?:\s*\+\s*\d{1,2})?\s*'/);
+  if (!m) return null;
+  const dk = parseInt(m[1], 10);
+  /* 0 dakika diye bir şey yok; 130+ bir ayrıştırma hatasıdır. */
+  if (!Number.isFinite(dk) || dk <= 0 || dk > 130) return null;
+  return dk;
+}
+
 // ──────────────────────────────────────────────
 // Write live state so settle2 can read it
 // ──────────────────────────────────────────────
@@ -338,6 +368,18 @@ async function writeLiveState(fixtureId, liveMatch, scores, nowISO) {
   if (scores.htHome != null) st.htScore = { home: scores.htHome, away: scores.htAway };
   if (liveMatch.homeRed) st.redHome = liveMatch.homeRed;
   if (liveMatch.awayRed) st.redAway = liveMatch.awayRed;
+
+  /* ⚠️ CANLI DAKİKA. Kaynak ayrı alan vermiyor, dakika `status` dizesinin
+   * içinde ("62'"). Ana ekranda canlı maç "62'" yerine düz "CANLI"
+   * görünüyordu. Maç bitince dakika ANLAMSIZ — FT'de silinir, yoksa
+   * bitmiş maçın yanında son dakika asılı kalırdı. */
+  if (scores.isFT) {
+    delete st.minute;
+  } else {
+    const dk = parseMinute(liveMatch.status);
+    if (dk != null) st.minute = dk;
+    else delete st.minute;      // devre arası vb. — eski değeri taşıma
+  }
 
   await writeJsonAtomic(stateFile, st);
 }
@@ -723,7 +765,7 @@ module.exports = {
   sync, getLastSync, start, normalizeTeam, findLiveMatch, TEAM_MAP,
   // Test icin: kararlilik kapisi saf fonksiyon, kendi kopyasini yazmak yerine
   // gercegi cagrilsin (bu oturumda kopya-mantik iki kez yesil-ama-olu test uretti).
-  ftBeklemesiDoldu, FT_BEKLEME_DK,
+  ftBeklemesiDoldu, FT_BEKLEME_DK, parseMinute,
   // Takili LIVE sizintisinin kapisi — davranisi dogrudan sinanabilsin diye acik.
   takiliLiveUzlastir, MAX_LIVE_SAAT,
   // Normalizasyon onbellegi sifirlama (test + olasi TEAM_MAP degisikligi icin).
