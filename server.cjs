@@ -538,6 +538,15 @@ const server = app.listen(PORT, HOST, () => {
       require("./services/bayat-temizleyici.cjs").start(6 * 3600 * 1000));
   }
 
+  /* Yetim canli durum dosyalari: fikstur kaydi silindikten sonra diskte kalan
+   * data/live/*.json artiklari. Olculdu: 1403 dosyanin 305'i yetim ve hicbir
+   * seyin sildigi yoktu. Fail-closed korumalar servisin icinde —
+   * bkz. services/yetim-durum-temizleyici.cjs */
+  if (process.env.SKORLIG_YETIM_TEMIZLE !== "0") {
+    safeMount("yetim-temizleyici", () =>
+      require("./services/yetim-durum-temizleyici.cjs").start(6 * 3600 * 1000));
+  }
+
   if (process.env.SKORLIG_SCRAPER_HEALTH !== "0") {
     safeMount("scraper-health", () =>
       require("./services/scraper-health.cjs").start(10 * 60 * 1000)
