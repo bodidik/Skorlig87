@@ -63,7 +63,10 @@ const PREDICT_OPEN_AHEAD_HOURS = 96;
 const COUNTRY_CAP_DEFAULT = 4;
 
 // Open penceresi
-const LOCK_BEFORE_MIN = 5;
+/* ⚠️ TEK KAYNAK: lib/ekonomi.cjs. Burada 5 yaziyordu ama tahmin gonderme
+ * yolu 10 uyguluyor — arada kalan 5 dakikada liste maci ACIK gosterip
+ * gonderim reddediliyordu. bkz. TAHMIN_KILIT_DK notu. */
+const { TAHMIN_KILIT_DK: LOCK_BEFORE_MIN } = require("../lib/ekonomi.cjs");
 // NOT: Open window artık query ile override edilebiliyor.
 // Defaults: geçmiş -48h, gelecek +36h (runtime ile DEV_4_TEAMS'te otomatik genişler)
 const OPEN_WINDOW_HOURS = 36; // ileri (default)

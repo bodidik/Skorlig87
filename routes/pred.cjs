@@ -675,7 +675,9 @@ async function getPredFlagsFromMongo(db, userId, fixtureIdsFilter) {
 // =====================
 
 // kickoff'tan kaç dakika önce kilitleyelim?
-const PRED_LOCK_BEFORE_MIN = 10;
+/* ⚠️ TEK KAYNAK: lib/ekonomi.cjs. Uygulanan deger buydu; liste tarafi 5
+ * tutuyordu ve ikisi ayrisiyordu. bkz. TAHMIN_KILIT_DK notu. */
+const { TAHMIN_KILIT_DK: PRED_LOCK_BEFORE_MIN } = require("../lib/ekonomi.cjs");
 
 /**
  * ⚠️ ARTIK KAPALI BAŞARISIZLIK. Önceki hâli üç yerde açık bırakıyordu

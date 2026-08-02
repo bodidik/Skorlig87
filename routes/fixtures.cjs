@@ -40,7 +40,8 @@ const MATCH_NOTES_FILE = path.join(DATA_DIR, "match-notes.json");
 const COUNTRY_CAP_DEFAULT = 4;
 
 // Open penceresi
-const LOCK_BEFORE_MIN = 5;
+/* ⚠️ TEK KAYNAK: lib/ekonomi.cjs — bkz. TAHMIN_KILIT_DK notu. */
+const { TAHMIN_KILIT_DK: LOCK_BEFORE_MIN } = require("../lib/ekonomi.cjs");
 const OPEN_WINDOW_HOURS = 36; // ileri default
 const BACK_WINDOW_HOURS = 48; // geri default
 

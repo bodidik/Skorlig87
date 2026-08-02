@@ -96,7 +96,8 @@ function getDb(req) {
 
 // 🔒 Kickoff kilidi: maç başladıysa düello kurulamaz / kabul edilemez.
 // (aksi halde skoru görüp bahse girmek mümkün olur)
-const DUEL_LOCK_BEFORE_MIN = 10;
+/* ⚠️ TEK KAYNAK: lib/ekonomi.cjs — bkz. TAHMIN_KILIT_DK notu. */
+const { TAHMIN_KILIT_DK: DUEL_LOCK_BEFORE_MIN } = require("../lib/ekonomi.cjs");
 
 /**
  * ⚠️ ARTIK KAPALI BAŞARISIZLIK. Önceki hâli ÜÇ yerde açık bırakıyordu:
