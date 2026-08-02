@@ -9,7 +9,7 @@ const MacDenge = require("../lib/mac-denge.cjs");
 const { duelloyaUygunMu } = MacDenge;
 const fsp = require("fs").promises;
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
-const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
 const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 
 // settle2 ile aynı env: düello sonuçlandırma settle akışının içinden çağrılır,
@@ -901,9 +901,38 @@ router.get("/duels/my", verifyToken, async (req, res) => {
 });
 
 // GET /api/duels/arena?userId= — genel arena: açık duellolar maça göre gruplanmış
-router.get("/duels/arena", async (req, res) => {
+/**
+ * ⚠️ ÖZEL DÜELLO SIZIYORDU — İKİ AYRI DELİK, DENETİMLİ OLARAK ÜRETİLDİ.
+ *
+ * Süzgeç şöyleydi:
+ *     if (d.challengedId && uid && d.challengedId.toLowerCase() !== uidL) continue;
+ *
+ * 1) `uid` BOŞKEN FAIL-OPEN. Koşul `uid` yoksa hiç çalışmıyor, yani
+ *    KİMLİKSİZ istek belirli birine gönderilmiş ÖZEL düelloyu görüyordu.
+ * 2) KİMLİK SORGUDAN GELİYORDU. Uç `req.uid`i hiç kullanmıyor; `?userId=X`
+ *    yazan herkes X'in özel düellolarını okuyabiliyordu.
+ *
+ * ÖLÇÜLDÜ (bir açık + bir özel düello, özel `DAVETLI`ye gönderilmiş):
+ *     DAVETLI (jetonlu)        → D-ACIK, D-OZEL   ✓ doğru
+ *     YABANCI (jetonlu)        → D-ACIK           ✓ doğru
+ *     KİMLİKSİZ                → D-ACIK, D-OZEL   ✗ sızıntı
+ *     jeton YABANCI, ?userId=DAVETLI → D-ACIK, D-OZEL  ✗ taklit
+ *
+ * ⚠️ FAIL-CLOSED: kimlik yoksa özel düello HİÇ gösterilmiyor. Açık düellolar
+ * misafire görünmeye devam ediyor — arenanın işi zaten onları göstermek.
+ *
+ * Aynı sınıf bugün `weekly-picks`, `pool`, `stats/user` ve `users/profile`
+ * uçlarında da bulundu; `lib/kimlik-kontrol.cjs` dersi yazmış.
+ */
+router.get("/duels/arena", optionalToken, async (req, res) => {
   try {
-    const uid = String(req.query.userId || "").trim();
+    /* Kimlik JETONDAN. `?userId=` yalnızca kendi kimliğiyle eşleşirse
+     * dikkate alınıyor — eşleşmezse kimliksiz sayılır. */
+    const istenen = String(req.query.userId || "").trim();
+    const kimlik  = String(req.uid || "").trim();
+    const uid = (kimlik && (!istenen || istenen.toLowerCase() === kimlik.toLowerCase()))
+      ? kimlik
+      : "";
     const uidL = uid.toLowerCase();
     // Arena yalnizca ACIK duellolari gosteriyor; sonuclanmislari cekmek bosuna.
     const list = await SocialStore.duelsBul({ status: "open" }, getDb(req));
@@ -911,7 +940,9 @@ router.get("/duels/arena", async (req, res) => {
     const matchMap = new Map();
     for (const d of list) {
       if (uid && d.creatorId.toLowerCase() === uidL) continue; // kendi duellonu gösterme
-      if (d.challengedId && uid && d.challengedId.toLowerCase() !== uidL) continue; // başkasına özel
+      /* ⚠️ FAIL-CLOSED: `uid` yoksa da özel düello elenir. Eski koşulda
+       * `&& uid` vardı ve kimliksiz istekte süzgeç hiç çalışmıyordu. */
+      if (d.challengedId && d.challengedId.toLowerCase() !== uidL) continue; // başkasına özel
 
       if (!matchMap.has(d.fixtureId)) {
         matchMap.set(d.fixtureId, {
