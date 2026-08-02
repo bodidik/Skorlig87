@@ -63,6 +63,50 @@ async function is1987User(userId, db) {
  * SKORLIG_PREDS_FILE_MIRROR=0 ile tahmin Mongo'da olup dosyada olmuyordu →
  * kullanıcı aynı maç için TEKRAR ücretlendiriliyordu.
  */
+/**
+ * Bir kullanıcının VERİLEN maçlardaki tahminleri — TEK sorguda.
+ *
+ * ⚠️ `getUserPred`i döngüde çağırmak N+1 üretiyordu ve uç 60 sn'de bile
+ * yanıt vermiyordu (240 maç × (indeks denemesi 263 ms + sorgu 82 ms)).
+ * Dosya moduna düşüş de tek okumaya indirildi: eskiden her maç için 13 MB'lık
+ * `preds.json` yeniden okunup taranıyordu.
+ *
+ * @returns {Promise<Map<string, object>>} fixtureId → tahmin
+ */
+async function getUserPredsBatch(userId, fixtureIds, db) {
+  const harita = new Map();
+  const uid = String(userId || "").toLowerCase();
+  if (!uid || !fixtureIds.length) return harita;
+
+  if (db) {
+    try {
+      await ensurePredIndexes(db);            // döngü DIŞINDA, tek kez
+      const docs = await db.collection("predictions")
+        .find({ fixtureId: { $in: fixtureIds.map(String) }, userIdLower: uid })
+        .toArray();
+      for (const d of docs) harita.set(String(d.fixtureId), d);
+      return harita;
+    } catch (e) {
+      console.error("[weekly-picks] toplu pred okunamadi:", e?.message || e);
+    }
+  }
+
+  /* Dosya yedeği — yine TEK okuma. */
+  try {
+    const raw = await readJson(PREDS_FILE, []);
+    const liste = Array.isArray(raw) ? raw : (raw?.items || []);
+    const istenen = new Set(fixtureIds.map(String));
+    for (const p of liste) {
+      if (String(p?.userId || "").toLowerCase() !== uid) continue;
+      const fid = String(p?.fixtureId || "");
+      if (istenen.has(fid) && !harita.has(fid)) harita.set(fid, p);
+    }
+  } catch (e) {
+    console.error("[weekly-picks] dosyadan pred okunamadi:", e?.message || e);
+  }
+  return harita;
+}
+
 async function getUserPred(userId, fixtureId, db) {
   const uid = String(userId || "").toLowerCase();
 
@@ -144,20 +188,45 @@ router.get("/", async (req, res) => {
     // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
     const all = await FixturesStore.loadAll(db);
 
-    const picks = [];
+    /* ────────────────────────────────────────────────────────────────────
+     * ⚠️ N+1 KALDIRILDI — UÇ HİÇ YANIT VERMİYORDU.
+     *
+     * Döngü fikstür BAŞINA `getUserPred` çağırıyordu; o da her çağrıda
+     * `ensurePredIndexes` + ayrı bir `findOne` yapıyor. Ölçüldü (üretim):
+     *     pencere içi maç              : 240
+     *     ensurePredIndexes tek çağrı  : 263 ms  → yalnız indeks ~63 sn
+     *     findOne tek çağrı            :  82 ms  → sorgular ~20 sn
+     * Uç 60 saniyede bile yanıt vermiyordu (ölçüldü: HTTP 000).
+     *
+     * `ensurePredIndexes`in pahalı olmasının sebebi ayrıca düzeltildi
+     * (bkz. lib/preds-index.cjs — indeks çakışması önbelleği bozuyordu).
+     * Ama tek başına o yetmez: 240 ayrı sorgu yine kalırdı.
+     *
+     * Artık kullanıcının bu penceredeki TÜM tahminleri TEK sorguda alınıp
+     * haritaya konuyor. Durum dosyaları da paralel okunuyor.
+     * ──────────────────────────────────────────────────────────────────── */
+    const pencere = [];
     for (const fx of all) {
       const ko = new Date(fx.kickoffISO || fx.kickoffDate || "").getTime();
       if (!Number.isFinite(ko)) continue;
       if (now < ko - WINDOW_BEFORE_MS) continue;  // pencere açılmamış
       if (now > ko + WINDOW_AFTER_MS)  continue;  // çok geçmiş
       if (ko > now + WEEK_MS)          continue;  // 7 günden uzak
+      pencere.push({ fx, ko });
+    }
 
-      const live   = await getLiveState(fx.fixtureId);
+    const predHarita = await getUserPredsBatch(userId, pencere.map((x) => String(x.fx.fixtureId)), db);
+    const liveler = await Promise.all(pencere.map((x) => getLiveState(x.fx.fixtureId)));
+
+    const picks = [];
+    for (let i = 0; i < pencere.length; i++) {
+      const { fx, ko } = pencere[i];
+
+      const live   = liveler[i];
       const status = live?.status ?? (ko <= now ? "LIVE" : "NS");
       const open   = now >= ko - WINDOW_BEFORE_MS && status !== "FT";
 
-      let pred = null;
-      if (userId) pred = await getUserPred(userId, fx.fixtureId, db);
+      const pred = userId ? (predHarita.get(String(fx.fixtureId)) || null) : null;
 
       picks.push({
         fixtureId:    fx.fixtureId,
@@ -527,3 +596,5 @@ router.post("/verify-code", verifyToken, async (req, res) => {
 });
 
 module.exports = router;
+/* Test icin: N+1 kaldiran toplu okuyucu — davranisi dogrudan sinanabilsin. */
+module.exports._getUserPredsBatch = getUserPredsBatch;
