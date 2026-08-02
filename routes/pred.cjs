@@ -27,9 +27,19 @@ const { applyRegen } = require("../lib/lc-regen.cjs");
 // 🔹 Premium ayrıcalıkları
 const premium = require("../lib/premium.cjs");
 
-/** Yönetim ucu koruması — fail-closed: token tanımsızsa uç tamamen kapalı. */
+/**
+ * Yönetim ucu koruması — fail-closed: token tanımsızsa uç tamamen kapalı.
+ *
+ * ⚠️ JETON ADI TEK KAYNAKTAN. Burada yalnızca `SKORLIG_ADMIN_TOKEN`
+ * okunuyordu; `middleware/requireAdmin.cjs beklenenToken()` ise ÜÇ ad kabul
+ * ediyor (eski kurulumlar için `ADMIN_TOKEN` ve `EXPO_PUBLIC_ADMIN_TOKEN`).
+ * Ayrışan listeler, aynı jetonun bir uçta çalışıp ötekinde 503 vermesi
+ * demekti — bkz. routes/admin-runtime.cjs'teki ölçüm notu.
+ */
+const { beklenenToken: _beklenenAdminToken } = require("../middleware/requireAdmin.cjs");
+
 function requireAdminToken(req, res, next) {
-  const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
+  const token = _beklenenAdminToken();
   if (!token) return res.status(503).json({ ok: false, error: "ADMIN_TOKEN_NOT_CONFIGURED" });
   const got = String(req.headers["x-admin-token"] || "").trim() || String(req.query.token || "").trim();
   if (got && got === token) return next();

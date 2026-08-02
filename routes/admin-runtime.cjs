@@ -16,8 +16,27 @@ const { getRuntimeMode, setRuntimeMode } = require("../lib/runtime-mode.cjs");
      Token unutulursa açıkta kalmasın diye güvenlik adına reddedilir.
    - Set ise: header x-admin-token / ?token eşleşmeli, yoksa 401.
    ========================================================= */
+/* ⚠️ JETON ADI TEK KAYNAKTAN ÇÖZÜLÜYOR — BURADA AYRI BİR LİSTE VARDI.
+ *
+ * Eskiden yalnızca `process.env.SKORLIG_ADMIN_TOKEN` okunuyordu; oysa
+ * `middleware/requireAdmin.cjs beklenenToken()` ÜÇ ad kabul ediyor
+ * (`SKORLIG_ADMIN_TOKEN`, `ADMIN_TOKEN`, `EXPO_PUBLIC_ADMIN_TOKEN` — son
+ * ikisi eski kurulumlar için).
+ *
+ * ÖLÇÜLDÜ: yalnızca `ADMIN_TOKEN` tanımlı bir kurulumda ortak ara katmanı
+ * kullanan uçlar ÇALIŞIYOR, bu dosyanın koruduğu **21 uç** ve
+ * `routes/pred.cjs`'in 4 kullanımı `503 ADMIN_TOKEN_NOT_CONFIGURED`
+ * dönüyordu. Yani admin paneli yarım çalışıyor ve hata mesajı "jeton
+ * yapılandırılmamış" diyerek yanlış yeri gösteriyordu.
+ *
+ * `lib/internal-caller.cjs` bu sınıfı zaten yazmıştı ("Ayrı listeler, aynı
+ * jetonun bir uçta çalışıp ötekinde 503 vermesi demek") ve orada
+ * düzeltilmişti — geriye iki kopya kalmış. Muhafız MANTIĞI değişmedi,
+ * yalnızca jetonun nereden okunduğu birleştirildi. */
+const { beklenenToken } = require("../middleware/requireAdmin.cjs");
+
 function requireAdminToken(req, res, next) {
-  const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
+  const token = beklenenToken();
   if (!token) {
     return res.status(503).json({ ok: false, error: "ADMIN_TOKEN_NOT_CONFIGURED" });
   }
