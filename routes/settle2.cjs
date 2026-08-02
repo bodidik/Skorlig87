@@ -75,6 +75,9 @@ const FixturesStore = require("../lib/fixtures-store.cjs");
 // sessiz kaldı. Ders: import eklemeyi metin varlığına bağlama.
 const SocialStore = require("../lib/social-store.cjs");
 const Season = require("../lib/season.cjs");
+/* ⚠️ Mini profil BAKIYE donduruyordu — sahiplik icin kimlik gerekli.
+ * bkz. GET /user-profile notu. */
+const { optionalToken } = require("../middleware/verifyToken.cjs");
 const PoolStore = require("../lib/pool-store.cjs");
 // Odenemeyen odulu kalici olarak kaydetmek icin (bkz. kayipOdulKaydet).
 const WalletCredit = require("../lib/wallet-credit.cjs");
@@ -1914,12 +1917,15 @@ router.get("/match-race", async (req, res) => {
  * GET /api/rt/user-profile?userId=<target>
  * Herkese açık mini profil: puan, maç sayısı, üyelik tarihi, rütbe bilgisi
  */
-router.get("/user-profile", async (req, res) => {
+router.get("/user-profile", optionalToken, async (req, res) => {
   try {
     const targetId = String(req.query.userId || "").trim();
     if (!targetId) return res.status(400).json({ ok: false, error: "USER_ID_REQUIRED" });
 
     const tidLower = targetId.toLowerCase();
+    /* Kimlik JETONDAN; `?userId=` yalnızca kendi kimliğiyle eşleşirse sahip
+     * sayılır. bkz. lib/kimlik-kontrol.cjs — aynı ders bugün yedi yerde. */
+    const sahibiMi = String(req.uid || "").trim().toLowerCase() === tidLower && !!req.uid;
 
     // totals.json → puan & maç sayısı
     const totalsRaw = await readJson(TOTALS_FILE, { items: [] });
@@ -1976,8 +1982,27 @@ router.get("/user-profile", async (req, res) => {
       predCount,
       globalRank: globalRank >= 0 ? globalRank + 1 : null,
       totalPlayers: allTotals.length,
-      lc: Math.round(Number(walletRow?.balance || 0)),
       joinedAt: userRow?.createdAt || walletRow?.createdAt || null,
+      /**
+       * ⚠️ LC BAKİYESİ YALNIZCA SAHİBİNE. Uç kimliksizdi ve HERKESİN
+       * bakiyesini döndürüyordu; ölçüldü (2026-08-02):
+       *     GET /api/rt/user-profile?userId=KURBAN  (jetonsuz) -> 200, lc: 1337
+       *
+       * Dosyanın kendi başlığı bile bunu vaat etmiyordu: "Herkese açık mini
+       * profil: puan, maç sayısı, üyelik tarihi, rütbe bilgisi" — bakiye o
+       * listede YOK, sonradan eklenmiş.
+       *
+       * ⚠️ SIZINTI DEĞİL, ÖZELLİK OLARAK KONMUŞTU: `match-race` ekranı rakibe
+       * dokununca "💰 LC bakiye" satırını basıyordu. Ama bir tahmin oyununda
+       * rakibin ne kadar parası olduğunu bilmek düello ve havuzda doğrudan
+       * avantaj — bugün havuzdaki `myBet` sızıntısı aynı gerekçeyle kapatıldı.
+       *
+       * ⚠️ ALAN HİÇ GÖNDERİLMİYOR (0 değil): 0 göndermek "parası yok" gibi
+       * okunur ve yine bilgi sızdırır. İstemci alanın yokluğunda satırı
+       * gizliyor — `${undefined} LC` basmaması için mobil tarafta da
+       * düzeltildi.
+       */
+      ...(sahibiMi ? { lc: Math.round(Number(walletRow?.balance || 0)) } : {}),
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: "PROFILE_FAILED", detail: String(e?.message || e) });
