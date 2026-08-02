@@ -868,6 +868,56 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
 
   debug.files.stateExistsAfter = await fileExists(stateFile(fid));
 
+  /* ────────────────────────────────────────────────────────────────────────
+   * DURUM DOSYASINDA TAKIM ADI VE ÜLKE YOK — PUANLAMA NÖTR ÇARPANLA
+   * YAPILIYORDU. Bu bir MAJÖR puanlama hatasıydı.
+   *
+   * `services/livescore-sync.cjs writeLiveState` yalnızca şunları yazıyor:
+   *     { fixtureId, status, isLive, score, updatedAt, source, htScore }
+   * `home`, `away`, `country` YOK. Yukarıdaki bootstrap'lar bu alanları
+   * dolduruyor ama SADECE `if (!st)` iken — yani durum dosyası varsa (normal
+   * hâl, senkron her maç için yazıyor) hiç çalışmıyorlar.
+   *
+   * Sonuç: `getScoreWeight(st.country)`, `MW.oddsMultiplier(st.home, st.away)`
+   * ve `MW.matchDifficulty(st.home, st.away)` hep `undefined` ile çağrılıyor
+   * ve NÖTR değer dönüyor.
+   *
+   * ÖLÇÜLDÜ (bugün, kuru yeniden hesap):
+   *     Arjantin maçı  → uygulanan ülke ağırlığı 1.000, doğrusu 1.03
+   *     Real Madrid–Erokspor  ev kazanır çarpanı: 2.4 uygulanıyor, doğrusu 1.4
+   *     aynı maç  yan kalem zorluğu: 1.10 uygulanıyor, doğrusu 0.60
+   * Yani bariz favoriyi tutmak olması gerekenden **%71 fazla** ödüyordu;
+   * uygulamanın kendi vaadi ("az kişinin tuttuğunu bilirsen daha fazla puan")
+   * tersine dönmüştü. Üretim verisinde de görüldü: ağırlığı 1.0 olmayan
+   * ülkeden gelen 40 satırın 40'ı yanlış, 1.0 olanların 2523'ü doğru —
+   * çünkü orada hata görünmüyor.
+   *
+   * ⚠️ ÇÖZÜM PUANLAMA ANINDA ZENGİNLEŞTİRME. `writeLiveState`'e alan eklemek
+   * yalnızca YENİ maçları düzeltirdi; mevcut binlerce durum dosyası eksik
+   * kalırdı. Burada doldurmak her iki kümeyi de kapsıyor.
+   *
+   * ⚠️ MEVCUT DEĞER EZİLMİYOR: bootstrap yolundan gelen `st` bu alanları
+   * zaten dolduruyor olabilir; yalnızca EKSİK olanlar tamamlanıyor.
+   * ──────────────────────────────────────────────────────────────────────── */
+  if (st && (!st.home || !st.away || !st.country)) {
+    try {
+      const fxKaydi = await FixturesStore.getOne(fid, db || null);
+      if (fxKaydi) {
+        if (!st.home)    st.home    = fxKaydi.home    || null;
+        if (!st.away)    st.away    = fxKaydi.away    || null;
+        if (!st.country) st.country = fxKaydi.country || null;
+        if (!st.league)  st.league  = fxKaydi.league  || null;
+        debug.enriched = { home: !!st.home, away: !!st.away, country: !!st.country };
+      } else {
+        debug.enriched = { bulunamadi: true };
+      }
+    } catch (e) {
+      /* Zenginleştirme başarısızsa puanlama DURMAZ — nötr çarpanla devam
+       * eder (eski davranış). Sessiz kalmıyoruz ki fark edilsin. */
+      console.error(`[settle2] ${fid} fikstur meta okunamadi:`, e?.message || e);
+    }
+  }
+
   if (!st) {
     const err = new Error("STATE_NOT_FOUND");
     err.code = "STATE_NOT_FOUND";
