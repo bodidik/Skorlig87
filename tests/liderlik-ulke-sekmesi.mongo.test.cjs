@@ -178,6 +178,27 @@ describe("liderlik ülke sekmesi — Mongo öncelikli okuma", () => {
       "ortak okuyucu (lib/season-totals.cjs) kullanilmiyor");
   });
 
+  test("?season= eski sezon verisi doner, guncel ile KARISTIRILMAZ", async () => {
+    const onceki = Season.previousKey(Season.seasonKey());
+    if (!onceki) return;
+    const id = "sezon-test-user-abc";
+    await db.collection("season_totals").insertOne({
+      season: onceki, userId: id, userIdLower: id,
+      totalPoints: 5, totalPenalty: 0, matches: 1,
+      lastAt: new Date().toISOString(),
+    });
+    await db.collection("users").insertOne({ userId: id, userIdLower: id, country: "TEST_ULKE" });
+    require(path.join(KOK, "lib", "user-country.cjs")).invalidate();
+    const eski = await g(`/api/leaderboard/countries?season=${onceki}`);
+    assert.equal(eski.ok, true);
+    const testUlke = (eski.items || []).find((r) => r.country === "TEST_ULKE");
+    assert.ok(testUlke, `eski sezon ulke sekmesinde TEST_ULKE yok — season parametresi islemiyor`);
+    const guncel = await g("/api/leaderboard/countries");
+    const guncelTest = (guncel.items || []).find((r) => r.country === "TEST_ULKE");
+    assert.equal(guncelTest, undefined,
+      "guncel sezon sekmesinde eski sezonun ulkesi gorunuyor — sezon filtresi CALISMADI");
+  });
+
   test("TERS RİSK: Mongo da dosya da yoksa uç ÇÖKMEZ, boş döner", async () => {
     /* ⚠️ Boş liste ile 500 farklı şeyler: sekme boş kalabilir ama ekran
      * kırılmamalı. `db` yokken de yanıt vermeli. */

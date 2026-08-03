@@ -390,10 +390,15 @@ router.get("/", optionalToken, async (req,res)=>{
  * "aynı hatanın dördüncü kez tekrarlanmaması için okuma buraya toplandı" diyor;
  * leaderboard/groups/friends taşınmış, AYNI DOSYADAKİ bu uç atlanmış.
  */
-router.get("/countries", async (req, res) => {
+router.get("/countries", optionalToken, async (req, res) => {
   try {
-    // Mongo öncelikli, dosya yedekli — tek okuma yeri.
-    const { items } = await SeasonTotals.loadTotals(req.app?.locals?.db || null);
+    const db = req.app?.locals?.db || null;
+    const _ark = await ArsivKapi.arsivSezonu(req.query.season, {
+      uid: String(req.uid || "").trim(),
+      db,
+    });
+    const sezon = _ark.sezon;
+    const { items } = await SeasonTotals.loadTotals(db, sezon);
     let raw = (Array.isArray(items) ? items : []).map(t => ({ userId: t.userId }));
 
     if (!raw.length) {
