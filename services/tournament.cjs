@@ -198,17 +198,14 @@ function puanlariHesapla(t, sonuclar) {
  * kaynaktaki dağıtımı bozmak testi kırmıyordu — test kendi kopyasını
  * ölçüyordu. Kopya silindi, test bu fonksiyonu çağırıyor.
  */
-function odemeDagit(havuz, yuzdeler) {
-  const toplam = Math.max(0, Math.floor(Number(havuz) || 0));
-  const kalemler = (yuzdeler || []).map((pct, i) => {
-    const tam = toplam * Number(pct || 0);
-    return { i, taban: Math.floor(tam), kesir: tam - Math.floor(tam) };
-  });
-  let artan = toplam - kalemler.reduce((a, k) => a + k.taban, 0);
-  const sira = [...kalemler].sort((a, b) => b.kesir - a.kesir || a.i - b.i);
-  for (let j = 0; j < sira.length && artan > 0; j++, artan--) sira[j].taban++;
-  return kalemler.map((k) => k.taban);
-}
+/* ⚠️ GÖVDE lib/pay-dagitim.cjs DOSYASINA TAŞINDI.
+ *
+ * Aynı yuvarlama kusuru MAÇ HAVUZUNDA da çıktı (210 senaryonun %49'unda
+ * havuzdan fazla dağıtım, en kötü +10 LC). Kural burada kalsaydı ikinci kez
+ * yazılacaktı — bu depoda kopyalanan kural defalarca ayrıştı.
+ *
+ * Ad korunuyor: mevcut testler bu adı çağırıyor. */
+const { odemeDagit } = require("../lib/pay-dagitim.cjs");
 
 /**
  * Havuz + katılımcı sayısından ödeme paylarını hesaplar — TEK KAYNAK.

@@ -136,8 +136,18 @@ test("NÖBETÇİ: kaynak `Math.round(pool * pct)` kullanmıyor", () => {
     !/Math\.round\(\s*t\.pool\s*\*/.test(src),
     "odeme yine `Math.round(t.pool * pct)` ile hesaplaniyor — havuzu asar"
   );
-  assert.ok(/Math\.floor\(tam\)/.test(src), "en buyuk kalan yontemi yok");
-  assert.ok(/kesir/.test(src), "kesirli kisim hesaplanmiyor");
+
+  /* GÜNCELLENDİ (2026-08-03): en büyük kalan dağıtımı `lib/pay-dagitim.cjs`
+   * dosyasına TAŞINDI — aynı yuvarlama kusuru MAÇ HAVUZUNDA da çıktı
+   * (210 senaryonun %49'unda havuzdan fazla dağıtım, en kötü +10 LC) ve kural
+   * burada kalsaydı ikinci kez yazılacaktı. Korunan özellik AYNI, adresi
+   * değişti. bkz. tests/havuz-odeme-uzlastirma.mongo.test.cjs */
+  const ortak = fs.readFileSync(
+    path.join(__dirname, "..", "lib", "pay-dagitim.cjs"), "utf8");
+  assert.ok(/Math\.floor\(tam\)/.test(ortak), "en buyuk kalan yontemi yok");
+  assert.ok(/kesir/.test(ortak), "kesirli kisim hesaplanmiyor");
+  assert.ok(/require\("\.\.\/lib\/pay-dagitim\.cjs"\)/.test(src),
+    "turnuva ortak dagitimi kullanmiyor — kural yine iki yerde olur");
 });
 
 test("NÖBETÇİ: ödeme havuzu aşarsa ödeme YAPILMIYOR", () => {
