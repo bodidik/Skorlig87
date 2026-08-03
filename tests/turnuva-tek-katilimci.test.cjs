@@ -91,8 +91,15 @@ describe("turnuva havuz dağıtımı", () => {
     const fs = require("fs");
     const path = require("path");
     const src = fs.readFileSync(path.join(__dirname, "..", "services", "tournament.cjs"), "utf8");
-    const i = src.indexOf("const paylar = odemeDagit(");
-    assert.ok(i > 0, "odeme cagrisi bulunamadi — test bir sey olcmuyor");
+    /* GÜNCELLENDİ (2026-08-03): normalleştirme + odemeDagit çağrısı artık
+     * `odemePaylari` içinde yaşıyor — settle2'deki İKİNCİ kopya ayrışıp canlı
+     * yolda fazla-ödeme bırakınca hesap tek fonksiyona toplandı (bkz.
+     * tests/turnuva-odeme-tek-kaynak.test.cjs). Korunan özellik aynı:
+     * dağıtım NORMALLEŞTİRİLMİŞ tabloyla yapılmalı. */
+    const i = src.indexOf("function odemePaylari(");
+    assert.ok(i > 0, "odemePaylari bulunamadi — test bir sey olcmuyor");
+    assert.ok(/odemePaylari\(t\.pool,\s*sorted\.length\)/.test(src),
+      "settle() ortak hesabi (odemePaylari) kullanmiyor");
     /**
      * ⚠️ ÇAĞRININ KENDİSİNE BAK, değişkenin VARLIĞINA değil.
      *
@@ -103,7 +110,7 @@ describe("turnuva havuz dağıtımı", () => {
      * KENDİ yeniden yazıyor; onlar da üretim yolunu sınamıyor.
      * Bugün boyunca uyardığım "sahte yeşil test" tuzağının aynısı.
      */
-    assert.ok(/odemeDagit\(\s*havuz\s*,\s*normalTablo\s*\)/.test(src),
+    assert.ok(/odemeDagit\([^,]+,\s*normalTablo\s*\)/.test(src),
       "odemeDagit NORMALLESTIRILMIS tablo ile cagrilmiyor — tek katilimcida havuz buharlasir");
   });
 });

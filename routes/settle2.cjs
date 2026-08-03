@@ -1574,8 +1574,22 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
     if (!open.length) return;
 
     const { calcOdds } = require("../services/odds-engine.cjs");
-    const PAYOUT_TABLE = { 2: [0.70, 0.30], 3: [0.70, 0.30], 4: [0.60, 0.25, 0.15], 5: [0.60, 0.25, 0.15], 6: [0.60, 0.25, 0.15], 7: [0.60, 0.25, 0.15] };
-    const PAYOUT_8PLUS = [0.50, 0.25, 0.15, 0.10];
+    /**
+     * ⚠️ ÖDEME HESABI TEK KAYNAKTAN (services/tournament.cjs odemePaylari).
+     *
+     * BURADA hesabın KOPYASI vardı ve AYRIŞMIŞTI: kopya hâlâ
+     * `Math.round(t.pool * pct)` kullanıyordu — fazla-ödeme kusuru ve n=1
+     * normalleştirmesi yalnızca servis tarafında düzeltilmişti. Üstelik canlı
+     * yol BU: settle2 her maç sonuçlandığında tetikleniyor ve mührü neredeyse
+     * hep o alıyor; elle çağrılan uç nadir. Yani düzeltme nadir yolda,
+     * kusur canlı yolda duruyordu.
+     *
+     * ÖLÇÜLDÜ (1536 senaryo, n=1..16 × giriş=5..100, buradaki eski kuralla):
+     *     %23.4 havuzdan FAZLA ödeme  ← yoktan LC (turnuva başına +1..+2)
+     *     %6.6  havuzdan EKSİK ödeme  ← yakılan LC (n=1'de 30 LC'ye kadar)
+     * Ortak hesap 1536/1536 senaryoda havuza TAM eşit.
+     */
+    const { odemePaylari } = require("../services/tournament.cjs");
     const nowISO = new Date().toISOString();
 
     for (const t of open) {
@@ -1606,14 +1620,16 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
       }
 
       const sorted = [...t.participants].sort((a, b) => b.totalScore - a.totalScore);
-      const n = sorted.length;
-      const table = n >= 8 ? PAYOUT_8PLUS : (PAYOUT_TABLE[n] || PAYOUT_TABLE[2]);
 
-      t.payouts = table.map((pct, i) => {
-        const user = sorted[i];
-        if (!user) return null;
-        return { rank: i + 1, userId: user.userId, score: user.totalScore, lcWon: Math.round(t.pool * pct), pct: Math.round(pct * 100) };
-      }).filter(Boolean);
+      // Tek kaynak: normalleştirme + en büyük kalan (bkz. yukarıdaki not).
+      const { paylar, tablo } = odemePaylari(t.pool, sorted.length);
+      t.payouts = paylar.map((lcWon, i) => ({
+        rank: i + 1,
+        userId: sorted[i].userId,
+        score: sorted[i].totalScore,
+        lcWon,
+        pct: Math.round(tablo[i] * 100),
+      }));
 
       // ⚠️ PARA KORUMASI — MÜHÜR ÖDEMEDEN ÖNCE.
       // Eskiden burada yalnızca bellekteki nesne işaretleniyor, kayıt ise

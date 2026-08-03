@@ -144,6 +144,46 @@ function odemeDagit(havuz, yuzdeler) {
   return kalemler.map((k) => k.taban);
 }
 
+/**
+ * Havuz + katılımcı sayısından ödeme paylarını hesaplar — TEK KAYNAK.
+ *
+ * ⚠️ NEDEN ÇIKARILDI (2026-08-03): bu hesabın İKİNCİ BİR KOPYASI
+ * `routes/settle2.cjs` tryAutoSettleTournaments içinde yaşıyordu ve iki yol
+ * AYRIŞMIŞTI: buradaki `Math.round` fazla-ödeme kusuru ve n=1 normalleştirme
+ * kusuru yalnızca BURADA düzeltilmiş, kopya eski hâliyle kalmıştı.
+ *
+ * Üstelik canlı yol KOPYAYDI: settle2 her maç sonuçlandığında otomatik
+ * tetikleniyor ve mührü (claimTournamentSettle) neredeyse hep o alıyor;
+ * elle çağrılan uç (POST /tournaments/:code/settle) nadir. Yani düzeltme
+ * nadir yolda, kusur canlı yolda duruyordu.
+ *
+ * ÖLÇÜLDÜ (1536 senaryo, n=1..16 × giriş=5..100, kopyanın kuralıyla):
+ *     %23.4 havuzdan FAZLA ödeme   ← yoktan LC
+ *     %6.6  havuzdan EKSİK ödeme   ← yakılan LC (n=1'de 30 LC'ye kadar)
+ *     %70.0 tam eşit
+ * Bu yol 1536/1536 senaryoda havuza TAM eşit dağıtıyor.
+ *
+ * @returns {{paylar:number[], tablo:number[]}} paylar[i] = i+1. sıranın LC'si
+ */
+function odemePaylari(havuz, katilimciSayisi) {
+  const n = Math.max(0, Math.floor(Number(katilimciSayisi) || 0));
+  if (!n) return { paylar: [], tablo: [] };
+  const table = n >= 8 ? PAYOUT_8PLUS : (PAYOUT_TABLE[n] || PAYOUT_TABLE[2]);
+  // Kesilen yüzdeler normalleştirilir — yoksa n=1'de havuzun %30'u buharlaşır
+  // (bkz. settle içindeki ölçüm notu).
+  const kesikTablo = table.slice(0, n);
+  const yuzdeToplam = kesikTablo.reduce((a, b) => a + Number(b || 0), 0);
+  const normalTablo =
+    yuzdeToplam > 0 && Math.abs(yuzdeToplam - 1) > 1e-9
+      ? kesikTablo.map((x) => Number(x || 0) / yuzdeToplam)
+      : kesikTablo;
+  const tamHavuz = Math.max(0, Math.floor(Number(havuz) || 0));
+  return {
+    paylar: odemeDagit(tamHavuz, normalTablo),
+    tablo: kesikTablo,
+  };
+}
+
 const MIN_ENTRY = 5;
 const MAX_ENTRY = 100;
 const MAX_MATCHES = 6;
@@ -345,8 +385,6 @@ async function settle(code, results, db = null) {
   }
 
   const sorted = [...t.participants].sort((a, b) => b.totalScore - a.totalScore);
-  const n = sorted.length;
-  const table = n >= 8 ? PAYOUT_8PLUS : (PAYOUT_TABLE[n] || PAYOUT_TABLE[2]);
 
   /* ⚠️ ÖDEMELER HAVUZLA UZLAŞTIRILIR — `Math.round` HAVUZDAN FAZLA ÖDÜYORDU.
    *
@@ -371,42 +409,21 @@ async function settle(code, results, db = null) {
    *
    * (Yüzdeler her zaman 1.00'e toplanıyor ve ödeme sayısı tablo uzunluğuna
    * eşit — n < tablo durumu yok, çünkü tablo katılımcı sayısına göre seçiliyor.) */
-  const havuz = Math.max(0, Math.floor(Number(t.pool) || 0));
-
   /**
-   * ⚠️ KESİLEN YÜZDELER NORMALLEŞTİRİLİR — yoksa havuzun bir kısmı BUHARLAŞIR.
-   *
-   * Yukarıdaki not "n < tablo durumu yok" diyor ve n>=2 için doğru: tablo
-   * zaten `n`'e göre seçiliyor. AMA n=1'de `PAYOUT_TABLE[1]` yok, kod
-   * `PAYOUT_TABLE[2]`ye ([0.70, 0.30]) düşüyor ve dilim 1 kaleme iniyor:
-   * yüzdeler artık 0.70, yani havuzun %30'u kimseye gitmiyor.
-   *
-   * ÖLÇÜLDÜ (2026-08-02): n=1, havuz 10 LC -> dağıtılan 8, KAYIP 2 LC.
-   * Tek katılımcı kendi giriş bedelinin %20'sini kaybediyordu ve `settle`
-   * için asgari katılımcı kapısı da yok.
-   *
-   * ⚠️ TASARIMDA KASA PAYI YOK: n>=2'de yüzdeler her zaman 1.00'e toplanıyor
-   * (düellodaki `houseCutPct` gibi bir kesinti turnuvada bulunmuyor). Yani bu
-   * yakma bilinçli bir kesinti değil, ele alınmamış bir durum.
-   *
-   * Normalleştirme genel: tablo ile katılımcı sayısı ileride yine ayrışırsa
-   * havuz yine tam dağıtılır. `odemeDagit` en büyük kalan yöntemiyle tam
-   * sayıya oturttuğu için toplam havuzu AŞMAZ.
+   * ⚠️ HESAP TEK KAYNAKTA: `odemePaylari` (normalleştirme + en büyük kalan).
+   * n=1 buharlaşması ve `Math.round` fazla-ödemesi orada anlatılıyor; iki
+   * ödeme yolunun (burası + settle2 auto-settle) aynı sayıları üretmesi
+   * için hesap oraya toplandı — kopya bir kez ayrıştı ve canlı yolda kusur
+   * bıraktı.
    */
-  const kesikTablo = table.slice(0, sorted.length);
-  const yuzdeToplam = kesikTablo.reduce((a, b) => a + Number(b || 0), 0);
-  const normalTablo =
-    yuzdeToplam > 0 && Math.abs(yuzdeToplam - 1) > 1e-9
-      ? kesikTablo.map((x) => Number(x || 0) / yuzdeToplam)
-      : kesikTablo;
-  const paylar = odemeDagit(havuz, normalTablo);
+  const { paylar, tablo } = odemePaylari(t.pool, sorted.length);
 
   t.payouts = paylar.map((lcWon, i) => ({
     rank: i + 1,
     userId: sorted[i].userId,
     score: sorted[i].totalScore,
     lcWon,
-    pct: Math.round(table[i] * 100),
+    pct: Math.round(tablo[i] * 100),
   }));
 
   /* Değişmez ödemeden ÖNCE doğrulanır: toplam havuzu AŞAMAZ. Aşağı yuvarlama
@@ -478,4 +495,7 @@ module.exports = {
    * (yanlış başarısızlık modunu bekliyordu) ve hiçbir test görmedi. */
   _ucretIadeEt: ucretIadeEt,
   _odemeDagit: odemeDagit, _PAYOUT_TABLE: PAYOUT_TABLE, _PAYOUT_8PLUS: PAYOUT_8PLUS,
+  // İki ödeme yolunun (settle + settle2 auto-settle) ORTAK hesabı — kopyası
+  // bir kez ayrıştı ve canlı yolda fazla/eksik ödeme bıraktı (bkz. tanımı).
+  odemePaylari,
 };
