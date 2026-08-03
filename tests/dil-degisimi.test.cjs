@@ -88,7 +88,19 @@ describe("dil değişimi", () => {
     assert.deepEqual(aciklar, [], `t() basiyor ama useLang() ile abone DEGIL:\n${aciklar.join("\n")}`);
   });
 
-  test("21 dilin hepsi taban sözlükteki her anahtarı taşır", { skip: !varMi && sebep }, () => {
+  test("21 dilin hepsi ÇEKİRDEK sözlükteki her anahtarı taşır", { skip: !varMi && sebep }, () => {
+    /**
+     * ⚠️ SÖZLEŞME DEĞİŞTİ (2026-08-03, kapsam kararı): taban artık tr'nin
+     * TAMAMI değil, 22 dilde çevirisi olan ÇEKİRDEK küme. Yeni anahtarlar
+     * bilinçli olarak yalnız tr+en ekleniyor; diğer diller t()'nin İngilizce
+     * yedeğine düşüyor (783 sabit metni önce anahtara çevirmek, 22 dile el
+     * çevirisinden önce geliyor). tr+en paritesini ve yer tutucu eşleşmesini
+     * `i18n-kapsam-cirlagi` testi ayrıca koruyor.
+     *
+     * Çekirdek, en KÜÇÜK dil bloğundan türetilir: 21 dilin hâlâ ortak taşımak
+     * zorunda olduğu küme odur. Bir dilden çekirdek anahtar SİLİNİRSE burada
+     * yakalanır.
+     */
     const src = oku(I18N);
     const pos = [];
     const re = /^  ([a-z]{2}(?:-[A-Za-z]+)?):\s*\{/gm;
@@ -103,16 +115,20 @@ describe("dil değişimi", () => {
         [...src.slice(p.i, son).matchAll(/^\s{4}"?([A-Za-z0-9_.]+)"?\s*:/gm)].map((x) => x[1])
       );
     });
-    const taban = anahtarlar.tr;
-    assert.ok(taban && taban.size > 5, "taban sozluk (tr) okunamadi");
+    // Çekirdek = en küçük blok (bugün 40 anahtarlık orijinal küme).
+    const cekirdek = Object.values(anahtarlar).reduce((a, b) => (b.size < a.size ? b : a));
+    assert.ok(cekirdek.size >= 30 && cekirdek.size <= 60,
+      `cekirdek kume supheli (${cekirdek.size}) — 40 civari olmali, tarama bozuk olabilir`);
+    assert.ok(anahtarlar.tr && [...cekirdek].every((k) => anahtarlar.tr.has(k)),
+      "tr cekirdegi tasimiyor — tarama bozuk");
 
     const eksik = [];
     for (const [d, s] of Object.entries(anahtarlar)) {
       if (d === "tr") continue;
-      const yok = [...taban].filter((k) => !s.has(k));
+      const yok = [...cekirdek].filter((k) => !s.has(k));
       if (yok.length) eksik.push(`${d}: ${yok.join(", ")}`);
     }
-    assert.deepEqual(eksik, [], `dilde eksik anahtar (kullaniciya HAM ANAHTAR gorunur):\n${eksik.join("\n")}`);
+    assert.deepEqual(eksik, [], `dilde eksik CEKIRDEK anahtar (kullaniciya HAM ANAHTAR gorunur):\n${eksik.join("\n")}`);
   });
 
   test("KAPSAM NÖBETİ: i18n kullanan ekran sayısı gerilemesin", { skip: !varMi && sebep }, () => {
