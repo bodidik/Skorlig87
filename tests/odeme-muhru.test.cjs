@@ -54,6 +54,11 @@ const IADE = new Set([
   "duel_cancel_refund",
   "duel_tie_refund",
   "duel_void_refund",
+  /* Maç bitti ama düelloyu kimse kabul etmedi → kurucunun bahsi geri.
+   * MÜHÜR GEREKMEZ değil, GEREKİYOR ve var: iade `settleDuelsForFixture`
+   * içinde atomik durum yazımından (open→voided) SONRA yapılıyor. İADE
+   * sayılmasının sebebi ekonomiye giriş yazılmaması. */
+  "duel_unmatched_refund",
   "kupon_giris_iade",
   "kupon_iade",
   "pool_bet_refund",

@@ -2,6 +2,10 @@
 
 const express = require("express");
 const { ensurePredIndexes } = require("../lib/preds-index.cjs");
+/* ⚠️ DURUM ADLARI TEK KAYNAKTAN. Sabit yazmak bu dosyanın geçmişinde
+ * kanıtlanmış bir tuzak: temizleyici "accepted" sanıp kabul edilmiş
+ * düelloları hiç görmemişti (bkz. lib/duel-durum.cjs). */
+const { DURUM } = require("../lib/duel-durum.cjs");
 const router = express.Router();
 const path = require("path");
 const { fiksturKilidi } = require("../lib/fikstur-kilit.cjs");
@@ -472,6 +476,87 @@ async function settleDuelsForFixture(fixtureId, scoresMap, db, actualOutcome = n
 
     if (changed) await saveDuels(list, db);
   });
+
+  /**
+   * ⚠️ KABUL EDİLMEMİŞ DÜELLO — İKİ MEKANİZMANIN ARASINA DÜŞEN PARA.
+   *
+   * BULUNAN KUSUR (2026-08-03, üretimde ölçüldü): maçı UZLAŞMIŞ olduğu hâlde
+   * hâlâ `open` duran bir düello vardı ve kurucunun 3 LC'si 5 gündür kilitli:
+   *
+   *     duel_ms5xhb36_7en8ta  open  MK-UNIVCR-2026-07-29-LEVSKI  3 LC
+   *
+   * İki güvenlik ağı da onu KENDİ gerekçesiyle atlıyordu:
+   *   • Yukarıdaki döngü `status !== "active"` diye atlıyor — haklı, rakip
+   *     yok, puanlanacak bir yarış yok.
+   *   • `services/bayat-temizleyici.cjs` `bayatMi()`ye soruyor, o da
+   *     "SONUC_VAR" deyip bayat SAYMIYOR — o da haklı, temizleyicinin işi
+   *     sonucu HİÇ gelmeyen maçlar.
+   *
+   * Yani her biri ötekine devrediyor ve kimse iade etmiyor. Maç bittikten
+   * sonra bu düello ARTIK KABUL EDİLEMEZ (arena yalnızca gelecek maçları
+   * gösterir), dolayısıyla tek doğru sonuç: geçersiz kıl ve kurucuya iade et.
+   *
+   * ⚠️ MÜHÜR ÖNCE, ÖDEME SONRA — dosyadaki diğer üç ödeme noktasıyla aynı
+   * sıra. Koşul (`status: ACIK`) yazmanın İÇİNDE: iki tarama aynı anda
+   * çalışırsa yalnızca biri `modifiedCount` alır, iade bir kez yapılır.
+   *
+   * ⚠️ ÖDENEMEYEN İADE KALICI İZ BIRAKIR (`duelloBorcKaydet` →
+   * `failed_awards` → `GET /api/health`), yoksa mühür atıldığı için para
+   * sessizce buharlaşırdı.
+   */
+  const iadeEdilen = [];
+  if (db) {
+    try {
+      const acikOlanlar = await db
+        .collection("duels")
+        .find({ fixtureId: fid, status: DURUM.ACIK })
+        .toArray();
+
+      for (const d of acikOlanlar) {
+        const nowISO = new Date().toISOString();
+        const m = await db.collection("duels").updateOne(
+          { id: d.id, status: DURUM.ACIK },
+          {
+            $set: {
+              status: DURUM.GECERSIZ,
+              voidedAt: nowISO,
+              settledAt: nowISO,
+              voidReason: "KABUL_EDILMEDI",
+            },
+          }
+        );
+        if (!m.modifiedCount) continue; // başka bir çağrı ilgilendi
+        iadeEdilen.push(d);
+      }
+    } catch (e) {
+      console.error("[duels] acik duello taramasi basarisiz:", e?.message || e);
+    }
+  }
+
+  for (const d of iadeEdilen) {
+    const odenemeyen = [];
+    const bahis = Number(d.stake || 0);
+    try {
+      if (bahis > 0) {
+        await ode(db, d.creatorId, bahis, "duel_unmatched_refund", d.id, odenemeyen);
+        if (odenemeyen.length) {
+          await duelloBorcKaydet(db, {
+            kaynak: "duel_unmatched_refund",
+            duelId: d.id,
+            fixtureId: d.fixtureId,
+            beklenen: 1,
+          }, odenemeyen);
+        }
+      }
+      notify(d.creatorId, {
+        title: "⚔️ Düellon eşleşmedi",
+        body: `${duelMatchLabel(d)} — rakip çıkmadı, ${bahis} LC iade edildi.`,
+        data: { screen: "duel", duelId: d.id, fixtureId: d.fixtureId },
+      });
+    } catch (e) {
+      console.error("[duels] eslesmeyen duello iadesi basarisiz:", d.id, e?.message || e);
+    }
+  }
 
   // Credit winners outside lock (different file = safe)
   for (const duel of settled) {
