@@ -10,6 +10,7 @@ const path    = require("path");
 const DATA_DIR         = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
+const Season = require("../lib/season.cjs");
 
 async function readJson(file, fb = null) {
   try {
@@ -117,7 +118,35 @@ router.get("/totals", async (req, res) => {
       .slice(0, limit);
   }
 
-  res.json({ ok: true, items: out, updatedAt, limited: !userId && !!limit && items.length > limit });
+  /* ⚠️ SEZON BİLGİSİ YANITTA YOKTU — TABLO AYIN 1'İNDE SESSİZCE BOŞALIYOR.
+   *
+   * Bu uç yalnızca İÇİNDE BULUNULAN sezonun toplamlarını döndürüyor
+   * (lib/season-totals.cjs), ama hangi sezon olduğunu söylemiyordu. Tek
+   * tüketicisi `app/(tabs)/kings.tsx` ve başlığı "Sezon Liderleri" — yani
+   * ekran sezon kavramını gösteriyor, veriyi sağlayan uç göstermiyor.
+   *
+   * ⚠️ AYNI SAVUNMA KOMŞUSUNDA VAR: `/api/leaderboard` bunları `scope.season`,
+   * `scope.seasonLabel`, `scope.isCurrentSeason` olarak gönderiyor ve
+   * `stats.tsx` okuyor — oradaki not aynen şöyle: "sezon aylık, yani ayın
+   * 1'inde tablo SESSİZCE boşalıyor ve kullanıcı ne olduğunu anlamadan bir
+   * aylık emeğini kayıp sanıyor". kings.tsx'te o uyarı hiç görünemiyordu.
+   *
+   * ÖLÇÜLDÜ: GET /api/rt/totals?limit=300 → alanlar {ok, items, updatedAt,
+   * limited}; season/seasonLabel/isCurrentSeason HİÇBİRİ yok.
+   *
+   * Alan EKLENİYOR, hiçbiri değiştirilmiyor: eski istemciler etkilenmez.
+   */
+  const sezon = Season.seasonKey();
+  res.json({
+    ok: true,
+    items: out,
+    updatedAt,
+    limited: !userId && !!limit && items.length > limit,
+    season: sezon,
+    seasonLabel: Season.label(sezon),
+    isCurrentSeason: true,
+    humansOnly,
+  });
 });
 
 module.exports = router;
