@@ -1630,7 +1630,7 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
      * ediyordu). Aynı hatanın ikinci kez aynı fonksiyonda çıkması, kopyanın
      * kendisinin kusur olduğunu gösteriyor.
      */
-    const { odemePaylari, puanlariHesapla } = require("../services/tournament.cjs");
+    const { odemePaylari, puanlariHesapla, _ucretIadeEt } = require("../services/tournament.cjs");
     const nowISO = new Date().toISOString();
 
     for (const t of open) {
@@ -1642,7 +1642,31 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
         if (!outcome) { allDone = false; break; }
         results[fid] = { outcome };
       }
-      if (!allDone) continue;
+      if (!allDone) {
+        // Turnuva 7 gunden eski ve hala tum fiksturler FT degil — iptal + iade.
+        const ZAMAN_ASIMI_GUN = 7;
+        const olusturma = new Date(t.createdAt || 0).getTime();
+        const gecenGun = (Date.now() - olusturma) / 86400000;
+        if (gecenGun >= ZAMAN_ASIMI_GUN) {
+          const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, db);
+          if (!bizimki) continue;
+          t.status = "voided";
+          t.settledAt = nowISO;
+          t.voidReason = "FIXTURE_TIMEOUT";
+          t.payouts = [];
+          for (const p of (t.participants || [])) {
+            const uid = p.userId || p;
+            if (!uid) continue;
+            try {
+              await _ucretIadeEt(db, uid, t.entryLC || t.entryFee || 0, "timeout_void");
+            } catch (e) {
+              console.error("[settle2] turnuva zaman asimi iadesi basarisiz:", uid, e?.message || e);
+            }
+          }
+          console.log(`[settle2] turnuva ${t.code} zaman asimi ile iptal edildi (${Math.floor(gecenGun)} gun)`);
+        }
+        continue;
+      }
 
       // Puanlama TEK KAYNAKTAN — kopyası burada yaşıyordu ve servis
       // tarafındakiyle ayrışmıştı (bkz. services/tournament.cjs
