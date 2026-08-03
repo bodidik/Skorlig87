@@ -23,6 +23,7 @@ const premium = require("../lib/premium.cjs");
 // Arşiv derinliği kapısı TEK KAYNAKTA — kural burada yazılıyken stats/me ve
 // team-ranks uçlarına gelmemişti (bkz. lib/sezon-arsiv.cjs).
 const ArsivKapi = require("../lib/sezon-arsiv.cjs");
+const { optionalToken } = require("../middleware/verifyToken.cjs");
 
 async function readJson(file, fb=null){
   try{
@@ -200,7 +201,7 @@ async function resolveScope(req, db) {
  * havuzda Türk kullanıcılar ve 200 Türk botu baskındı; Portekizli kullanıcı
  * için oyun "başkasının ligine misafir olmak" gibiydi.
  */
-router.get("/", async (req,res)=>{
+router.get("/", optionalToken, async (req,res)=>{
   const db = req.app?.locals?.db || null;
   const sc = await resolveScope(req, db);
 
@@ -210,7 +211,13 @@ router.get("/", async (req,res)=>{
    * yaziliyken stats/me ve team-ranks uclarina gelmedi ve ucretsiz kullanici
    * oradan 6 ay geriye okuyabiliyordu. */
   const _ark = await ArsivKapi.arsivSezonu(req.query.season, {
-    uid: String(req.query.userId || req.uid || "").trim(),
+    /* ⚠️ KAPI YALNIZCA DOGRULANMIS KIMLIGE BAKAR. Eskiden ?userId= de
+     * kabul ediliyordu; siralama tablosu HERKESIN userId sini donduruyor,
+     * yani bir premium kullanicinin kimligini yazan herkes derin arsivi
+     * aciyordu — kimliksiz bile. Olculdu: BEDAVACI + ?userId=PREMIUMCU ->
+     * 2026-04 acildi. Ulke cozumu icin ?userId= hala kullaniliyor (o veri
+     * zaten herkese acik), ama AYRICALIK kapisi icin degil. */
+    uid: String(req.uid || "").trim(),
     db,
   });
   const sezon = _ark.sezon;

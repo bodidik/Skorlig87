@@ -96,7 +96,18 @@ async function loadUserStatsCore(req, userId) {
      * eklerken kapiyi TASIMAMISTIM: ucretsiz kullanici 6 ay geriye
      * okuyabiliyordu (leaderboard 1 sezonla sinirliyor). Kural artik tek
      * kaynakta — bkz. lib/sezon-arsiv.cjs */
-    const _ark = await ArsivKapi.arsivSezonu(req.query.season, { uid, db });
+    /* ⚠️ KAPI İZLEYİCİYE BAKAR, PROFİL SAHİBİNE DEĞİL.
+     *
+     * Bu çekirdek hem `/me` (kimlik doğrulanmış) hem `/user` (başkasının
+     * profili, `optionalToken`) tarafından çağrılıyor. `uid` burada PROFİL
+     * SAHİBİ; onu kapıya vermek, ücretsiz bir izleyicinin premium birinin
+     * profilini açarak derin arşive erişmesi demekti. Ayrıcalık izleyicinin.
+     * `/me`'de ikisi zaten aynı kimlik (kimlikVeyaHata eşitliği zorunlu
+     * kılıyor), yani orada davranış değişmiyor. */
+    const _ark = await ArsivKapi.arsivSezonu(req.query.season, {
+      uid: String(req.uid || "").trim(),
+      db,
+    });
     const istenenSezon = _ark.sezon;
     const arsivKisitli = _ark.kisitli;
     const seasonDoc = await SeasonTotals.kullaniciToplami(db, uidLower, istenenSezon);
@@ -636,7 +647,9 @@ router.get("/team-ranks", optionalToken, async (req, res) => {
      * sinirlarken buradan 6 ay geriye okunabiliyordu). Kimlik yoksa ucretsiz
      * kademe uygulanir; bkz. lib/sezon-arsiv.cjs */
     const _ark = await ArsivKapi.arsivSezonu(req.query.season, {
-      uid: String(req.query.userId || req.uid || "").trim(),
+      /* Ayricalik kapisi IZLEYICININ dogrulanmis kimligine bakar; sorgudan
+       * gelen kimlik baskasinin premium hakkini kullandirirdi. */
+      uid: String(req.uid || "").trim(),
       db: req.app.locals.db,
     });
     const r = await takimSiralamasi(req.app.locals.db, ham, _ark.sezon);
