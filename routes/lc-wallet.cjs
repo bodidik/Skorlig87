@@ -164,7 +164,36 @@ const WALLET_FILE_MIRROR =
  *  kadar doğru davranış satın almayı kapalı tutmaktır — kullanıcı LC'yi
  *  günlük hak, seri bonusu ve oyunla kazanır.
  * ========================= */
-const STORE_MODE = String(process.env.SKORLIG_STORE_MODE || "disabled").toLowerCase();
+/**
+ * ⚠️ `mock` ÜRETİMDE ÇALIŞMAZ — TEST MODU PARA BASAR.
+ *
+ * Varsayılan zaten `disabled` (yukarıdaki nota bakınız: eskiden `mock`tu ve
+ * "herkese bedava LC" demekti). Ama AÇIKÇA `SKORLIG_STORE_MODE=mock` yazılmış
+ * bir üretim dağıtımı hâlâ ödemesiz LC yükler: kimliği olan her kullanıcı
+ * `/purchase` ile `lc_200`ü (200 LC) alabilir, hız sınırı 5/dk olduğu için
+ * hesap başına dakikada 1000 LC. Günlük hak 3-7 LC — yani oyun ekonomisi
+ * anında anlamsızlaşır.
+ *
+ * Bu bir yapılandırma KAZASINA karşı savunma: staging'den kopyalanan bir env,
+ * unutulmuş bir deneme bayrağı. Kod tabanı aynı ilkeyi kimlik doğrulamada
+ * uyguluyor — üretimde `firebase-admin` kurulamazsa istek GEÇMİYOR, zayıf bir
+ * varsayılana düşmüyor (bkz. middleware/verifyToken.cjs, lib/ortam.cjs).
+ *
+ * Gerçek satın alma geldiğinde (Google Play / App Store makbuz doğrulaması)
+ * `mock` değil `provider` dalı kullanılacak; o yüzden bu kapı onu engellemiyor.
+ */
+const { uretimMi } = require("../lib/ortam.cjs");
+const _STORE_MODE_HAM = String(process.env.SKORLIG_STORE_MODE || "disabled").toLowerCase();
+const STORE_MODE = (() => {
+  if (_STORE_MODE_HAM === "mock" && uretimMi()) {
+    console.error(
+      "[lc-wallet] ⛔ SKORLIG_STORE_MODE=mock URETIMDE YOKSAYILDI — " +
+      "test modu odemesiz LC yukler. Magaza KAPALI kaliyor."
+    );
+    return "disabled";
+  }
+  return _STORE_MODE_HAM;
+})();
 
 // ⚠️ Mock açıkken SESSİZ KALMA: üretimde yanlışlıkla açık kalırsa log'da
 // görünsün. Sessiz bir "bedava LC" modu, fark edilmesi en zor para hatasıdır.
