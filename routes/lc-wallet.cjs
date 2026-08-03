@@ -424,16 +424,22 @@ async function ensureWalletUserMongo(db, userId) {
       is1987: !!is1987,
     };
 
-    await col.insertOne(doc);
+    const res = await col.updateOne(
+      { userIdLower: uidLower },
+      { $setOnInsert: doc },
+      { upsert: true },
+    );
 
-    await addLedgerEntryMongo(db, {
-      userId: uid,
-      kind: "init",
-      amount: initialBalance,
-      reason: is1987 ? "initial_1987" : "initial_default",
-    });
+    if (res.upsertedCount > 0) {
+      await addLedgerEntryMongo(db, {
+        userId: uid,
+        kind: "init",
+        amount: initialBalance,
+        reason: is1987 ? "initial_1987" : "initial_default",
+      });
+    }
 
-    user = doc;
+    user = await col.findOne({ userIdLower: uidLower }) || doc;
   }
 
   return user;
@@ -1320,6 +1326,7 @@ module.exports._STORE_MODE = STORE_MODE;
  * Kademe sabitleri de açıldı ki testler değişmezleri VERİYLE doğrulasın:
  * taban, maç giriş bedelinin 3 katından az kalmalı — yoksa her şeyini
  * kaybeden oyuncu ertesi gün tam tamamlanır ve KAYBETMEK BEDAVA olur. */
+module.exports._ensureWalletUserMongo = ensureWalletUserMongo;
 module.exports._gunlukMiktar = gunlukMiktar;
 module.exports._gunlukTaban = gunlukTaban;
 module.exports._TABANLAR = {
