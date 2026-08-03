@@ -513,6 +513,11 @@ router.get("/me", verifyToken, async (req, res) => {
  * kırardı.
  */
 async function takimSiralamasi(db, hamAd, sezonIstek) {
+    /* ⚠️ SEZON EN BASTA COZULUR: erken cikis (takimin uyesi yok) da sezonu
+     * bildirmeli, yoksa ekran o durumda hangi sezona baktigini yazamaz. */
+    const hamSezon = String(sezonIstek || "").trim();
+    const sezon = Season.isValidKey(hamSezon) ? hamSezon : Season.seasonKey();
+
     const ham = String(hamAd || "").trim();
 
     /* Sorgu da kaydetme yolu gibi kanonikleştiriliyor. İkisi aynı fonksiyondan
@@ -522,7 +527,9 @@ async function takimSiralamasi(db, hamAd, sezonIstek) {
 
     const uyeler = await UsersStore.listByTeam(team, db);
     if (!uyeler.length) {
-      return { team, canonical: !!kanonik, items: [], updatedAt: null };
+      /* Sezon ERKEN ÇIKIŞTA da bildirilmeli: takımın hiç üyesi yoksa da
+       * ekran hangi sezona baktığını yazabilmeli. */
+      return { team, canonical: !!kanonik, items: [], updatedAt: null, season: sezon };
     }
 
     const idler = uyeler.map((u) => String(u?.userId || "")).filter(Boolean);
@@ -542,7 +549,23 @@ async function takimSiralamasi(db, hamAd, sezonIstek) {
      *      — yoksa kullanıcı sıralamada İKİ KEZ görünür ve puanı bölünür.
      *      bkz. lib/season-totals.cjs belgeleriBirlestir
      * ──────────────────────────────────────────────────────────────────── */
-    const sezon = String(sezonIstek || "").trim() || Season.seasonKey();
+    /* ⚠️ SEZON DOĞRULAMASI BURADA — ÇAĞIRANDA DEĞİL.
+     *
+     * Eski hâli `String(sezonIstek||"").trim() || Season.seasonKey()` idi:
+     * GEÇERSİZ bir dize (istemci hatası, eski bağlantı, elle yazılan URL)
+     * olduğu gibi sorguya giriyordu. O sezonda hiç belge olmadığı için
+     * herkes 0 puanla dönüyor — hata yok, yalnızca yanlış tablo.
+     *
+     * ÖLÇÜLDÜ (gerçek rota, üretim verisi, ?season=SACMA):
+     *     /api/stats/me         → 2026-08'e düştü, yanıtta season alanı var
+     *     /api/stats/user       → 2026-08'e düştü
+     *     /api/stats/team-ranks → "SACMA" sorgulandı, total 0, season alanı YOK
+     * Aynı girdiye üç farklı davranış; ekran hangi sezona baktığını da
+     * söyleyemiyordu.
+     *
+     * Doğrulama ortak fonksiyonda: `/team-ranks` ve `stats/me`'nin takım
+     * bloğu ikisi de buradan geçiyor, yeni bir çağıran da korumalı doğar.
+     */
     const puan = new Map();   // userIdLower → { total, played }
     let updatedAt = null;
 
@@ -595,7 +618,7 @@ async function takimSiralamasi(db, hamAd, sezonIstek) {
       })
       .sort((a, b) => b.total - a.total || a.userId.localeCompare(b.userId));
 
-  return { team, canonical: !!kanonik, items, updatedAt };
+  return { team, canonical: !!kanonik, items, updatedAt, season: sezon };
 }
 
 router.get("/team-ranks", async (req, res) => {
@@ -604,7 +627,14 @@ router.get("/team-ranks", async (req, res) => {
     if (!ham) return res.status(400).json({ ok: false, error: "TEAM_REQUIRED" });
 
     const r = await takimSiralamasi(req.app.locals.db, ham, req.query.season);
-    return res.json({ ok: true, ...r });
+    /* Sezon etiketi diger uclarla ayni sozlesme (leaderboard, rt/totals,
+     * stats/me): ekran hangi sezona baktigini yazabilsin. */
+    return res.json({
+      ok: true,
+      ...r,
+      seasonLabel: r.season ? Season.label(r.season) : null,
+      isCurrentSeason: r.season === Season.seasonKey(),
+    });
   } catch (e) {
     console.error("TEAM_RANKS_ERR", e);
     return res.status(500).json({
