@@ -14,8 +14,6 @@
  */
 
 const path = require("path");
-// writeJsonAtomic artik gerekmiyor: yazma lib/push-store.cjs uzerinden.
-const { withFileLock } = require("../lib/fileLock.cjs");
 // Jeton/tercih deposu Mongo birincil — dosya Render'da her deploy siliniyordu.
 const PushStore = require("../lib/push-store.cjs");
 
@@ -66,31 +64,23 @@ async function registerToken(userId, token, prefs) {
   const tok = String(token || "").trim();
   if (!uid || !isExpoToken(tok)) return { ok: false, error: "INVALID_TOKEN" };
 
-  return withFileLock(TOKEN_FILE, async () => {
-    const store = await loadStore();
+  // Aynı token başka bir hesapta kayıtlıysa oradan sök — cihaz el değiştirmiş
+  // olabilir; yoksa eski kullanıcının bildirimleri yeni kullanıcıya düşer.
+  await PushStore.revokeTokenFrom(tok, uid);
 
-    // Aynı token başka bir hesapta kayıtlıysa oradan sök — cihaz el değiştirmiş
-    // olabilir; yoksa eski kullanıcının bildirimleri yeni kullanıcıya düşer.
-    for (const [otherUid, rec] of Object.entries(store.items)) {
-      if (otherUid === uid) continue;
-      if (Array.isArray(rec.tokens) && rec.tokens.includes(tok)) {
-        rec.tokens = rec.tokens.filter((t) => t !== tok);
-      }
-    }
+  const rec = await PushStore.getUser(uid) ||
+    { userId: uid, tokens: [], prefs: { ...DEFAULT_PREFS } };
+  if (!Array.isArray(rec.tokens)) rec.tokens = [];
+  if (!rec.tokens.includes(tok)) rec.tokens.push(tok);
+  if (prefs && typeof prefs === "object") {
+    rec.prefs = sanitizePrefs(prefs, rec.prefs);
+  } else if (!rec.prefs) {
+    rec.prefs = { ...DEFAULT_PREFS };
+  }
+  rec.updatedAt = new Date().toISOString();
 
-    const rec = store.items[uid] || { tokens: [], prefs: { ...DEFAULT_PREFS } };
-    if (!rec.tokens.includes(tok)) rec.tokens.push(tok);
-    if (prefs && typeof prefs === "object") {
-      rec.prefs = sanitizePrefs(prefs, rec.prefs);
-    } else if (!rec.prefs) {
-      rec.prefs = { ...DEFAULT_PREFS };
-    }
-    rec.updatedAt = new Date().toISOString();
-    store.items[uid] = rec;
-
-    await PushStore.saveStore(store, null);
-    return { ok: true, tokens: rec.tokens.length, prefs: rec.prefs };
-  });
+  await PushStore.saveUser(uid, rec);
+  return { ok: true, tokens: rec.tokens.length, prefs: rec.prefs };
 }
 
 async function unregisterToken(userId, token) {
@@ -98,15 +88,14 @@ async function unregisterToken(userId, token) {
   const tok = String(token || "").trim();
   if (!uid) return { ok: false, error: "NO_USER" };
 
-  return withFileLock(TOKEN_FILE, async () => {
-    const store = await loadStore();
-    const rec = store.items[uid];
-    if (!rec) return { ok: true, tokens: 0 };
-    rec.tokens = tok ? rec.tokens.filter((t) => t !== tok) : [];
-    rec.updatedAt = new Date().toISOString();
-    await PushStore.saveStore(store, null);
-    return { ok: true, tokens: rec.tokens.length };
-  });
+  const rec = await PushStore.getUser(uid);
+  if (!rec) return { ok: true, tokens: 0 };
+  rec.tokens = tok
+    ? (rec.tokens || []).filter((t) => t !== tok)
+    : [];
+  rec.updatedAt = new Date().toISOString();
+  await PushStore.saveUser(uid, rec);
+  return { ok: true, tokens: rec.tokens.length };
 }
 
 /**
@@ -133,34 +122,17 @@ async function setPrefs(userId, prefs) {
   const uid = String(userId || "").trim();
   if (!uid) return { ok: false, error: "NO_USER" };
 
-  return withFileLock(TOKEN_FILE, async () => {
-    const store = await loadStore();
-    const rec = store.items[uid] || { tokens: [], prefs: { ...DEFAULT_PREFS } };
-    rec.prefs = sanitizePrefs(prefs, rec.prefs);
-    rec.updatedAt = new Date().toISOString();
-    store.items[uid] = rec;
-    await PushStore.saveStore(store, null);
-    return { ok: true, prefs: rec.prefs };
-  });
+  const rec = await PushStore.getUser(uid) ||
+    { userId: uid, tokens: [], prefs: { ...DEFAULT_PREFS } };
+  rec.prefs = sanitizePrefs(prefs, rec.prefs);
+  rec.updatedAt = new Date().toISOString();
+  await PushStore.saveUser(uid, rec);
+  return { ok: true, prefs: rec.prefs };
 }
 
 /** Geçersiz token'ları topluca sil (Expo "DeviceNotRegistered" dönünce). */
 async function pruneTokens(badTokens) {
-  const bad = new Set(badTokens.filter(Boolean));
-  if (!bad.size) return 0;
-
-  return withFileLock(TOKEN_FILE, async () => {
-    const store = await loadStore();
-    let removed = 0;
-    for (const rec of Object.values(store.items)) {
-      if (!Array.isArray(rec.tokens)) continue;
-      const before = rec.tokens.length;
-      rec.tokens = rec.tokens.filter((t) => !bad.has(t));
-      removed += before - rec.tokens.length;
-    }
-    if (removed) await PushStore.saveStore(store, null);
-    return removed;
-  });
+  return PushStore.pullBadTokens(badTokens);
 }
 
 /* ============ Gönderim ============ */
