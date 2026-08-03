@@ -14,6 +14,11 @@
  * sayılmaya devam eder ve tablo hiç sıfırlanmaz. Bu script onları içinde
  * bulunulan sezona sabitler.
  *
+ * ⚠️ SEZON KAYDIN KENDİ ZAMANINDAN gelir, scriptin çalıştırıldığı andan DEĞİL.
+ * Önceki hâli hepsine `Season.seasonKey()` yazıyordu; ölçüldü (2026-08-03):
+ * sezonsuz 34 kaydın tamamı 29 Temmuz tarihliydi, yani bugün çalıştırılsa
+ * 195.3 puan kalıcı olarak Ağustos a yazılacaktı.
+ *
  * ⚠️ İNDEKS DEĞİŞİMİ: eski `{userIdLower}` benzersiz indeksi kalırsa aynı
  * oyuncunun İKİNCİ sezonu yazılamaz (duplicate key). Bu yüzden eski indeks
  * düşürülüp bileşik olan kurulur. Sıra önemli: önce alanı doldur, sonra
@@ -54,15 +59,78 @@ const COLL = "season_totals";
   console.log(`eski indeks   : ${eskiIdx ? eskiIdx.name + (eskiIdx.unique ? " (unique)" : "") : "yok"}`);
   console.log(`yeni indeks   : ${yeniIdx ? yeniIdx.name : "yok"}`);
 
+  /**
+   * ⚠️ KURU KOŞU PLANI GÖSTERMELİ. Önceki hâli yalnızca "kaç kayıt sezonsuz"
+   * diyip çıkıyordu — HANGİ sezona yazılacağını hiç söylemiyordu. Tam da bu
+   * yüzden "hepsini şimdiki aya damgalama" kusuru kuru koşuda görünmüyordu:
+   * çıktı doğru görünüyor, karar yanlış.
+   */
+  const sezonsuzlar = eksik > 0
+    ? await col
+        .find({ season: { $exists: false } })
+        .project({ _id: 1, lastAt: 1, updatedAt: 1, createdAt: 1, totalPoints: 1, matches: 1 })
+        .toArray()
+    : [];
+
+  const kova = new Map();   // sezon -> { idler, puan, mac }
+  let damgasiz = 0;
+  for (const d of sezonsuzlar) {
+    const ms = Date.parse(String(d.lastAt || d.updatedAt || d.createdAt || ""));
+    let k = sezon;
+    if (Number.isFinite(ms)) k = Season.seasonKey(new Date(ms));
+    else damgasiz++;
+    if (!kova.has(k)) kova.set(k, { idler: [], puan: 0, mac: 0 });
+    const b = kova.get(k);
+    b.idler.push(d._id);
+    b.puan += Number(d.totalPoints || 0);
+    b.mac += Number(d.matches || 0);
+  }
+
+  if (sezonsuzlar.length) {
+    console.log("plan (sezon <- kaydin kendi zamani):");
+    for (const [k, b] of kova) {
+      console.log(`  ${k}: ${b.idler.length} kayit · ${Math.round(b.puan * 10) / 10} puan · ${b.mac} mac`);
+    }
+    if (damgasiz) console.log(`  (zaman damgasi olmayan ${damgasiz} kayit -> ${sezon})`);
+  }
+
   if (DRY) {
     console.log("--dry: hicbir sey yazilmadi.");
     process.exit(0);
   }
 
   // 1) Alanı doldur (indeksten ÖNCE — bkz. dosya başı)
-  if (eksik > 0) {
-    const r = await col.updateMany({ season: { $exists: false } }, { $set: { season: sezon } });
-    console.log(`sezon alani dolduruldu: ${r.modifiedCount} kayit -> ${sezon}`);
+  /**
+   * ⚠️ SEZON KAYDIN KENDİ ZAMANINDAN TÜRETİLİR, "ŞİMDİ"DEN DEĞİL.
+   *
+   * ÖNCEKİ HÂLİ tek `updateMany` ile HEPSİNE `Season.seasonKey()` yazıyordu,
+   * yani script hangi ay çalıştırılırsa kayıtlar O AYA damgalanıyordu.
+   *
+   * ÖLÇÜLDÜ (2026-08-03, üretim): sezonsuz 34 kaydın TAMAMI 2026-07-29
+   * tarihli, yani Temmuz'a ait. Script bugün çalıştırılsaydı 195.3 puan ve
+   * 45 maç kalıcı olarak AĞUSTOS tablosuna yazılacaktı — hem Temmuz eksik
+   * kalır hem Ağustos şişerdi, üstelik geri alınamazdı (özgün tarih artık
+   * yalnızca `lastAt`ta).
+   *
+   * ⚠️ ÜÇÜNCÜ KEZ AYNI SINIF. `routes/settle2.cjs` ve `lib/kupon-settle.cjs`
+   * de sezonu "şimdi"den alıyordu ve ikisi de olayın kendi zamanına
+   * geçirildi (settle2'de 9 vaka ölçülmüştü). Bakım betiği atlanmış —
+   * "kural kopyalanınca ayrışır"ın betik hâli.
+   *
+   * Zaman damgası hiç yoksa şimdiki sezona düşülür: puanı hiç yazmamaktansa
+   * muhtemelen doğru olan sezona yazmak iyidir (settle2 ile aynı gerekçe).
+   */
+  if (sezonsuzlar.length) {
+    let toplamYazilan = 0;
+    for (const [k, b] of kova) {
+      const r = await col.updateMany({ _id: { $in: b.idler } }, { $set: { season: k } });
+      toplamYazilan += r.modifiedCount;
+      console.log(`sezon alani dolduruldu: ${r.modifiedCount} kayit -> ${k}`);
+    }
+    if (damgasiz) {
+      console.warn(`⚠️ ${damgasiz} kaydin zaman damgasi yok, simdiki sezona (${sezon}) yazildi`);
+    }
+    console.log(`toplam: ${toplamYazilan} kayit`);
   } else {
     console.log("sezon alani zaten dolu, atlandi.");
   }
