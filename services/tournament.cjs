@@ -119,6 +119,72 @@ const PAYOUT_TABLE = {
 };
 const PAYOUT_8PLUS = [0.50, 0.25, 0.15, 0.10];
 
+/** Doğru bilinen maç başına puan = bu sabit × maçın odds'ı. */
+const PUAN_CARPANI = 10;
+
+/**
+ * KATILIMCI PUANLARI — TEK KAYNAK.
+ *
+ * Kural: doğru bildiğin her maç için `10 × o seçimin odds'ı` (yuvarlanmış).
+ * Yanlış tahmin 0 getirir, ceza yok — turnuva kısa ve giriş bedeli zaten
+ * ödenmiş durumda.
+ *
+ * ⚠️ NEDEN ÇIKARILDI (2026-08-03): ödeme hesabının ikinci kopyası ayrışıp
+ * canlı yolda fazla/eksik ödeme bırakınca (bkz. `odemePaylari`) bu döngünün de
+ * İKİ kopyası olduğu görüldü — `settle()` ve `routes/settle2.cjs`
+ * tryAutoSettleTournaments. O gün birebir aynıydılar, AMA bir fark vardı:
+ *
+ *     servis kopyası : t.fixtures.find(...)          → alan yoksa TypeError
+ *     settle2 kopyası: (t.fixtures || []).find(...)  → tolere eder
+ *
+ * Yani aynı turnuva, hangi yoldan sonuçlandığına göre ya puanlanıyor ya
+ * patlıyordu. Üretimde turnuva sayısı 0 olduğu için canlı bir yanlış puanlama
+ * ÇIKMADI — abartmıyorum; bu, ayrışmanın ikinci kez yakalanması.
+ *
+ * ⚠️ EKSİK ALANLAR ARTIK PUANI SIFIRLAR, PATLATMAZ: `predictions` taşımayan
+ * bir katılımcı İKİ kopyada da TypeError üretiyordu ve bu, sonuçlandırmanın
+ * tamamını (ödeme dahil) düşürürdü. Turnuvanın kapanmaması, tek oyuncunun
+ * 0 puan alması demek olurdu — kapalı-başarısızlık burada yanlış taraf.
+ *
+ * ⚠️ odds MAÇ BAŞINA bir kez hesaplanır: iki kopya da her katılımcı × her maç
+ * için yeniden `calcOdds` çağırıyordu (aynı maç için aynı sonuç).
+ *
+ * @param {object} t turnuva
+ * @param {Record<string, {outcome:string}>} sonuclar fixtureId → sonuç
+ * @returns {Array} `totalScore` yazılmış katılımcılar, puana göre AZALAN sıralı
+ */
+function puanlariHesapla(t, sonuclar) {
+  const { calcOdds } = require("./odds-engine.cjs");
+  const fidler = Array.isArray(t?.fixtureIds) ? t.fixtureIds : [];
+  const fixturelar = Array.isArray(t?.fixtures) ? t.fixtures : [];
+  const katilimcilar = Array.isArray(t?.participants) ? t.participants : [];
+  const sonuc = sonuclar || {};
+
+  // Maç başına odds — katılımcı sayısından bağımsız, bir kez.
+  const oddsHarita = new Map();
+  for (const fid of fidler) {
+    const fx = fixturelar.find((f) => f && f.fixtureId === fid);
+    oddsHarita.set(fid, fx ? calcOdds(fx.home, fx.away) : { home: 2, draw: 3, away: 2 });
+  }
+
+  for (const p of katilimcilar) {
+    let puan = 0;
+    const tahminler = (p && p.predictions) || {};
+    for (const fid of fidler) {
+      const pred = tahminler[fid];
+      const r = sonuc[fid];
+      if (!pred || !r) continue;
+      if (pred.outcome !== r.outcome) continue;
+      const odds = oddsHarita.get(fid) || { home: 2, draw: 3, away: 2 };
+      const oran = pred.outcome === "H" ? odds.home : pred.outcome === "D" ? odds.draw : odds.away;
+      puan += Math.round(PUAN_CARPANI * oran);
+    }
+    p.totalScore = puan;
+  }
+
+  return [...katilimcilar].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+}
+
 /**
  * Havuzu yüzdelere göre TAM SAYI olarak dağıtır (en büyük kalan yöntemi).
  *
@@ -360,31 +426,14 @@ async function predict(code, userId, fixtureId, outcome, db = null) {
  * demek olurdu.
  */
 async function settle(code, results, db = null) {
-  const { calcOdds } = require("./odds-engine.cjs");
   const data = await loadAll();
   const t = data.tournaments.find(x => x.code === code.toUpperCase());
   if (!t) throw new Error("NOT_FOUND");
   if (t.status === "settled") throw new Error("ALREADY_SETTLED");
 
-  for (const p of t.participants) {
-    let score = 0;
-    for (const fid of t.fixtureIds) {
-      const pred = p.predictions[fid];
-      const result = results[fid];
-      if (!pred || !result) continue;
-
-      const fx = t.fixtures.find(f => f.fixtureId === fid);
-      const odds = fx ? calcOdds(fx.home, fx.away) : { home: 2, draw: 3, away: 2 };
-      const outcomeOdd = pred.outcome === "H" ? odds.home : pred.outcome === "D" ? odds.draw : odds.away;
-
-      if (pred.outcome === result.outcome) {
-        score += Math.round(10 * outcomeOdd);
-      }
-    }
-    p.totalScore = score;
-  }
-
-  const sorted = [...t.participants].sort((a, b) => b.totalScore - a.totalScore);
+  // Puanlama TEK KAYNAKTAN (bkz. puanlariHesapla): kopyası settle2'de yaşıyor
+  // ve `t.fixtures` yokken bu yol patlarken öteki tolere ediyordu.
+  const sorted = puanlariHesapla(t, results);
 
   /* ⚠️ ÖDEMELER HAVUZLA UZLAŞTIRILIR — `Math.round` HAVUZDAN FAZLA ÖDÜYORDU.
    *
@@ -495,7 +544,8 @@ module.exports = {
    * (yanlış başarısızlık modunu bekliyordu) ve hiçbir test görmedi. */
   _ucretIadeEt: ucretIadeEt,
   _odemeDagit: odemeDagit, _PAYOUT_TABLE: PAYOUT_TABLE, _PAYOUT_8PLUS: PAYOUT_8PLUS,
-  // İki ödeme yolunun (settle + settle2 auto-settle) ORTAK hesabı — kopyası
-  // bir kez ayrıştı ve canlı yolda fazla/eksik ödeme bıraktı (bkz. tanımı).
-  odemePaylari,
+  // İki ödeme yolunun (settle + settle2 auto-settle) ORTAK hesapları — her
+  // ikisinin de kopyası ayrıştı: ödemede fazla/eksik LC, puanlamada bir yolun
+  // patlayıp ötekinin tolere etmesi (bkz. tanımları).
+  odemePaylari, puanlariHesapla, PUAN_CARPANI,
 };

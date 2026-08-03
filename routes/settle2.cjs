@@ -1573,9 +1573,8 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
     );
     if (!open.length) return;
 
-    const { calcOdds } = require("../services/odds-engine.cjs");
     /**
-     * ⚠️ ÖDEME HESABI TEK KAYNAKTAN (services/tournament.cjs odemePaylari).
+     * ⚠️ PUANLAMA VE ÖDEME HESABI TEK KAYNAKTAN (services/tournament.cjs).
      *
      * BURADA hesabın KOPYASI vardı ve AYRIŞMIŞTI: kopya hâlâ
      * `Math.round(t.pool * pct)` kullanıyordu — fazla-ödeme kusuru ve n=1
@@ -1588,8 +1587,13 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
      *     %23.4 havuzdan FAZLA ödeme  ← yoktan LC (turnuva başına +1..+2)
      *     %6.6  havuzdan EKSİK ödeme  ← yakılan LC (n=1'de 30 LC'ye kadar)
      * Ortak hesap 1536/1536 senaryoda havuza TAM eşit.
+     *
+     * PUANLAMA da aynı sebeple toplandı: onun kopyası da buradaydı ve servis
+     * tarafıyla ayrışmıştı (`t.fixtures` yokken orası patlıyor, burası tolere
+     * ediyordu). Aynı hatanın ikinci kez aynı fonksiyonda çıkması, kopyanın
+     * kendisinin kusur olduğunu gösteriyor.
      */
-    const { odemePaylari } = require("../services/tournament.cjs");
+    const { odemePaylari, puanlariHesapla } = require("../services/tournament.cjs");
     const nowISO = new Date().toISOString();
 
     for (const t of open) {
@@ -1603,23 +1607,12 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
       }
       if (!allDone) continue;
 
-      // Score participants
-      for (const p of t.participants) {
-        let score = 0;
-        for (const fid of t.fixtureIds) {
-          const pred = p.predictions[fid];
-          if (!pred || !results[fid]) continue;
-          const fx = (t.fixtures || []).find(f => f.fixtureId === fid);
-          const odds = fx ? calcOdds(fx.home, fx.away) : { home: 2, draw: 3, away: 2 };
-          const outcomeOdd = pred.outcome === "H" ? odds.home : pred.outcome === "D" ? odds.draw : odds.away;
-          if (pred.outcome === results[fid].outcome) {
-            score += Math.round(10 * outcomeOdd);
-          }
-        }
-        p.totalScore = score;
-      }
-
-      const sorted = [...t.participants].sort((a, b) => b.totalScore - a.totalScore);
+      // Puanlama TEK KAYNAKTAN — kopyası burada yaşıyordu ve servis
+      // tarafındakiyle ayrışmıştı (bkz. services/tournament.cjs
+      // puanlariHesapla): `t.fixtures` yokken servis yolu TypeError atıyor,
+      // bu yol tolere ediyordu. Aynı turnuva, hangi yoldan sonuçlandığına
+      // göre farklı davranıyordu.
+      const sorted = puanlariHesapla(t, results);
 
       // Tek kaynak: normalleştirme + en büyük kalan (bkz. yukarıdaki not).
       const { paylar, tablo } = odemePaylari(t.pool, sorted.length);
