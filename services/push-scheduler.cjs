@@ -106,6 +106,76 @@ async function claimKeys(keys) {
 }
 
 /**
+ * Belirli maçlara tahmin yapmış İNSAN kullanıcılar — MONGO BİRİNCİL.
+ *
+ * ⚠️ ÜÇÜNCÜ KEZ AYNI SINIF, İKİNCİSİ BU DOSYADA. Kickoff hatırlatması
+ * tahminleri yalnızca `data/preds.json`dan okuyordu:
+ *
+ *   1) MİGRASYON TUZAĞI — `SKORLIG_PREDS_FILE_MIRROR=0` yapıldığında o dosya
+ *      artık YAZILMIYOR. Hatırlatma kimseye gitmez ve hiçbir yerde hata
+ *      görünmez. `routes/duels.cjs` bu tuzağı adıyla yazmış ve Mongo'ya
+ *      geçmiş; günlük hatırlatma (aşağıda) aynı sebeple geçirilmiş; kickoff
+ *      yolu atlanmış.
+ *   2) RENDER — disk kalıcı değil. Her deploy'dan sonra dosya boş; senkron
+ *      onu doldurana kadar başlayan maçların hatırlatması kaçar.
+ *   3) MALİYET — ÖLÇÜLDÜ (2026-08-03): dosya 22.5 MB, ayrıştırması 122 ms ve
+ *      bu iş 5 DAKİKADA BİR yapılıyor. duels.cjs aynı notu 17 MB'ken
+ *      yazmıştı; dosya büyümeye devam ediyor.
+ *
+ * ⚠️ BOTLAR ELENİR: jetonları yok, gönderim zaten atlanıyordu — ama hedef
+ * listesine girmeleri boşuna iş. ÖLÇÜLDÜ: önümüzdeki 24 saatteki 60 maça
+ * 2400 tahmin var ve hepsi bot.
+ *
+ * ⚠️ DOSYA YEDEĞİ KORUNUYOR: Mongo erişilemezken hatırlatmayı tamamen
+ * durdurmak daha kötü olurdu (aynı gerekçe `claimKeys` ve `cuzdanKullanicilari`
+ * içinde de yazılı).
+ */
+async function macTahminleri(fixtureIds) {
+  const ids = fixtureIds.map(String);
+  if (!ids.length) return [];
+
+  const db = await dbAl();
+  if (db) {
+    try {
+      /**
+       * ⚠️ İNDEKS ONARIMI ŞART — MEVCUT NÖBETÇİ YAKALADI.
+       *
+       * `tests/tahmin-indeks-onarimi.test.cjs` kuralı koddan türetiyor:
+       * `predictions`ı DOĞRUDAN sorgulayan her çalışma zamanı modülü
+       * onarımı çağırmalı. Çağırmazsam bu sorgu indekssiz koşar ve
+       * koleksiyon 62 bin kayıt (ölçüldü) — 5 dakikada bir tam tarama.
+       * Testi bilmeden yazdım, nöbetçi hatırlattı.
+       */
+      const { ensurePredIndexes } = require("../lib/preds-index.cjs");
+      await ensurePredIndexes(db);
+      const docs = await db
+        .collection("predictions")
+        .find({ fixtureId: { $in: ids } }, { projection: { fixtureId: 1, userId: 1, isBot: 1, _id: 0 } })
+        .toArray();
+      /**
+       * ⚠️ BOŞ SONUÇ DA GEÇERLİ SONUÇTUR — dosyaya DÜŞÜLMEZ.
+       *
+       * Kardeş fonksiyon `cuzdanKullanicilari` "boş gelirse dosyayı dene"
+       * kalıbını kullanıyor; orada mantıklı, çünkü cüzdan hiç boş olmaz.
+       * Burada DEĞİL: "bu maçlara henüz kimse tahmin yapmamış" gayet normal
+       * bir durum ve bugünün gerçek hâli (ölçüldü: 60 maça 2400 tahmin var,
+       * hepsi bot → insan süzgecinden sonra 0). Boşta dosyaya düşseydik
+       * kaçınmak istediğimiz 22 MB okumayı EN SIK durumda yapardık — yani
+       * düzeltme kendi amacını boşa çıkarırdı.
+       *
+       * Dosyaya yalnızca Mongo YOKSA ya da sorgu PATLARSA düşülür.
+       */
+      return docs.filter((p) => !botMu(p));
+    } catch (e) {
+      console.error("[push-scheduler] tahminler Mongo'dan okunamadi:", e?.message || e);
+    }
+  }
+  const set = new Set(ids);
+  const arr = asArray(await readJson(PREDS, null), "items", "preds");
+  return arr.filter((p) => set.has(String(p.fixtureId)) && !botMu(p));
+}
+
+/**
  * Snapshot satırı bota mı ait?
  *
  * ⚠️ İKİ KAYNAK, SIRAYLA — ve MODÜL DÜZEYİNDE TEK TANIM.
@@ -141,7 +211,6 @@ function fmtMatch(f) {
 async function runKickoffReminders() {
   // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
   const fixtures = await FixturesStore.loadAll();
-  const preds    = asArray(await readJson(PREDS, null), "items", "preds");
   if (!fixtures.length) return { checked: 0, sent: 0 };
 
   const now = Date.now();
@@ -156,6 +225,13 @@ async function runKickoffReminders() {
   const keys = due.map((f) => `start:${f.fixtureId}`);
   const claimed = new Set(await claimKeys(keys));
   if (!claimed.size) return { checked: fixtures.length, sent: 0 };
+
+  /* ⚠️ TAHMİNLER MÜHÜR ALINDIKTAN SONRA, YALNIZCA ALINAN MAÇLAR İÇİN
+   * çekiliyor: mühür başka bir instance'a gitmişse hiç sorgu atılmaz. */
+  const alinanIdler = due
+    .map((f) => String(f.fixtureId))
+    .filter((id) => claimed.has(`start:${id}`));
+  const preds = await macTahminleri(alinanIdler);
 
   let sent = 0;
   for (const f of due) {
@@ -391,4 +467,6 @@ function stop() {
 module.exports = {
   start, stop, tick, runKickoffReminders, runResultNotices, runDailyReminder,
   claimKeys, // dışa açık: çift gönderim koruması testi için
+  macTahminleri, // dışa açık: kaynak (Mongo/dosya) sondası için
+  botMu,         // dışa açık: bot süzgeci testi için
 };
