@@ -890,23 +890,30 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
         };
       }
 
-      // TABANA TAMAMLAMA — Mongo dalıyla aynı kural (bkz. gunlukMiktar).
-      // İki dal ayrışırsa kullanıcı hangi modda olduğuna göre farklı para alır.
-      const dailyAmount = gunlukMiktar(Number(u.balance || 0), isPrem);
+      const yeniSeri = seriDevamMi(u.lastDailyAt, today)
+        ? Number(u.dailyStreak || 0) + 1
+        : 1;
+      const dailyAmount = gunlukMiktar(Number(u.balance || 0), isPrem, yeniSeri);
+
+      if (dailyAmount <= 0) {
+        return {
+          status: 400,
+          body: { ok: false, error: "BALANCE_ABOVE_FLOOR", balance: u.balance, streak: yeniSeri },
+        };
+      }
 
       u.balance += dailyAmount;
       u.totalEarned = (u.totalEarned || 0) + dailyAmount;
       u.lastDailyAt = new Date().toISOString();
       u.updatedAt   = u.lastDailyAt;
+      u.dailyStreak = yeniSeri;
 
-      if (dailyAmount > 0) {
-        addLedgerEntryFile(state, {
-          userId,
-          kind: "reward",
-          amount: dailyAmount,
-          reason: isPrem ? "daily_premium" : "daily",
-        });
-      }
+      addLedgerEntryFile(state, {
+        userId,
+        kind: "reward",
+        amount: dailyAmount,
+        reason: isPrem ? "daily_premium" : "daily",
+      });
 
       await saveWalletState(state);
 
