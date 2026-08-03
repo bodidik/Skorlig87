@@ -157,6 +157,16 @@ async function macTakimlari(fixtureId, db, denge) {
     home: String(denge?.home || fx?.home || fx?.homeTeam || "").trim() || null,
     away: String(denge?.away || fx?.away || fx?.awayTeam || "").trim() || null,
     kickoffISO: fx?.kickoffISO || fx?.kickoff || null,
+    /* ⚠️ LİG VE ÜLKE DE SUNUCUDAN. `league` eskiden GÖVDEDEN geliyordu; ekran
+     * "3. Lig" yazıyordu ve hangi ülkenin ligi olduğu belirsizdi. Ölçüldü
+     * (1944 üretim fikstürü): 32 lig adı birden fazla ülkede geçiyor,
+     * "Premier Lig" 24 ülkede. Ülkesiz etiket ayırt edici değil.
+     *
+     * İstemciye güvenmemenin ikinci sebebi `kickoffISO` ile aynı: gövdeden
+     * gelen alan uydurulabilir. Burada para kararı yok ama etiket de
+     * yanıltıcı olmamalı. */
+    league: String(fx?.league || "").trim() || null,
+    country: String(fx?.country || "").trim() || null,
   };
 }
 
@@ -742,7 +752,10 @@ router.post("/duels/create", verifyToken, async (req, res) => {
       status: "open",
       home: takim.home,
       away: takim.away,
-      league: String(league || "").trim() || null,
+      /* Fikstürdeki lig önce; gövdedeki değer yalnızca depoda yoksa yedek.
+       * `country` etiketi ayırt edici kılıyor (bkz. macTakimlari notu). */
+      league: takim.league || String(league || "").trim() || null,
+      country: takim.country,
       kickoffISO: takim.kickoffISO,
       creatorPoints: null, acceptorPoints: null, winnerId: null,
       pot, houseCut, winAmount,
@@ -1060,6 +1073,7 @@ router.get("/duels/arena", optionalToken, async (req, res) => {
           home: d.home || "?",
           away: d.away || "?",
           league: d.league || null,
+          country: d.country || null,
           kickoffISO: d.kickoffISO || null,
           openDuels: [],
           minStake: Infinity,
@@ -1080,6 +1094,7 @@ router.get("/duels/arena", optionalToken, async (req, res) => {
         home: m.home,
         away: m.away,
         league: m.league,
+        country: m.country,
         kickoffISO: m.kickoffISO,
         openCount: m.openDuels.length,
         minStake: m.minStake === Infinity ? 0 : m.minStake,
