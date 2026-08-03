@@ -16,6 +16,7 @@ const LIVE_DIR   = path.join(DATA_DIR, "live");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 const RESULTS_FILE  = path.join(DATA_DIR, "results.json");   // settle2'nin okuduğu file
 const MatchResults = require("../lib/match-results.cjs");
+const { ilkGolTuret } = require("../lib/ilk-gol.cjs");
 
 const livescoreScraper = require("./livescore-scraper.cjs");
 
@@ -368,6 +369,22 @@ async function writeLiveState(fixtureId, liveMatch, scores, nowISO) {
   if (scores.htHome != null) st.htScore = { home: scores.htHome, away: scores.htAway };
   if (liveMatch.homeRed) st.redHome = liveMatch.homeRed;
   if (liveMatch.awayRed) st.redAway = liveMatch.awayRed;
+
+  /* ⚠️ İLK GOL SKORDAN DAMGALANIR — bahis kazanılamıyordu.
+   *
+   * `firstGoal`ü yalnızca af-sync (askıdaki kaynak) yazıyordu; ölçüldü:
+   * 14518 tahminin TAMAMI ceza, 0 ödül. Bir taraf gol atmış öteki 0 iken
+   * ilk golü atan kesindir; her ~30 sn'lik turda bu an bir kez yakalanırsa
+   * skor sonradan 3-1 olsa da bilgi korunur (`...prev` taşır, yalnızca
+   * BOŞKEN yazılır — af-sync olaydan yazarsa ona dokunulmaz).
+   * bkz. lib/ilk-gol.cjs */
+  if (!st.firstGoal) {
+    const tur = ilkGolTuret(scores.home, scores.away);
+    if (tur) {
+      st.firstGoal = tur;
+      st.firstGoalSource = "score-derived";
+    }
+  }
 
   /* ⚠️ CANLI DAKİKA. Kaynak ayrı alan vermiyor, dakika `status` dizesinin
    * içinde ("62'"). Ana ekranda canlı maç "62'" yerine düz "CANLI"

@@ -75,6 +75,7 @@ const FixturesStore = require("../lib/fixtures-store.cjs");
 // sessiz kaldı. Ders: import eklemeyi metin varlığına bağlama.
 const SocialStore = require("../lib/social-store.cjs");
 const Season = require("../lib/season.cjs");
+const { ilkGolTuret } = require("../lib/ilk-gol.cjs");
 /* ⚠️ Mini profil BAKIYE donduruyordu — sahiplik icin kimlik gerekli.
  * bkz. GET /user-profile notu. */
 const { optionalToken } = require("../middleware/verifyToken.cjs");
@@ -1036,7 +1037,14 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
   const redAnyActual = redHomeActual || redAwayActual;
   const redSideActual = redHomeActual ? "H" : redAwayActual ? "A" : null;
 
-  const fg = st.firstGoal || null;
+  /* ⚠️ İLK GOL: kaynak sırası olay (af-sync) → canlı izleme damgası
+   * (livescore-sync, skor geçişinden) → FT skorundan KESİN çıkarım.
+   * Sonuncusu tek taraf gol attığında tartışmasız (2-0'da ilk gol ev
+   * sahibinin) ve uzlaşmış maçların %39.5'ini tek başına kapsıyor; sunucu
+   * canlı anı kaçırmış (uyku/yeniden başlatma) olsa bile çalışır.
+   * Hiçbiri bilmiyorsa null kalır ve kalem puanlanmaz (hasFG kapısı).
+   * bkz. lib/ilk-gol.cjs */
+  const fg = st.firstGoal || ilkGolTuret(h, a);
 
   const penaltyAnyActual = typeof st.penaltyAny === "boolean" ? st.penaltyAny : false;
   const penaltySideActual = st.penaltySide || null;
