@@ -71,8 +71,30 @@ async function loadUserStatsCore(req, userId) {
     const walletUsers = db.collection("lc_wallet_users");
     const ledgerCol   = db.collection("lc_wallet_ledger");
 
-    // Sezon toplamları
-    const seasonDoc = await seasonCol.findOne({ userIdLower: uidLower });
+    /* ⚠️ SEZON KAPSAMI — BURADA HİÇ YOKTU.
+     *
+     * Eski sorgu: `seasonCol.findOne({ userIdLower })` — hangi sezon olduğu
+     * BELİRTİLMİYORDU, yani kullanıcının herhangi bir sezon kaydı dönüyordu.
+     * Aynı yanıttaki takım bloğu ise güncel sezonu kullanıyor.
+     *
+     * ÖLÇÜLDÜ (üretim, gerçek kullanıcı; yalnızca 2026-07 kaydı var, güncel
+     * sezon 2026-08):
+     *     totalPoints      : 9.9   ← Temmuz'dan
+     *     team.myTeamTotal : 0     ← Ağustos'tan
+     * Tek ekranda "9.9 puanım var" ve "takımımdaki toplamım 0".
+     *
+     * Birden fazla sezonu olan kullanıcıda `findOne` hangi belgeyi
+     * döndüreceğini GARANTİ ETMEZ — sezon biriktikçe "puanım" rastgele bir
+     * geçmiş sezonu gösterebilirdi, hata vermeden.
+     *
+     * Okuma tek kaynaktan: `SeasonTotals.kullaniciToplami` sıralamayla AYNI
+     * kuralı uygular (geçiş toleransı + mükerrer birleştirme + yuvarlama),
+     * yoksa profil ile sıralama farklı sayı gösterirdi.
+     */
+    const istenenSezon = Season.isValidKey(String(req.query.season || "").trim())
+      ? String(req.query.season).trim()
+      : Season.seasonKey();
+    const seasonDoc = await SeasonTotals.kullaniciToplami(db, uidLower, istenenSezon);
 
     const season = seasonDoc
       ? {
@@ -80,11 +102,12 @@ async function loadUserStatsCore(req, userId) {
           total: Number(seasonDoc.totalPoints || 0),
           played: Number(seasonDoc.matches || 0),
           penalties: Number(seasonDoc.totalPenalty || 0),
+          /* ⚠️ İKİ BASAMAK, TAM SAYI DEĞİL. Eskiden `Math.round` ile tam sayıya
+           * yuvarlanıyordu: 9.9/6 = 1.65 → "2" görünüyordu, sıralama ekranı ise
+           * aynı oyuncu için 1.67 diyordu (lib/ranking.cjs iki basamak
+           * kullanıyor). Aynı metrik, iki ekranda iki sayı. */
           avg: seasonDoc.matches
-            ? Math.round(
-                Number(seasonDoc.totalPoints || 0) /
-                  Number(seasonDoc.matches || 1)
-              )
+            ? Math.round((Number(seasonDoc.totalPoints || 0) / Number(seasonDoc.matches || 1)) * 100) / 100
             : 0,
           lastAt: seasonDoc.lastAt || null,
         }
@@ -145,7 +168,12 @@ async function loadUserStatsCore(req, userId) {
     return {
       userId: uid,
       source: "mongo",
-      season,
+      /* ⚠️ SEZON YANITTA TAŞINIYOR: takım bloğu ile puan bloğu AYNI sezonu
+       * kullanmalı. Rota katmanı ham `req.query.season` kullansaydı geçersiz
+       * bir değer geldiğinde çekirdek güncel sezona düşer, takım bloğu ham
+       * değeri kullanır ve iki blok yine ayrışırdı — düzelttiğim kusurun
+       * aynısı, başka yoldan. */
+      season: { ...season, key: istenenSezon },
       recentMatches,
       wallet,
       walletLedger,
@@ -187,7 +215,7 @@ async function loadUserStatsCore(req, userId) {
         total,
         played,
         penalties,
-        avg: played ? Math.round(total / played) : 0,
+        avg: played ? Math.round((total / played) * 100) / 100 : 0,
         lastAt: t.lastAt || null,
       };
     }
@@ -421,7 +449,7 @@ router.get("/me", verifyToken, async (req, res) => {
        * AYNI fonksiyon. İkinci bir kopya yazsaydım sezon birleştirme ya da
        * kanonikleştirme düzeltmesi birinde yapılıp öbüründe unutulurdu. */
       if (mainTeam) {
-        const s = await takimSiralamasi(req.app.locals.db, mainTeam, req.query.season);
+        const s = await takimSiralamasi(req.app.locals.db, mainTeam, core.season?.key);
         const sira = s.items.findIndex((x) => String(x.userId).toLowerCase() === String(userId).toLowerCase());
         takimOzet = {
           team: s.team,
@@ -445,6 +473,12 @@ router.get("/me", verifyToken, async (req, res) => {
       played: season.played,
       avg: season.avg,
       lastAt: season.lastAt,
+      /* Hangi sezona bakildigi gorunur olmali: tablo ayin 1inde sifirlaniyor
+       * ve aciklama olmadan kullanici bir aylik emegini kayip saniyor.
+       * Ayni alanlar leaderboard ve rt/totals uclarinda da var. */
+      season: season.key || null,
+      seasonLabel: season.key ? Season.label(season.key) : null,
+      isCurrentSeason: (season.key || null) === Season.seasonKey(),
       form,
       wallet: core.wallet || null,
       walletLedger: core.walletLedger || [],
