@@ -48,9 +48,18 @@ describe("arşiv derinliği", () => {
     /* ⚠️ Sabitin doğru olması yetmez; ucun onu ÇAĞIRDIĞINI de tutuyoruz.
      * Bugün bir kez sabit doğruyken çağıranın onu hiç kullanmadığı bir
      * durum bulundu (arama düzeltmesi depoda vardı, rota geri alıyordu). */
+    /* GÜNCELLENDİ (2026-08-03): kural `routes/leaderboard.cjs` içinde gömülüydü
+     * ve `?season=` desteği stats/me ile team-ranks uçlarına eklenince ONLARA
+     * GELMEDİ — ücretsiz kullanıcı oradan 6 ay geriye okuyabiliyordu. Kural
+     * `lib/sezon-arsiv.cjs`'e taşındı. Korunan özellik AYNI: uç derinliği
+     * gerçekten uyguluyor ve kısıtlamayı bildiriyor; yalnızca adresi değişti.
+     * bkz. tests/arsiv-derinligi-kapisi.mongo.test.cjs */
     const src = fs.readFileSync(path.join(KOK, "routes", "leaderboard.cjs"), "utf8");
-    assert.ok(/premium\.seasonArchiveDepth\(/.test(src),
-      "leaderboard derinligi hic sormuyor — arsiv sinirsiz acik");
+    const kapi = fs.readFileSync(path.join(KOK, "lib", "sezon-arsiv.cjs"), "utf8");
+    assert.ok(/ArsivKapi\.arsivSezonu\(/.test(src),
+      "leaderboard ortak arsiv kapisini cagirmiyor — arsiv sinirsiz acik olabilir");
+    assert.ok(/premium\.seasonArchiveDepth\(/.test(kapi),
+      "ortak kapi derinligi hic sormuyor — arsiv sinirsiz acik");
     assert.ok(/archiveLimited/.test(src),
       "kisitlama istemciye BILDIRILMIYOR — kullanici neden eski sezonu goremedigini anlamaz");
   });
@@ -61,11 +70,17 @@ describe("arşiv derinliği", () => {
      * baktığını sanarak bugünkü tabloyu okur. `archiveLimited` bayrağı
      * ekranda uyarıya dönüşüyor (app/(tabs)/stats.tsx `scope.archiveLimited`).
      */
-    const src = fs.readFileSync(path.join(KOK, "routes", "leaderboard.cjs"), "utf8");
-    const i = src.indexOf("arsivKisitli = true");
+    /* GÜNCELLENDİ: düşürme kuralı da ortak kapıda (bkz. üstteki not).
+     * Korunan özellik aynı — kısıtlanan istek GÜNCEL SEZONA düşer, boş liste
+     * dönmez; ve uç bunu `archiveLimited` ile bildirir. */
+    const kapi = fs.readFileSync(path.join(KOK, "lib", "sezon-arsiv.cjs"), "utf8");
+    const i = kapi.indexOf("kisitli = true");
     assert.ok(i > 0, "kisitlama bayragi bulunamadi — test bir sey olcmuyor");
-    const govde = src.slice(Math.max(0, i - 400), i + 600);
-    assert.ok(/Season\.seasonKey\(\)/.test(govde), "kisitlanan istek guncel sezona dusmuyor");
+    const govde = kapi.slice(Math.max(0, i - 400), i + 200);
+    assert.ok(/sezon = guncel/.test(govde), "kisitlanan istek guncel sezona dusmuyor");
+
+    const src = fs.readFileSync(path.join(KOK, "routes", "leaderboard.cjs"), "utf8");
+    assert.ok(/archiveLimited: true/.test(src), "uc kisitlamayi istemciye bildirmiyor");
   });
 
   test("İSTEMCİ kısıtlamayı okuyor (yarım düzeltme olmasın)", () => {

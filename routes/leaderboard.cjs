@@ -20,6 +20,9 @@ const { attachCountries, countryOfUser } = require("../lib/user-country.cjs");
 const { normalizeCountry } = require("../lib/countries.cjs");
 const Season = require("../lib/season.cjs");
 const premium = require("../lib/premium.cjs");
+// Arşiv derinliği kapısı TEK KAYNAKTA — kural burada yazılıyken stats/me ve
+// team-ranks uçlarına gelmemişti (bkz. lib/sezon-arsiv.cjs).
+const ArsivKapi = require("../lib/sezon-arsiv.cjs");
 
 async function readJson(file, fb=null){
   try{
@@ -203,27 +206,15 @@ router.get("/", async (req,res)=>{
 
   // Geçersiz sezon anahtarı sessizce güncel sezona düşer — istemci hatası
   // yüzünden boş tablo göstermek, kullanıcıya "kimse yok" demek olurdu.
-  const istenen = String(req.query.season || "").trim();
-  let sezon = Season.isValidKey(istenen) ? istenen : Season.seasonKey();
-
-  // ARŞİV DERİNLİĞİ — premium ayrıcalığı (erişim grubu; LC akışına dokunmaz).
-  // Ücretsiz kullanıcı 1 sezon geriye bakabilir, premium 12. Sınırın ötesi
-  // sessizce güncel sezona düşürülür ve `archiveLimited` ile bildirilir —
-  // boş tablo göstermek "o sezonda kimse yok" gibi görünürdü.
-  let arsivKisitli = false;
-  if (sezon !== Season.seasonKey()) {
-    const uid = String(req.query.userId || req.uid || "").trim();
-    const isPrem = uid ? await premium.isPremium(uid, db) : false;
-    const derinlik = premium.seasonArchiveDepth(isPrem);
-    let k = Season.seasonKey();
-    let bulundu = false;
-    for (let i = 0; i < derinlik; i++) {
-      k = Season.previousKey(k);
-      if (!k) break;
-      if (k === sezon) { bulundu = true; break; }
-    }
-    if (!bulundu) { sezon = Season.seasonKey(); arsivKisitli = true; }
-  }
+  /* Arsiv derinligi kapisi TEK KAYNAKTA: lib/sezon-arsiv.cjs. Kural burada
+   * yaziliyken stats/me ve team-ranks uclarina gelmedi ve ucretsiz kullanici
+   * oradan 6 ay geriye okuyabiliyordu. */
+  const _ark = await ArsivKapi.arsivSezonu(req.query.season, {
+    uid: String(req.query.userId || req.uid || "").trim(),
+    db,
+  });
+  const sezon = _ark.sezon;
+  const arsivKisitli = _ark.kisitli;
   const scopeInfo = (r) => ({
     requested: String(req.query.scope || "global").toLowerCase(),
     applied: r.scope,

@@ -11,6 +11,7 @@ const UsersStore   = require("../lib/users-store.cjs");
 const SeasonTotals = require("../lib/season-totals.cjs");
 const Season       = require("../lib/season.cjs");
 const TakimKatalog = require("../lib/takim-katalog.cjs");
+const ArsivKapi    = require("../lib/sezon-arsiv.cjs");
 
 // ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
 const DATA_DIR         = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
@@ -91,9 +92,13 @@ async function loadUserStatsCore(req, userId) {
      * kuralı uygular (geçiş toleransı + mükerrer birleştirme + yuvarlama),
      * yoksa profil ile sıralama farklı sayı gösterirdi.
      */
-    const istenenSezon = Season.isValidKey(String(req.query.season || "").trim())
-      ? String(req.query.season).trim()
-      : Season.seasonKey();
+    /* ⚠️ ARSIV DERINLIGI PREMIUM AYRICALIGI. Bu ucta ?season= destegini
+     * eklerken kapiyi TASIMAMISTIM: ucretsiz kullanici 6 ay geriye
+     * okuyabiliyordu (leaderboard 1 sezonla sinirliyor). Kural artik tek
+     * kaynakta — bkz. lib/sezon-arsiv.cjs */
+    const _ark = await ArsivKapi.arsivSezonu(req.query.season, { uid, db });
+    const istenenSezon = _ark.sezon;
+    const arsivKisitli = _ark.kisitli;
     const seasonDoc = await SeasonTotals.kullaniciToplami(db, uidLower, istenenSezon);
 
     const season = seasonDoc
@@ -173,7 +178,7 @@ async function loadUserStatsCore(req, userId) {
        * bir değer geldiğinde çekirdek güncel sezona düşer, takım bloğu ham
        * değeri kullanır ve iki blok yine ayrışırdı — düzelttiğim kusurun
        * aynısı, başka yoldan. */
-      season: { ...season, key: istenenSezon },
+      season: { ...season, key: istenenSezon, kisitli: arsivKisitli },
       recentMatches,
       wallet,
       walletLedger,
@@ -479,6 +484,7 @@ router.get("/me", verifyToken, async (req, res) => {
       season: season.key || null,
       seasonLabel: season.key ? Season.label(season.key) : null,
       isCurrentSeason: (season.key || null) === Season.seasonKey(),
+      ...(season.kisitli ? { archiveLimited: true } : {}),
       form,
       wallet: core.wallet || null,
       walletLedger: core.walletLedger || [],
@@ -621,12 +627,19 @@ async function takimSiralamasi(db, hamAd, sezonIstek) {
   return { team, canonical: !!kanonik, items, updatedAt, season: sezon };
 }
 
-router.get("/team-ranks", async (req, res) => {
+router.get("/team-ranks", optionalToken, async (req, res) => {
   try {
     const ham = String(req.query.team || "").trim();
     if (!ham) return res.status(400).json({ ok: false, error: "TEAM_REQUIRED" });
 
-    const r = await takimSiralamasi(req.app.locals.db, ham, req.query.season);
+    /* ⚠️ ARSIV DERINLIGI KAPISI — bu ucta HIC YOKTU (leaderboard 1 sezonla
+     * sinirlarken buradan 6 ay geriye okunabiliyordu). Kimlik yoksa ucretsiz
+     * kademe uygulanir; bkz. lib/sezon-arsiv.cjs */
+    const _ark = await ArsivKapi.arsivSezonu(req.query.season, {
+      uid: String(req.query.userId || req.uid || "").trim(),
+      db: req.app.locals.db,
+    });
+    const r = await takimSiralamasi(req.app.locals.db, ham, _ark.sezon);
     /* Sezon etiketi diger uclarla ayni sozlesme (leaderboard, rt/totals,
      * stats/me): ekran hangi sezona baktigini yazabilsin. */
     return res.json({
@@ -634,6 +647,7 @@ router.get("/team-ranks", async (req, res) => {
       ...r,
       seasonLabel: r.season ? Season.label(r.season) : null,
       isCurrentSeason: r.season === Season.seasonKey(),
+      ...(_ark.kisitli ? { archiveLimited: true } : {}),
     });
   } catch (e) {
     console.error("TEAM_RANKS_ERR", e);
