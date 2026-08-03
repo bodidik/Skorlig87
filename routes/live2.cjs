@@ -181,7 +181,7 @@ async function readJson(file, fb) {
  * gösteriyordu — ölçüldü: 662 okumanın 81'i JSON.parse ile patladı ve her
  * okuyucu hatayı yutup varsayılana düşüyor, yani kota SIFIR görünüyor.
  */
-const { writeJsonAtomic } = require("../lib/fileLock.cjs");
+const { writeJsonAtomic, withFileLock } = require("../lib/fileLock.cjs");
 async function writeJson(file, data) {
   return writeJsonAtomic(file, data);
 }
@@ -456,7 +456,29 @@ function quotaRatio(q) {
   return used / daily;
 }
 
+/**
+ * ⚠️ ATOMİK YAZMA KAYIP ARTIŞI ÖNLEMEZ — KİLİT AYRI BİR SORUN.
+ *
+ * Bu fonksiyon oku → değiştir → yaz yapıyor. Atomik yazma yalnızca YARIM JSON
+ * okunmasını engelliyor; iki çağrı aynı anda okursa ikisi de ESKİ değeri görür
+ * ve ikincisi birincinin değişikliğini ezer.
+ *
+ * ÖLÇÜLDÜ (2026-08-03, aynı desenin gerçek rotası olan POST /api/provider/mark
+ * üzerinde, izole veri dizini): 40 eşzamanlı istek → dosyada `used: 1`.
+ * 39 artış KAYIP, hepsi HTTP 200, tek hata yok.
+ *
+ * ⚠️ AYNI SAVUNMA KOMŞUSUNDA VARDI: `services/af-sync.cjs` bu ölçümü yapıp
+ * kendi bump'ını kilitlemiş; aynı dosyaya yazan bu kopyalar atlanmıştı.
+ * Kilit anahtarı dosya YOLU, yani hepsi AYNI sıraya girer.
+ *
+ * ⚠️ `withFileLock` YENİDEN GİRİLEBİLİR DEĞİL — gövde yalnızca loadProv ve
+ * saveProv çağırıyor, ikisi de kilit almaz.
+ */
 async function bumpProv(name, ok = true, ms = 0) {
+  return withFileLock(PROV_FILE, () => _bumpProv(name, ok, ms));
+}
+
+async function _bumpProv(name, ok = true, ms = 0) {
   const m = await loadProv();
   const key = String(name || "").toUpperCase();
 
@@ -494,6 +516,10 @@ async function getTeamPref(team) {
 }
 
 async function setTeamPref(team, provider) {
+  return withFileLock(PROV_FILE, () => _setTeamPref(team, provider));
+}
+
+async function _setTeamPref(team, provider) {
   const m = await loadProv();
   const k = teamKeyUpper(team);
   const p = String(provider || "").toUpperCase();

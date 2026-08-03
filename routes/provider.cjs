@@ -31,10 +31,38 @@ async function readJson(file, fb) {
  * gösteriyordu — ölçüldü: 662 okumanın 81'i JSON.parse ile patladı ve her
  * okuyucu hatayı yutup varsayılana düşüyor, yani kota SIFIR görünüyor.
  */
-const { writeJsonAtomic } = require("../lib/fileLock.cjs");
+const { writeJsonAtomic, withFileLock } = require("../lib/fileLock.cjs");
 async function writeJson(file, data) {
   return writeJsonAtomic(file, data);
 }
+
+/**
+ * ⚠️ ATOMİK YAZMA KAYIP ARTIŞI ÖNLEMEZ — KİLİT AYRI BİR SORUN.
+ *
+ * Bu dosyadaki yazan uçların hepsi `loadModel()` → değiştir → `writeJson()`
+ * yapıyor. Atomik yazma yalnızca YARIM JSON okunmasını engelliyor; iki istek
+ * aynı anda okursa ikisi de ESKİ sayacı görür ve ikincisi birincinin artışını
+ * ezer.
+ *
+ * ÖLÇÜLDÜ (2026-08-03, GERÇEK rota, izole veri dizini):
+ *     40 eşzamanlı POST /api/provider/mark?name=TSDB
+ *     → hepsi HTTP 200, dosyada `used: 1`. 39 artış KAYIP, tek hata yok.
+ *
+ * ⚠️ SAYAÇ TAM KORUMASIZ OLDUĞU ANDA "HER ŞEY YOLUNDA" DİYOR: kota dolmuş
+ * olsa bile `used` düşük göründüğü için sağlayıcıya istek atılmaya devam eder.
+ *
+ * ⚠️ AYNI SAVUNMA KOMŞUSUNDA VARDI: `services/af-sync.cjs` tam bu ölçümü
+ * (40 istek → 1) yapıp kendi bump'ını `withFileLock` ile sarmış; aynı dosyaya
+ * yazan bu uçlar atlanmıştı. `lib/providers.cjs` de kilitli — ama onu KİMSE
+ * require etmiyor, yani koruma fiilen kullanılmayan modülde duruyordu.
+ *
+ * Kilit anahtarı dosya YOLU: af-sync ve lib/providers ile AYNI sıraya girer.
+ *
+ * ⚠️ `withFileLock` YENİDEN GİRİLEBİLİR DEĞİL — kilidin içinden kilit alan
+ * çağrı sonsuza kadar bekler. Sarılan gövdeler yalnızca loadModel/writeJson
+ * çağırıyor; ikisi de kilit almaz.
+ */
+const kilitli = (fn) => (req, res) => withFileLock(FILE_PATH, () => fn(req, res));
 
 // ----------------- MODEL -----------------
 
@@ -202,7 +230,7 @@ router.get("/diag", async (req, res) => {
 
 // ⚠️ requireAdmin EKLENDİ (kimliksizdi). Yetki denetimim kaçırmıştı:
 // kalıbım parantezli ara katmanlarda eşleşmiyordu.
-router.post("/mark", requireAdmin, express.json(), async (req, res) => {
+router.post("/mark", requireAdmin, express.json(), kilitli(async (req, res) => {
   try {
     const name = String(
       req.query.name || req.body?.name || ""
@@ -252,10 +280,10 @@ router.post("/mark", requireAdmin, express.json(), async (req, res) => {
       detail: String(e && (e.message || e)),
     });
   }
-});
+}));
 
 // ⚠️ Sağlayıcı durumunu sıfırlar (veri kaynağı davranışını değiştirir).
-router.post("/reset", requireAdmin, async (req, res) => {
+router.post("/reset", requireAdmin, kilitli(async (req, res) => {
   try {
     const name = String(req.query.name || "").toUpperCase();
     let m = await loadModel();
@@ -300,7 +328,7 @@ router.post("/reset", requireAdmin, async (req, res) => {
       detail: String(e && (e.message || e)),
     });
   }
-});
+}));
 
 router.get("/next", async (req, res) => {
   try {
@@ -379,7 +407,7 @@ router.get("/team-primary", requireAdmin, async (req, res) => {
 
 // ⚠️ requireAdmin EKLENDİ (kimliksizdi). Yetki denetimim kaçırmıştı:
 // kalıbım parantezli ara katmanlarda eşleşmiyordu.
-router.post("/team-primary", requireAdmin, express.json(), async (req, res) => {
+router.post("/team-primary", requireAdmin, express.json(), kilitli(async (req, res) => {
   try {
     const teamRaw = String(req.body?.team || "");
     const providerRaw = String(
@@ -421,7 +449,7 @@ router.post("/team-primary", requireAdmin, express.json(), async (req, res) => {
       detail: String(e && (e.message || e)),
     });
   }
-});
+}));
 
 /* ⚠️ POST'u korunuyordu, GET korumasızdı. İstemci bu ucu çağırmıyor;
  * içerik dis API kota durumu — isletim istihbarati.
@@ -441,7 +469,7 @@ router.get("/warn", requireAdmin, async (req, res) => {
 
 // ⚠️ requireAdmin EKLENDİ (kimliksizdi). Yetki denetimim kaçırmıştı:
 // kalıbım parantezli ara katmanlarda eşleşmiyordu.
-router.post("/warn", requireAdmin, express.json(), async (req, res) => {
+router.post("/warn", requireAdmin, express.json(), kilitli(async (req, res) => {
   try {
     const name = String(
       req.body?.name || ""
@@ -480,7 +508,7 @@ router.post("/warn", requireAdmin, express.json(), async (req, res) => {
       detail: String(e && (e.message || e)),
     });
   }
-});
+}));
 
 router.get("/auto-primary", async (req, res) => {
   try {
@@ -500,7 +528,7 @@ router.post(
   "/auto-primary",
   requireAdmin,
   express.json(),
-  async (req, res) => {
+  kilitli(async (req, res) => {
     try {
       const enabled = !!req.body?.enabled;
       const m = await loadModel();
@@ -516,7 +544,7 @@ router.post(
         detail: String(e && (e.message || e)),
       });
     }
-  }
+  })
 );
 
 module.exports = router;
