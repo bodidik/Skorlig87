@@ -103,6 +103,12 @@ describe("parseMinute", () => {
     }
     if (!canli) return t.skip("su an canli mac yok");
     assert.equal(sacma, 0, "gecersiz dakika uretildi");
+    /* ⚠️ KÜÇÜK ÖRNEKLEMDE İDDİA ATILIR. Devre arasindaki macin null cozmesi
+     * DOGRU (yukaridaki not); gece tek canli mac varsa ve o da devre
+     * arasindaysa cozulen=0 olur ve test bicim degisikligi OLMADIGI halde
+     * kirilir — 2026-08-03 sabahi tam boyle oldu (1 canli, İY). Bicim
+     * degisikligini yakalamak icin anlamli orneklem gerekir. */
+    if (canli < 3) return t.skip(`yalnizca ${canli} canli mac — orneklem kucuk, bicim iddiasi atlandi`);
     assert.ok(cozulen > 0, `${canli} canli macin hicbirinde dakika cozulemedi — bicim degismis olabilir`);
   });
 });
