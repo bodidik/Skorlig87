@@ -642,6 +642,31 @@ router.post("/duels/create", verifyToken, async (req, res) => {
       return res.status(400).json({ ok: false, error: "CANNOT_CHALLENGE_YOURSELF" });
     }
 
+    /* ⚠️ ENGEL DENETİMİ — BU UÇTA HİÇ YOKTU.
+     *
+     * ÖLÇÜLDÜ (gerçek rotalar, izole veritabanı):
+     *     KURBAN, TACIZCI'yi engelliyor        → 200 blocked:true
+     *     TACIZCI, KURBAN'a ÖZEL düello açıyor → 200 OLUŞTU
+     *     KURBAN'ın arenası                    → düello GÖRÜNÜYOR (creatorName ile)
+     *     KURBAN'a push                        → "⚔️ Sana meydan okundu"
+     * Yani engellenen kişi, engelleyene bildirim gönderebiliyordu — engelin
+     * önlemek için var olduğu şeyin ta kendisi.
+     *
+     * ⚠️ AYNI SINIF EYLEM KOMŞUSUNDA KORUNUYORDU: `routes/mini.cjs` turnuvaya
+     * kişi davetinde engeli İKİ YÖNDE de sınıyor (areFriends). Düello daveti
+     * o kapıyı hiç almamıştı. Kural artık tek kaynakta:
+     * `SocialStore.engelliMi` — üçüncü bir yüzey eklenince yeniden yazılmasın.
+     *
+     * ⚠️ ÜCRET DÜŞÜLMEDEN ÖNCE: aşağıda `deductLc` var; kapıyı ondan sonra
+     * koysaydık reddedilen düello yine de para götürürdü (maç dengesi kapısı
+     * da tam bu sebeple burada duruyor).
+     *
+     * ⚠️ SEBEP AYRIŞTIRILMIYOR: yanıt hangi yönde engel olduğunu söylemiyor.
+     * "O seni engelledi" demek, engelin varlığını sızdırırdı. */
+    if (targetId && await SocialStore.engelliMi(creatorId, targetId, db)) {
+      return res.status(403).json({ ok: false, error: "BLOCKED" });
+    }
+
     // 🔒 Maç başladıysa düello kurulamaz
     const lock = await isFixtureLocked(fx, db);
     if (lock.locked) {

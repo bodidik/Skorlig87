@@ -617,12 +617,10 @@ async function areFriends(u1, u2) {
   const a = String(u1).toLowerCase();
   const b = String(u2).toLowerCase();
 
-  const blocked = (m.blocks || []).some((x) => {
-    const by = String(x.by || "").toLowerCase();
-    const tg = String(x.target || "").toLowerCase();
-    return (by === a && tg === b) || (by === b && tg === a);
-  });
-  if (blocked) return false;
+  /* Engel kuralı TEK KAYNAKTA (SocialStore.engelliMi). Buradaki kopya
+   * doğruydu ama düello daveti bu kapıyı hiç almamıştı — kural ortaklaştı ki
+   * yeni bir yüzey eklenince yeniden yazılmasın. bkz. lib/social-store.cjs */
+  if (await SocialStore.engelliMi(a, b, null)) return false;
 
   return (m.links || []).some((l) => {
     const la = String(l.a || "").toLowerCase();
