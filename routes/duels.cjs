@@ -762,14 +762,17 @@ router.post("/duels/create", verifyToken, async (req, res) => {
       createdAt: nowISO, acceptedAt: null, settledAt: null,
     };
 
-    await withFileLock(DUELS_FILE, async () => {
-      const list = await loadDuels(db);
-      list.push(duel);
-      await saveDuels(list, db);
-    });
-
-    if (db) {
-      try { await db.collection("duels").insertOne(duel); } catch (e) { console.error("[duels] mongo create:", e); }
+    try {
+      await withFileLock(DUELS_FILE, async () => {
+        const list = await loadDuels(db);
+        list.push(duel);
+        await saveDuels(list, db);
+      });
+    } catch (saveErr) {
+      console.error("[duels] duello kaydedilemedi, LC iade ediliyor:", saveErr?.message || saveErr);
+      const iade = await creditLc(db, creatorId, s, "duel_create_rollback");
+      if (!iade?.ok) console.error("[duels] rollback iadesi basarisiz:", creatorId, s);
+      return res.status(500).json({ ok: false, error: "SAVE_FAILED" });
     }
 
     // Hedefi olan düello → meydan okunana haber ver. Açık düelloda alıcı yok.
