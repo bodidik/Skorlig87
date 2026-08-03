@@ -110,10 +110,10 @@ const BILINEN = new Set([
   // realtime kazanıyor; rt-extra kopyası aynı işi yapıyor, ikisi de korumalı.
   "GET /api/rt/my",
   "GET /api/rt/score",
-  // totals-read kazanıyor (Mongo, `items` dizisi). totals.cjs kopyası dosya
-  // tabanlı ve BAŞKA şekil dönüyor; istemci `items` okuyor, yani kazanana
-  // uyumlu. Gölgedeki ölü.
-  "GET /api/rt/totals",
+  // ÇÖZÜLDÜ (2026-08-03): "GET /api/rt/totals" buradaydı — totals.cjs'teki
+  // gölgede kalan kopya kaldırıldı. Ölü olduğu ölçülmüştü, ama asıl zarar
+  // dosyanın sunucunun ASLA döndürmediği bir yanıt şeklini (last10,
+  // avgPerMatch) belgelemesiydi. bkz. tests/rt-totals-board.mongo.test.cjs
   // users.cjs kazanıyor. groups.cjs /api/users/groups'a da monte olduğu için
   // çakışıyor; create/join/opt SocialStore'a devredildi, board'da ayrışma yok.
   "GET /api/users/groups/:code/board",
