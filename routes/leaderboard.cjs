@@ -373,14 +373,33 @@ router.get("/", async (req,res)=>{
  * Ülke sekmesi için: hangi ülkelerde kaç yarışmacı var.
  * Boş ülkeyi listelemeyiz — kullanıcı tıklayıp kendinden başka kimse
  * olmadığını görmesin.
+ *
+ * Sorgu: ?humans=1 → botları saymaz (yukarıdaki `/` ile aynı anlam).
+ *
+ * ⚠️ BULUNAN KUSUR (2026-08-03): bu uç YALNIZCA totals.json'a bakıyordu,
+ * oysa AYNI DOSYADAKİ `/` ucu Mongo öncelikli. `totals.json` git'te izlenmiyor
+ * (bkz. .gitignore `data/*`) ve Render'ın diski geçici — yani her deploy'dan
+ * sonra ilk sonuçlanma yazana kadar dosya YOK.
+ *
+ * ÖLÇÜLDÜ (gerçek rota, veri dizini Render'daki gibi yalnızca git dosyalarıyla,
+ * üretim Mongo'suna karşı):
+ *     GET /api/leaderboard            → havuz 1758   (mongo_season_totals)
+ *     GET /api/leaderboard?country=…  → havuz  200
+ *     GET /api/leaderboard/countries  → 0 ÜLKE       ← sekme bomboş
+ * Hata yok, log yok: ülke sekmesi sessizce boş, tablonun kendisinde 200 kişi.
+ *
+ * ⚠️ BEŞİNCİ TEKRAR. `lib/season-totals.cjs` tam bu yüzden yazılmış ve başlığı
+ * "aynı hatanın dördüncü kez tekrarlanmaması için okuma buraya toplandı" diyor;
+ * leaderboard/groups/friends taşınmış, AYNI DOSYADAKİ bu uç atlanmış.
  */
 router.get("/countries", async (req, res) => {
   try {
-    const totals = await readJson(TOTALS_FILE, null);
-    let raw = [];
-    if (totals && Array.isArray(totals.items)) {
-      raw = totals.items.map(t => ({ userId: t.userId }));
-    } else {
+    // Mongo öncelikli, dosya yedekli — tek okuma yeri.
+    const { items } = await SeasonTotals.loadTotals(req.app?.locals?.db || null);
+    let raw = (Array.isArray(items) ? items : []).map(t => ({ userId: t.userId }));
+
+    if (!raw.length) {
+      // Eski davranış: ne Mongo ne totals.json varsa maç kayıtlarından türet.
       const lb = await readJson(LEADERBOARD_FILE, { items: [] });
       const seen = new Set();
       for (const it of (Array.isArray(lb.items) ? lb.items : [])) {
@@ -390,16 +409,25 @@ router.get("/countries", async (req, res) => {
     }
 
     const withCountry = await attachCountries(raw, req.app?.locals?.db || null);
+
+    /* ?humans=1 sekmede de geçerli olmalı: `/` botları çıkarabiliyorken sekme
+     * çıkaramazsa "Türkiye 200" yazıp tıklayınca 3 kişi çıkar — aynı ekranda
+     * iki farklı sayı. */
+    const humansOnly = String(req.query.humans || "") === "1";
+    const sayilacak = humansOnly
+      ? withCountry.filter((r) => !BOT_PROFILE_MAP.has(String(r.userId || "").toLowerCase()))
+      : withCountry;
+
     const counts = new Map();
-    for (const r of withCountry) {
+    for (const r of sayilacak) {
       if (!r.country) continue;
       counts.set(r.country, (counts.get(r.country) || 0) + 1);
     }
 
-    const items = Array.from(counts, ([country, players]) => ({ country, players }))
+    const satirlar = Array.from(counts, ([country, players]) => ({ country, players }))
       .sort((a, b) => b.players - a.players || a.country.localeCompare(b.country));
 
-    res.json({ ok: true, count: items.length, items });
+    res.json({ ok: true, count: satirlar.length, items: satirlar, humansOnly });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
