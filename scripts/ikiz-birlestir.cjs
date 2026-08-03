@@ -38,7 +38,7 @@ require("dotenv").config({ path: require("path").join(__dirname, "..", ".env"), 
 
 const path = require("path");
 const fs = require("fs");
-const { ikizMi, _ad } = require("../lib/fikstur-ikiz.cjs");
+const { ikizMi, _ad, _ulkeAnahtari } = require("../lib/fikstur-ikiz.cjs");
 const FixturesStore = require("../lib/fixtures-store.cjs");
 const { getDb, close } = require("../lib/mongo.cjs");
 const { MAC_GIRIS_BEDELI } = require("../lib/ekonomi.cjs");
@@ -58,7 +58,11 @@ async function main() {
   const kova = new Map();
   for (const f of list) {
     if (!f || f.fixtureId == null) continue;
-    const k = `${String(f.kickoffISO || "").slice(0, 16)}|${_ad(f.country)}`;
+    /* ⚠️ KOVA ANAHTARI MODULDEN. Burada `_ad(f.country)` yazıyordu, yani
+     * modülün kanonik kuralının ESKİ kopyası; ülke iki yazımla duran maçlar
+     * farklı kovaya düşüyor ve betik onları hiç görmüyordu (ölçüldü: 5 çift).
+     * Kural kopyalanınca ayrışır — tek kaynaktan alınıyor. */
+    const k = `${String(f.kickoffISO || "").slice(0, 16)}|${_ulkeAnahtari(f.country)}`;
     if (!kova.has(k)) kova.set(k, []);
     kova.get(k).push(f);
   }

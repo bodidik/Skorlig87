@@ -124,6 +124,27 @@ describe("ikiz tespiti — ülke yazımı", () => {
     assert.ok(/ulkeAnahtari\(/.test(src), "kanonik yardimci hic kullanilmiyor");
   });
 
+  test("NÖBETÇİ: bakım betiği kuralı KOPYALAMIYOR, modülden alıyor", () => {
+    /**
+     * ⚠️ DÜZELTMEYİ TEK BAŞINA YAPMAK YETMEDİ. `scripts/ikiz-birlestir.cjs`
+     * kendi kovalamasını yazıyor ve ham ülke kullanıyordu; modül düzeldikten
+     * SONRA bile 5 çifti göremedi. Kuru koşuda ölçüldü: kanonik anahtara
+     * geçince gördüğü çift 63 → 68, birleştirilebilir 0 → 2.
+     *
+     * Kural kopyalanınca ayrışır — bu üründe defalarca yaşandı.
+     */
+    const p = path.join(KOK, "scripts", "ikiz-birlestir.cjs");
+    if (!fs.existsSync(p)) return; // betik yoksa iddia atlanır
+    const src = fs.readFileSync(p, "utf8")
+      .split(/\r?\n/)
+      .filter((l) => { const t = l.trim(); return !t.startsWith("*") && !t.startsWith("//") && !t.startsWith("/*"); })
+      .join("\n");
+    assert.ok(!/\$\{_ad\(f\.country\)\}/.test(src),
+      "betik kova anahtarinda ham _ad(f.country) kullaniyor — modulun kanonik kuralindan ayrisir");
+    assert.ok(/_ulkeAnahtari/.test(src),
+      "betik modulun kanonik anahtarini kullanmiyor");
+  });
+
   test("countries.cjs yoksa ÇÖKMEZ, ham ada düşer", () => {
     /* ⚠️ Fikstür yazımı kritik yol: kanonik tablo yüklenemezse ikiz
      * ayıklaması çökmemeli, en kötü ihtimalle ESKİ davranışa dönmeli. */
