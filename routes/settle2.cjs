@@ -1120,9 +1120,38 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
       pts += detail.exact;
     }
 
-    // 3) İlk gol: doğru = +1 × maç zorluğu, yanlış = -0.2 × maç zorluğu
-    if (p.firstGoal) {
-      const ok = String(p.firstGoal).toUpperCase() === String(fg || "");
+    /* 3) İlk gol: doğru = +1 × maç zorluğu, yanlış = -0.2 × maç zorluğu
+     *
+     * ⚠️ VERİ YOKSA PUANLANMAZ — BU BAHİS KAZANILAMIYORDU.
+     *
+     * Eski kod veri olup olmadığına BAKMIYORDU: `fg` null iken karşılaştırma
+     * `"H" === ""` olup daima yanlış çıkıyor ve oyuncu cezayı yiyordu.
+     *
+     * ÖLÇÜLDÜ (üretim, 1356 uzlaşmış maçın puan detayları):
+     *     ilk gol kalemi yazılan tahmin : 14518
+     *     ödül alan (>0)                :     0   ← tek bir tane bile yok
+     *     ceza alan (<0)                : 14518 (%100)
+     *     toplam kaybedilen puan        : -2891.6
+     * Yani beceriyle kazanılması İMKÂNSIZ bir bahisti; girmek her zaman
+     * saf kayıptı. Karşılaştırma için aynı ölçümde `firstHalf` %34.6,
+     * `outcome` %39.6, `exact` %8.0 ödül alıyor.
+     *
+     * SEBEP ZİNCİRİ: `st.firstGoal`ü YALNIZCA `services/af-sync.cjs`
+     * dolduruyor (API-Football events), o kaynak ise askıda. Üstelik tahmin
+     * ekranı bahsi teklif etmeye ve "kazanabileceğin puanı" göstermeye devam
+     * ediyor (mobile app/(tabs)/predict.tsx).
+     *
+     * ⚠️ AYNI SAVUNMA HEMEN ALTINDA VARDI: ilk yarı kalemi `hasHT` ile
+     * korunuyor — veri yoksa hiç puanlanmıyor. İlk gol o korumayı almamıştı;
+     * bu deponun tekrar eden biçimi: savunma bir kalemde var, komşusunda yok.
+     *
+     * ⚠️ 0-0 BİTEN MAÇ DA BURAYA DÜŞER (fg null) ve puanlanmaz. Bilinçli:
+     * "veri gelmedi" ile "gol olmadı" ayırt EDİLEMİYOR, ve golsüz maçta
+     * kimsenin bilemeyeceği bir olayı cezalandırmak yanlış taraf.
+     */
+    const hasFG = !!fg;
+    if (hasFG && p.firstGoal) {
+      const ok = String(p.firstGoal).toUpperCase() === String(fg);
       detail.firstGoal = ok
         ? Math.round(1 * matchDifficulty * 10) / 10
         : -Math.round(0.2 * matchDifficulty * 10) / 10;
