@@ -105,6 +105,31 @@ async function claimKeys(keys) {
   });
 }
 
+/**
+ * Snapshot satırı bota mı ait?
+ *
+ * ⚠️ İKİ KAYNAK, SIRAYLA — ve MODÜL DÜZEYİNDE TEK TANIM.
+ *
+ * 1) Satırın kendisi (`row.isBot`) — settle2 yazıyor, yeni snapshot'lar
+ *    kendine yeter.
+ * 2) `lib/botIds.cjs` yedeği — eski snapshot'lar için. Tek başına
+ *    GÜVENİLMEZ: bot kimliğini `data/bot-profiles.json`dan okuyor ve
+ *    Render'da disk kalıcı değil; dosya kaybolursa herkese "insan" der.
+ *    Bu yüzden satırdaki bilgi her zaman ÖNCE gelir.
+ *
+ * Yedek tümden çökerse davranış BUGÜNKÜNE döner (bot da sayılır), daha
+ * kötüye gitmez.
+ */
+let _isBotYedek = null;
+function botMu(row) {
+  if (typeof row?.isBot === "boolean") return row.isBot;
+  if (_isBotYedek === null) {
+    try { _isBotYedek = require("../lib/botIds.cjs").isBot; }
+    catch { _isBotYedek = () => false; }
+  }
+  return _isBotYedek(row?.userId);
+}
+
 function fmtMatch(f) {
   const h = f.home || f.homeTeam || "Ev";
   const a = f.away || f.awayTeam || "Deplasman";
@@ -169,8 +194,38 @@ async function runResultNotices() {
   for (const s of settled) {
     if (!claimed.has(`result:${s.fixtureId}`)) continue;
 
+    /**
+     * ⚠️ SIRA VE TOPLAM YALNIZCA İNSANLAR ÜZERİNDEN — BOTLAR SAYILMAZ.
+     *
+     * ÖLÇÜLDÜ (2026-08-03, 400 uzlaşmış snapshot): 2483 satırın 2477'si
+     * bot. Karışık üç maçta tek gerçek oyuncuya KİLİT EKRANINDA şunlar
+     * bildirilmişti:
+     *
+     *     bildirilen "17. / 40"   gerçek "1. / 1"
+     *     bildirilen  "7. / 40"   gerçek "1. / 1"
+     *     bildirilen "11. / 40"   gerçek "1. / 1"
+     *
+     * Yani oyuncu her seferinde insanlar arasında BİRİNCİYKEN kendisine
+     * ortalarda bir yer söylenmişti. Botlar maç doldurmak için var,
+     * sıralamada rakip olmak için değil.
+     *
+     * ⚠️ AYNI KUSUR SIRALAMA EKRANINDA ZATEN DÜZELTİLMİŞTİ (`humansOnly`
+     * süzgeci, "1672 bot 1 gerçek oyuncu... bu kadar demoralize edici bir
+     * açılış az"). PUSH yolu geçirilmemişti — ve push daha kötüsü:
+     * kullanıcı istemeden, kilit ekranında görüyor. Savunma bir yerde var,
+     * öbüründe yok: bu oturumun en sık tekrarlayan kusur biçimi.
+     *
+     * ⚠️ İKİ KAYNAK, SIRAYLA. Yeni snapshot'lar satırda `isBot` taşıyor
+     * (settle2 yazıyor). Eski snapshot'lar taşımıyor; onlar için
+     * `lib/botIds.cjs` yedeği var — ama o modül dosyadan okuduğu ve
+     * Render'da disk kalıcı olmadığı için tek başına güvenilmez. Yedek
+     * çökerse davranış BUGÜNKÜNE döner, daha kötüye gitmez.
+     */
+    const insanlar = s.rows.filter((r) => !botMu(r));
+    if (!insanlar.length) continue; // yalnızca bot oynamış — bildirilecek kimse yok
+
     // En yüksek puandan sıralayıp herkese kendi sırasını bildir
-    const ranked = [...s.rows].sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
+    const ranked = [...insanlar].sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
     const total  = ranked.length;
     /**
      * ⚠️ ADSIZ BİLDİRİM GÖNDERME — ÇÖP PUSH, PUSH'U TÜMDEN KAPATTIRIR.

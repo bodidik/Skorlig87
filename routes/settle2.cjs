@@ -1219,6 +1219,19 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
       fixtureId: fid,
       userId: String(u),
       points: Number.isFinite(weightedPoints) ? weightedPoints : 0,
+      /**
+       * ⚠️ SNAPSHOT KENDİNİ ANLATMALI — BOT/İNSAN AYRIMI SATIRDA.
+       *
+       * Bu satırlar sonuç PUSH bildiriminde "N kişi arasında R. sıradasın"
+       * için sıralanıyor ve ayrım taşımadığı için N botları da sayıyordu.
+       * Ölçüldü (400 uzlaşmış snapshot): 2483 satırın 2477'si bot.
+       *
+       * Bot kimliğini sonradan `lib/botIds.cjs`ten çözmek kırılgan: o modül
+       * `data/bot-profiles.json` okuyor ve Render'da disk kalıcı değil.
+       * Tahmin kaydında `isBot` zaten var; yazılan yere de koyuyoruz ki
+       * okuyanın ikinci bir kaynağa ihtiyacı olmasın.
+       */
+      isBot: !!p.isBot,
       detail,
     });
   }
