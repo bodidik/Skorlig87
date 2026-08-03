@@ -607,7 +607,7 @@ async function takimSiralamasi(db, hamAd, sezonIstek) {
         if (t && (!updatedAt || t > updatedAt)) updatedAt = t;
       }
     } else {
-      const map = await SeasonTotals.totalsMap();
+      const map = await SeasonTotals.totalsMap(null, sezon);
       for (const id of idler) {
         const d = map?.[id] || map?.[id.toLowerCase()];
         if (!d) continue;
