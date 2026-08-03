@@ -139,6 +139,73 @@ describe("ülke adı yerelleştirme", () => {
     assert.ok(/ulkeAdi\(c\)/.test(src), "ulke cipi ulkeAdi()'nden gecmiyor");
   });
 
+  test("ADIM 3b — ülke adı basan DİĞER ekranlar da ulkeAdi()'nden geçiyor", () => {
+    /**
+     * ⚠️ SINIF TARAMASI, TEKİL DÜZELTME DEĞİL. Aynı ham-gösterim livescores
+     * dışında sekiz yerde daha vardı (lig grubu başlığı, sıralama kapsam
+     * çipi, profil rozeti, 1987 kartı, kupon başlığı, iki ülke seçici...).
+     * Yalnızca birini düzeltmek bu ürünün en sık tekrarlayan hatası.
+     */
+    if (!fs.existsSync(MOBIL)) return;
+    const hedefler = [
+      ["components/GroupHeader.tsx", /ulkeAdi\(country\)/],
+      ["app/(tabs)/stats.tsx", /ulkeAdi\(myCountry\)/],
+      ["app/(tabs)/live.tsx", /ulkeAdi\(league\.country\)/],
+      ["app/profile/[userId].tsx", /ulkeAdi\(profile\.country\)/],
+      ["components/Picks1987.tsx", /ulkeAdi\(pick\.country\)/],
+      ["app/kupon.tsx", /ulkeAdi\(k\.ulke\)/],
+      ["app/index.tsx", /ulkeAdi\(c\.country\)/],
+      ["components/CountryBackfillPrompt.tsx", /ulkeAdi\(c\.country\)/],
+    ];
+    const eksik = [];
+    for (const [rel, desen] of hedefler) {
+      const p = path.join(MOBIL, rel);
+      if (!fs.existsSync(p)) continue;
+      const src = fs.readFileSync(p, "utf8");
+      if (!desen.test(src)) eksik.push(rel);
+    }
+    assert.deepEqual(eksik, [],
+      "ulke adini HAM basan ekran(lar): " + eksik.join(", "));
+  });
+
+  test("SEÇİCİ TUZAĞI: süzgeç de yerelleştirilmiş adda arıyor", () => {
+    /**
+     * ⚠️ EN SİNSİ KIRILMA BURADA OLURDU. Gösterimi yerelleştirip süzgeci
+     * ham adda bırakmak, kullanıcının EKRANDA OKUDUĞU adı yazınca "eşleşen
+     * ülke yok" görmesi demek. countrySort.ts'in kendi notu aynı sınıfı
+     * zaten bir kez yaşamış: Türk kullanıcı "tur" yazınca kendi ülkesini
+     * bulamıyordu.
+     *
+     * İki seçici de süzgeci `ulkeAdi(...)` üstünden kurmalı.
+     */
+    if (!fs.existsSync(MOBIL)) return;
+    const onb = fs.readFileSync(path.join(MOBIL, "app", "index.tsx"), "utf8");
+    assert.ok(/filterAndRankCountries\([\s\S]{0,200}ulkeAdi\(/.test(onb),
+      "onboarding suzgeci ham adda ariyor — kullanici gordugu adi yazinca sonuc alamaz");
+
+    const bf = fs.readFileSync(path.join(MOBIL, "components", "CountryBackfillPrompt.tsx"), "utf8");
+    const i = bf.indexOf("const filtered");
+    assert.ok(i > 0, "backfill suzgeci bulunamadi — test bir sey olcmuyor");
+    assert.ok(/ulkeAdi\(/.test(bf.slice(i, i + 400)),
+      "backfill suzgeci ham adda ariyor");
+  });
+
+  test("SEÇİM DEĞERİ HAM KALIR (sunucuya yerelleştirilmiş ad yazılmaz)", () => {
+    /**
+     * ⚠️ TERS RİSK — ASIL TEHLİKE BU. Gösterimi yerelleştirirken seçilen
+     * DEĞERİ de yerelleştirseydik sunucuya "Turquía" gibi bir ad yazılırdı;
+     * `canonicalCountry` onu tanımaz ve kullanıcı ülkesiz kalırdı. Bu ürün
+     * ülkesiz kullanıcı sorununu bir kez yaşadı (837 kişi).
+     */
+    if (!fs.existsSync(MOBIL)) return;
+    const onb = fs.readFileSync(path.join(MOBIL, "app", "index.tsx"), "utf8");
+    assert.ok(/setCountry\(c\.country\)/.test(onb),
+      "onboarding secilen degeri HAM yazmiyor — sunucu ulkeyi tanimayabilir");
+    const bf = fs.readFileSync(path.join(MOBIL, "components", "CountryBackfillPrompt.tsx"), "utf8");
+    assert.ok(/choose\(c\.country\)/.test(bf),
+      "backfill secilen degeri HAM yazmiyor");
+  });
+
   test("bilinmeyen ülke HAM adıyla gösterilir (yanlış çeviri yerine gerçek veri)", () => {
     /* ⚠️ Sunucu listede olmayan bir ülke gönderdiğinde ekranın boş kalması
      * ya da anahtar basması kabul edilemez; ham ad en az yanlış olandır. */
