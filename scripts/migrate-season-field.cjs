@@ -32,6 +32,8 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const { getDb } = require("../lib/mongo.cjs");
 const Season = require("../lib/season.cjs");
+/* Birleştirme kuralı OKUMA TARAFINDAN geliyor — ikinci kopya yazılmıyor. */
+const SeasonTotals = require("../lib/season-totals.cjs");
 
 const DRY = process.argv.includes("--dry");
 const COLL = "season_totals";
@@ -48,7 +50,11 @@ const COLL = "season_totals";
 
   const toplam = await col.countDocuments();
   const eksik = await col.countDocuments({ season: { $exists: false } });
-  const idx = await col.indexes();
+  /* ⚠️ BOŞ VERİTABANINDA ÇÖKMESİN. Koleksiyon henüz yoksa `indexes()`
+   * "ns does not exist" fırlatıyor ve script hiçbir şey yapmadan patlıyordu
+   * — yeni bir ortama ilk kurulumda tam da bu olur. */
+  let idx = [];
+  try { idx = await col.indexes(); } catch { idx = []; }
   const eskiIdx = idx.find((i) => JSON.stringify(i.key) === '{"userIdLower":1}');
   const yeniIdx = idx.find((i) => JSON.stringify(i.key) === '{"season":1,"userIdLower":1}');
 
@@ -68,7 +74,15 @@ const COLL = "season_totals";
   const sezonsuzlar = eksik > 0
     ? await col
         .find({ season: { $exists: false } })
-        .project({ _id: 1, lastAt: 1, updatedAt: 1, createdAt: 1, totalPoints: 1, matches: 1 })
+        /* ⚠️ PROJEKSİYON BİRLEŞTİRMENİN İHTİYACI KADAR OLMALI. İlk yazımda
+         * userIdLower ve totalPenalty yoktu: çakışma tespiti sessizce
+         * başarısız olur (uid boş → mevcut kayıt bulunamaz) ve birleştirmede
+         * ceza 0 sayılırdı. Alan eksikliği hata vermez, yanlış sonuç verir. */
+        .project({
+          _id: 1, userId: 1, userIdLower: 1,
+          totalPoints: 1, totalPenalty: 1, matches: 1,
+          lastAt: 1, updatedAt: 1, createdAt: 1,
+        })
         .toArray()
     : [];
 
@@ -86,10 +100,25 @@ const COLL = "season_totals";
     b.mac += Number(d.matches || 0);
   }
 
+  /* ⚠️ ÇAKIŞMA SAYISI DA PLANA GİRER. Kuru koşu "ne yazacağım" demeli;
+   * birleştirme yıkıcıdır (öksüz belge silinir), kullanıcı bunu önceden
+   * görmeli. Çakışmayı gizleyen bir kuru koşu, kararı gizler. */
+  for (const [k, b] of kova) {
+    b.cakisan = 0;
+    for (const id of b.idler) {
+      const o = sezonsuzlar.find((x) => String(x._id) === String(id));
+      const uidL = String(o?.userIdLower || o?.userId || "").toLowerCase();
+      if (!uidL) continue;
+      if (await col.findOne({ season: k, userIdLower: uidL }, { projection: { _id: 1 } })) b.cakisan++;
+    }
+  }
+
   if (sezonsuzlar.length) {
     console.log("plan (sezon <- kaydin kendi zamani):");
     for (const [k, b] of kova) {
+      const duz = b.idler.length - b.cakisan;
       console.log(`  ${k}: ${b.idler.length} kayit · ${Math.round(b.puan * 10) / 10} puan · ${b.mac} mac`);
+      console.log(`      -> ${duz} damgalanacak · ${b.cakisan} BIRLESTIRILECEK (hedef sezonda kaydi var, oksuz silinir)`);
     }
     if (damgasiz) console.log(`  (zaman damgasi olmayan ${damgasiz} kayit -> ${sezon})`);
   }
@@ -121,16 +150,77 @@ const COLL = "season_totals";
    * muhtemelen doğru olan sezona yazmak iyidir (settle2 ile aynı gerekçe).
    */
   if (sezonsuzlar.length) {
-    let toplamYazilan = 0;
+    /**
+     * ⚠️ HEDEF SEZONDA ZATEN KAYIT VARSA BİRLEŞTİR — ÜZERİNE YAZMA.
+     *
+     * İlk düzeltmem sezonu doğru türetiyordu ama çakışmayı hiç düşünmemişti
+     * ve ÜRETİMDE PATLADI:
+     *
+     *     E11000 duplicate key ... index: season_1_userIdLower_1
+     *     dup key: { season: "2026-07", userIdLower: "marakana49" }
+     *
+     * Eski (yanlış) kural çakışmıyordu çünkü herkesi BOŞ olan içinde
+     * bulunulan aya yazıyordu — yani hata benim düzeltmemin açtığı bir kapı
+     * değil, doğru sezona yazınca ortaya çıkan GERÇEK durum.
+     *
+     * ÖLÇÜLDÜ: 34 sezonsuz kaydın 4'ünün hedef sezonda zaten kaydı var.
+     *
+     * ⚠️ TOPLAMA KURALINI YENİDEN YAZMIYORUZ. Okuma tarafı bu birleştirmeyi
+     * zaten yapıyor (`lib/season-totals.cjs` → `belgeleriBirlestir`: puanlar
+     * toplanır, `lastAt` en yenisi kazanır, görünen ad sezonlu belgeden
+     * gelir). Aynı kuralı burada ikinci kez yazmak, bu depoda defalarca
+     * ölçülmüş "kopyalanan kural ayrışır" hatasıdır.
+     *
+     * ⚠️ BELGE BAŞINA İŞLEM: tek `updateMany` çakışan İLK kayıtta duruyor ve
+     * geri kalan 33'ü hiç yazmıyordu (ölçüldü: modifiedCount 0). Her kayıt
+     * kendi başına işleniyor ki bir çakışma ötekileri engellemesin.
+     */
+    let yazilan = 0, birlesen = 0, hata = 0;
     for (const [k, b] of kova) {
-      const r = await col.updateMany({ _id: { $in: b.idler } }, { $set: { season: k } });
-      toplamYazilan += r.modifiedCount;
-      console.log(`sezon alani dolduruldu: ${r.modifiedCount} kayit -> ${k}`);
+      for (const id of b.idler) {
+        const oksuz = sezonsuzlar.find((x) => String(x._id) === String(id));
+        if (!oksuz) continue;
+        try {
+          const uidL = String(oksuz.userIdLower || oksuz.userId || "").toLowerCase();
+          const mevcut = uidL
+            ? await col.findOne({ season: k, userIdLower: uidL })
+            : null;
+
+          if (!mevcut) {
+            await col.updateOne({ _id: id }, { $set: { season: k } });
+            yazilan++;
+            continue;
+          }
+
+          // Birleşik değeri OKUMA TARAFININ kuralıyla hesapla, sonra yaz.
+          const [tek] = SeasonTotals.belgeleriBirlestir([mevcut, oksuz]);
+          await col.updateOne(
+            { _id: mevcut._id },
+            {
+              $set: {
+                totalPoints: tek.totalPoints,
+                totalPenalty: tek.totalPenalty,
+                matches: tek.matches,
+                lastAt: tek.lastAt,
+                updatedAt: tek.updatedAt,
+                userId: tek.userId,
+              },
+            }
+          );
+          await col.deleteOne({ _id: id });
+          birlesen++;
+        } catch (e) {
+          hata++;
+          console.error(`  ⛔ ${id} islenemedi (${k}):`, e?.message || e);
+        }
+      }
+      console.log(`sezon ${k}: islendi`);
     }
     if (damgasiz) {
       console.warn(`⚠️ ${damgasiz} kaydin zaman damgasi yok, simdiki sezona (${sezon}) yazildi`);
     }
-    console.log(`toplam: ${toplamYazilan} kayit`);
+    console.log(`toplam: ${yazilan} damgalandi · ${birlesen} birlestirildi · ${hata} hata`);
+    if (hata) process.exitCode = 1;
   } else {
     console.log("sezon alani zaten dolu, atlandi.");
   }
