@@ -10,7 +10,12 @@
  *
  * KAPSAM KARARI (2026-08-03): yeni anahtarlar yalnız tr+en; diğer 20 dil
  * t()'nin İngilizce yedeğine düşer. 783 × 22 el çevirisi yerine önce Türkçe
- * sabitten kurtulmak seçildi. Admin ekranları BİLİNÇLİ hariç (tek kullanıcı).
+ * sabitten kurtulmak seçildi.
+ *
+ * ⚠️ ADMİN EKRANLARI ARTIK DAHİL. İlk 13 dalgada "tek kullanıcısı sahibi"
+ * gerekçesiyle hariç tutulmuştu; kullanıcı isteğiyle 14. dalgada kapsama
+ * alındı (admin-add, admin-runtime, admin/index, admin-live + ana
+ * ekranlardaki admin bölümleri). Yani tavan artık TÜM ekranları kapsıyor.
  *
  * CIRCIR: toplam sabit-Türkçe satır sayısı TAVANI aşamaz. Geçiş ilerledikçe
  * tavan AŞAĞI çekilir; yukarı çekmek bilinçli bir karar olmalı.
@@ -25,16 +30,15 @@ const MOBIL = path.join(__dirname, "..", "..", "mobile");
 const TR = /[çğıöşüÇĞİÖŞÜ]/;
 
 /**
- * Geçişi TAMAMLANMIŞ dosyalar. `izin` = bilinçli bırakılan satır sayısı:
- * admin kartı/ban paneli (me), admin runtime modalı + profil etiketleri
- * (stats) tek kullanıcıya (sana) görünür ve kapsam kararıyla hariç;
- * predict'teki 2 satır sunucu ETİKETİYLE karşılaştırma + veri istisnası.
- * İzin AŞILIRSA kullanıcıya görünen yeni Türkçe sabit girmiş demektir.
+ * Geçişi TAMAMLANMIŞ dosyalar. `izin` = bilinçli bırakılan satır sayısı.
+ * 14. dalgadan sonra admin bölümleri de çevrildiği için izinler DÜŞTÜ
+ * (me 12→2, stats 18→0); kalanlar sunucu etiketiyle karşılaştırma ve veri.
+ * İzin AŞILIRSA yeni Türkçe sabit girmiş demektir.
  */
 const TAMAMLANAN = [
-  { rel: "app/(tabs)/me.tsx", izin: 12 },
-  { rel: "app/(tabs)/predict.tsx", izin: 2 },
-  { rel: "app/(tabs)/stats.tsx", izin: 18 },
+  { rel: "app/(tabs)/me.tsx", izin: 2 },
+  { rel: "app/(tabs)/predict.tsx", izin: 3 },
+  { rel: "app/(tabs)/stats.tsx", izin: 0 },
 ];
 
 /* Takım/özel adlar Türkçe karakter taşıyabilir (Fenerbahçe, Beşiktaş) —
@@ -43,15 +47,28 @@ const VERI_ISTISNASI = /Fenerbahçe|Beşiktaş|KartalGözü/;
 
 /** Ölçüm — scratchpad'deki i18n-olc ile AYNI kural: yorumlar atılır,
  *  string literallerinde ve JSX metinlerinde Türkçe karakter aranır. */
-const TAVAN = 160; // 2026-08-03: ... -> 164 -> 160 (kings) - kalan: admin ekranlari + veri haritalari
+const TAVAN = 45; // 2026-08-03: 783 -> ... -> 160 -> 45 (admin dalgasi + sayac duzeltmesi)
 
 function say(dosya) {
   const src = fs.readFileSync(dosya, "utf8");
-  let n = 0;
+  let n = 0, blok = false;
   const bulunan = [];
   for (const l of src.split(/\r?\n/)) {
     const kirp = l.trim();
-    if (kirp.startsWith("//") || kirp.startsWith("*") || kirp.startsWith("/*")) continue;
+    /**
+     * ⚠️ JSX YORUM BLOKLARI ELENİR — ÖLÇÜM ÖNCE DÜRÜST OLMALI.
+     *
+     * Eski hâl yalnızca `//`, `*` ve `/*` ile BAŞLAYAN satırları atıyordu;
+     * bu depodaki uzun JSX açıklama blokları (süslü parantezle başlayanlar)
+     * ve onların devam satırları SAYILIYORDU. Ölçüldü: sayaç 57 diyordu,
+     * yorumlar elenince 45. Yani tavan %27 şişkindi ve "kalan iş" olarak
+     * okunan sayının dörtte biri aslında benim yazdığım açıklamalardı.
+     *
+     * Sayaç neyi ölçtüğünü söyleyemiyorsa tavan da bir şey söylemez.
+     */
+    if (blok) { if (kirp.includes("*/")) blok = false; continue; }
+    if (kirp.startsWith("{/*") || kirp.startsWith("/*")) { if (!kirp.includes("*/")) blok = true; continue; }
+    if (kirp.startsWith("//") || kirp.startsWith("*")) continue;
     const m = l.match(/"[^"]*"|'[^']*'|`[^`]*`|>[^<>{}]*</g) || [];
     for (const x of m) {
       if (TR.test(x)) { n++; bulunan.push(kirp.slice(0, 90)); break; }
