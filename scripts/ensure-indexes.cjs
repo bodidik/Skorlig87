@@ -28,7 +28,23 @@ const { getDb } = require("../lib/mongo.cjs");
     process.exit(1);
   }
 
-  await db.collection("predictions").createIndex({ fixtureId: 1, userId: 1, at: -1 });
+  /* ⚠️ KALDIRILDI: `{ fixtureId: 1, userId: 1, at: -1 }` — ATIL İNDEKS.
+   *
+   * ÖLÇÜLDÜ (üretim, $indexStats):
+   *     fixtureId_1_userId_1_at_-1 → 117 saatte 0 ERİŞİM, 2440 KB
+   *     (aynı koleksiyonda fixtureId_1_userIdLower_1 → 325.756 erişim)
+   * `predictions` en büyük koleksiyon ve indeks alanının %36'sını bu tutuyordu.
+   *
+   * NEDEN HİÇ KULLANILAMAZ: anahtarın ikinci alanı KARIŞIK HARFLİ `userId`.
+   * Kimlikler Firebase UID'si; tam eşleşme kaçırdığı için tüm kod
+   * `userIdLower` ile sorguluyor — bu, bu depoda ölçülmüş bir kusurun
+   * düzeltmesiydi. Yani indeks yalnızca kullanılmıyor değil, KULLANILAMAZ.
+   * `tests/tahmin-sorgu-plani.mongo.test.cjs` nöbetçisi karışık harfli
+   * sorguyu ayrıca yasaklıyor.
+   *
+   * ⚠️ ZATEN VAR OLAN İNDEKS BU BETİKLE DÜŞMEZ. Üretimde düşürmek ayrı bir
+   * işlem (bkz. commit notu); burada yapılan, betiğin onu YENİDEN KURMAMASI.
+   */
   // Varlık sorguları userIdLower ile yapılıyor (kimlikler karışık harfli):
   // pred.cjs hasPrediction ve weekly-picks getUserPred. Üstteki indeks bunu
   // karşılamaz — fixtureId önekiyle daralıp geri kalanı tarar. Bu ikisi

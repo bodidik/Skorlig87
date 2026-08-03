@@ -165,4 +165,26 @@ describe("tahmin sorgu planları", () => {
     assert.deepEqual(suclu, [],
       "karisik harfli userId ile tahmin sorgulayan dosya(lar): " + suclu.join(", "));
   });
+
+  test("NÖBETÇİ: kurulum betiği ATIL indeksi yeniden kurmuyor", () => {
+    /**
+     * ⚠️ ÖLÇÜLDÜ ($indexStats, üretim): `fixtureId_1_userId_1_at_-1` 117 saatte
+     * 0 ERİŞİM aldı ve 2440 KB tutuyordu — `predictions` indeks alanının %36'sı.
+     * Aynı koleksiyonda `fixtureId_1_userIdLower_1` 325.756 erişim aldı.
+     *
+     * Yalnızca kullanılmıyor değil, KULLANILAMAZ: anahtarın ikinci alanı
+     * karışık harfli `userId` ve tüm kod `userIdLower` ile sorguluyor (yukarıdaki
+     * nöbetçi bunu zaten yasaklıyor). `scripts/ensure-indexes.cjs`'ten
+     * kaldırıldı; betiği çalıştıran biri onu geri getirmemeli.
+     */
+    const src = fs.readFileSync(path.join(__dirname, "..", "scripts", "ensure-indexes.cjs"), "utf8")
+      .split(/\r?\n/)
+      .map((l) => {
+        const t = l.trim();
+        return t.startsWith("*") || t.startsWith("//") || t.startsWith("/*") ? "" : l;
+      })
+      .join("\n");
+    assert.ok(!/createIndex\(\s*\{\s*fixtureId:\s*1,\s*userId:\s*1/.test(src),
+      "atil indeks (fixtureId+userId+at) yeniden kuruluyor — 2440 KB ve hic kullanilamaz");
+  });
 });
