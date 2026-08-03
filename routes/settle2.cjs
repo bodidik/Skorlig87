@@ -812,7 +812,38 @@ async function _awardStreakBonusesUnlocked(bonusMap, fixtureId, db) {
           reason: "streak_bonus", fixtureId, meta: info.tier ? { tier: info.tier.label } : null, createdAt: nowISO,
         });
       } catch (e) {
-        console.error("[settle2] streak bonus mongo failed:", e);
+        /**
+         * ⚠️ MÜHÜR ÇOKTAN ATILDI, BONUS TEKRAR DENENMEZ — KALICI İZ ŞART.
+         *
+         * `services/streak.cjs` eşik bonusunu tek kez vermek için `lastTier`i
+         * ilerletiyor ve BUNU ÖDEMEDEN ÖNCE kalıcılaştırıyor. Buradaki yazma
+         * patlarsa bonus bir daha hesaplanmaz: kullanıcı eşiği geçti,
+         * bakiyesine hiçbir şey yatmadı ve kimse bunu göremiyordu — tek iz
+         * bir `console.error` satırıydı, Render'da o da akıp gider.
+         *
+         * Aynı yapı kupon, havuz, mini turnuva, düello ve maç ödülünde
+         * `failed_awards`e yazılıyor ve `GET /api/health` onu sayıyor
+         * (`paraUyarisi`). Eksik olan tek yol buydu.
+         *
+         * ⚠️ NEDEN ÖNCEKİ TARAMAM KAÇIRDI: bugün bu sınıfı `creditLc` çağrı
+         * yerlerini tarayarak aramıştım; bu yol cüzdana DOĞRUDAN yazıyor,
+         * o yüzden kalıba girmiyordu. Sınıfı fonksiyon adıyla değil
+         * DAVRANIŞLA (para yazan her yol) taramak gerekiyormuş.
+         */
+        console.error("[settle2] ⛔ STREAK BONUSU ODENEMEDI:", e?.message || e);
+        try {
+          const { kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
+          await kayipOdulKaydet(db, {
+            kaynak: "streak_bonus",
+            fixtureId,
+            odemeler: [{ userIdLower: uid.toLowerCase(), tutar: bonus }],
+            beklenen: 1,
+            eksik: 1,
+            tier: info.tier ? info.tier.label : null,
+          });
+        } catch (e2) {
+          console.error("[settle2] streak bonus kayip izi yazilamadi:", e2?.message || e2);
+        }
       }
     }
   }
