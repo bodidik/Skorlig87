@@ -524,8 +524,18 @@ router.post("/admin-live-gs", requireAdmin, express.json(), async (req, res) => 
     if (req.body.minute != null) patch.minute = Number(req.body.minute);
     if (req.body.status != null) patch.status = String(req.body.status);
 
-    if (req.body.homeGoals != null) patch.homeGoals = Number(req.body.homeGoals);
-    if (req.body.awayGoals != null) patch.awayGoals = Number(req.body.awayGoals);
+    if (req.body.homeGoals != null) {
+      const v = Number(req.body.homeGoals);
+      if (!Number.isFinite(v) || v < 0 || v > 99)
+        return res.status(400).json({ ok: false, error: "INVALID_SCORE", field: "homeGoals" });
+      patch.homeGoals = v;
+    }
+    if (req.body.awayGoals != null) {
+      const v = Number(req.body.awayGoals);
+      if (!Number.isFinite(v) || v < 0 || v > 99)
+        return res.status(400).json({ ok: false, error: "INVALID_SCORE", field: "awayGoals" });
+      patch.awayGoals = v;
+    }
 
     if (req.body.phase != null) patch.phase = String(req.body.phase);
 

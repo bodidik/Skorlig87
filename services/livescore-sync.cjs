@@ -627,15 +627,26 @@ async function sync() {
       const htParsed = parseHT(liveMatch.htScore);
       const hasScore = liveMatch.homeScore != null && liveMatch.awayScore != null;
 
+      const homeRaw = hasScore ? parseInt(liveMatch.homeScore, 10) : 0;
+      const awayRaw = hasScore ? parseInt(liveMatch.awayScore, 10) : 0;
+
+      if (hasScore && (!Number.isFinite(homeRaw) || !Number.isFinite(awayRaw) ||
+          homeRaw < 0 || awayRaw < 0 || homeRaw > 99 || awayRaw > 99)) {
+        console.error(
+          `[sync] absurt skor reddedildi: ${fid} home=${liveMatch.homeScore} away=${liveMatch.awayScore}`
+        );
+        continue;
+      }
+
       const scores = {
-        home:   hasScore ? parseInt(liveMatch.homeScore, 10) : 0,
-        away:   hasScore ? parseInt(liveMatch.awayScore, 10) : 0,
+        home:   homeRaw,
+        away:   awayRaw,
         isFT:   liveMatch.isFinished,
         htHome: htParsed?.home ?? null,
         htAway: htParsed?.away ?? null,
       };
 
-      if (!hasScore && !htParsed) continue; // maç henüz başlamadı
+      if (!hasScore && !htParsed) continue;
 
       /* UYARI: SKOR AYRISTIRILAMADIYSA FT YAZMA, SETTLE TETIKLEME.
        *
