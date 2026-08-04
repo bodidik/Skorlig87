@@ -177,10 +177,62 @@ async function syncLiveStateForFixture(merged) {
 }
 
 // ---- FIXTURE STATE YÖNETİMİ ----
+
+/**
+ * Canlı hattın yazdığı durum dosyasını bu ucun sözleşmesine çevirir.
+ *
+ * `services/livescore-sync.cjs:306 writeLiveState` iç içe `score:{home,away}`
+ * yazıyor; bu uç düz `homeGoals/awayGoals` döndürüyor. Eşlemeyi atlamak skoru
+ * sessizce boş bırakırdı.
+ */
+function canliDosyadanDurum(st) {
+  if (!st || typeof st !== "object") return null;
+  const h = Number(st.score?.home ?? st.homeGoals);
+  const a = Number(st.score?.away ?? st.awayGoals);
+  return {
+    ...st,
+    homeGoals: Number.isFinite(h) ? h : null,
+    awayGoals: Number.isFinite(a) ? a : null,
+    source: st.source || "livescore-sync",
+  };
+}
+
 async function getFixtureState(fixtureId) {
-  const m = await loadLive();
   const fx = normFixtureId(fixtureId);
-  return m.fixtures[fx] || null;
+  const m = await loadLive();
+  const yonetici = m.fixtures[fx] || null;
+
+  /* ⚠️ YÖNETİCİ MODELİ TEK KAYNAK DEĞİL.
+   *
+   * BULUNAN: burada yalnızca `rt-live-gs.json` okunuyordu ve o dosyayı SADECE
+   * yönetici yazıyor (admin POST / provider çekimi). Gerçek canlı durum her
+   * fikstür için `data/live/<fid>.json`de ve onu `livescore-sync.cjs:306`
+   * yazıyor — uygulamanın geri kalanı (realtime, settle2, pred-weights, mini,
+   * tr-league, fikstur-kilit, tournament) oradan okuyor. Bu uç yazıyordu
+   * (satır 173) ama hiç geri okumuyordu.
+   *
+   * Sonuç: yönetici elle girmediyse — normal işleyiş bu — uç
+   * `{ok:true, exists:false, state:null}` dönüyordu. HTTP 200, hata yok.
+   *
+   * KULLANICIYA ULAŞAN ETKİ: `predict.tsx:493` bu ucu çağırıyor (`team`
+   * göndermediği için provider kolu da hiç çalışmıyor), `:496` `exists`
+   * false görünce `setLiveState(null)`, `:507 computePredLock` ise
+   * `if (!st) return {locked:false}`. Yani maç 1. yarıda bile ekranda AÇIK
+   * görünüyor ve Tahmin Et etkin kalıyor; gönderim sunucuda reddediliyor.
+   * Dosyanın kendi notu (satır ~505) bu ürünün bu hatayı bir kez yaşadığını
+   * söylüyor.
+   *
+   * ÖLÇÜLDÜ (canlı durum dosyası tohumlanıp uç dövüldü):
+   *     önce  → {"ok":true,"exists":false,"state":null}   (6 iddia düştü)
+   *     sonra → exists:true, status LIVE, 1-0, kickoffISO dolu
+   * Aynı tohumu `lib/fikstur-kilit.cjs` MATCH_ALREADY_STARTED olarak görüyordu,
+   * yani veri oradaydı; yalnızca bu uç kördü.
+   *
+   * ÖNCELİK YÖNETİCİDE: elle girilen değer canlı hattı bilerek ezer (maç
+   * düzeltmesi için). Yönetici kaydı yoksa canlı dosyaya düşülür. */
+  if (yonetici) return yonetici;
+
+  return canliDosyadanDurum(await readJson(LIVE_STATE_FILE(fx), null));
 }
 
 /**
