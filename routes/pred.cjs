@@ -842,13 +842,9 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
     const hasPenAny  = Object.prototype.hasOwnProperty.call(req.body, "penaltyAny");
     const hasPenSide = Object.prototype.hasOwnProperty.call(req.body, "penaltySide");
 
-    // Kullanıcının "tahmin anı" dakikası: request body minute gönderirse onu kullan,
-    // yoksa live-state dakika (st.minute) varsa onu kullan.
-    // (Expo tarafı minute göndermiyorsa bile, st.minute genelde mevcut olur.)
-    const predMinuteRaw =
-      Object.prototype.hasOwnProperty.call(req.body, "minute")
-        ? req.body.minute
-        : st?.minute;
+    // Mikro-kilit dakikasi YALNIZCA sunucu tarafindan bilinen mac dakikasini kullanir.
+    // req.body.minute guvenilmez — saldirgan dusuk dakika gonderip kilidi atlayabilir.
+    const predMinuteRaw = st?.minute;
 
     const predMinute =
       predMinuteRaw == null ? null : Number(predMinuteRaw);
