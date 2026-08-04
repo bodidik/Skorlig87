@@ -1402,7 +1402,8 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
 
   const nowISO = new Date().toISOString();
 
-  await writeJson(LEADERBOARD_FILE, { items: rows, updatedAt: nowISO });
+  const { mergeAndWriteLeaderboard } = require("../lib/leaderboard-merge.cjs");
+  await mergeAndWriteLeaderboard(fid, rows);
 
   // ✅ match-results snapshot (kalıcı maç bazlı kayıt + idempotency sentinel)
   try {
