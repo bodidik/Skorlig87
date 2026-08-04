@@ -421,14 +421,19 @@ router.post("/set-nickname", verifyToken, express.json(), async (req, res) => {
       return res.status(409).json({ ok: false, error: "NICKNAME_TAKEN", detail: "Bu kullanıcı adı alınmış" });
     }
 
-    // nicknameNorm indekslenip sorgulanıyor; normalize hali YAZILMAZSA
-    // benzersizlik kontrolü sessizce hiçbir şey bulamaz.
-    await UsersStore.updateUser(
-      userId,
-      { nickname: raw, nicknameNorm: normRaw },
-      { ...USER_DEFAULTS, userIdNorm: normNick(userId) },
-      db
-    );
+    try {
+      await UsersStore.updateUser(
+        userId,
+        { nickname: raw, nicknameNorm: normRaw },
+        { ...USER_DEFAULTS, userIdNorm: normNick(userId) },
+        db
+      );
+    } catch (dup) {
+      if (dup?.code === 11000 || /E11000/.test(String(dup?.message || ""))) {
+        return res.status(409).json({ ok: false, error: "NICKNAME_TAKEN", detail: "Bu kullanici adi alinmis" });
+      }
+      throw dup;
+    }
     return res.json({ ok: true, nickname: raw });
   } catch (e) {
     return res.status(500).json({ ok: false, error: "SET_NICKNAME_ERR", detail: String(e?.message || e) });
