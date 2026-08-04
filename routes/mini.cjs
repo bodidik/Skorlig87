@@ -844,6 +844,39 @@ router.get("/board", async (req, res) => {
       .map((x) => ({ ...x, points: Math.round(x.points * 100) / 100 }))
       .sort((a, b) => b.points - a.points || a.userId.localeCompare(b.userId));
 
+    const totalMembers = board.length;
+
+    const rawUid = String(req.query.userId || "").trim().toLowerCase();
+    let myRow = null;
+    let myRank = null;
+    let friendsInBoard = [];
+
+    if (rawUid) {
+      const idx = board.findIndex(
+        (r) => String(r.userId || "").trim().toLowerCase() === rawUid
+      );
+      if (idx >= 0) {
+        myRow = board[idx];
+        myRank = idx + 1;
+      }
+
+      try {
+        const friendData = await SocialStore.loadFriends(req.app?.locals?.db || null);
+        const friendSet = new Set();
+        for (const link of friendData.links || []) {
+          const a = String(link.a || "").trim().toLowerCase();
+          const b = String(link.b || "").trim().toLowerCase();
+          if (a === rawUid) friendSet.add(b);
+          else if (b === rawUid) friendSet.add(a);
+        }
+        friendsInBoard = board.filter(
+          (r) => friendSet.has(String(r.userId || "").trim().toLowerCase())
+        );
+      } catch (e) {
+        console.error("[mini] friendsInBoard error:", e?.message || e);
+      }
+    }
+
     // Tüm maçlar bittiyse turnuvayı sonlandır (kazanan + LC ödülü, bir kez)
     const finalT = await finalizeIfDone(t, board, settledCount, fixtureIds.length, req.app?.locals?.db || null, fixtureIds);
 
@@ -854,6 +887,10 @@ router.get("/board", async (req, res) => {
       board,
       settledCount,
       pendingCount: fixtureIds.length - settledCount,
+      myRow,
+      myRank,
+      totalMembers,
+      friendsInBoard,
     });
   } catch (e) {
     console.error("[mini] board error:", e);
