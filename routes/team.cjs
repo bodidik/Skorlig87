@@ -14,6 +14,7 @@ const FixturesStore = require("../lib/fixtures-store.cjs");
 
 // 🔹 Runtime mode (4 takım / 30 takım / global vb.)
 const { getRuntimeMode } = require("../lib/runtime-mode.cjs");
+const { BOT_ID_SET } = require("../lib/botIds.cjs");
 
 async function readJson(file, fb=null){
   try{ return JSON.parse(await fsp.readFile(file,"utf8")); }
@@ -82,7 +83,7 @@ router.get("/members", async (req,res)=>{
     if(!uid || !main) continue;
 
     const t = totals[uid] || { total:0, played:0 };
-    const isBot = /^bot_/i.test(uid);
+    const isBot = BOT_ID_SET.has(String(uid).toLowerCase());
     const badge = badgeOf(uid, isBot);
 
     list.push({
@@ -106,7 +107,7 @@ router.get("/members", async (req,res)=>{
     if(!teamHint) continue;
     if(String(teamHint).toLowerCase() !== team.toLowerCase()) continue;
 
-    const isBot = /^bot_/i.test(uid);
+    const isBot = BOT_ID_SET.has(String(uid).toLowerCase());
     const badge = badgeOf(uid, isBot);
 
     list.push({

@@ -15,7 +15,7 @@ const TOTALS_FILE      = path.join(DATA_DIR, "totals.json");
 // Sıralama: kümülatif puan değil, güven ağırlıklı ortalama (bkz. lib/ranking.cjs)
 const { rankRows, rankingMeta } = require("../lib/ranking.cjs");
 // Bot ayrimi: kullanici kiminle yaristigini gormeli (bkz. scopedRank).
-const { BOT_PROFILE_MAP } = require("../lib/botIds.cjs");
+const { BOT_ID_SET } = require("../lib/botIds.cjs");
 const { attachCountries, countryOfUser } = require("../lib/user-country.cjs");
 const { normalizeCountry } = require("../lib/countries.cjs");
 const Season = require("../lib/season.cjs");
@@ -54,7 +54,7 @@ async function scopedRank(rawRows, { scope, country, humansOnly }, db) {
   // kiminle yarıştığını gizlemek dürüst değil.
   const isaretli = withCountry.map((r) => ({
     ...r,
-    isBot: BOT_PROFILE_MAP.has(String(r.userId || "").toLowerCase()),
+    isBot: BOT_ID_SET.has(String(r.userId || "").toLowerCase()),
   }));
 
   // ?humans=1 → yalnızca gerçek oyuncular. Botlar maç doldurmak için var,
@@ -418,7 +418,7 @@ router.get("/countries", optionalToken, async (req, res) => {
      * iki farklı sayı. */
     const humansOnly = String(req.query.humans || "") === "1";
     const sayilacak = humansOnly
-      ? withCountry.filter((r) => !BOT_PROFILE_MAP.has(String(r.userId || "").toLowerCase()))
+      ? withCountry.filter((r) => !BOT_ID_SET.has(String(r.userId || "").toLowerCase()))
       : withCountry;
 
     const counts = new Map();
