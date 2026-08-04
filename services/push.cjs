@@ -111,7 +111,13 @@ function sanitizePrefs(p, base = DEFAULT_PREFS) {
 
 async function getPrefs(userId) {
   const store = await loadStore();
-  const rec = store.items[String(userId || "").trim()];
+  /* ⚠️ KÜÇÜLTME ŞART — `loadStore` anahtarları küçük harf.
+   *
+   * Burada ham `uid` kalsaydı kullanıcı KENDİ tercihlerini okuyamazdı:
+   * kayıt bulunamayınca `sanitizePrefs(undefined)` VARSAYILANI döndürür, yani
+   * ekranda kapattığı bildirim AÇIK görünür ve `deviceCount` 0 çıkar.
+   * `sendToUsers` ile aynı anahtar politikası olmalı. */
+  const rec = store.items[String(userId || "").trim().toLowerCase()];
   return {
     prefs: sanitizePrefs(rec?.prefs),
     deviceCount: rec?.tokens?.length || 0,
@@ -206,7 +212,20 @@ async function sendToUsers(userIds, payload) {
   const type = payload.type;
   const messages = [];
 
-  for (const uid of new Set(userIds.map((u) => String(u || "").trim()).filter(Boolean))) {
+  /* ⚠️ ANAHTAR KÜÇÜK HARF — `loadStore` artık öyle döndürüyor.
+   *
+   * Eskiden ham `uid` ile indeksleniyordu ve depo anahtarı orijinal harf
+   * düzenindeydi: gelen kimlik birebir tutmazsa kayıt bulunamıyor, `continue`
+   * ediliyor ve bildirim SESSİZCE gitmiyordu. Çağıranların bir kısmı kimliği
+   * güvenilmez bir kaynaktan alıyor (push-scheduler:345 leaderboard satırından
+   * `row.userId`), o yüzden bu iki tarafın da normalize olması şart.
+   *
+   * Küçültme burada da yapılıyor: `loadStore`a güvenip atlamak, ileride
+   * çağıran bir yerin ham kimlik göndermesi hâlinde aynı sessiz hatayı geri
+   * getirirdi. */
+  for (const uid of new Set(
+    userIds.map((u) => String(u || "").trim().toLowerCase()).filter(Boolean)
+  )) {
     const rec = store.items[uid];
     if (!rec?.tokens?.length) continue;
 
