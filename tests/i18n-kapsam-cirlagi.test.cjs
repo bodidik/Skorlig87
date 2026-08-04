@@ -47,7 +47,7 @@ const VERI_ISTISNASI = /Fenerbahçe|Beşiktaş|KartalGözü/;
 
 /** Ölçüm — scratchpad'deki i18n-olc ile AYNI kural: yorumlar atılır,
  *  string literallerinde ve JSX metinlerinde Türkçe karakter aranır. */
-const TAVAN = 25; // 2026-08-04: 26 -> 25 (board2 + StreakBar i18n gecisi)
+const TAVAN = 25; // 2026-08-04: board2 Geri+baslik + friends/board 3 sabit gecisi (net degisim yok, diger dosyalar dengeledi)
 
 function say(dosya) {
   const src = fs.readFileSync(dosya, "utf8");
