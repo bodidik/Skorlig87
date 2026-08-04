@@ -19,8 +19,12 @@
 const os = require("os");
 const nodePath = require("path");
 const fs = require("fs");
-process.env.SKORLIG_DATA_DIR = nodePath.join(os.tmpdir(), "skorlig-push-muhur-test");
-fs.mkdirSync(process.env.SKORLIG_DATA_DIR, { recursive: true });
+/* ⚠️ BENZERSIZ DIZIN — sabit ad `bildirim-muhru-fail-closed.test.cjs` ile
+ * ayniydi ve o dosyanin `before` hooku dizini `rmSync` ile siliyordu.
+ * node --test iki dosyayi paralel kosuyor; gerekce icin oteki dosyaya bak. */
+process.env.SKORLIG_DATA_DIR = fs.mkdtempSync(
+  nodePath.join(os.tmpdir(), "skorlig-push-muhur-")
+);
 
 const { test, describe, before, after, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");

@@ -32,7 +32,18 @@ const os = require("os");
 const path = require("path");
 const fs = require("fs");
 
-const TMP = path.join(os.tmpdir(), "skorlig-push-muhur-test");
+/* ⚠️ BENZERSIZ DIZIN — SABIT AD `push-muhru.test.cjs` ILE CAKISIYORDU.
+ *
+ * Iki dosya da `os.tmpdir()/skorlig-push-muhur-test` yolunu kullaniyordu ve
+ * node --test bu dosyalari PARALEL kosuyor. Asagidaki `before` hookundaki
+ * `rmSync(TMP)`, oteki dosyanin O SIRADA kullandigi dizini silebiliyordu.
+ *
+ * Alti paralel kosuda tetiklenemedi (iki test de asil iddialarini Mongo
+ * uzerinden kuruyor, dosya dizinine az dokunuyorlar) — yani gozlenen bir
+ * kirilmanin degil, LATENT bir tehlikenin giderilmesi. `mkdtempSync` ayrica
+ * ayni dosyanin es zamanli iki kosusunu ve cokmus kosudan kalan artigi da
+ * bagisik kiliyor. Kardes ornek: profil-sahiplik-ve-kayit.test.cjs. */
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "skorlig-push-muhur-"));
 process.env.SKORLIG_DATA_DIR = TMP;
 process.env.SKORLIG_BG = "0";
 
