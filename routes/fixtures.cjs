@@ -2,6 +2,7 @@
 
 const express = require("express");
 const { tsdbKickoffISO } = require("../lib/tsdb-time.cjs");
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 const router = express.Router();
 
 const fs = require("fs");
@@ -1149,9 +1150,9 @@ router.get("/daily-menu", async (req, res) => {
   }
 });
 
-// DEBUG key durumları
-router.get("/debug-af-key", (req, res) => res.json({ ok: true, AF_KEY: AF_KEY ? "SET" : "EMPTY", AF_BASE, AF_HDR }));
-router.get("/debug-fdo-key", (req, res) => res.json({ ok: true, FDO_KEY: FDO_KEY ? "SET" : "EMPTY", FDO_BASE, FDO_HDR }));
+// DEBUG key durumları — admin token gerektirir
+router.get("/debug-af-key", requireAdmin, (req, res) => res.json({ ok: true, AF_KEY: AF_KEY ? "SET" : "EMPTY", AF_BASE, AF_HDR }));
+router.get("/debug-fdo-key", requireAdmin, (req, res) => res.json({ ok: true, FDO_KEY: FDO_KEY ? "SET" : "EMPTY", FDO_BASE, FDO_HDR }));
 
 // Takım rating tablosu — maç çekicilik skorlaması için
 const TEAM_RATINGS = {

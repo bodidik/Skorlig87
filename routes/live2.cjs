@@ -3,6 +3,7 @@
 const express = require("express");
 const Season = require("../lib/season.cjs");
 const { tsdbKickoffISO } = require("../lib/tsdb-time.cjs");
+const { requireAdmin } = require("../middleware/requireAdmin.cjs");
 const router = express.Router();
 
 const fs = require("fs");
@@ -1713,8 +1714,8 @@ router.get("/fav-debug", async (req, res) => {
   }
 });
 
-// DEBUG: AF key durumu
-router.get("/debug-af-key", (req, res) => {
+// DEBUG: AF key durumu — admin token gerektirir
+router.get("/debug-af-key", requireAdmin, (req, res) => {
   res.json({
     ok: true,
     ping: "v2025-12-22-1",
@@ -1724,8 +1725,8 @@ router.get("/debug-af-key", (req, res) => {
   });
 });
 
-// DEBUG: FDO key durumu
-router.get("/debug-fdo-key", (req, res) => {
+// DEBUG: FDO key durumu — admin token gerektirir
+router.get("/debug-fdo-key", requireAdmin, (req, res) => {
   res.json({
     ok: true,
     FDO_KEY: FDO_KEY ? "SET" : "EMPTY",
@@ -1735,7 +1736,7 @@ router.get("/debug-fdo-key", (req, res) => {
 });
 
 // ========= DEBUG: MANUAL FIXTURES WINDOW =========
-router.get("/debug-manual", async (req, res) => {
+router.get("/debug-manual", requireAdmin, async (req, res) => {
   try {
     const runtimeMode = await getRuntimeSafe();
 
