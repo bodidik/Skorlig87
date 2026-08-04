@@ -71,9 +71,22 @@ function adminYollar() {
       const m = /router\.(get|post|put|patch|delete)\(\s*"([^"]*)"/.exec(satir);
       if (!m) continue;
       const yol = m[2];
+      /* Muhafiz UC bicimde karsimiza cikiyor; ucu de sayilmali:
+       *   1) ara katman   -> router.post("/x", requireAdmin, ...)
+       *   2) govdede kontrol -> if (!isInternalCaller(req)) ...   (settle2)
+       *   3) govdede YEREL fonksiyon -> if (!requireAdminToken(req, res)) return;
+       *      (admin-users.cjs kendi kopyasini tanimlayip boyle cagiriyor)
+       *
+       * ⚠️ 3. BICIMDE OLUMSUZ-ERKEN-DONUS SEKLI ARANIR, salt ad gecisi DEGIL.
+       * `/api/pred/list` muhafizi KOSULLU: userId yoksa admin jetonu, varsa
+       * verifyToken + kendi kaydi. Bunu `return requireAdminToken(req, res, cb)`
+       * sureklilik bicimiyle yaziyor. Salt ada bakan ilk deneme o rotayi
+       * "admin" sanip istemcileri (predict sekmesi, mystatus) yanlis suclu
+       * ilan etti — oysa ikisi de userId gonderip dogru dalda calisiyor. */
       const adminMi = routerAdmin ||
         /requireAdmin|requireAdminToken|_adminAuth/.test(satir) ||
-        /\bisInternalCaller\s*\(|\bisAdminRequest\s*\(/.test(govde);
+        /\bisInternalCaller\s*\(|\bisAdminRequest\s*\(/.test(govde) ||
+        /if\s*\(\s*!\s*(requireAdminToken|requireAdmin)\s*\(\s*req\b/.test(govde);
       if (!adminMi) continue;
 
       const tam = (onek.replace(/\/+$/, "") + "/" + yol.replace(/^\//, "")).replace(/\/\//g, "/");
@@ -129,23 +142,36 @@ function istemciAdminCagrilari(adminYollarSet) {
     }
 
     const PENCERE = 10;
-    const baslikSatirlari = [];
+    const yardimciBaslik = [];   // withAdminHeaders(...) — ice aktarim ister
+    const elleBaslik = [];       // "x-admin-token": ... — ice aktarim ISTEMEZ
     satirlar.forEach((s, i) => {
-      if (/withAdminHeaders\s*\(/.test(s)) baslikSatirlari.push(i);
+      if (/withAdminHeaders\s*\(/.test(s)) yardimciBaslik.push(i);
+      /* Elle kurulan baslik da gecerli: me.tsx yasak listesini ham `fetch` ile
+       * cagirip `"x-admin-token": tok` yaziyor. Jeton ayni kaynaktan
+       * (getAdminToken) geldigi icin yetki acisindan dogru. Bu bicim
+       * withAdminHeaders'i ice aktarmadigindan ayri tutulur. */
+      if (/["']x-admin-token["']\s*:/.test(s)) elleBaslik.push(i);
     });
+    const yakin = (liste, i) => liste.some((b) => Math.abs(b - i) <= PENCERE);
+
     // Cagri ya guvenli sarmalayicidan gecer, ya da basligi satir icinde verir
     // (stats.tsx'te oldugu gibi birkac satir once degiskene atanmis olabilir).
     const kapsanan = (cagiran, i) =>
-      iceAktarilmis &&
-      ((cagiran && guvenliSarmalayici.has(cagiran)) ||
-        baslikSatirlari.some((b) => Math.abs(b - i) <= PENCERE));
+      (iceAktarilmis &&
+        ((cagiran && guvenliSarmalayici.has(cagiran)) || yakin(yardimciBaslik, i))) ||
+      yakin(elleBaslik, i);
 
     for (let idx = 0; idx < satirlar.length; idx++) {
       const satir = satirlar[idx];
       const kirpik = satir.trim();
       if (kirpik.startsWith("*") || kirpik.startsWith("//") || kirpik.startsWith("/*")) continue;
 
-      for (const m of satir.matchAll(/["`](\/api\/[A-Za-z0-9_\-/.${}[\]]+)/g)) {
+      /* ⚠️ YOL DIZENIN BASINDA OLMAYABILIR. Ilk surum tirnaktan HEMEN sonra
+       * gelen /api/ yolunu ariyordu; me.tsx yasak listesini
+       * `fetch(\`${base}/api/admin/banned\`)` diye cagiriyor ve o bicimde yol
+       * `${base}` onekinin ardinda kaliyor — cagri denetime hic girmiyordu.
+       * Ham `fetch` kullanan her yer bu sekilde gorunmezdi. */
+      for (const m of satir.matchAll(/(\/api\/[A-Za-z0-9_\-/.${}[\]]+)/g)) {
         const yol = m[1]
           .replace(/(?<!\/)\$\{[^}]*\}.*$/, "")
           .replace(/\$\{[^}]*\}/g, ":p")
@@ -159,11 +185,14 @@ function istemciAdminCagrilari(adminYollarSet) {
          * "sarmalayicisiz" sanip yanlis suclu ilan ediyordu. */
         let cagiran = null;
         const oncesi = satir.slice(0, m.index);
-        const cg = /([A-Za-z0-9_$]+)\s*\(\s*$/.exec(oncesi);
+        // Yol artik tirnagin ARDINDAN eslesiyor; acilis tirnagi/backtick ve
+        // olasi `${base}` oneki cagiran adiyla yol arasinda kalabiliyor.
+        const KUYRUK = /([A-Za-z0-9_$]+)\s*\(\s*["'`]?\s*(?:\$\{[^}]*\})?\s*$/;
+        const cg = KUYRUK.exec(oncesi);
         if (cg) cagiran = cg[1];
-        else if (/^\s*$/.test(oncesi)) {
+        else if (/^[\s"'`]*$/.test(oncesi)) {
           for (let g = idx - 1; g >= 0 && g >= idx - 2; g--) {
-            const onceki = /([A-Za-z0-9_$]+)\s*\(\s*$/.exec(satirlar[g].replace(/\s+$/, ""));
+            const onceki = KUYRUK.exec(satirlar[g].replace(/\s+$/, ""));
             if (onceki) { cagiran = onceki[1]; break; }
             if (satirlar[g].trim()) break;
           }
