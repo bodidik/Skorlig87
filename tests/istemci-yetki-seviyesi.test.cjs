@@ -52,12 +52,28 @@ function adminYollar() {
     const routerAdmin = /router\.use\(\s*(requireAdmin|requireAdminToken|_adminAuth)\b/.test(src);
 
     const satirlar = src.split("\n");
-    for (const satir of satirlar) {
+    /* ⚠️ MUHAFIZ HER ZAMAN ARA KATMAN DEGIL. Ilk surum yalnizca router.METHOD
+     * SATIRINA bakiyordu; `/api/rt/settle2` muhafizini govdenin icinde
+     * tutuyor (`if (!isInternalCaller(req))`, iki satir asagida) ve bu yuzden
+     * admin sayilmiyordu — para dagitan uc denetimin tamamen disinda kalmisti.
+     * Artik her rota BLOGU (router.METHOD'dan bir sonrakine kadar) taraniyor. */
+    const blokBasi = [];
+    for (let i = 0; i < satirlar.length; i++) {
+      if (/router\.(get|post|put|patch|delete)\(\s*"([^"]*)"/.test(satirlar[i])) blokBasi.push(i);
+    }
+
+    for (let b = 0; b < blokBasi.length; b++) {
+      const bas = blokBasi[b];
+      const son = b + 1 < blokBasi.length ? blokBasi[b + 1] : satirlar.length;
+      const satir = satirlar[bas];
+      const govde = satirlar.slice(bas, son).join("\n");
+
       const m = /router\.(get|post|put|patch|delete)\(\s*"([^"]*)"/.exec(satir);
       if (!m) continue;
       const yol = m[2];
       const adminMi = routerAdmin ||
-        /requireAdmin|requireAdminToken|_adminAuth|isInternalCaller/.test(satir);
+        /requireAdmin|requireAdminToken|_adminAuth/.test(satir) ||
+        /\bisInternalCaller\s*\(|\bisAdminRequest\s*\(/.test(govde);
       if (!adminMi) continue;
 
       const tam = (onek.replace(/\/+$/, "") + "/" + yol.replace(/^\//, "")).replace(/\/\//g, "/");
@@ -86,10 +102,46 @@ function istemciAdminCagrilari(adminYollarSet) {
      * `withAdminHeaders` GECIYOR MU diye bakiyordu; negatif kontrolde import
      * satirini silip govdedeki cagriyi birakinca kod bozuluyor ama test
      * GECIYORDU. Ice aktarimi sart kosmak o boslugu kapatiyor. */
-    const adminBaslikVar =
+    const iceAktarilmis =
       /import\s*\{[^}]*\bwithAdminHeaders\b[^}]*\}\s*from\s*["'][^"']*adminToken["']/.test(icerik);
 
-    for (const satir of satirlar) {
+    /* ⚠️ MUAFIYET DOSYA DEGIL CAGRI SEVIYESINDE. Ilk surum "dosya
+     * withAdminHeaders ice aktariyor mu" diye bakiyordu; boylece bir dosyadaki
+     * TEK dogru cagri, ayni dosyadaki hatali cagrilari da akliyordu.
+     * live.tsx tam boyle kacmisti: FT kaydetme cagrisina baslik eklenmis,
+     * 15 satir asagidaki settle2 cagrisina eklenmemisti.
+     *
+     * ⚠️ AMA SALT YAKINLIK DA YANLIS. Bu depoda baskin desen, dosyanin
+     * basinda basligi ekleyen bir SARMALAYICI tanimlamak (admin-add,
+     * admin-live, admin/index, admin-runtime hep boyle); orada cagri yeri
+     * basliktan yuzlerce satir uzakta ve yakinlik olcutu hepsini yanlislikla
+     * suclu ilan ediyordu. Dogru soru "baslik yakinda mi" degil, CAGRI HANGI
+     * FONKSIYONDAN GECIYOR. */
+    const guvenliSarmalayici = new Set();
+    const bildirim =
+      /(?:async\s+function\s+([A-Za-z0-9_$]+)\s*\(|(?:const|let|var)\s+([A-Za-z0-9_$]+)\s*=\s*(?:async\s*)?\()/g;
+    for (const d of icerik.matchAll(bildirim)) {
+      const ad = d[1] || d[2];
+      if (!ad) continue;
+      // Bildirimden sonraki kisa govde penceresinde baslik ekleniyor mu?
+      const govde = icerik.slice(d.index, d.index + 500);
+      if (/withAdminHeaders\s*\(/.test(govde)) guvenliSarmalayici.add(ad);
+    }
+
+    const PENCERE = 10;
+    const baslikSatirlari = [];
+    satirlar.forEach((s, i) => {
+      if (/withAdminHeaders\s*\(/.test(s)) baslikSatirlari.push(i);
+    });
+    // Cagri ya guvenli sarmalayicidan gecer, ya da basligi satir icinde verir
+    // (stats.tsx'te oldugu gibi birkac satir once degiskene atanmis olabilir).
+    const kapsanan = (cagiran, i) =>
+      iceAktarilmis &&
+      ((cagiran && guvenliSarmalayici.has(cagiran)) ||
+        baslikSatirlari.some((b) => Math.abs(b - i) <= PENCERE));
+
+    for (let idx = 0; idx < satirlar.length; idx++) {
+      const satir = satirlar[idx];
       const kirpik = satir.trim();
       if (kirpik.startsWith("*") || kirpik.startsWith("//") || kirpik.startsWith("/*")) continue;
 
@@ -101,7 +153,23 @@ function istemciAdminCagrilari(adminYollarSet) {
           .replace(/\/+$/, "");
         if (yol.split("/").length < 3) continue;
 
-        if (adminYollarSet.has(yol) && !adminBaslikVar) {
+        /* Yolu tasiyan cagrinin adi: `apiFetch("/api/...` -> "apiFetch".
+         * ⚠️ CAGRI COK SATIRLI OLABILIR: admin-add.tsx'te `apiFetch(` bir
+         * satirda, yol bir alt satirda. Yalnizca ayni satira bakmak o cagriyi
+         * "sarmalayicisiz" sanip yanlis suclu ilan ediyordu. */
+        let cagiran = null;
+        const oncesi = satir.slice(0, m.index);
+        const cg = /([A-Za-z0-9_$]+)\s*\(\s*$/.exec(oncesi);
+        if (cg) cagiran = cg[1];
+        else if (/^\s*$/.test(oncesi)) {
+          for (let g = idx - 1; g >= 0 && g >= idx - 2; g--) {
+            const onceki = /([A-Za-z0-9_$]+)\s*\(\s*$/.exec(satirlar[g].replace(/\s+$/, ""));
+            if (onceki) { cagiran = onceki[1]; break; }
+            if (satirlar[g].trim()) break;
+          }
+        }
+
+        if (adminYollarSet.has(yol) && !kapsanan(cagiran, idx)) {
           sorunlu.push(`${yol}  <- ${path.relative(MOBIL, dosya)} (withAdminHeaders yok)`);
         }
       }
