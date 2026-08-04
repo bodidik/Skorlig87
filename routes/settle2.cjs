@@ -1685,6 +1685,14 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
         pct: Math.round(tablo[i] * 100),
       }));
 
+      const odenecek = t.payouts.reduce((a, p) => a + Number(p.lcWon || 0), 0);
+      if (odenecek > Number(t.pool || 0)) {
+        console.error(
+          `[settle2] ODEME HAVUZU ASIYOR: ${t.code || t.id} havuz=${t.pool} odenecek=${odenecek} — odeme yapilmadi`
+        );
+        continue;
+      }
+
       // ⚠️ PARA KORUMASI — MÜHÜR ÖDEMEDEN ÖNCE.
       // Eskiden burada yalnızca bellekteki nesne işaretleniyor, kayıt ise
       // ~60 satır aşağıda (döngünün TAMAMI bittikten sonra) yapılıyordu.
