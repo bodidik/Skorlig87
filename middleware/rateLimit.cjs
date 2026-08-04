@@ -141,10 +141,32 @@ function isInternal(req) {
  */
 const { istemciIp: ipOf } = require("../lib/istemci-ip.cjs");
 
-function keyFor(req, url) {
+/**
+ * ⚠️ KOVA HAM YOLA GÖREYDİ — AYNI UÇ İKİ KOVAYA DÜŞÜYORDU.
+ *
+ * İki router BİLEREK iki yere mount edilmiş (eski istemci uyumluluğu):
+ *     server.cjs:388  /api/friends        → friends.cjs
+ *     server.cjs:389  /api/users/friends  → friends.cjs   (compat)
+ *     server.cjs:xxx  /api/groups + /api/users/groups → groups.cjs
+ *
+ * Anahtar `${ip}|${uid}|${url}` olunca `/api/friends/invite` ile
+ * `/api/users/friends/invite` AYRI sayaçlar oluyor; ikisi de aynı kurala
+ * düşmesine rağmen sınır fiilen iki katına çıkıyor.
+ *
+ * ÖLÇÜLDÜ: `/friends/invite` kuralı 20/dk iken iki yoldan toplam 40 istek
+ * geçti (~2.0x). Etkilenen kurallar: friends/invite 20→40,
+ * friends/use-invite 10→20, groups/(create|join) 10→20.
+ *
+ * Çözüm: kovayı KURALA göre adlandır — aynı kurala düşen her yol aynı
+ * sayacı paylaşsın. DEFAULT'ta kural ayırt edici değil (tek kural, tüm
+ * eşleşmeyen yollar), orada yol bazlı ayrım KORUNUR; yoksa birbiriyle
+ * ilgisiz yüzlerce uç tek kovada birikirdi.
+ */
+function keyFor(req, url, rule) {
   // req.uid varsa (ileride limiter auth sonrasına taşınırsa) o tercih edilir.
   const uid = req.uid || req.headers["x-user-id"] || "-";
-  return `${ipOf(req)}|${uid}|${url}`;
+  const kova = rule && rule.re ? `r:${rule.re.source}` : url;
+  return `${ipOf(req)}|${uid}|${kova}`;
 }
 
 // IP tavanı: tüm rotalar toplamı. Tek kullanıcının meşru trafiğinin çok
@@ -184,7 +206,7 @@ async function rateLimit(req, res, next) {
     if (!rule) return next();
 
     // 1. katman: rota kuralı (IP + kimlik ipucu + rota)
-    const r1 = await hit(keyFor(req, url), rule.windowMs);
+    const r1 = await hit(keyFor(req, url, rule), rule.windowMs);
     // count === 0 → store erişilemedi (fail-open), sınırlama uygulanmaz.
     if (r1.count > 0 && r1.count > rule.max) {
       return tooMany(res, r1.resetMs, rule);
