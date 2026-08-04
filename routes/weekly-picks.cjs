@@ -109,6 +109,11 @@ async function getUserPredsBatch(userId, fixtureIds, db) {
 
 async function getUserPred(userId, fixtureId, db) {
   const uid = String(userId || "").toLowerCase();
+  /* ⚠️ SAVUNMACI KIRPMA: çağıran zaten kanonikleştiriyor, ama bu fonksiyon
+   * ÜCRET KARARINI besliyor — "tahmin yok" yanıtı 3 LC kesilmesi demek.
+   * Kanonikleştirmeyi tek bir çağrı yerinin doğru yapmasına bırakmak, tam
+   * olarak bu kusurun kaynağıydı. */
+  const fid = String(fixtureId || "").trim();
 
   if (db) {
     try {
@@ -116,7 +121,7 @@ async function getUserPred(userId, fixtureId, db) {
 // oradaki kendi kendini onarma hiç çalışmıyordu (bkz. lib/preds-index.cjs).
 await ensurePredIndexes(db);
       const doc = await db.collection("predictions").findOne({
-        fixtureId: String(fixtureId),
+        fixtureId: fid,
         userIdLower: uid,
       });
       if (doc) return doc;
@@ -128,7 +133,7 @@ await ensurePredIndexes(db);
   const raw  = await readJson(PREDS_FILE, []);
   const list = Array.isArray(raw) ? raw : (raw?.items ?? []);
   return list.find(p =>
-    String(p.fixtureId || "") === fixtureId &&
+    String(p.fixtureId || "").trim() === fid &&
     String(p.userId    || "").toLowerCase() === uid
   ) || null;
 }
@@ -300,7 +305,30 @@ router.get("/", optionalToken, async (req, res) => {
 router.post("/predict", verifyToken, async (req, res) => {
   try {
     const uid = req.uid;
-    const { fixtureId, outcome, firstGoal, firstHalf, redAny, penaltyAny } = req.body || {};
+    const { fixtureId: fixtureIdRaw, outcome, firstGoal, firstHalf, redAny, penaltyAny } = req.body || {};
+
+    /* ⚠️ KANONİKLEŞTİRME KİLİTTEN VE HER OKUMADAN ÖNCE.
+     *
+     * BULUNAN: bu uç `fixtureId`i hiç normalize etmiyordu; yardımcıları ise
+     * ediyordu. Ayrışma parayı sızdırdı:
+     *
+     *     FixturesStore.getOne(fixtureId)  → içeride trim → maç BULUNUR
+     *     fiksturKilidi(fixtureId)         → içeride trim → kilit AÇIK
+     *     getUserPred(uid, fixtureId, db)  → trim YOK     → "tahmin yok"
+     *
+     * Sonuç: "FDO-1 " (tek boşluk) gönderen kullanıcıdan 3 LC DAHA kesiliyordu.
+     * Boşluk sayısı sınırsız olduğu için ücret de sınırsızdı.
+     *
+     * Karşılığı da yoktu: settle2 tahminleri kanonik id ile arıyor
+     * (`{ fixtureId: String(fid) }`), boşluklu kayıt HİÇ puanlanmıyordu; GET /
+     * de kanonik id listelediği için kullanıcı ödediğini ekranda göremiyordu.
+     *
+     * ÖLÇÜLDÜ (bellek-içi Mongo, 5 varyant): 6 LC düştü (olması gereken 3),
+     * defterde 2 tahmin kaydı (olması gereken 1).
+     *
+     * `pred.cjs:793` bunu zaten doğru yapıyordu — iki tahmin ucundan yalnızca
+     * biri normalize ediyordu. */
+    const fixtureId = String(fixtureIdRaw || "").trim();
 
     if (!fixtureId || !["H", "D", "A"].includes(outcome)) {
       return res.status(400).json({ ok: false, error: "INVALID_INPUT" });
@@ -418,8 +446,11 @@ router.post("/predict", verifyToken, async (req, res) => {
       const list     = Array.isArray(predsRaw) ? predsRaw : (predsRaw?.items ?? []);
       const uidLower = uid.toLowerCase();
 
+      /* ⚠️ Kırpılmış karşılaştırma: dosyaya daha önce (düzeltme öncesi)
+       * boşluklu id yazılmış olabilir; onu da eleyip kanonik satırla
+       * değiştiriyoruz ki ayna Mongo ile aynı şeyi söylesin. */
       const filtered = list.filter(p =>
-        !(String(p.fixtureId || "") === fixtureId &&
+        !(String(p.fixtureId || "").trim() === fixtureId &&
           String(p.userId    || "").toLowerCase() === uidLower)
       );
 
