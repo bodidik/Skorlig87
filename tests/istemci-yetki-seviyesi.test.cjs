@@ -82,7 +82,12 @@ function istemciAdminCagrilari(adminYollarSet) {
   for (const dosya of dosyalar(MOBIL)) {
     const icerik = fs.readFileSync(dosya, "utf8");
     const satirlar = icerik.split("\n");
-    const adminBaslikVar = /withAdminHeaders/.test(icerik);
+    /* ⚠️ ICE AKTARIM ARANIR, PUSKUL DEGIL. Ilk surum yalnizca dosyada
+     * `withAdminHeaders` GECIYOR MU diye bakiyordu; negatif kontrolde import
+     * satirini silip govdedeki cagriyi birakinca kod bozuluyor ama test
+     * GECIYORDU. Ice aktarimi sart kosmak o boslugu kapatiyor. */
+    const adminBaslikVar =
+      /import\s*\{[^}]*\bwithAdminHeaders\b[^}]*\}\s*from\s*["'][^"']*adminToken["']/.test(icerik);
 
     for (const satir of satirlar) {
       const kirpik = satir.trim();
@@ -102,12 +107,35 @@ function istemciAdminCagrilari(adminYollarSet) {
       }
     }
   }
-  return sorunlu;
+  // Ayni dosyada ayni uca birden fazla cagri varsa tek satir yeter.
+  return [...new Set(sorunlu)].sort();
 }
 
-const BILINEN_UYUMSUZ = new Set([
-  "/api/admin/runtime-mode  <- app\\admin-runtime.tsx (withAdminHeaders yok)",
-]);
+/**
+ * BILINEN uyumsuzluklar — dondurulmus liste; YENI bir uyumsuzluk eklenirse
+ * test kirilir.
+ *
+ * ⚠️ Su an BOS ve oyle kalmali. Ilk surumde tek girdi vardi
+ * (/api/admin/runtime-mode <- admin-runtime.tsx); o ekran duzeltildi ve girdi
+ * listeden CIKARILDI. Duzeltilen bir girdiyi listede birakmak, listenin yalan
+ * soylemesi demek — `istemci-uc-eslesme.test.cjs` bu dersi team-ranks
+ * orneginde zaten kayit altina almis.
+ */
+const BILINEN_UYUMSUZ = new Set([]);
+
+test("bilinen uyumsuz liste bayat degil — duzeltilenler listede kalmasin", (t) => {
+  if (!fs.existsSync(MOBIL)) return t.skip("mobil depo yan klasorde yok");
+
+  const sorunlu = new Set(istemciAdminCagrilari(adminYollar()));
+  const gereksiz = [...BILINEN_UYUMSUZ].filter((s) => !sorunlu.has(s));
+
+  assert.deepEqual(
+    gereksiz,
+    [],
+    "Bu girdiler artik uyumsuz degil (duzeltildi), listeden cikar:\n" +
+      gereksiz.join("\n")
+  );
+});
 
 test("istemci admin-guarded uca x-admin-token gondermeli", (t) => {
   if (!fs.existsSync(MOBIL)) return t.skip("mobil depo yan klasorde yok");
