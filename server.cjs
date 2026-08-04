@@ -358,7 +358,29 @@ safeMount("competition-totals", () => app.use("/api/rt",       require("./routes
 
 safeMount("live",             () => app.use("/api",            require("./routes/live.cjs")));
 safeMount("pred",             () => app.use("/api",            require("./routes/pred.cjs")));
-safeMount("series",           () => app.use("/api",            require("./routes/series.cjs")));
+/* ⚠️ KENDİ ÖNEKİNE BAĞLI — `/api` KÖKÜNE DEĞİL.
+ *
+ * BULUNAN: burada `/api` köküne bağlıydı ve `series.cjs:31` tek segmentlik bir
+ * joker tanımlıyor: `router.get("/:sid/leaderboard")`. Yani gerçek desen
+ * `/api/:sid/leaderboard` — `/api` altındaki İKİ segmentlik HER isteği
+ * yakalıyordu. `weekly-picks` 26 satır SONRA bağlandığı için (aşağıda) Express
+ * mount sırasına göre series'i seçiyordu:
+ *
+ *     GET /api/weekly-picks/leaderboard  →  series.cjs (sid="weekly-picks")
+ *     weekly-picks.cjs:488               →  ÖLÜ KOD
+ *
+ * Kullanıcıya ulaşan etki: `mobile/components/Picks1987.tsx:209` bu ucu çağırıp
+ * `j.items` / `j.me` / `j.total1987` okuyor. series `{ok:true, leaderboard:[]}`
+ * döndüğü için ekran BAŞARI kolunu seçip boş tabloyu, null sırayı, 0 katılımcıyı
+ * çiziyordu. 1987 sıralama sekmesi kalıcı olarak boştu.
+ *
+ * ÖLÇÜLDÜ (iki router aynı sırayla bağlanıp uç dövüldü):
+ *   önce  → {"ok":true,"size":0,"requested":5,"finished":true,"leaderboard":[]}
+ *   sonra → {"ok":true,"count":...,"items":[...]}
+ *
+ * Bu önek zaten `series.cjs:27`de belgelenmişti; kod ona uymuyordu — o URL 404
+ * veriyordu. */
+safeMount("series",           () => app.use("/api/series",     require("./routes/series.cjs")));
 safeMount("skorlig",          () => app.use("/api",            require("./routes/skorlig.cjs")));
 safeMount("config",           () => app.use("/api/config",     require("./routes/config.cjs")));
 safeMount("fixtures",         () => app.use("/api/live",       require("./routes/fixtures.cjs")));
