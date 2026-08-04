@@ -60,7 +60,22 @@ const MUAF = new Set([
   // totals.cjs tamamen GÖLGELENMİŞ ölü kod: /api/rt/totals isteğini
   // totals-read.cjs karşılıyor (bkz. tests/rota-golgeleme.test.cjs).
   "routes/totals.cjs",
-  // /board2 kendi yorumunda "debug / eski kullanım" diyor; istemci çağırmıyor.
+  /* ⚠️ GEREKÇE BAYATLAMIŞTI — muafiyetin kendisi kusuru gizledi.
+   *
+   * Eski gerekçe: "/board2 debug/eski kullanım; istemci çağırmıyor."
+   * Bu ARTIK YANLIŞ: `mobile/app/stats/board2.tsx:50` bu ucu çağırıyor.
+   * Muafiyet dururken uç ile ekran şekil olarak ayrıştı ve ekran kalıcı
+   * boş kaldı (bkz. tests/board2-veri-sozlesmesi.test.cjs).
+   *
+   * Muafiyet KORUNUYOR ama artık dar ve doğru gerekçeyle: bu dosya sezon
+   * toplamlarını zaten Mongo öncelikli okuyor (`SeasonTotals.loadTotals`,
+   * satır 35). Dosya-öncelikli olan yalnızca `/board2`nin ham
+   * `leaderboard.json` okuması ve o koleksiyonun canlı yazıcısı yok — Mongo'ya
+   * çevirmek boş tablo döndürürdü. Bu, bu dosyanın değil `realtime`/`settle2`
+   * yazma yolunun sorunu.
+   *
+   * DERS: "istemci çağırmıyor" gerekçesi zamanla çürüyor; muafiyet yazarken
+   * çürümeyecek bir gerekçe seç. */
   "routes/totals-read.cjs",
   // /board eski bir uç; sıralamayı leaderboard.cjs ve totals-read veriyor.
   "routes/realtime.cjs",

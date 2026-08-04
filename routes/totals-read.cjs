@@ -11,6 +11,8 @@ const DATA_DIR         = process.env.SKORLIG_DATA_DIR || path.join(__dirname, ".
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const SeasonTotals = require("../lib/season-totals.cjs");
 const Season = require("../lib/season.cjs");
+// Bayrak TEK KAYNAK: lib/countries.cjs (ülke adı takma adlarıyla normalize edilir).
+const { flagOf } = require("../lib/countries.cjs");
 
 async function readJson(file, fb = null) {
   try {
@@ -55,12 +57,85 @@ async function loadTotals(db) {
   };
 }
 
-/** GET /api/rt/board2 → ham leaderboard.json içeriği (debug / eski kullanım) */
+/**
+ * GET /api/rt/board2 → kişi bazında liderlik tablosu (+ ham içerik)
+ *
+ * ⚠️ UÇ İLE TEK İSTEMCİSİ ÜÇ ALANDA UYUŞMUYORDU; her biri tek başına ekranı
+ * boşaltmaya yetiyordu:
+ *
+ *   uç (eski)                  istemci (mobile/app/stats/board2.tsx)
+ *   -------------------------- -------------------------------------
+ *   { leaderboard: [...] }     `Array.isArray(j.items)`   satır 53
+ *   satır: MAÇ bazlı           `x.points` → kişi başı bekleniyor
+ *   (bayrak yok)               `x.flag`   → hep boş
+ *
+ * İlki öldürücüydü: `j.items` undefined → `setItems([])` → boş durum çizilir,
+ * `loadError` false kaldığı için HATA DA GÖSTERİLMEZ. Ekranın adı "Bayraklı
+ * Liderlik" ve kalıcı olarak boştu.
+ *
+ * İkincisi daha sinsi: `leaderboard.json` satırları MAÇ BAZLI
+ * (`realtime.cjs:303-311`). Yalnızca anahtarı `items` yapmak, aynı kullanıcıyı
+ * her maç için ayrı satır olarak listelerdi — liderlik tablosu değil ham döküm.
+ *
+ * ÖLÇÜLDÜ (3 satır / 2 kullanıcı tohumlandı):
+ *     önce  → anahtarlar ["ok","leaderboard","updatedAt"]   (6 iddia düştü)
+ *     sonra → items: Ali 16 puan 🇹🇷, Veli 4 puan 🇩🇪
+ *
+ * ⚠️ NEDEN YAKALANMADI: `istemci-uc-eslesme.test.cjs` yalnızca YOLUN var
+ * olduğunu sınıyor, yanıtın ŞEKLİNİ değil — board2.tsx:47-49 yolun bir kez
+ * düzeltildiğini belgeliyor, şekil kırık kalmış. Ayrıca
+ * `mongo-birincil.test.cjs:63` bu ucu "istemci çağırmıyor" diye muaf tutuyor;
+ * o gerekçe artık yanlış.
+ *
+ * `leaderboard` anahtarı KORUNUYOR (alan ekleniyor, kaldırılmıyor).
+ */
 router.get("/board2", async (req, res) => {
   const lb = await readJson(LEADERBOARD_FILE, { items: [], updatedAt: null });
+  const ham = Array.isArray(lb.items) ? lb.items : [];
+
+  /* Kişi bazında toplama. Anahtar küçük harfe indirgeniyor: kardeş uçlar
+   * (satır ~107 bot araması, ~112 userId süzgeci) zaten öyle yapıyor ve
+   * "Demo1"/"demo1" iki ayrı satır olmamalı. Görünen ad ilk görülen yazımdır. */
+  const kisiler = new Map();
+  for (const r of ham) {
+    const ad = String(r?.userId || r?.user || "").trim();
+    if (!ad) continue;
+    const anahtar = ad.toLowerCase();
+
+    let k = kisiler.get(anahtar);
+    if (!k) {
+      k = { userId: ad, points: 0, penalty: 0, matches: 0, country: null, lastAt: null };
+      kisiler.set(anahtar, k);
+    }
+    k.points  += Number(r?.points  || 0);
+    k.penalty += Number(r?.penalty || 0);
+    k.matches += 1;
+    if (!k.country && r?.country) k.country = r.country;
+
+    const ts = r?.updatedAt || r?.at || null;
+    if (ts && (!k.lastAt || new Date(ts) > new Date(k.lastAt))) k.lastAt = ts;
+  }
+
+  const items = [...kisiler.values()]
+    .map((k) => ({
+      ...k,
+      /* Ondalık koruma: puanlar kesirli (ölçüldü: -2.06). Tamsayıya
+       * yuvarlamak profil ekranıyla çelişirdi — bkz. stats.cjs iki-ondalık notu. */
+      points: Math.round(k.points * 100) / 100,
+      penalty: Math.round(k.penalty * 100) / 100,
+      flag: flagOf(k.country) || "",
+      isBot: BOT_ID_SET.has(String(k.userId).trim().toLowerCase()),
+    }))
+    /* İkincil ölçüt bilerek: yalnız puana bakan sıralama eşitlikte kararsız
+     * kalır ve ekran `idx+1` ile derece bastığı için sıra istekten isteğe
+     * oynardı. */
+    .sort((a, b) => b.points - a.points || a.userId.localeCompare(b.userId, "tr"));
+
   res.json({
     ok: true,
-    leaderboard: Array.isArray(lb.items) ? lb.items : [],
+    items,
+    leaderboard: ham,          // eski sözleşme korunuyor
+    count: items.length,
     updatedAt: lb.updatedAt || null,
   });
 });
