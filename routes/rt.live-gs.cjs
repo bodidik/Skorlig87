@@ -8,6 +8,7 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
+const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 /* Tahmin kilidi TEK KAYNAK — bkz. lib/ekonomi.cjs TAHMIN_KILIT_DK. */
 const { TAHMIN_KILIT_DK } = require("../lib/ekonomi.cjs");
 
@@ -43,10 +44,7 @@ async function readJson(file, fb) {
     return fb;
   }
 }
-async function writeJson(file, data) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  await fsp.writeFile(file, JSON.stringify(data, null, 2), "utf8");
-}
+// writeJson kaldirildi — writeJsonAtomic (lib/fileLock.cjs) kullaniliyor
 
 function emptyLiveModel() {
   return {
@@ -64,7 +62,7 @@ async function loadLive() {
 
 async function saveLive(m) {
   m.updatedAt = new Date().toISOString();
-  await writeJson(LIVE_FILE, m);
+  await writeJsonAtomic(LIVE_FILE, m);
 }
 
 // Küçük yardımcı
@@ -91,6 +89,9 @@ async function syncLiveStateForFixture(merged) {
   try {
     const fid = normFixtureId(merged && merged.fixtureId);
     if (!fid) return;
+
+    const stateFile = LIVE_STATE_FILE(fid);
+    const prev = await readJson(stateFile, {}) || {};
 
     const nowISO = new Date().toISOString();
 
@@ -121,38 +122,42 @@ async function syncLiveStateForFixture(merged) {
         ? Number(merged.rewardBoost)
         : null;
 
-    // ✅ event-stamp alanları ROOT’TA
     const st = {
+      ...prev,
       fixtureId: fid,
-      status: merged.status || "NS",
+      status: merged.status || prev.status || "NS",
       minute:
         typeof merged.minute === "number"
           ? merged.minute
           : merged.minute == null
-          ? null
-          : Number(merged.minute) || null,
+          ? prev.minute ?? null
+          : Number(merged.minute) || prev.minute || null,
 
-      isLive: isLiveStatus(merged.status),
+      isLive: isLiveStatus(merged.status || prev.status),
 
-      country: merged.country || "Türkiye",
-      league: merged.league || "Süper Lig",
+      country: merged.country || prev.country || "Türkiye",
+      league: merged.league || prev.league || "Süper Lig",
 
-      teamHome: merged.teamHome || merged.home || null,
-      teamAway: merged.teamAway || merged.away || null,
-      kickoffISO: merged.kickoffISO || null,
+      teamHome: merged.teamHome || merged.home || prev.teamHome || null,
+      teamAway: merged.teamAway || merged.away || prev.teamAway || null,
+      kickoffISO: merged.kickoffISO || prev.kickoffISO || null,
 
       score: {
         home: Number.isFinite(scoreHome) ? scoreHome : 0,
         away: Number.isFinite(scoreAway) ? scoreAway : 0,
       },
 
-      redEventAtISO: merged.redEventAtISO || null,
+      redEventAtISO: merged.redEventAtISO || prev.redEventAtISO || null,
       redEventMinute:
-        merged.redEventMinute == null ? null : Number(merged.redEventMinute),
+        merged.redEventMinute == null
+          ? prev.redEventMinute ?? null
+          : Number(merged.redEventMinute),
 
-      penEventAtISO: merged.penEventAtISO || null,
+      penEventAtISO: merged.penEventAtISO || prev.penEventAtISO || null,
       penEventMinute:
-        merged.penEventMinute == null ? null : Number(merged.penEventMinute),
+        merged.penEventMinute == null
+          ? prev.penEventMinute ?? null
+          : Number(merged.penEventMinute),
 
       updatedAt: nowISO,
     };
@@ -170,7 +175,7 @@ async function syncLiveStateForFixture(merged) {
     if (entryLCVal != null) st.entryLC = entryLCVal;
     if (rewardBoostVal != null) st.rewardBoost = rewardBoostVal;
 
-    await writeJson(LIVE_STATE_FILE(fid), st);
+    await writeJsonAtomic(stateFile, st);
   } catch (e) {
     console.error("SYNC_LIVE_STATE_FAILED", e);
   }
@@ -252,6 +257,8 @@ async function getFixtureState(fixtureId) {
 async function upsertFixtureState(fixtureId, patch) {
   const fx = normFixtureId(fixtureId);
   if (!fx) throw new Error("FIXTURE_ID_REQUIRED");
+
+  return withFileLock(LIVE_FILE, async () => {
 
   const m = await loadLive();
   const existing = m.fixtures[fx] || {
@@ -377,6 +384,8 @@ async function upsertFixtureState(fixtureId, patch) {
   await saveLive(m);
   await syncLiveStateForFixture(merged);
   return merged;
+
+  }); // withFileLock
 }
 
 // ---- PROVIDER TARAFI (İÇ API üstünden) ----
