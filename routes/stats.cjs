@@ -136,17 +136,46 @@ async function loadUserStatsCore(req, userId) {
           lastAt: null,
         };
 
-    // Son maçlar (leaderboard koleksiyonundan)
+    /* Son maçlar (leaderboard koleksiyonundan)
+     *
+     * ⚠️ BURADA `find({ userIdLower })` VARDI VE HİÇBİR ZAMAN EŞLEŞMİYORDU.
+     *
+     * Bu koleksiyonun TEK yazıcısı (`routes/realtime.cjs:345`) fikstür başına
+     * BİR belge yazıyor ve kullanıcı satırlarını `items` dizisinde taşıyor:
+     *
+     *     { fixtureId, items: rows, updatedAt }
+     *
+     * Üst düzeyde `userIdLower` YOK — dahası satırların kendisinde de yok
+     * (`realtime.cjs:303-311`: fixtureId, userId, points, basePoints, penalty,
+     * country, detail). Yani sorgu Mongo modunda hep boş dönüyordu ve
+     * `recentMatches` HER kullanıcı için [] oluyordu.
+     *
+     * Görünen etkisi: aşağıdaki `form` türetmesi (satır ~434) ve mobilde
+     * `competition-kings.tsx:184` bu diziden besleniyor — ikisi de ölüydü.
+     *
+     * Aynı yanlış okuma `competition-totals.cjs`te de vardı (orada tablo tek
+     * "anon / 0 puan" satırına çöküyordu); ikisi birlikte düzeltildi. */
     const recentMatchesRaw = await lbCol
-      .find({ userIdLower: uidLower })
-      .sort({ updatedAt: -1, createdAt: -1 })
-      .limit(20)
+      .aggregate([
+        { $unwind: "$items" },
+        {
+          // Satırlarda `userIdLower` yok, ham `userId` var → karşılaştırma
+          // küçük harfe indirgenerek yapılıyor.
+          $match: {
+            $expr: {
+              $eq: [{ $toLower: { $ifNull: ["$items.userId", ""] } }, uidLower],
+            },
+          },
+        },
+        { $sort: { updatedAt: -1, createdAt: -1 } },
+        { $limit: 20 },
+      ])
       .toArray();
 
     const recentMatches = recentMatchesRaw.map((m) => ({
-      fixtureId: m.fixtureId || null,
-      points: Number(m.points || 0),
-      detail: m.detail || null,
+      fixtureId: m.items?.fixtureId || m.fixtureId || null,
+      points: Number(m.items?.points || 0),
+      detail: m.items?.detail || null,
       updatedAt: m.updatedAt || m.createdAt || null,
     }));
 

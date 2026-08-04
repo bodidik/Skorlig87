@@ -232,30 +232,65 @@ router.get("/competition-totals", async (req, res) => {
 
         const byUser = new Map();
 
-        for (const r of lbDocs) {
-          const uid =
-            String(r.userId || r.userIdLower || "").trim() || "anon";
-          if (!byUser.has(uid)) {
-            byUser.set(uid, {
-              userId: uid,
-              totalPoints: 0,
-              matches: 0,
-              totalPenalty: 0,
-              lastAt: null,
-            });
-          }
-          const acc = byUser.get(uid);
-          const pts = Number(r.points || 0);
-          const pen = extractPenaltyFromDetail(r.detail);
+        for (const belge of lbDocs) {
+          /* ⚠️ ANLIK GÖRÜNTÜ BELGESİ DÜZ SATIR DEĞİL.
+           *
+           * BULUNAN: burada `belge.userId` / `belge.points` okunuyordu. Oysa bu
+           * koleksiyonun TEK yazıcısı (`routes/realtime.cjs:345`) fikstür başına
+           * BİR belge yazıyor ve kullanıcı satırlarını `items` dizisinde taşıyor:
+           *
+           *     { fixtureId, items: rows, updatedAt }
+           *
+           * `users.cjs:954` yorumu da bunu söylüyor: "belge fikstüre ait, ama
+           * `items` dizisi kullanıcı satırları taşıyor."
+           *
+           * Sonuç: her belgede `userId` undefined → uid "anon", `points`
+           * undefined → 0. Üretimde kupa tablosu TEK "anon / 0 puan" satırına
+           * çöküyordu ve `me` HER kullanıcı için null dönüyordu. İki ekran ölü:
+           * stats.tsx ve competition-kings.tsx (ikincisi sırf `rank` için
+           * `userId` gönderiyor).
+           *
+           * ÖLÇÜLDÜ (bellek-içi Mongo, gerçek yazıcı şekli, 2 oyuncu / 2 maç):
+           *     önce  → items: [{userId:"anon", totalPoints:0}]   (8 iddia düştü)
+           *     sonra → ali 16 puan / rank 1, veli 12 puan / rank 2
+           *
+           * ⚠️ NEDEN YAKALANMAMIŞTI: tek davranış testi
+           * (`yarisma-bot.test.cjs:84`) `app.locals.db = null` ile DOSYA yoluna
+           * zorluyor. Dosyadaki satırlar düz olduğu için o kol doğru çalışıyor
+           * ve test yeşil kalıyordu — üretimdeki kol hiç sınanmamıştı.
+           *
+           * Düz satır da kabul ediliyor: dosya aynası bu şekli kullanıyor ve
+           * eski belgeler kalmış olabilir. */
+          const satirlar = Array.isArray(belge.items) ? belge.items : [belge];
+          const belgeTs = belge.updatedAt || belge.createdAt || null;
 
-          acc.totalPoints  += pts;
-          acc.matches      += 1;
-          acc.totalPenalty += pen;
+          for (const r of satirlar) {
+            const uid =
+              String(r.userId || r.userIdLower || "").trim() || "anon";
+            if (!byUser.has(uid)) {
+              byUser.set(uid, {
+                userId: uid,
+                totalPoints: 0,
+                matches: 0,
+                totalPenalty: 0,
+                lastAt: null,
+              });
+            }
+            const acc = byUser.get(uid);
+            const pts = Number(r.points || 0);
+            const pen = extractPenaltyFromDetail(r.detail);
 
-          const ts = r.updatedAt || r.createdAt || null;
-          if (ts) {
-            if (!acc.lastAt || new Date(ts) > new Date(acc.lastAt)) {
-              acc.lastAt = ts;
+            acc.totalPoints  += pts;
+            acc.matches      += 1;
+            acc.totalPenalty += pen;
+
+            /* Zaman damgası satırda yoksa BELGEden alınır: `items` şeklinde
+             * satırların kendi damgası yok, damga fikstür belgesinde. */
+            const ts = r.updatedAt || r.createdAt || belgeTs;
+            if (ts) {
+              if (!acc.lastAt || new Date(ts) > new Date(acc.lastAt)) {
+                acc.lastAt = ts;
+              }
             }
           }
         }
