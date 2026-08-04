@@ -44,6 +44,22 @@ describe("board2 + friends/board i18n nobetci", () => {
     assert.ok(src.includes("console.error"), "catch blogunda console.error yok — sessiz hata");
   });
 
+  test("mystatus.tsx 1987GS paneli i18n gecisi TAMAM", () => {
+    const dosya = path.join(MOBIL, "app", "mystatus.tsx");
+    if (!fs.existsSync(dosya)) return;
+    const src = fs.readFileSync(dosya, "utf8");
+    for (const anahtar of [
+      "access1987Title", "status1987Checking", "status1987Yes",
+      "status1987No", "status1987Unknown", "hint1987Code",
+      "verifying1987", "use1987Code", "note1987Verified",
+      "myPredTitle", "microBoardNote", "noScoredPredYet",
+    ]) {
+      assert.ok(src.includes(`t("${anahtar}")`), `${anahtar} cagrisi eksik`);
+    }
+    assert.ok(!src.includes("1987GS Erişimi"), "1987GS Erisimi sabit kalmis");
+    assert.ok(!src.includes("Doğrulanıyor"), "Dogrulaniyor sabit kalmis");
+  });
+
   test("NEGATIF: sabit geri gelirse test YAKALAR", () => {
     const orjinal = 'Liderlik Tablosu';
     const yerine = 't("leaderboardTitle")';

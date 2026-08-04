@@ -39,6 +39,7 @@ const TAMAMLANAN = [
   { rel: "app/(tabs)/me.tsx", izin: 2 },
   { rel: "app/(tabs)/predict.tsx", izin: 3 },
   { rel: "app/(tabs)/stats.tsx", izin: 0 },
+  { rel: "app/mystatus.tsx", izin: 0 },
 ];
 
 /* Takım/özel adlar Türkçe karakter taşıyabilir (Fenerbahçe, Beşiktaş) —
@@ -47,7 +48,7 @@ const VERI_ISTISNASI = /Fenerbahçe|Beşiktaş|KartalGözü/;
 
 /** Ölçüm — scratchpad'deki i18n-olc ile AYNI kural: yorumlar atılır,
  *  string literallerinde ve JSX metinlerinde Türkçe karakter aranır. */
-const TAVAN = 25; // 2026-08-04: board2 Geri+baslik + friends/board 3 sabit gecisi (net degisim yok, diger dosyalar dengeledi)
+const TAVAN = 18; // 2026-08-04: 25 -> 18 (mystatus 7 sabit + yorum temizligi)
 
 function say(dosya) {
   const src = fs.readFileSync(dosya, "utf8");
