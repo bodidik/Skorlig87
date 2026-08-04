@@ -7,6 +7,8 @@ const fsp     = fs.promises;
 const path    = require("path");
 const crypto  = require("crypto");
 const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
+// Bayrak TEK KAYNAK: lib/countries.cjs (takma adlarla normalize eder).
+const { flagOf } = require("../lib/countries.cjs");
 
 function requireAdminToken(req, res, next) {
   const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
@@ -241,6 +243,15 @@ router.get("/profile", optionalToken, async (req, res) => {
       nickname: u.nickname || null,
       mainTeam: u.mainTeam || null,
       country: u.country || null,
+      /* ⚠️ BAYRAK SUNUCUDAN — istemcide ülke→bayrak tablosu YOK.
+       *
+       * `app/stats/me.tsx` başlıkta bayrak gösteriyor ve bunu yanıtta
+       * arıyordu; hiçbir uç üretmiyordu. Mobil tarafa 200+ ülkelik ikinci bir
+       * tablo koymak iki kaynağın ayrışması demekti — aynı karar
+       * `/api/rt/board2`de de verildi, tek kaynak `lib/countries.cjs`.
+       *
+       * Ülke yoksa BOŞ STRING: `null` gören istemci "null" basabilir. */
+      flag: flagOf(u.country) || "",
       totals: Number(u.totals || 0),
       // YETKİLİ BAKİYE cüzdandan gelir (lc_wallet_users), profildeki `lc`
       // alanından DEĞİL.
