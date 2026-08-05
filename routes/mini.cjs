@@ -143,6 +143,11 @@ function publicView(t) {
     finishedAt: t.finishedAt || null,
     winners: t.winners || null,
     rewardLc: t.rewardLc ?? null,
+    /* ⚠️ ÖDÜLÜN NEDEN VERİLMEDİĞİ EKRANA TAŞINIYOR. `rewardLc: 0` tek başına
+     * iki farklı durumu aynı gösterirdi: "kimse puan alamadı" ve "asgari üye
+     * şartı sağlanmadı". Ekran ikincisini açıklayabilsin diye (bkz.
+     * MIN_ODUL_UYE) neden de gönderiliyor. */
+    odulKesildi: t.odulKesildi ?? null,
   };
 }
 

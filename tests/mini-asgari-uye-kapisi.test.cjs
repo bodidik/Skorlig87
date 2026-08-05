@@ -137,4 +137,71 @@ describe("nöbetçi", () => {
      * ödenmemiş bir ödül, ödenmeye değmeyen bir ödül gibi görünür. */
     assert.ok(/odulKesildi/.test(src), "odul kesilme nedeni kaydedilmiyor");
   });
+
+  test("neden ve kural İSTEMCİYE gönderiliyor", () => {
+    /* Ekran "ödül neden verilmedi" sorusunu ancak bu ikisiyle cevaplayabilir:
+     * `odulKesildi` publicView'da, `odulKurali` board yanıtında. */
+    assert.ok(/odulKesildi:\s*t\.odulKesildi/.test(src),
+      "odulKesildi publicView ile gonderilmiyor — ekran nedeni goremez");
+    assert.ok(/odulKurali:\s*\{\s*minUye:\s*MIN_ODUL_UYE/.test(src),
+      "odulKurali board yanitinda yok — ekran asgari uyeyi TAHMIN etmek zorunda kalir");
+  });
+});
+
+/* ── Açıklama metni: 21 dilin hepsinde ────────────────────────────────────── */
+
+describe("ödülsüz bitişin açıklaması", () => {
+  const { MOBIL, mobilVarMi } = require("./_mobil-dizin.cjs");
+  const ANAHTAR = "minMembersNoReward";
+
+  test("metin 21 SÖZLÜĞÜN HEPSİNDE var", (t) => {
+    /**
+     * ⚠️ NEDEN 21 DİL. Deponun 2026-08-03 kapsam kararı "yeni anahtarlar
+     * yalnız tr+en, diğerleri İngilizce yedeğe düşer" diyor (bkz. lib/i18n.ts
+     * `t` notu). Bu metin için kural BİLEREK aşıldı: kullanıcı şampiyon olup
+     * ödül alamadığında gördüğü tek açıklama bu — İngilizce yedek, "neden
+     * param yok" sorusunun cevabı olarak yetersiz.
+     *
+     * ⚠️ İDDİA SAYIYA BAĞLI: yeni bir dil eklenip bu anahtar atlanırsa kırılır
+     * ve kırılması DOĞRUDUR — o dilin kullanıcısı sessizce yedeğe düşerdi.
+     */
+    if (!mobilVarMi()) return t.skip("mobil depo yok");
+    const src = fs.readFileSync(path.join(MOBIL, "lib", "i18n.ts"), "utf8");
+
+    const sozlukSayisi = (src.match(/^ {2}[a-z]{2}: \{$/gm) || []).length;
+    assert.ok(sozlukSayisi >= 21, `yalnizca ${sozlukSayisi} sozluk bulundu — tarama bozuk`);
+
+    const kaç = (src.match(new RegExp(`${ANAHTAR}:`, "g")) || []).length;
+    assert.equal(kaç, sozlukSayisi,
+      `${ANAHTAR} ${kaç} sozlukte var ama ${sozlukSayisi} sozluk mevcut — ` +
+      `bir dil atlanmis, o dilin kullanicisi Ingilizce yedege duser`);
+  });
+
+  test("hiçbir çeviri {n} yer tutucusunu KAYBETMEMİŞ", (t) => {
+    /* ⚠️ Yer tutucu düşerse metin dilbilgisel olarak doğru ama SAYISIZ olur:
+     * "en az gerçek üye gerekiyor". Sessiz bir bozulma. */
+    if (!mobilVarMi()) return t.skip("mobil depo yok");
+    const src = fs.readFileSync(path.join(MOBIL, "lib", "i18n.ts"), "utf8");
+    const eksik = [];
+    for (const satir of src.split("\n")) {
+      if (!satir.includes(`${ANAHTAR}:`)) continue;
+      if (!satir.includes("{n}")) eksik.push(satir.trim());
+    }
+    assert.deepEqual(eksik, [], "yer tutucusu dusen ceviriler: " + eksik.join(" | "));
+  });
+
+  test("ekran metni SUNUCU değeriyle basıyor", (t) => {
+    /* Ekran asgari üye sayısını sabit yazsaydı sunucudaki MIN_ODUL_UYE
+     * değişince yanlış sayı gösterirdi — bu depodaki tekrar eden kusur sınıfı
+     * (bkz. duello odulTablosu). */
+    if (!mobilVarMi()) return t.skip("mobil depo yok");
+    const ekran = path.join(MOBIL, "app", "mini", "[id].tsx");
+    if (!fs.existsSync(ekran)) return t.skip("ekran yok");
+    const src = fs.readFileSync(ekran, "utf8");
+
+    assert.ok(new RegExp(`${ANAHTAR}[^)]*odulKurali\\.minUye`).test(src),
+      "ekran asgari uye sayisini sunucudan almiyor");
+    assert.ok(/odulKesildi === "MIN_UYE"/.test(src),
+      "aciklama odul kesilme nedenine baglanmamis — her odulsuz bitisde gorunur");
+  });
 });
