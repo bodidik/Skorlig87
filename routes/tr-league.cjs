@@ -34,6 +34,7 @@ const LIVE_DIR = path.join(DATA_DIR, "live");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const { creditLc, kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
+const Season = require("../lib/season.cjs");
 // settle2 ile AYNI bayrak: cüzdan dosyası aynası.
 const WALLET_FILE_MIRROR =
   String(process.env.SKORLIG_WALLET_FILE_MIRROR ?? "1") !== "0";
@@ -134,8 +135,8 @@ function weekRange(weekKey) {
   return {
     fromMs: mon.getTime(),
     toMs: sun.getTime() + (24 * 3600 - 1) * 1000,
-    fromISO: mon.toISOString().slice(0, 10),
-    toISO: sun.toISOString().slice(0, 10),
+    fromISO: Season.dayKey(mon),
+    toISO: Season.dayKey(sun),
   };
 }
 
