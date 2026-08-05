@@ -340,6 +340,8 @@ safeMount("rt-live-gs", () =>
 
 safeMount("totals-read",      () => app.use("/api/rt",         require("./routes/totals-read.cjs")));
 safeMount("settle2",          () => app.use("/api/rt",         require("./routes/settle2.cjs")));
+/* Maç odası tepkileri — match-race ekranıyla aynı yol altında (/api/rt). */
+safeMount("reactions",        () => app.use("/api/rt",         require("./routes/reactions.cjs")));
 
 safeMount("totals-penalized", () => app.use("/api/stats",      require("./routes/totals-penalized.cjs")));
 safeMount("live-fav",         () => app.use("/api/live",       require("./routes/live-fav.cjs")));

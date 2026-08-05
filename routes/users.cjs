@@ -923,6 +923,17 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
         ["kupon_katilim", { userIdLower: uidL }],
         // Kupa/yarışma puanları da kullanıcı verisi.
         ["competition_totals", { $or: [{ userIdLower: uidL }, { userId: uid }] }],
+
+        /* ⚠️ MAÇ ODASI TEPKİLERİ. Tepki metni kapalı listeden geliyor ama OLAY
+         * kişisel: kimliği, hangi maçı izlediğini ve saatini taşıyor; maç odası
+         * akışı bunları görünen adla birlikte HERKESE gösteriyor. Silinen bir
+         * hesabın adı odada asılı kalırdı.
+         *
+         * Bu satırı yazan şey nöbetçinin kendisi: koleksiyon eklendiği anda
+         * `hesap-silme.test.cjs` düştü. Aynı sınıf bu listede daha önce
+         * `push_tokens` ve `kupon_katilim` ile de yaşandı — yeni depo eklenip
+         * silme listesine dönülmemesi tekrar eden bir kusur. */
+        ["match_reactions", { userIdLower: uidL }],
       ];
 
       /* ⚠️ SİLMEK YETMİYOR: kullanıcı BAŞKALARININ kayıtlarının İÇİNDE de duruyor.

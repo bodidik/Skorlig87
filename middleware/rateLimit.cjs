@@ -85,6 +85,15 @@ const RULES = [
   { re: /\/weekly-picks\/predict\b/, max: 20, windowMs: 60_000 },
   { re: /\/tournaments\/(create|join|settle)\b/, max: 10, windowMs: 60_000 },
   { re: /\/groups\/(create|join)\b/,             max: 10, windowMs: 60_000 },
+
+  /* ⚠️ MAÇ TEPKİLERİ — sınır İKİ KATMANLI, bu yalnızca dıştaki.
+   * Depoda kişi başı bekleme (3 sn) ve maç başına üst sınır (40) var; ikisi de
+   * KİMLİK bazlı. Bu kural IP bazlı ve farklı bir şeyi durduruyor: tek makineden
+   * çok kimlikle basılan sel. Depo sınırı 3 sn ise dakikada 20 meşru tepki eder;
+   * 60 hem birkaç kimliğe yer bırakıyor hem de selin önünü kesiyor.
+   * Okuma ucu da AYNI kalıba giriyor — maç anında yoklanan bir uç, ama
+   * SKIP'e koymak onu tamamen korumasız bırakırdı. */
+  { re: /\/api\/rt\/reactions\b/, max: 60, windowMs: 60_000 },
 ];
 
 // Kural eşleşmeyen her şey için üst sınır. Cömert (saniyede ~2) ama

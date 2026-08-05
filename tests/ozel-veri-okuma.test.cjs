@@ -98,6 +98,15 @@ const MUAF = [
   // bu ucu çağırıyor ve aynı veri uygulamada zaten herkese görünür.
   // Kilitlemek uygulamayı kırardı, koruduğu bir şey de yok.
   ["rt.live-gs.cjs", "/admin-live-gs"],
+
+  /* Maç odası tepkileri: YAZMA kimlik ister (kimse başkasının adına tepki
+   * basamasın), OKUMA bilerek herkese açık. Dönen veri zaten kamuya açık
+   * olanın aynısı — görünen ad + kapalı listeden bir tepki, yani sıralamada
+   * hâlihazırda görünenden fazlası yok. Asıl gerekçe ürün tarafında: odanın
+   * DOLU görünmesi, kayıt olmamış kullanıcıyı içeri çeken şeyin ta kendisi;
+   * misafire boş oda göstermek özelliğin amacını tersine çevirirdi.
+   * (tests/mac-tepkileri.test.cjs "misafir odayı OKUYABİLİYOR" bunu koruyor.) */
+  ["reactions.cjs", "/reactions"],
 ];
 
 test("NÖBETÇİ: yazması korunan bir yolun okuması da korunmalı", () => {
