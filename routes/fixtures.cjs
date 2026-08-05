@@ -3,6 +3,7 @@
 const express = require("express");
 const { tsdbKickoffISO } = require("../lib/tsdb-time.cjs");
 const { requireAdmin } = require("../middleware/requireAdmin.cjs");
+const { optionalToken } = require("../middleware/verifyToken.cjs");
 const router = express.Router();
 
 const fs = require("fs");
@@ -1241,70 +1242,131 @@ const COUNTRY_LEAGUES = {
 // Fallback: büyük Avrupa ligleri
 const GLOBAL_FALLBACK_LEAGUES = [39, 140, 135, 78, 61, 88, 94, 203];
 
-// GET /api/live/daily-featured?country=Türkiye
-router.get("/daily-featured", async (req, res) => {
-  const country = String(req.query.country || "").trim();
-  const leagueIds = (country && COUNTRY_LEAGUES[country])
-    ? COUNTRY_LEAGUES[country]
-    : GLOBAL_FALLBACK_LEAGUES;
+/**
+ * Günün maçlarını kullanıcıyı ilgilendirme sırasına dizer.
+ *
+ *   1) kullanıcının takımı oynuyorsa o maç
+ *   2) kullanıcının ülkesindeki maçlar
+ *   3) en yakın başlayan
+ *
+ * ⚠️ SAF FONKSİYON — BİLEREK DIŞA AÇILDI. Uç `optionalToken` kullanıyor ve bu
+ * ortamda firebase-admin kurulu olduğu için testte geçerli bir kimlik
+ * ÜRETİLEMİYOR: sahte jeton gerçekten doğrulanmaya çalışılıp reddediliyor ve
+ * `req.uid` daima `null` kalıyor (ölçüldü — üç başlık birleşimi de null).
+ * Yani "takım önceliği" HTTP üzerinden sınanamıyor. Ucun geri kalanı yine
+ * uçtan dövülüyor (kaynak, ülke sırası, limit, bitmiş maç, sözleşme); yalnızca
+ * kimlik gerektiren dal buradan sınanıyor.
+ */
+function gunlukSirala(liste, { country, favTakim } = {}) {
+  const favLower = String(favTakim || "").toLowerCase();
+  const ulkeLower = String(country || "").toLowerCase();
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const takimEsler = (f) =>
+    !!favLower &&
+    (String(f?.home || "").toLowerCase().includes(favLower) ||
+     String(f?.away || "").toLowerCase().includes(favLower));
 
-  async function fetchFixturesForLeague(leagueId) {
-    if (!AF_KEY) return [];
-    try {
-      const qs = new URLSearchParams({ league: leagueId, date: todayStr, timezone: "Europe/Istanbul" }).toString();
-      const r = await fetch(`${AF_BASE}/fixtures?${qs}`, {
-        headers: { [AF_HDR]: AF_KEY, Accept: "application/json" },
-      });
-      const json = await r.json();
-      return (json.response || []).map(f => ({
-        fixtureId: String(f.fixture?.id),
-        home: f.teams?.home?.name || "?",
-        away: f.teams?.away?.name || "?",
-        homeLogo: f.teams?.home?.logo || null,
-        awayLogo: f.teams?.away?.logo || null,
-        kickoffISO: f.fixture?.date || null,
-        status: f.fixture?.status?.short || "NS",
-        league: f.league?.name || null,
-        country: f.league?.country || null,
-        leagueId,
-      }));
-    } catch { return []; }
-  }
+  const puan = (f) => {
+    if (takimEsler(f)) return 0;                                    // en öncelikli
+    if (ulkeLower && String(f?.country || "").toLowerCase() === ulkeLower) return 1;
+    return 2;
+  };
 
+  return [...(liste || [])].sort((a, b) => {
+    const pa = puan(a), pb = puan(b);
+    if (pa !== pb) return pa - pb;
+    return (Date.parse(a?.kickoffISO || "") || Infinity) -
+           (Date.parse(b?.kickoffISO || "") || Infinity);
+  });
+}
+
+/**
+ * GET /api/live/daily-featured?country=Türkiye&limit=3
+ *
+ * ⚠️ ARTIK KENDİ FİKSTÜR DEPOMUZDAN BESLENİYOR — ESKİDEN AF'YE GİDİYORDU.
+ *
+ * Eski sürüm her çağrıda API-Football'a sorgu atıyordu. O hesap ASKIDA
+ * ("Your account is suspended", bkz. services/sources.cjs kaydı), yani
+ * `fetchFixturesForLeague` her seferinde `catch → []` dönüyor ve uç
+ * `{ ok: true, fixture: null }` veriyordu. HTTP 200, hata yok, veri yok —
+ * bu oturumun tekrar eden sessiz hata sınıfı.
+ *
+ * ÖLÇÜLDÜ (gerçek `data/fixtures.json`):
+ *     AF yolu (mevcut)  : 0 maç  → uç null döner
+ *     kendi depo yolu   : 310 oynanabilir/yaklaşan maç, 20 ülke
+ * Depo zaten Maçkolik'ten besleniyor (1890 fikstür; FDO 270) ve Türk ligleri
+ * o kaynağın güçlü olduğu yer — Süper Lig sezonu açılınca buradan gelecek.
+ * Bugün TR'den 0 maç görünmesi sezon arası olmasından; kaynak sorunu değil.
+ *
+ * ⚠️ DIŞ API BAĞIMLILIĞI KALKTI: kota yok, askıya alınma riski yok, ağ
+ * gecikmesi yok. Depo zaten 6 saatte bir senkronlanıyor.
+ *
+ * SIRALAMA (kullanıcıyı ilgilendiren maç önce):
+ *   1) kullanıcının takımı oynuyorsa o maç
+ *   2) kullanıcının ülkesindeki maçlar
+ *   3) en yakın başlayan
+ *
+ * Dönüş `fixtures` DİZİSİ; `fixture` alanı ilk eleman olarak KORUNUYOR çünkü
+ * `mobile/components/DailyMatchCard.tsx` onu okuyor.
+ */
+router.get("/daily-featured", optionalToken, async (req, res) => {
   try {
-    let featured = null;
+    const country = String(req.query.country || "").trim();
+    /**
+     * ⚠️ KİMLİK JETONDAN, SORGUDAN DEĞİL.
+     *
+     * İlk hâlde `req.query.userId` okuyordum ve `tests/kimlik-sinifi-nobeti`
+     * bunu yakaladı: kimlik parametresini denetimsiz okuyan uç. Burada dönen
+     * veri herkese açık (maç listesi) ve yalnızca SIRASI kişiselleşiyor, yani
+     * sızıntı yok — ama başkasının kimliğini vererek onun takımına göre
+     * sıralanmış liste almanın da bir anlamı yok. `optionalToken` ile giriş
+     * yapan kendi sırasını alır, yapmayan ülkeye göre sıralanmış listeyi.
+     */
+    const userId  = String(req.uid || "").trim();
+    const limit   = Math.max(1, Math.min(10, Number(req.query.limit) || 3));
 
-    for (const lid of leagueIds) {
-      const fixtures = await fetchFixturesForLeague(lid);
-      // Sadece NS (başlamamış) veya LIVE maçlar
-      const playable = fixtures.filter(f => ["NS", "1H", "2H", "HT", "LIVE"].includes(f.status));
-      if (!playable.length) continue;
-      // En yakın saatteki maçı seç
-      playable.sort((a, b) => {
-        const ta = a.kickoffISO ? new Date(a.kickoffISO).getTime() : Infinity;
-        const tb = b.kickoffISO ? new Date(b.kickoffISO).getTime() : Infinity;
-        return ta - tb;
-      });
-      featured = playable[0];
-      break;
+    const FixturesStore = require("../lib/fixtures-store.cjs");
+    const hepsi = await FixturesStore.loadAll(req.app?.locals?.db || null);
+
+    /* Oynanabilir: başlamamış ya da devam eden. Başlayalı 3 saati geçmiş maç
+     * "bugünün maçı" sayılmaz — tahmin kilidi zaten kapanmış olur. */
+    const OYNANABILIR = new Set(["NS", "1H", "2H", "HT", "LIVE", "ET", "P"]);
+    const simdi = Date.now();
+    const uygun = (hepsi || []).filter((f) => {
+      if (!OYNANABILIR.has(String(f?.status || "NS").toUpperCase())) return false;
+      const k = Date.parse(f?.kickoffISO || "");
+      return Number.isFinite(k) && k > simdi - 3 * 3600 * 1000;
+    });
+
+    /* Kullanıcının takımı — varsa onun maçı en üste. */
+    let favTakim = null;
+    if (userId) {
+      try {
+        const UsersStore = require("../lib/users-store.cjs");
+        const harita = await UsersStore.getUsersByIdsLower(
+          [userId], req.app?.locals?.db || null
+        );
+        favTakim = harita?.[userId.toLowerCase()]?.mainTeam || null;
+      } catch { /* profil okunamadı — sıralama ülkeye düşer */ }
     }
+    const sirali = gunlukSirala(uygun, { country, favTakim });
 
-    // Ülkeye özel bulunamazsa global fallback
-    if (!featured && country && COUNTRY_LEAGUES[country]) {
-      for (const lid of GLOBAL_FALLBACK_LEAGUES) {
-        const fixtures = await fetchFixturesForLeague(lid);
-        const playable = fixtures.filter(f => ["NS", "1H", "2H", "HT", "LIVE"].includes(f.status));
-        if (!playable.length) continue;
-        playable.sort((a, b) => new Date(a.kickoffISO).getTime() - new Date(b.kickoffISO).getTime());
-        featured = playable[0];
-        break;
-      }
-    }
+    const secilen = sirali.slice(0, limit).map((f) => ({
+      fixtureId: String(f.fixtureId),
+      home: f.home || "?",
+      away: f.away || "?",
+      kickoffISO: f.kickoffISO || null,
+      status: f.status || "NS",
+      league: f.league || null,
+      country: f.country || null,
+    }));
 
-    if (!featured) return res.json({ ok: true, fixture: null });
-    return res.json({ ok: true, fixture: featured });
+    return res.json({
+      ok: true,
+      fixtures: secilen,
+      fixture: secilen[0] || null, // eski istemci sözleşmesi
+      source: "fixtures_store",
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: "DAILY_FEATURED_ERR", detail: String(e.message || e) });
   }
@@ -1353,3 +1415,6 @@ router.get("/match-notes", async (req, res) => {
 });
 
 module.exports = router;
+/* Sınama için: kimlik gerektiren sıralama dalı uçtan dövülemiyor —
+ * bkz. gunlukSirala notu. */
+module.exports._gunlukSirala = gunlukSirala;

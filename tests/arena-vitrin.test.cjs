@@ -16,6 +16,10 @@ const fs = require("fs");
 const path = require("path");
 
 const KOK = path.join(__dirname, "..");
+/* ⚠️ Mobil yolu ELLE hesaplama — worktree'de `../mobile` bulunamıyor ve
+ * iddialar sessizce atlanıyor. Tek kaynak: tests/_mobil-dizin.cjs
+ * (bkz. mobil-yol-nobetcisi.test.cjs). */
+const { mobilYol } = require("./_mobil-dizin.cjs");
 const {
   vitrinAdaylari, vitrinleZenginlestir, HEDEF_KART, ASGARI_DK, AZAMI_SAAT,
 } = require(path.join(KOK, "lib", "arena-vitrin.cjs"));
@@ -179,7 +183,7 @@ test("vitrin hatasi arenayi DUSURMEZ", async () => {
 test("ekran vitrin bayragini okuyor ve 'koltuklar doldu' DEMIYOR", () => {
   /* Vitrin kartinda openCount 0; ekran bunu vitrin olarak ayirt etmezse
    * "Tum koltuklar doldu" yaziyordu — tam tersi bir mesaj. */
-  const p = path.join(KOK, "..", "mobile", "app", "(tabs)", "arena.tsx");
+  const p = mobilYol("app", "(tabs)", "arena.tsx");
   if (!fs.existsSync(p)) return; // mobil depo yoksa bu testi atla
 
   const src = fs.readFileSync(p, "utf8");
@@ -195,7 +199,7 @@ test("ekran vitrin bayragini okuyor ve 'koltuklar doldu' DEMIYOR", () => {
 });
 
 test("ceviri anahtarlari tr ve en'de var", () => {
-  const p = path.join(KOK, "..", "mobile", "lib", "i18n.ts");
+  const p = mobilYol("lib", "i18n.ts");
   if (!fs.existsSync(p)) return;
 
   const src = fs.readFileSync(p, "utf8");
