@@ -117,7 +117,7 @@ test("gerçek fikstürlerde eleme oranı makul", (t) => {
    * 1453 maçın 10'u eleniyordu (%0.7). Aralık iki yönlü — sıfıra düşerse
    * süzgeç ölmüş, çok yükselirse meşru ligler gidiyor demektir.
    */
-  const dosya = path.join(KOK, "data", "fixtures.json");
+  const dosya = require("./_gercek-veri.cjs").veriYolu("fixtures.json");
   if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
   const items = (JSON.parse(fs.readFileSync(dosya, "utf8")).fixtures || []).filter((f) => f?.league);
   if (items.length < 100) return t.skip("yeterli fikstur yok");

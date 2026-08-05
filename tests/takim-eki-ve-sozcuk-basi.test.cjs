@@ -155,7 +155,7 @@ test("gerçek fikstürlerde kapsam makul", (t) => {
    * ⚠️ Ölçüm anında 2524 takım adının 399'u eşleşiyordu (düzeltmeden önce
    * 412, ama içinde 12 yanlış vardı). Aralık iki yönlü.
    */
-  const dosya = path.join(KOK, "data", "fixtures.json");
+  const dosya = require("./_gercek-veri.cjs").veriYolu("fixtures.json");
   if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
   const items = JSON.parse(fs.readFileSync(dosya, "utf8")).fixtures || [];
   if (items.length < 100) return t.skip("yeterli fikstur yok");

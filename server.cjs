@@ -472,6 +472,36 @@ app.use((req, res, next) => {
 const server = app.listen(PORT, HOST, () => {
   console.log(`[SkorLig API] listening on http://${HOST}:${PORT}`);
 
+  /* 🧹 Atomik yazmadan artan geçici dosyaları süpür — TEK YERDE, açılışta bir kez.
+   *
+   * Sekiz depo modülü de `tmp` yaz + `rename` deseniyle çalışıyor ve hepsi
+   * yalnızca YAZMA HATASINDA temizlik yapıyor (`catch` içinde `unlink`).
+   * Süreç `rename`den ÖNCE ölürse o kol hiç çalışmıyor — SIGKILL, çökme,
+   * deploy kesintisi — ve artık dosya diskte kalıyor. Kimse toplamıyordu.
+   * ÖLÇÜLDÜ (2026-08-05): üç haftada 39 dosya / 38,4 MB.
+   *
+   * Kuralı sekiz modüle ayrı ayrı yazmak yerine dizin bazında tek süpürme:
+   * bu depoda kopyalanan kural defalarca ayrıştı (bkz. mobil yol nöbetçisi).
+   *
+   * Arka plan şalterinden (SKORLIG_BG) bağımsız — bu bir servis değil, tek
+   * seferlik temizlik; servisler kapalıyken de çöp birikmemeli. Hata
+   * yutuluyor: süpürme başarısız diye açılış etkilenmemeli. */
+  {
+    const veriDizini =
+      process.env.SKORLIG_DATA_DIR || path.join(__dirname, "data");
+    require("./lib/bayat-tmp-temizle.cjs")
+      .bayatTmpTemizle(veriDizini)
+      .then((r) => {
+        if (r.silinen) {
+          console.log(
+            `[SkorLig] bayat gecici dosya supuruldu: ${r.silinen} adet, ` +
+            `${(r.bayt / 1048576).toFixed(1)} MB`
+          );
+        }
+      })
+      .catch(() => {});
+  }
+
   /* 🔄 API-Football senkron servisi: canlı skor + otomatik sonuç/settle
      Kapatmak için: SKORLIG_AF_SYNC=0 */
   if (process.env.SKORLIG_AF_SYNC !== "0") {

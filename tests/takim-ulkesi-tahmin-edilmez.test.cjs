@@ -131,7 +131,7 @@ test("gerçek fikstürlerde kapsam makul kaldı", (t) => {
    * belirsizlik koruması gevşemiş demektir (katalog ~460 takım; fikstürdeki
    * binlerce adın çoğunluğunun ülke BULAMAMASI beklenen durum).
    */
-  const dosya = path.join(KOK, "data", "fixtures.json");
+  const dosya = require("./_gercek-veri.cjs").veriYolu("fixtures.json");
   if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
   const items = JSON.parse(fs.readFileSync(dosya, "utf8")).fixtures || [];
   if (items.length < 100) return t.skip("yeterli fikstur yok");

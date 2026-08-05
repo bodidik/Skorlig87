@@ -115,7 +115,7 @@ test("gerçek fikstürlerde kendi ülkesinin maçı üst sırada", (t) => {
    * gerçek veri kanonik yazımda. Yine de duruyor: kanonik yazım bozulursa
    * ya da öncelik sınıfı kaybolursa yakalar.
    */
-  const dosya = path.join(KOK, "data", "fixtures.json");
+  const dosya = require("./_gercek-veri.cjs").veriYolu("fixtures.json");
   if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
   const items = (JSON.parse(fs.readFileSync(dosya, "utf8")).fixtures || []).filter((f) => f?.country);
   if (items.length < 100) return t.skip("yeterli fikstur yok");

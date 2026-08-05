@@ -118,7 +118,7 @@ test("gerçek önbellekte yalnızca beklenen durumlar eleniyor", (t) => {
    * Taşma olsaydı "MS" gibi sık rozetler elenir ve biten maçların ödemesi
    * dururdu.
    */
-  const dosya = path.join(KOK, "data", "livescore-cache.json");
+  const dosya = require("./_gercek-veri.cjs").veriYolu("livescore-cache.json");
   if (!fs.existsSync(dosya)) return t.skip("onbellek yok");
   const c = JSON.parse(fs.readFileSync(dosya, "utf8"));
 

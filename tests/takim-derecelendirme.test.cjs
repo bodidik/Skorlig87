@@ -152,7 +152,7 @@ test("gerçek fikstür verisinde kapsam gerilemedi", (t) => {
    * değişir, testin amacı tam sayıyı dondurmak değil GERİLEMEYİ yakalamak.
    * Ölçüm anındaki değerler: önce %12.8, sonra %17.5.
    */
-  const dosya = path.join(KOK, "data", "fixtures.json");
+  const dosya = require("./_gercek-veri.cjs").veriYolu("fixtures.json");
   if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
 
   const raw = JSON.parse(fs.readFileSync(dosya, "utf8"));

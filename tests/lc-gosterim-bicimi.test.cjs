@@ -90,7 +90,7 @@ describe("puanlar: aynı sınıf, daha ağır hâli", () => {
      * Ölçüm anında: 160 satırın 158'i kesirli, 84'ü uzun ondalıklı.
      * Örnekler: 5.717648576819556e-17 · -1.4420000000000002 · 0.9270000000000002
      */
-    const yol = nodePath.join(__dirname, "..", "data", "leaderboard.json");
+    const yol = require("./_gercek-veri.cjs").veriYolu("leaderboard.json");
     if (!fs.existsSync(yol)) return; // veri yoksa iddia atlanır
 
     const items = JSON.parse(fs.readFileSync(yol, "utf8")).items || [];

@@ -176,7 +176,7 @@ test("gerçek fikstürlerde kapsam arttı", (t) => {
    * 441/2577 ≈ %17. Eşik geniş tutuldu — amaç tam sayıyı dondurmak değil,
    * eşleştirmenin ÇÖKMESİNİ yakalamak.
    */
-  const dosya = path.join(KOK, "data", "fixtures.json");
+  const dosya = require("./_gercek-veri.cjs").veriYolu("fixtures.json");
   if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
   const items = JSON.parse(fs.readFileSync(dosya, "utf8")).fixtures || [];
   if (items.length < 100) return t.skip("yeterli fikstur yok");

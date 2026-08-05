@@ -79,7 +79,7 @@ test("NÖBETÇİ: sıralama uçlarının hepsi botu işaretler", () => {
 
 test("gerçek veride süzgecin etkisi ölçülebilir", () => {
   // Belge niteliğinde: sorunun büyüklüğünü sayıyla sabitler.
-  const dosya = path.join(KOK, "data", "totals.json");
+  const dosya = require("./_gercek-veri.cjs").veriYolu("totals.json");
   if (!fs.existsSync(dosya)) return;                       // CI'da veri olmayabilir
 
   let items;

@@ -94,7 +94,7 @@ describe("parseMinute", () => {
      * kanıtlamaz. Ölçüldü: 16 canlı maçın 10'unda dakika çözüldü, kalanlar
      * devre arası ("İY") — yani null dönmesi DOĞRU.
      */
-    const dosya = path.join(KOK, "data", "livescore-cache.json");
+    const dosya = require("./_gercek-veri.cjs").veriYolu("livescore-cache.json");
     if (!fs.existsSync(dosya)) return t.skip("scraper onbellegi yok");
     const c = JSON.parse(fs.readFileSync(dosya, "utf8"));
     let canli = 0, cozulen = 0, sacma = 0;
