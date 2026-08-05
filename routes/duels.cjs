@@ -1039,6 +1039,38 @@ router.get("/duels/my", verifyToken, async (req, res) => {
   }
 });
 
+/**
+ * Arena listesini vitrin kartlarıyla tamamlar.
+ *
+ * ⚠️ HİÇBİR HATA ARENAYI DÜŞÜREMEZ. Vitrin bir kolaylık; fikstür deposu ya da
+ * profil okuması patlarsa gerçek düello listesi olduğu gibi döner. Bu uç,
+ * arenanın TEK veri kaynağı — süsleme yüzünden 500 vermesi kabul edilemez.
+ */
+async function vitrinliListe(matches, uid, db) {
+  try {
+    const FixturesStore = require("../lib/fixtures-store.cjs");
+    const UsersStore = require("../lib/users-store.cjs");
+    const { vitrinleZenginlestir, HEDEF_KART } = require("../lib/arena-vitrin.cjs");
+
+    // Hedefe zaten ulaşıldıysa fikstür deposunu hiç okuma.
+    if (matches.length >= HEDEF_KART) return matches;
+
+    let userCountry = null;
+    if (uid) {
+      try {
+        const u = await UsersStore.getUser(uid, db);
+        userCountry = u?.country || null;
+      } catch { /* ülke yoksa sıralama küresel önceliğe düşer */ }
+    }
+
+    const fixtures = await FixturesStore.loadAll(db);
+    return await vitrinleZenginlestir(matches, { fixtures, userCountry, db });
+  } catch (e) {
+    console.error("[duels] arena vitrini kurulamadi:", e?.message || e);
+    return matches;
+  }
+}
+
 // GET /api/duels/arena?userId= — genel arena: açık duellolar maça göre gruplanmış
 /**
  * ⚠️ ÖZEL DÜELLO SIZIYORDU — İKİ AYRI DELİK, DENETİMLİ OLARAK ÜRETİLDİ.
@@ -1116,9 +1148,16 @@ router.get("/duels/arena", optionalToken, async (req, res) => {
         minStake: m.minStake === Infinity ? 0 : m.minStake,
         maxStake: m.maxStake,
         preview: m.openDuels.slice(0, 4),
+        vitrin: false,
       }));
 
-    return res.json({ ok: true, count: matches.length, matches });
+    /* ⚠️ ARENA BOŞ KALMAMALI. Gerçek düello yokken ekran tamamen boştu:
+     * kullanıcı sekmeye geliyor, yapacak bir şey bulamıyor ve düello açma
+     * fikri hiç aklına gelmiyor. Vitrin kartları SAHTE DÜELLO DEĞİL —
+     * `openCount: 0`, `preview: []`, `vitrin: true` ile geliyorlar. */
+    const zengin = await vitrinliListe(matches, uid, getDb(req));
+
+    return res.json({ ok: true, count: zengin.length, matches: zengin });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
