@@ -524,8 +524,28 @@ router.get("/leaderboard", async (req, res) => {
       }
     }
 
-    const sorted = Array.from(totals.values())
-      .sort((a, b) => b.points - a.points || b.correct - a.correct)
+    /**
+     * ⚠️ SIRALAMA ÖLÇÜTÜ TEK KAYNAKTA — İKİ KOPYA AYRIŞMIŞTI.
+     *
+     * Tablo `b.points - a.points || b.correct - a.correct` ile sıralanıyordu,
+     * ama kullanıcının KENDİ sırası aşağıda `b.points - a.points` ile ayrıca
+     * hesaplanıyordu — beraberlik bozma ölçütü (`correct`) eksikti. Eşit
+     * puanlı iki kişide sıra, `Array.sort` kararlı olduğu için Map ekleme
+     * sırasına düşüyordu.
+     *
+     * ÖLÇÜLDÜ (eşit puan, farklı doğru sayısı; top-N dışı):
+     *     ali  → tabloya göre 4., kendi kartında 5. gösteriliyor
+     *     veli → tabloya göre 5., kendi kartında 4. gösteriliyor
+     * Yani ikisi de yanlış ve ikisi de BİRBİRİNİN sırasını görüyordu. Daha çok
+     * maç bilen kişi daha kötü sıra görebiliyordu.
+     *
+     * Tek dizi + tek ölçüt: hem tutarlı hem de ikinci sıralamayı ortadan
+     * kaldırıyor.
+     */
+    const siraOlcutu = (a, b) => b.points - a.points || b.correct - a.correct;
+    const tumSirali = Array.from(totals.values()).sort(siraOlcutu);
+
+    const sorted = tumSirali
       .slice(0, limit)
       .map((u, i) => ({ rank: i + 1, ...u, points: Math.round(u.points * 10) / 10 }));
 
@@ -535,8 +555,8 @@ router.get("/leaderboard", async (req, res) => {
       if (!me) {
         const myData = totals.get(userId.toLowerCase());
         if (myData) {
-          const allSorted = Array.from(totals.values()).sort((a, b) => b.points - a.points);
-          const rank = allSorted.findIndex(u => u.userId.toLowerCase() === userId.toLowerCase()) + 1;
+          /* AYNI sıralı diziden — tablonun devamı olarak doğru sırayı verir. */
+          const rank = tumSirali.findIndex(u => u.userId.toLowerCase() === userId.toLowerCase()) + 1;
           me = { rank, ...myData, points: Math.round(myData.points * 10) / 10 };
         }
       }
