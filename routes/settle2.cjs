@@ -1590,9 +1590,11 @@ async function loadTournaments(db) {
   return SocialStore.loadTournaments(db || null);
 }
 
-async function saveTournaments(list, db) {
-  await SocialStore.saveTournaments(list, db || null);
-}
+/* ⚠️ `saveTournaments` SARMALI KALDIRILDI — bkz. tryAutoSettleTournaments
+ * içindeki mühür notu. Bu fonksiyon `SocialStore.saveTournaments` → `replaceAll`
+ * ile TÜM turnuva koleksiyonunu çağıranın snapshot'ıyla değiştiriyordu; buradan
+ * çağrılan tek yer auto-settle'ın sonuydu ve araya giren atomik yazmaları
+ * siliyordu. Sarmal duruyor olsaydı aynı çağrı kolayca geri gelirdi. */
 
 async function getFixtureOutcome(fid) {
   const st = await readJson(stateFile(fid), null);
@@ -1648,7 +1650,19 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
         const olusturma = new Date(t.createdAt || 0).getTime();
         const gecenGun = (Date.now() - olusturma) / 86400000;
         if (gecenGun >= ZAMAN_ASIMI_GUN) {
-          const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, db);
+          /* ⚠️ İPTAL ALANLARI MÜHÜRLE AYNI İŞLEMDE YAZILIR.
+           *
+           * `claimTournamentSettle` koşulsuz `status:"settled"` yazıyor; iptal
+           * hâli eskiden döngü sonundaki toptan `saveTournaments` ile
+           * DÜZELTİLİYORDU. O yazma kaldırıldığı için alanlar mühre taşındı —
+           * taşınmasaydı iptal edilen turnuva "settled" damgasıyla, iade
+           * edilmiş ücretlere rağmen sonuçlanmış görünürdü. Ek alanlar
+           * varsayılanlardan SONRA yayılıyor, yani "voided" kazanıyor. */
+          const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, db, {
+            status: "voided",
+            voidReason: "FIXTURE_TIMEOUT",
+            payouts: [],
+          });
           if (!bizimki) continue;
           t.status = "voided";
           t.settledAt = nowISO;
@@ -1700,7 +1714,14 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
       // ödemeyi TEKRAR yapardı; settle2 aynı fixture için livescore-sync,
       // af-sync ve manuel çağrılardan tetiklenebiliyor.
       // claimTournamentSettle koşulu (status:"open") yazmanın içinde tutuyor.
-      const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, db);
+      //
+      // ⚠️ `payouts` DA BU İŞLEMDE YAZILIR — eskiden döngünün sonundaki toptan
+      // `saveTournaments` yazıyordu (bkz. oradaki not). Ödeme tablosu mühürle
+      // aynı anda kayda geçmezse, mühürden sonra süreç düşerse turnuva
+      // "settled" ama ödemesiz kalır.
+      const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, db, {
+        payouts: t.payouts,
+      });
       if (!bizimki) {
         console.log(`[settle2] turnuva ${t.code || t.id} baska bir cagri tarafindan odendi — atlaniyor`);
         continue;
@@ -1708,6 +1729,23 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
 
       t.status = "settled";
       t.settledAt = nowISO;
+
+      /* ⚠️ KATILIMCI PUANLARI AYRI VE HEDEFLİ YAZILIR.
+       *
+       * `puanlariHesapla` her katılımcının `totalScore` alanını doldurur ve bu
+       * değer `GET /api/tournaments/:code` ile istemciye dönüyor. `payouts`
+       * yerine geçmez: ödeme tablosu yalnızca ilk 3-4 sırayı kapsıyor, geri
+       * kalan katılımcılar puanlarını yalnızca buradan görüyor.
+       *
+       * `participants` dizisini toptan yazmak DÜZELTİLEN KUSURU belge ölçeğinde
+       * geri getirirdi (yukarıdaki `all` snapshot'ından beri gelen bir katılım
+       * silinirdi); `setTournamentScoresAtomik` arrayFilters ile yalnızca adı
+       * geçen katılımcının tek alanına dokunuyor. */
+      await SocialStore.setTournamentScoresAtomik(
+        t.id,
+        sorted.map((p) => ({ userId: p.userId, totalScore: p.totalScore })),
+        db
+      );
 
       // Credit winners' wallets. Ayna kapalı + Mongo varken dosya hiç
       // açılmaz; kilit de gereksizdir (bkz. awardLcForRows).
@@ -1779,7 +1817,30 @@ async function tryAutoSettleTournaments(settledFixtureId, settledOutcome, db) {
       console.log(`[settle2] auto-settled tournament ${t.code}: ${t.payouts.length} payouts`);
     }
 
-    await saveTournaments(all, db);
+    /**
+     * ⚠️ BURADA `await saveTournaments(all, db)` VARDI — TÜM KOLEKSİYONU
+     * FONKSİYONUN BAŞINDA ALINMIŞ SNAPSHOT'LA DEĞİŞTİRİYORDU.
+     *
+     * `SocialStore.saveTournaments` → `replaceAll`: koleksiyonun tamamı verilen
+     * listeye eşitleniyor. `all` ise ~200 satır yukarıda okundu; arada geçen
+     * sürede BAŞKA turnuvalara yapılan her yazma — katılım, tahmin, yeni
+     * turnuva — snapshot'ta yok olduğu için SİLİNİYORDU. Ücret tahsil edilmiş,
+     * uç `ok:true` dönmüş, kullanıcı turnuvada görünmüyor; kimse hata görmüyor
+     * çünkü `replaceAll` başarıyla tamamlanıyor.
+     *
+     * Aralık kısa değil: bu döngü her turnuva için fikstür durum dosyalarını
+     * okuyor ve kazananların cüzdanlarına tek tek yazıyor.
+     *
+     * ÖLÇÜLDÜ (aynı sınıf, services/tournament.cjs settle): A turnuvası
+     * sonuçlanırken B'ye katılım geldi; `join` BAŞARILI döndü ama B'nin
+     * katılımcı listesinde yoktu, 10 LC gitmişti.
+     *
+     * Yerine geçen üç hedefli yazma — hepsi tek belge, hiçbiri snapshot
+     * taşımıyor:
+     *   1. mühür + `payouts`                    (normal yol)
+     *   2. mühür + `status:"voided"`/`voidReason`/`payouts:[]` (zaman aşımı)
+     *   3. `setTournamentScoresAtomik`          (katılımcı puanları)
+     */
   } catch (e) {
     console.error("[settle2] tryAutoSettleTournaments failed:", e);
   }
@@ -2299,3 +2360,7 @@ module.exports = router;
 module.exports.scoreFixture = scoreFixture;
 module.exports.computeLcRewardFromDetail = computeLcRewardFromDetail;
 module.exports.DATA_DIR = DATA_DIR;
+// Turnuva otomatik sonuçlandırma: eşzamanlılık davranışı ancak DOĞRUDAN
+// çağrılarak ölçülebiliyor — HTTP ucu üzerinden tetiklemek, ölçmek istenen
+// yarışın etrafına fikstür dosyası + yetki katmanı koyuyor.
+module.exports.tryAutoSettleTournaments = tryAutoSettleTournaments;
