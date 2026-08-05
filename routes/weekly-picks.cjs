@@ -575,14 +575,37 @@ router.get("/leaderboard", async (req, res) => {
 router.get("/my", verifyToken, async (req, res) => {
   try {
     const uid      = req.uid;
-    const predsRaw = await readJson(PREDS_FILE, []);
-    const list     = Array.isArray(predsRaw) ? predsRaw : (predsRaw?.items ?? []);
     const uidLower = uid.toLowerCase();
+    const db       = req.app?.locals?.db || null;
 
-    const myPreds = list.filter(p =>
-      String(p.userId || "").toLowerCase() === uidLower &&
-      p.source === "weekly_pick_1987"
-    );
+    /**
+     * ⚠️ ÖNCE MONGO: bu uç YALNIZCA `preds.json`'a bakıyordu. Tahmin ise
+     * yukarıdaki `/predict` tarafından hem Mongo'ya hem dosyaya yazılıyor —
+     * yani `SKORLIG_PREDS_FILE_MIRROR=0` yapıldığı anda dosya donar ve
+     * kullanıcı 3 LC ödediği haftalık tahminlerini "hiç yapmamış" görür.
+     * Çökme yok, hata yok: sessizce boş liste. `routes/duels.cjs`teki
+     * migration tuzağının aynısı, bu sefer ekranda.
+     */
+    let myPreds = null;
+    if (db) {
+      try {
+        myPreds = await db.collection("predictions")
+          .find({ userIdLower: uidLower, source: "weekly_pick_1987" })
+          .toArray();
+      } catch (e) {
+        console.error("[weekly-picks] /my mongo okunamadi:", e?.message || e);
+        myPreds = null;
+      }
+    }
+
+    if (!myPreds) {
+      const predsRaw = await readJson(PREDS_FILE, []);
+      const list     = Array.isArray(predsRaw) ? predsRaw : (predsRaw?.items ?? []);
+      myPreds = list.filter(p =>
+        String(p.userId || "").toLowerCase() === uidLower &&
+        p.source === "weekly_pick_1987"
+      );
+    }
 
     const result = [];
     for (const pred of myPreds) {
