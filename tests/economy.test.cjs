@@ -311,29 +311,29 @@ describe("mini turnuva ödülü — beraberlikte bölüşülür", () => {
     assert.equal(pay(TOPLAM + 1), 0, "tavani asinca pay 0 olmali");
   });
 
-  test("ödülsüz kalan senaryo sayısı ölçülü ve sınırlı", () => {
+  test("HİÇBİR kazanan sayısında ödülsüz kalınmıyor (tavan = MAX_MEMBERS)", () => {
     /**
-     * ⚠️ SIFIR ÖDÜL SENARYOSU DOĞRUDAN TAVANA BAĞLI: kazanan sayısı
-     * MINI_WIN_LC'yi aşan her durum ödülsüz kalır, yani senaryo sayısı
-     * `MAX_MEMBERS - MINI_WIN_LC`.
+     * ⚠️ İKİ SABİTİN BAĞI, RASTLANTI DEĞİL. Kazanan sayısı MINI_WIN_LC'yi
+     * aşarsa pay 0'a düşer ve kimse ödül almaz. Turnuvaya en fazla MAX_MEMBERS
+     * kişi girebildiği için tavan MAX_MEMBERS'a eşitlendiğinde bu senaryo
+     * TAMAMEN biter: 50/n her n ≤ 50 için en az 1 LC.
      *
-     * 2026-08-05: tavan 20 → 40 yükseltildi, senaryo 30'dan 10'a indi
-     * (kasıtlı ekonomi kararı; 50 = MAX_MEMBERS sorunu tamamen bitirirdi ama
-     * musluğu 2.5 kat açardı — gerekçe routes/mini.cjs MINI_WIN_LC notunda).
+     * Yol: 20 (30 ödülsüz senaryo) → 40 (10 senaryo) → 50 (0 senaryo).
+     * 50'ye çıkmak ancak MIN_ODUL_UYE şartıyla birlikte güvenli oldu —
+     * gerekçe routes/mini.cjs MINI_WIN_LC ve MIN_ODUL_UYE notlarında.
      *
-     * Bu iddia tavanın sessizce DÜŞÜRÜLMESİNİ yakalar: düşürmek ödülsüz
-     * senaryoları geri getirir ve hiçbir hata üretmez.
+     * Bu iddia iki sabitin AYRIŞMASINI yakalar: tavan düşerse ya da
+     * MAX_MEMBERS yükselirse ödülsüz senaryo sessizce geri gelir ve hiçbir
+     * hata üretmez — kimse fark etmez.
      */
     const MAX_MEMBERS = 50;
     const odulsuz = [];
     for (let n = 1; n <= MAX_MEMBERS; n++) if (pay(n) === 0) odulsuz.push(n);
 
-    assert.equal(odulsuz.length, Math.max(0, MAX_MEMBERS - TOPLAM),
-      `odulsuz senaryo sayisi ${odulsuz.length}, tavan ${TOPLAM} ile beklenen ` +
-      `${Math.max(0, MAX_MEMBERS - TOPLAM)} — hesap degismis olabilir`);
-    assert.ok(odulsuz.length <= 10,
+    assert.deepEqual(odulsuz, [],
       `${odulsuz.length} kazanan sayisinda hic odul dagitilmiyor (n=${odulsuz.join(",")}). ` +
-      `MINI_WIN_LC dusurulmus olabilir — dusurmek odulsuz senaryolari geri getirir.`);
+      `MINI_WIN_LC (${TOPLAM}) ile MAX_MEMBERS (${MAX_MEMBERS}) ayrismis: ` +
+      `tavan dusurulmus ya da uye siniri yukseltilmis olabilir.`);
   });
 
   test("geçersiz kazanan sayısı 0 döner (para yazılmaz)", () => {
