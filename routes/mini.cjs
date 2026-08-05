@@ -143,10 +143,28 @@ function gercekKazananlar(userIds) {
  * karşılıksız bir LC musluğuydu. Artık turnuva başına dağıtılan toplam
  * MINI_WIN_LC'yi AŞAMAZ.
  *
- * ⚠️ AŞAĞI yuvarlanır (0.1 adım). Yukarı yuvarlamak toplamı taşırırdı:
- * 20/3 = 6.666 → 6.7 verilseydi 3×6.7 = 20.1, yani 0.1 LC yoktan yaratılırdı.
- * 6.6 ile toplam 19.8 olur; artan 0.2 LC dağıtılmaz (yakılır). Enflasyon
+ * ⚠️ AŞAĞI yuvarlanır. Yukarı yuvarlamak toplamı taşırırdı: 20/3 = 6.666 →
+ * 6.7 verilseydi 3×6.7 = 20.1, yani 0.1 LC yoktan yaratılırdı. Enflasyon
  * yönünde hata yapmamak, kuruş kuruşuna dağıtmaktan önemli.
+ *
+ * ⚠️ TAM SAYIYA yuvarlanır (2026-08-05; eskiden 0.1 adımdaydı). Kesirli pay
+ * cüzdanda kayan nokta artığı biriktiriyordu — ÖLÇÜLDÜ: 6.6 × 50 kredi
+ * → 330.0000000000001. Sınır `lib/wallet-credit.cjs`te de kapatıldı (her
+ * yazımda yuvarlanıyor) ama kirli tutarı hiç ÜRETMEMEK daha iyi: defter
+ * kayıtları, ekonomi raporu ve ekranlar da temiz kalıyor. n=1..50 aralığında
+ * 43 senaryo kesirli pay üretiyordu, artık 50/50 tam sayı.
+ *
+ * ⚠️ BEDELİ AÇIK: pay 1 LC'nin altına düştüğünde 0 olur, yani MINI_WIN_LC'den
+ * (20) fazla kazananın olduğu beraberliklerde KİMSE ödül almaz — n=21..50
+ * arası 30 senaryo. Eskiden 0.4..0.9 LC alıyorlardı. Herkese en az 1 LC
+ * vermek bunu çözerdi ama yukarıdaki DEĞİŞMEZİ bozardı: 30 kazanan × 1 LC =
+ * 30 LC, tavan 20. O değişmez karşılıksız LC musluğunu kapatmak için
+ * konmuştu; kalabalık beraberlik uğruna geri açılmaz.
+ *
+ * ⚠️ EŞİT PAY KORUNUYOR — en büyük kalan yöntemi (lib/pay-dagitim.cjs) burada
+ * KULLANILMAZ. Orada korunacak bir havuz var; burada ödül ÜRETİLİYOR, yani
+ * toplamı kuruşuna eşitlemek bir kazanana 7, diğerine 6 LC vermeyi haklı
+ * çıkarmaz. Aynı tahmini yapan iki kişi aynı parayı almalı.
  *
  * Bölüşme BOT ELENDİKTEN SONRAKİ sayıya göre: bot para almıyor, yani
  * turnuvaya bot eklemek gerçek kazananın payını düşürmemeli.
@@ -154,7 +172,7 @@ function gercekKazananlar(userIds) {
 function kazananPayi(kazananSayisi) {
   const n = Number(kazananSayisi) || 0;
   if (n <= 0 || MINI_WIN_LC <= 0) return 0;
-  return Math.floor((MINI_WIN_LC / n) * 10) / 10;
+  return Math.floor(MINI_WIN_LC / n);
 }
 
 /**
@@ -168,8 +186,9 @@ function kazananPayi(kazananSayisi) {
 async function awardMiniWinLc(userIds, tournament, db) {
   const winners = gercekKazananlar(userIds);
   const pay = kazananPayi(winners.length);
-  // Pay 0'a yuvarlandıysa (çok kalabalık beraberlik) kimseye yazma:
-  // creditLc zaten 0'ı reddeder ama defterde anlamsız kayıt da oluşmasın.
+  // Pay 0'a yuvarlandıysa (kazanan sayısı MINI_WIN_LC'yi aşan beraberlik)
+  // kimseye yazma: creditLc zaten 0'ı reddeder ama defterde anlamsız kayıt da
+  // oluşmasın. Bkz. kazananPayi — bu durumun bedeli orada açıkça yazılı.
   if (!winners.length || pay <= 0) return 0;
 
   const nowISO = new Date().toISOString();

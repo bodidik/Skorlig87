@@ -143,8 +143,11 @@ describe("para dağıtım sınıfı", () => {
      * yapardı. Havuz yok, korunacak toplam yok — eşitlik daha değerli.
      * Ölçüldü (ödül 20): en kötü kayıp 1 LC, tüm kazananlar aynı miktarda.
      */
+    /* ⚠️ 2026-08-05: pay 0.1 adımdan TAM SAYIYA çevrildi (kesirli tutar
+     * cüzdanda kayan nokta artığı biriktiriyordu — 6.6 × 50 → 330.0000000000001).
+     * Korunan şey değişmedi: AŞAĞI yuvarlama ve EŞİT pay. */
     const s = kod("routes/mini.cjs");
-    assert.ok(/Math\.floor\(\(MINI_WIN_LC \/ n\) \* 10\) \/ 10/.test(s),
+    assert.ok(/Math\.floor\(MINI_WIN_LC \/ n\)/.test(s),
       "mini esit pay hesabini degistirmis — kazananlar esitsiz olabilir");
     assert.ok(!/odemeDagit\(/.test(s),
       "mini havuz kuralina gecmis — uretilen odulde esitlik bozulur");
