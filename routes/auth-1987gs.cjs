@@ -7,7 +7,7 @@ const fsp     = fs.promises;
 
 const InviteStore = require("../lib/invite-store.cjs");
 /* Üyelik yazması yalnızca doğrulanmış kimliğe — bkz. POST /verify notu. */
-const { optionalToken } = require("../middleware/verifyToken.cjs");
+const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
 
 function requireAdminToken(req, res, next) {
   const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
@@ -214,7 +214,6 @@ router.get("/diag", requireAdminToken, async (req, res) => {
  *       {
  *         userId,
  *         label,
- *         lastCode,
  *         sinceAt,
  *         lastVerifiedAt,
  *         active
@@ -222,7 +221,16 @@ router.get("/diag", requireAdminToken, async (req, res) => {
  *     ]
  *   }
  */
-router.get("/members", requireAdminToken, async (req, res) => {
+router.get("/members", verifyToken, async (req, res) => {
+  const uid = String(req.uid || "").trim().toLowerCase();
+  if (!uid) return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
+
+  const map = await UsersStore.getUsersByIdsLower([uid], req.app?.locals?.db || null);
+  const caller = map[uid];
+  if (!caller?.is1987) {
+    return res.status(403).json({ ok: false, error: "NOT_1987_MEMBER" });
+  }
+
   // İndeksli segment sorgusu — eskiden tüm kullanıcı dosyası okunuyordu.
   const users = await UsersStore.listSegment1987(req.app?.locals?.db || null);
 
@@ -231,7 +239,6 @@ router.get("/members", requireAdminToken, async (req, res) => {
     .map((u) => ({
       userId: u.id || u.userId,
       label: u.label || null,
-      lastCode: u.lastCode || null,
       sinceAt: u.since1987 || u.sinceAt || null,
       lastVerifiedAt: u.lastVerifiedAt || null,
       active: u.active !== false,

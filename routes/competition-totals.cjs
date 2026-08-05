@@ -26,6 +26,46 @@ function getDb(req) {
   return req?.app?.locals?.db || null;
 }
 
+/**
+ * ⚠️ `competition_totals` İNDEKSSİZDİ — SORGU TAM TARAMA + BELLEKTE SIRALAMA.
+ *
+ * Aşağıdaki okuma `find({ competitionId }).sort({ totalPoints: -1 })` yapıyor.
+ * İndeks olmadan Mongo tüm koleksiyonu tarıyor ve sıralamayı BELLEKTE
+ * yapıyor — yavaşlıktan öte, sıralama bellek sınırına takılırsa sorgu
+ * tamamen HATA verir.
+ *
+ * ÖLÇÜLDÜ (bellek-içi Mongo, 30 000 kayıt / 20 yarışma):
+ *     indekssiz : 56.50 ms · incelenen 30000 · bellekte sıralama VAR
+ *     indeksli  : 22.85 ms · incelenen  1500 · bellekte sıralama YOK
+ *     kazanç    : 2.5x, ve asıl kazanç sıralamanın indeksten gelmesi
+ *
+ * Bileşik indeksin SIRASI önemli: `{ competitionId: 1, totalPoints: -1 }`
+ * hem filtreyi hem sıralamayı tek geçişte karşılıyor. Ters sırada olsaydı
+ * sıralama yine bellekte kalırdı.
+ *
+ * ⚠️ BAYRAK DEĞİL SÖZ önbelleklenir — bu deponun her yerinde aynı desen:
+ * bayrak `await createIndex` bitmeden kalkarsa eşzamanlı ikinci çağrı indeks
+ * HENÜZ YOKKEN sorgu yapar (bkz. lib/pool-store.cjs notu).
+ */
+let _indexPromise = null;
+function ensureIndexes(db) {
+  if (!db) return Promise.resolve();
+  if (_indexPromise) return _indexPromise;
+  _indexPromise = (async () => {
+    try {
+      await db.collection("competition_totals").createIndex(
+        { competitionId: 1, totalPoints: -1 },
+        { background: true }
+      );
+    } catch (e) {
+      console.error("[competition-totals] indeks kurulamadi:", e?.message || e);
+      /* Geçici arızada önbelleği düşür — yoksa hata SÜREÇ BOYUNCA kalıcı olur. */
+      _indexPromise = null;
+    }
+  })();
+  return _indexPromise;
+}
+
 function normUserId(u) {
   return String(u || "").trim().toLowerCase();
 }
@@ -85,6 +125,13 @@ router.get("/competition-totals", async (req, res) => {
      * `?humans=1` ile istege bagli suz.
      */
     const humansOnly = String(req.query.humans || "") === "1";
+
+    const competitionId = String(req.query.competitionId || "").trim();
+    const userIdRaw     = String(req.query.userId || "").trim();
+    const userIdLower   = userIdRaw ? normUserId(userIdRaw) : null;
+
+    /* ⚠️ SARMALAYICI `userIdLower`DAN SONRA KURULUYOR — aşağıda onu kullanıyor.
+     * (Çağrı sırası zaten güvenliydi ama okurken tersini düşündürüyordu.) */
     const _json = res.json.bind(res);
     res.json = (govde) => {
       if (!govde || !Array.isArray(govde.items)) return _json(govde);
@@ -93,12 +140,31 @@ router.get("/competition-totals", async (req, res) => {
         isBot: BOT_ID_SET.has(String(x?.userId || "").trim().toLowerCase()),
       }));
       const items = humansOnly ? isaretli.filter((x) => !x.isBot) : isaretli;
-      return _json({ ...govde, items, count: items.length });
-    };
 
-    const competitionId = String(req.query.competitionId || "").trim();
-    const userIdRaw     = String(req.query.userId || "").trim();
-    const userIdLower   = userIdRaw ? normUserId(userIdRaw) : null;
+      /**
+       * ⚠️ `me.rank` DE YENİDEN HESAPLANMALI — ESKİDEN FİLTRE ÖNCESİ KALIYORDU.
+       *
+       * `pickMeAndCount` sırayı TÜM liste üzerinden veriyor (`idx + 1`), bu
+       * sarmalayıcı ise botları süzüp `count`u güncelliyordu ama `me`ye hiç
+       * dokunmuyordu. Sonuç: kullanıcı kendi sırasını botlar dahil görüyor,
+       * listeyi ise botsuz.
+       *
+       * ÖLÇÜLDÜ (20 bot + 1 insan, `?humans=1`):
+       *     count = 1  ·  me.rank = 21
+       * Yani "1 kişilik listede 21. sıradasın". Üretimde daha uç: bu dosyanın
+       * kendi notu "1707 kaydın 1706'sı bot" diyor.
+       *
+       * Kullanıcı filtre sonrası listede yoksa (kendisi botsa) sıra anlamsız →
+       * `null`. Uydurma bir sıra vermektense yokluğu bildirmek doğru.
+       */
+      let me = govde.me;
+      if (me && humansOnly) {
+        const ix = items.findIndex((x) => normUserId(x.userId) === userIdLower);
+        me = { ...me, rank: ix >= 0 ? ix + 1 : null };
+      }
+
+      return _json({ ...govde, items, me, count: items.length });
+    };
 
     if (!competitionId) {
       return res
@@ -139,6 +205,7 @@ router.get("/competition-totals", async (req, res) => {
     // 1) 🔵 Mongo + competition_totals koleksiyonu varsa direkt kullan
     if (db) {
       try {
+        await ensureIndexes(db);
         const totalsCol = db.collection("competition_totals");
         const docs = await totalsCol
           .find({ competitionId })

@@ -1250,12 +1250,36 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
 
     detail.base = Math.max(0, Number(base || 0)); // üst sınır kalktı: çarpanlar değeri artırabilir
 
+    /**
+     * ⚠️ PUAN YAZILIRKEN YUVARLANIR — ESKİDEN HAM ÇARPIM SAKLANIYORDU.
+     *
+     * `pts * w` (ağırlık çarpanı) kayan nokta artığı üretiyor ve satır
+     * `leaderboard.json`a olduğu gibi yazılıyordu. ÜRETİM VERİSİNDE ÖLÇÜLDÜ
+     * (160 satır):
+     *     158 satır kesirli
+     *      84 satır uzun ondalıklı artık taşıyor
+     *     örnekler: 5.717648576819556e-17 · -1.4420000000000002 · 0.9270000000000002
+     *
+     * İlki gerçekte SIFIR ve mobilde ham basıldığı için kullanıcı puanını
+     * "5.717648576819556e-17p" olarak görüyordu (bilimsel gösterim).
+     *
+     * ⚠️ OKUMA TARAFINDA ZATEN YUVARLAMA VARDI (satır ~2035:
+     * `Math.round(r.points * 100) / 100`) ama yalnızca BİR yolda — depoya kirli
+     * yazıp bazı okumalarda temizlemek, hangi ekranın temiz göstereceğini
+     * rastlantıya bırakıyordu. Kaynakta yuvarlamak tek çözüm.
+     *
+     * İki basamak bilinçli: puan farkları 0.01 altında anlam taşımıyor,
+     * sıralama etkilenmiyor.
+     */
     const weightedPoints = pts * w;
+    const puan = Number.isFinite(weightedPoints)
+      ? Math.round(weightedPoints * 100) / 100
+      : 0;
 
     rows.push({
       fixtureId: fid,
       userId: String(u),
-      points: Number.isFinite(weightedPoints) ? weightedPoints : 0,
+      points: puan,
       /**
        * ⚠️ SNAPSHOT KENDİNİ ANLATMALI — BOT/İNSAN AYRIMI SATIRDA.
        *
@@ -1402,7 +1426,8 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
 
   const nowISO = new Date().toISOString();
 
-  await writeJson(LEADERBOARD_FILE, { items: rows, updatedAt: nowISO });
+  const { mergeAndWriteLeaderboard } = require("../lib/leaderboard-merge.cjs");
+  await mergeAndWriteLeaderboard(fid, rows);
 
   // ✅ match-results snapshot (kalıcı maç bazlı kayıt + idempotency sentinel)
   try {

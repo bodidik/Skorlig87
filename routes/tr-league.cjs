@@ -243,9 +243,27 @@ async function buildWeekBoard(weekFixtures, db = null) {
     }
   }
 
-  const board = Array.from(totals.values())
+  const sirali = Array.from(totals.values())
     .map((x) => ({ ...x, points: Math.round(x.points * 100) / 100 }))
     .sort((a, b) => b.points - a.points || a.userId.localeCompare(b.userId));
+
+  /**
+   * ⚠️ SIRA SATIRA YAZILIYOR — İSTEMCİ İNDEKSTEN TÜRETİYORDU.
+   *
+   * `mobile/app/tr-league.tsx:258-259` satır sırasını ve GÖSTERİLEN ÖDÜLÜ
+   * dizi indeksinden hesaplıyordu:
+   *     const medal  = ix < 3 ? REWARD_MEDALS[ix] : ` ${ix + 1}.`;
+   *     const reward = rewards[ix];
+   *
+   * Ödül dağıtımı ise beraberlikte aynı sırayı veriyor. ÖLÇÜLDÜ (üç kişi
+   * 10 puanla eşit, ödüller 100/60/30): üçü de 100 LC alıyor ama ekranda
+   * 1./2./3. görünüyor ve ikinci kişiye "60 LC" yazıyordu — yani kullanıcıya
+   * ALMADIĞI bir ödül miktarı gösteriliyordu.
+   *
+   * Sıra artık sunucudan geliyor; istemcinin indeksten türetmesine gerek yok.
+   */
+  const siralar = siralariHesapla(sirali);
+  const board = sirali.map((x, i) => ({ ...x, rank: siralar[i] }));
 
   return { board, fixtureViews, settledCount, fixtureCount: fixtureIds.length };
 }
@@ -258,6 +276,42 @@ async function buildWeekBoard(weekFixtures, db = null) {
  * okunuyor. Bu fonksiyon bir süre yalnızca dosyalara yazıyordu — ödül
  * kimsenin okumadığı dosyaya düşüyor, kullanıcının bakiyesi artmıyordu.
  */
+/**
+ * Sıraları REKABET SIRALAMASI kuralıyla hesaplar: eşit puanlılar aynı sırayı
+ * paylaşır, sonraki sıra atlar (1,1,1,4).
+ *
+ * ⚠️ TEK KAYNAK — ESKİDEN İKİ AYRI MANTIK VARDI VE AYRIŞIYORLARDI.
+ *
+ *   ödül dağıtımı  : eşit puanlılar AYNI rank (satır ~358, `rank = i`)
+ *   ekrana giden   : `ix + 1` — beraberler 1., 2., 3. görünüyordu
+ *
+ * ÖLÇÜLDÜ (üç kişi 10 puanla eşit, haftalık ödüller 100/60/30):
+ *     ali  → 100 LC aldı, ekranda 1. göründü   ✓
+ *     veli → 100 LC aldı, ekranda 2. göründü   ✗
+ *     cem  → 100 LC aldı, ekranda 3. göründü   ✗
+ *
+ * Yani kullanıcı aldığı ödüle uymayan bir sıra görüyordu: "3. sıradayım" deyip
+ * birincilik ödülü alıyor ya da tersini bekliyordu. Ödül mantığı doğru olan;
+ * gösterim ona uyduruldu.
+ *
+ * @param {Array<{points:number}>} board puana göre AZALAN sıralı olmalı
+ * @returns {number[]} board ile aynı indeksli 1-tabanlı sıralar
+ */
+function siralariHesapla(board) {
+  const siralar = [];
+  let rank = 0;
+  let prevPoints = null;
+  for (let i = 0; i < board.length; i++) {
+    const p = Number(board[i]?.points ?? 0);
+    if (prevPoints === null || p < prevPoints) {
+      rank = i;
+      prevPoints = p;
+    }
+    siralar.push(rank + 1);
+  }
+  return siralar;
+}
+
 async function awardWeeklyLc(awards, weekKey, db) {
   // awards: [{ userId, amount }]
   const real = awards.filter((a) => a.userId && !String(a.userId).toLowerCase().startsWith("bot_") && a.amount > 0);
@@ -349,15 +403,12 @@ async function finalizeWeekIfDone(weekKey, board, settledCount, fixtureCount, db
     // sıralamaya göre ödül dağıt (beraberlikte aynı sıradakiler tam ödül)
     const awards = [];
     const winners = [];
-    let rank = 0;
-    let prevPoints = null;
+    /* Sıra hesabı TEK KAYNAKTA — gösterim de aynı fonksiyonu kullanıyor. */
+    const siralar = siralariHesapla(board);
     for (let i = 0; i < board.length; i++) {
       const row = board[i];
       if (row.points <= 0) break; // puansızlar ödül almaz
-      if (prevPoints === null || row.points < prevPoints) {
-        rank = i; // 0-index sıra (beraberlerde aynı rank korunur)
-        prevPoints = row.points;
-      }
+      const rank = siralar[i] - 1; // ödül tablosu 0-tabanlı
       const reward = WEEKLY_REWARDS[rank];
       if (reward && reward > 0) {
         awards.push({ userId: row.userId, amount: reward });
@@ -456,7 +507,11 @@ router.get("/current", async (req, res) => {
     const myRank = userId
       ? (() => {
           const ix = board.findIndex((r) => r.userId.toLowerCase() === userId.toLowerCase());
-          return ix >= 0 ? { rank: ix + 1, points: board[ix].points } : null;
+          if (ix < 0) return null;
+          /* ⚠️ `ix + 1` DEĞİL: beraberlik kuralı ödül dağıtımıyla aynı olmalı.
+           * Eskiden eşit puanlı üç kişi 1./2./3. görünüyor ama üçü de
+           * birincilik ödülü alıyordu. bkz. siralariHesapla notu. */
+          return { rank: siralariHesapla(board)[ix], points: board[ix].points };
         })()
       : null;
 
@@ -543,7 +598,11 @@ router.get("/week/:weekKey", async (req, res) => {
     const myRank = userId
       ? (() => {
           const ix = board.findIndex((r) => r.userId.toLowerCase() === userId.toLowerCase());
-          return ix >= 0 ? { rank: ix + 1, points: board[ix].points } : null;
+          if (ix < 0) return null;
+          /* ⚠️ `ix + 1` DEĞİL: beraberlik kuralı ödül dağıtımıyla aynı olmalı.
+           * Eskiden eşit puanlı üç kişi 1./2./3. görünüyor ama üçü de
+           * birincilik ödülü alıyordu. bkz. siralariHesapla notu. */
+          return { rank: siralariHesapla(board)[ix], points: board[ix].points };
         })()
       : null;
 

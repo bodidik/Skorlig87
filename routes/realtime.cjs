@@ -121,7 +121,7 @@ router.get("/state", async (req,res)=>{
 });
 
 // ---- POST /api/rt/poll
-router.post("/poll", async (req,res)=>{
+router.post("/poll", requireAdmin, async (req,res)=>{
   const { fixtureId } = req.query;
   if(!fixtureId) return res.status(400).json({ ok:false, error:"FIXTURE_OR_TEAM_REQUIRED" });
   const file = stateFile(fixtureId);
@@ -313,30 +313,8 @@ if (!isFT) {
 
     rows.sort((a,b)=> b.points - a.points);
 
-    // Mevcut dosya + bu maçın satırlarını birleştir
-    const lb = await readJson(LEADERBOARD_FILE, { items: [], totals: {} });
-    const items = Array.isArray(lb.items) ? lb.items : [];
-    const oldFiltered = items.filter(r => String(r.fixtureId) !== fixtureId);
-    const merged = oldFiltered.concat(rows);
-
-    // Kullanıcı bazlı totals
-    const totals = {};
-    for (const r of merged) {
-      const uid = r.userId || "anon";
-      if (!totals[uid]) {
-        totals[uid] = { userId: uid, total: 0, played: 0, penalties: 0 };
-      }
-      totals[uid].total     += Number(r.points   || 0);
-      totals[uid].played    += 1;
-      totals[uid].penalties += Number(r.penalty  || 0);
-    }
-
-    const out = {
-      items: merged,
-      totals,
-      updatedAt: new Date().toISOString()
-    };
-    await writeJson(LEADERBOARD_FILE, out);
+    const { mergeAndWriteLeaderboard } = require("../lib/leaderboard-merge.cjs");
+    const out = await mergeAndWriteLeaderboard(fixtureId, rows);
 
     // (opsiyonel) Mongo snapshot
     try {

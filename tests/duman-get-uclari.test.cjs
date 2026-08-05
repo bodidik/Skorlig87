@@ -81,11 +81,32 @@ before(async () => {
   srv.stdout.resume();
   srv.stderr.resume();
 
+  /**
+   * ⚠️ "YANIT VERDİ" ≠ "HAZIR" — süiti arada bir kıran kusur buydu.
+   *
+   * Bu döngü eskiden `fetch` FIRLATMADIĞI anda `return` ediyordu. Oysa
+   * `server.cjs` mongo ilklendirmesi bitene kadar (`_mongoInitBitti` kapısı,
+   * bkz. server.cjs) TÜM `/api` isteklerine `503 {ok:false,error:"NOT_READY"}`
+   * döner — ve 503 geçerli bir HTTP yanıtıdır, `fetch` onu FIRLATMAZ. Yani
+   * sunucu henüz hazır değilken kurulum "hazır" sayılıyor, hemen ardından
+   * çalışan `describe("kurulum")` testi gövdede `mountedCount` yerine
+   * `NOT_READY` bulup kırılıyordu.
+   *
+   * Pencere dar olduğu için belirti seyrekti: ölçüldü, ~10 tam koşuda 1.
+   * `tests/_yaris-koruma.cjs` bunu yakalayamazdı — o yalnızca BAĞLANTI
+   * hatalarını yeniden deniyor, burada bağlantı zaten kurulmuştu.
+   *
+   * Artık gerçek hazır sinyali bekleniyor: 2xx **ve** gövdede `mountedCount`.
+   */
   for (let i = 0; i < 80; i++) {
     try {
-      await fetch(`${TABAN}/api/health`, { signal: AbortSignal.timeout(1500) });
-      return;
-    } catch { await new Promise((r) => setTimeout(r, 500)); }
+      const r = await fetch(`${TABAN}/api/health`, { signal: AbortSignal.timeout(1500) });
+      if (r.ok) {
+        const j = await r.json().catch(() => null);
+        if (typeof j?.mountedCount === "number") return;
+      }
+    } catch { /* bağlantı henüz yok — aşağıda beklenip yeniden denenir */ }
+    await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error("sunucu ayaga kalkmadi");
 });

@@ -71,6 +71,7 @@ const ADMIN = new Set([
   "POST /api/rt/admin-live-gs",
   "POST /api/rt/competitions/upsert",
   "POST /api/rt/fixture-competitions/assign",
+  "POST /api/rt/poll",
   "POST /api/rt/settle",
   "POST /api/stats/recalc",
   // ⚠️ Bu ucun muhafızı `verifyToken`dı ve yorumu "(admin)" diyordu.
@@ -91,8 +92,6 @@ const ADMIN_GOVDE = {
 
 /** Bilerek açık — her biri gerekçeli. */
 const ACIK = {
-  "POST /api/rt/poll":
-    "istemci yoklama ucu; kendi MAX_POLL tavani var (hiz siniri atlama listesinde de boyle)",
   "POST /api/auth1987gs/verify":
     "davet kodu kullanimi kullaniciya acik olmali; hiz siniri 5/dk ve kod kotasi atomik",
 };

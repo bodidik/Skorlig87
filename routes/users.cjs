@@ -838,26 +838,48 @@ router.delete("/delete-account", verifyToken, async (req, res) => {
     // `f.friends` arıyordu — undefined, yani sessiz no-op. Sonuç: hesabını
     // silen kullanıcı başkalarının arkadaş listesinde kalmaya devam ediyordu.
     // Yanlış şema hata vermez, sadece hiçbir şey yapmaz.
-    const friends = await SocialStore.loadFriends(req.app?.locals?.db || null);
-    const esitDegil = (x) => String(x || "").toLowerCase() !== uid.toLowerCase();
-    friends.links    = friends.links.filter(l => esitDegil(l.a) && esitDegil(l.b));
-    friends.requests = friends.requests.filter(r => esitDegil(r.from ?? r.a) && esitDegil(r.to ?? r.b));
-    friends.blocks   = friends.blocks.filter(b => esitDegil(b.by ?? b.a) && esitDegil(b.target ?? b.b));
-    await SocialStore.saveFriends(friends, req.app?.locals?.db || null);
+    /**
+     * ⚠️ HEDEFLİ SİLME — ESKİDEN SNAPSHOT GERİ YAZILIYORDU.
+     *
+     * Önceki hâli TÜM arkadaşlık verisini okuyup kullanıcıya ait satırları
+     * süzüyor ve TÜMÜNÜ geri yazıyordu (`saveFriends` → `replaceAll`). Okuma
+     * ile yazma arasında başkalarının kurduğu arkadaşlık, gönderdiği istek ve
+     * koyduğu engel SESSİZCE siliniyordu — hesabını silen bir kullanıcı,
+     * o sırada arkadaş olan iki yabancının bağlantısını da götürüyordu.
+     *
+     * ÖLÇÜLDÜ: silme akışı sürerken eklenen `cem-deniz` arkadaşlığı ve
+     * `mehmet→zeynep` isteği snapshot geri yazılınca yok oldu.
+     */
+    const db = req.app?.locals?.db || null;
+    const sosyal = await SocialStore.removeUserFromSocial(uid, db);
+    if (!sosyal.ok && sosyal.reason === "NO_DB") {
+      // Mongo yoksa dosya kolu: tek süreçte snapshot yazımı tek seçenek.
+      const friends = await SocialStore.loadFriends(db);
+      const esitDegil = (x) => String(x || "").toLowerCase() !== uid.toLowerCase();
+      friends.links    = friends.links.filter(l => esitDegil(l.a) && esitDegil(l.b));
+      friends.requests = friends.requests.filter(r => esitDegil(r.from ?? r.a) && esitDegil(r.to ?? r.b));
+      friends.blocks   = friends.blocks.filter(b => esitDegil(b.by ?? b.a) && esitDegil(b.target ?? b.b));
+      await SocialStore.saveFriends(friends, db);
+    }
 
     // 6. Gruplar — sahip olduğu grupları sil, üyelikten çıkar
     // (şema doğruydu; yalnızca depo Mongo'ya taşındı)
-    const groups = await SocialStore.loadGroups(req.app?.locals?.db || null);
-    if (groups && typeof groups === "object") {
-      for (const gid of Object.keys(groups)) {
-        const g = groups[gid];
-        if (String(g.ownerId) === uid) {
-          delete groups[gid];
-        } else if (Array.isArray(g.members)) {
-          g.members = g.members.filter(m => m !== uid);
+    // ⚠️ Arkadaşlıkla aynı snapshot kusuru buradaydı: tüm grup haritasını
+    // okuyup geri yazınca, arada kurulan grup ve katılan üye siliniyordu.
+    const gruplar = await SocialStore.removeUserFromGroups(uid, db);
+    if (!gruplar.ok && gruplar.reason === "NO_DB") {
+      const groups = await SocialStore.loadGroups(db);
+      if (groups && typeof groups === "object") {
+        for (const gid of Object.keys(groups)) {
+          const g = groups[gid];
+          if (String(g.ownerId) === uid) {
+            delete groups[gid];
+          } else if (Array.isArray(g.members)) {
+            g.members = g.members.filter(m => m !== uid);
+          }
         }
+        await SocialStore.saveGroups(groups, db);
       }
-      await SocialStore.saveGroups(groups, req.app?.locals?.db || null);
     }
 
     // 7. totals.json

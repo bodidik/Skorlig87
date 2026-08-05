@@ -312,6 +312,69 @@ describe("predict eşzamanlı çağrıda kaybolmuyor", () => {
   });
 });
 
+describe("settle BAŞKA turnuvanın yazmasını ezmiyor", () => {
+  test("A sonuçlanırken B'ye katılım korunuyor", async () => {
+    /**
+     * ⚠️ BU, İLK DÜZELTMENİN EKSİK KALAN YANIYDI.
+     *
+     * create/join/predict atomikleştirildikten sonra bile `settle` hâlâ
+     * `saveAll(data)` çağırıyordu: fonksiyonun BAŞINDA alınmış snapshot TÜM
+     * koleksiyonu değiştiriyor ve aradaki atomik yazmaları — BAŞKA
+     * turnuvalara yapılanlar dahil — siliyordu.
+     *
+     * ÖLÇÜLDÜ: A sonuçlanırken B'ye katılım geldi; `join` BAŞARILI döndü ama
+     * B'nin katılımcı listesinde yoktu, 10 LC gitmişti.
+     *
+     * Mühür (`claimTournamentSettle`) zaten `status`/`settledAt` yazıyordu;
+     * tek eksik `payouts`tı ve o da artık aynı `updateOne` içinde.
+     */
+    await cuzdanKur("s-a-kurucu", "s-a-uye", "s-b-kurucu", "s-b-katilan");
+
+    const A = await T.create({
+      creatorId: "s-a-kurucu", name: "SA", entryLC: GIRIS,
+      fixtureIds: ["fx-s1", "fx-s2"], db,
+    });
+    await T.join(A.code, "s-a-uye", db);
+
+    const B = await T.create({
+      creatorId: "s-b-kurucu", name: "SB", entryLC: GIRIS,
+      fixtureIds: ["fx-s3", "fx-s4"], db,
+    });
+
+    const sonuc = await Promise.allSettled([
+      T.settle(A.code, { "fx-s1": { outcome: "H" }, "fx-s2": { outcome: "D" } }, db),
+      T.join(B.code, "s-b-katilan", db),
+    ]);
+
+    const bKayit = await db.collection("tournaments").findOne({ code: B.code });
+    const bListe = (bKayit?.participants || []).map((p) => String(p.userId).toLowerCase());
+    const harcanan = BASLANGIC - (await bakiye("s-b-katilan"));
+
+    if (sonuc[1].status === "fulfilled") {
+      assert.ok(
+        bListe.includes("s-b-katilan"),
+        `join BASARILI dondu ama B'nin katilimci listesinde yok ` +
+        `(${JSON.stringify(bListe)}) ve ${harcanan} LC alinmis — settle'in ` +
+        `saveAll'i baska turnuvanin atomik yazmasini ezdi`
+      );
+      assert.equal(
+        bKayit.pool, GIRIS * 2,
+        `B havuzu ${bKayit.pool}, beklenen ${GIRIS * 2}`
+      );
+    }
+
+    /* Düzeltme settle'ı bozmamalı: A gerçekten sonuçlanmış ve payouts yazılmış
+     * olmalı. `saveAll` kaldırılırken payouts'un mühre taşınması şarttı. */
+    const aKayit = await db.collection("tournaments").findOne({ code: A.code });
+    assert.equal(aKayit.status, "settled", `A durumu: ${aKayit.status}`);
+    assert.ok(
+      Array.isArray(aKayit.payouts) && aKayit.payouts.length > 0,
+      `A'nin payouts alani yazilmamis: ${JSON.stringify(aKayit.payouts)} — ` +
+      `saveAll kaldirilirken payouts muhre tasinmamis`
+    );
+  });
+});
+
 /* ── Nöbetçi ────────────────────────────────────────────────────────────── */
 
 test("NÖBETÇİ: üç yazma yolu da atomik depoyu kullanıyor", () => {
@@ -336,7 +399,8 @@ test("NÖBETÇİ: üç yazma yolu da atomik depoyu kullanıyor", () => {
     predict: "setTournamentPredictionAtomik",
     /* `settle` kendi belgesini mühürle yazar; `saveAll`a geri dönerse BAŞKA
      * turnuvaların yazmalarını ezer — ölçüldü: araya giren katılım silindi
-     * (10 LC kayıp) ve başka bir çağrının mührü "open"a geri döndü.
+     * (10 LC kayıp) ve başka bir çağrının mührü "open"a geri döndü, yani
+     * ödeme İKİNCİ KEZ yapılırdı.
      * Ayrıntı: tests/turnuva-servis-settle-esdzamanlilik.test.cjs */
     settle:  "claimTournamentSettle",
   };
@@ -352,9 +416,9 @@ test("NÖBETÇİ: üç yazma yolu da atomik depoyu kullanıyor", () => {
 
     /* ⚠️ ATOMİK ÇAĞRI VARKEN `saveAll` DA KALMIŞSA KUSUR GERİ GELİR: atomik
      * yazma doğru yazar, hemen ardından snapshot her şeyi geri alır. Tam bu
-     * oldu — create/join/predict atomikleştirildiği hâlde `settle` ve
-     * settle2 auto-settle `saveAll`a devam ediyordu ve ötekilerin işini
-     * siliyorlardı. Yani üç yolu düzeltmek yetmedi.
+     * oldu — ilk düzeltmede create/join/predict atomikti ama HEM `settle` HEM
+     * settle2 auto-settle `saveAll`a devam ediyordu ve ötekilerin işini geri
+     * alıyorlardı. Yani üç yolu düzeltmek yetmedi, beş yolun hepsi gerekti.
      *
      * NO_DB (Mongo yok) kolundaki `saveAll` meşru: dosya tek kaynak ve tek
      * süreçte yarış yok. Onu saymıyoruz. */
