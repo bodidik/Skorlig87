@@ -85,6 +85,13 @@ router.get("/competition-totals", async (req, res) => {
      * `?humans=1` ile istege bagli suz.
      */
     const humansOnly = String(req.query.humans || "") === "1";
+
+    const competitionId = String(req.query.competitionId || "").trim();
+    const userIdRaw     = String(req.query.userId || "").trim();
+    const userIdLower   = userIdRaw ? normUserId(userIdRaw) : null;
+
+    /* ⚠️ SARMALAYICI `userIdLower`DAN SONRA KURULUYOR — aşağıda onu kullanıyor.
+     * (Çağrı sırası zaten güvenliydi ama okurken tersini düşündürüyordu.) */
     const _json = res.json.bind(res);
     res.json = (govde) => {
       if (!govde || !Array.isArray(govde.items)) return _json(govde);
@@ -93,12 +100,31 @@ router.get("/competition-totals", async (req, res) => {
         isBot: BOT_ID_SET.has(String(x?.userId || "").trim().toLowerCase()),
       }));
       const items = humansOnly ? isaretli.filter((x) => !x.isBot) : isaretli;
-      return _json({ ...govde, items, count: items.length });
-    };
 
-    const competitionId = String(req.query.competitionId || "").trim();
-    const userIdRaw     = String(req.query.userId || "").trim();
-    const userIdLower   = userIdRaw ? normUserId(userIdRaw) : null;
+      /**
+       * ⚠️ `me.rank` DE YENİDEN HESAPLANMALI — ESKİDEN FİLTRE ÖNCESİ KALIYORDU.
+       *
+       * `pickMeAndCount` sırayı TÜM liste üzerinden veriyor (`idx + 1`), bu
+       * sarmalayıcı ise botları süzüp `count`u güncelliyordu ama `me`ye hiç
+       * dokunmuyordu. Sonuç: kullanıcı kendi sırasını botlar dahil görüyor,
+       * listeyi ise botsuz.
+       *
+       * ÖLÇÜLDÜ (20 bot + 1 insan, `?humans=1`):
+       *     count = 1  ·  me.rank = 21
+       * Yani "1 kişilik listede 21. sıradasın". Üretimde daha uç: bu dosyanın
+       * kendi notu "1707 kaydın 1706'sı bot" diyor.
+       *
+       * Kullanıcı filtre sonrası listede yoksa (kendisi botsa) sıra anlamsız →
+       * `null`. Uydurma bir sıra vermektense yokluğu bildirmek doğru.
+       */
+      let me = govde.me;
+      if (me && humansOnly) {
+        const ix = items.findIndex((x) => normUserId(x.userId) === userIdLower);
+        me = { ...me, rank: ix >= 0 ? ix + 1 : null };
+      }
+
+      return _json({ ...govde, items, me, count: items.length });
+    };
 
     if (!competitionId) {
       return res
