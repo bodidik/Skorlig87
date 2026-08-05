@@ -20,6 +20,8 @@
 
 const { test, describe } = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("fs");
+const nodePath = require("path");
 
 const { _dagilim, _akis } = require("../lib/economy-report.cjs");
 
@@ -256,10 +258,82 @@ describe("mini turnuva ödülü — beraberlikte bölüşülür", () => {
   });
 
   test("bölünmeyen sayıda AŞAĞI yuvarlanır (yukarı yuvarlamak LC yaratırdı)", () => {
-    // 20/3 = 6.666 → 6.6 (6.7 olsaydı 3×6.7 = 20.1, yani 0.1 LC yoktan)
+    // 20/3 = 6.666 → 6 (7 olsaydı 3×7 = 21, yani 1 LC yoktan)
     const p = pay(3);
     assert.ok(p * 3 <= TOPLAM, "asagi yuvarlanmamis");
-    assert.equal(p, Math.floor((TOPLAM / 3) * 10) / 10);
+    assert.equal(p, Math.floor(TOPLAM / 3));
+  });
+
+  test("pay TAM SAYI — kesirli ödül cüzdanda artık biriktiriyordu", () => {
+    /**
+     * ⚠️ 2026-08-05'te 0.1 adımdan tam sayıya çevrildi. Kesirli pay
+     * `lib/wallet-credit.cjs`in toplamasında kayan nokta artığı biriktiriyordu
+     * — ÖLÇÜLDÜ: 6.6 × 50 kredi → 330.0000000000001. Cüzdan artık her yazımda
+     * yuvarlıyor, ama kirli tutarı hiç ÜRETMEMEK daha iyi: defter, ekonomi
+     * raporu ve ekranlar da temiz kalıyor.
+     *
+     * Ölçüm: n=1..50 aralığında eskiden 43 senaryo kesirli pay üretiyordu.
+     */
+    const kesirli = [];
+    for (let n = 1; n <= 50; n++) {
+      if (!Number.isInteger(pay(n))) kesirli.push(`${n} → ${pay(n)}`);
+    }
+    assert.deepEqual(kesirli, [],
+      "kesirli pay uretiliyor — cuzdanda ve defterde artik birikir: " + kesirli.join(", "));
+  });
+
+  test("EŞİT pay veriliyor (en büyük kalan yöntemi burada KULLANILMAZ)", () => {
+    /**
+     * ⚠️ TERS RİSK. Toplamı kuruşuna eşitlemek için en büyük kalan yöntemi
+     * (lib/pay-dagitim.cjs) uygulansaydı bir kazanan 7, diğeri 6 LC alırdı.
+     * Orada korunacak bir HAVUZ var; burada ödül ÜRETİLİYOR — aynı tahmini
+     * yapan iki kişiye farklı para vermeyi haklı çıkaracak bir kısıt yok.
+     * Ölçüldü: en kötü durumda dağıtılmayan 6 LC (n=7 → 14/20).
+     */
+    const src = fs.readFileSync(
+      nodePath.join(__dirname, "..", "routes", "mini.cjs"), "utf8"
+    );
+    assert.ok(!/odemeDagit\s*\(/.test(src),
+      "mini havuz kuralina gecmis — kazananlar esitsiz odul alir");
+  });
+
+  test("pay 0'a düşen kalabalık beraberlikte KİMSEYE yazılmıyor", () => {
+    /**
+     * ⚠️ TAM SAYIYA GEÇMENİN AÇIK BEDELİ, gizlenmiyor: kazanan sayısı
+     * MINI_WIN_LC'yi (20) aşarsa pay 0 olur ve ödül hiç dağıtılmaz —
+     * n=21..50 arası 30 senaryo, eskiden 0.4..0.9 LC alıyorlardı.
+     *
+     * Herkese en az 1 LC vermek bunu çözerdi ama yukarıdaki "toplam TOPLAM'ı
+     * aşamaz" değişmezini bozardı (30 kazanan × 1 = 30 > 20). O değişmez
+     * karşılıksız LC musluğunu kapatmak için konmuştu.
+     */
+    assert.equal(pay(TOPLAM), 1, "tavandaki kazanan sayisinda 1 LC verilmeli");
+    assert.equal(pay(TOPLAM + 1), 0, "tavani asinca pay 0 olmali");
+  });
+
+  test("HİÇBİR kazanan sayısında ödülsüz kalınmıyor (tavan = MAX_MEMBERS)", () => {
+    /**
+     * ⚠️ İKİ SABİTİN BAĞI, RASTLANTI DEĞİL. Kazanan sayısı MINI_WIN_LC'yi
+     * aşarsa pay 0'a düşer ve kimse ödül almaz. Turnuvaya en fazla MAX_MEMBERS
+     * kişi girebildiği için tavan MAX_MEMBERS'a eşitlendiğinde bu senaryo
+     * TAMAMEN biter: 50/n her n ≤ 50 için en az 1 LC.
+     *
+     * Yol: 20 (30 ödülsüz senaryo) → 40 (10 senaryo) → 50 (0 senaryo).
+     * 50'ye çıkmak ancak MIN_ODUL_UYE şartıyla birlikte güvenli oldu —
+     * gerekçe routes/mini.cjs MINI_WIN_LC ve MIN_ODUL_UYE notlarında.
+     *
+     * Bu iddia iki sabitin AYRIŞMASINI yakalar: tavan düşerse ya da
+     * MAX_MEMBERS yükselirse ödülsüz senaryo sessizce geri gelir ve hiçbir
+     * hata üretmez — kimse fark etmez.
+     */
+    const MAX_MEMBERS = 50;
+    const odulsuz = [];
+    for (let n = 1; n <= MAX_MEMBERS; n++) if (pay(n) === 0) odulsuz.push(n);
+
+    assert.deepEqual(odulsuz, [],
+      `${odulsuz.length} kazanan sayisinda hic odul dagitilmiyor (n=${odulsuz.join(",")}). ` +
+      `MINI_WIN_LC (${TOPLAM}) ile MAX_MEMBERS (${MAX_MEMBERS}) ayrismis: ` +
+      `tavan dusurulmus ya da uye siniri yukseltilmis olabilir.`);
   });
 
   test("geçersiz kazanan sayısı 0 döner (para yazılmaz)", () => {

@@ -25,44 +25,50 @@ const path = require("path");
 const KOK = path.join(__dirname, "..");
 const SRC = fs.readFileSync(path.join(KOK, "routes", "duels.cjs"), "utf8");
 
-/** Üretimdeki kesinti oranını KAYNAKTAN oku — kopyalamak testi bağımsızlaştırır
- *  ve oran değişince test sessizce eski değeri sınamaya devam ederdi. */
-function houseCutPct() {
-  const m = SRC.match(/const\s+HOUSE_CUT_PCT\s*=\s*([0-9.]+)/);
-  assert.ok(m, "HOUSE_CUT_PCT bulunamadi — kaynak bicimi degismis, test bir sey olcmuyor");
-  return Number(m[1]);
-}
-
-/** Üretimdeki hesabın aynısı (routes/duels.cjs pot/houseCut/winAmount). */
-function hesapla(stake, pct) {
-  const pot = stake * 2;
-  const houseCut = Math.round(pot * pct * 10) / 10;
-  const winAmount = Math.round((pot - houseCut) * 10) / 10;
-  return { pot, houseCut, winAmount };
-}
+/* ⚠️ HESAP ARTIK KAYNAKTAN REGEX'LE OKUNMUYOR, ÜRETİM MODÜLÜ ÇAĞRILIYOR.
+ * Eskiden `HOUSE_CUT_PCT` sayısı `routes/duels.cjs`ten okunup formül BURADA
+ * yeniden yazılıyordu — yani test, üretimin kopyasını sınıyordu. 2026-08-05'te
+ * kesinti kademeli tam sayıya çevrilince (bkz. lib/duello-kesinti.cjs) o kopya
+ * sessizce YANLIŞ hesabı sınamaya devam ederdi. Artık aynı fonksiyon. */
+const { duelloPaylari, MAX_STAKE } = require("../lib/duello-kesinti.cjs");
 
 describe("düello para korunumu", () => {
-  test("kurulum sınandı: kesinti oranı okunabiliyor", () => {
-    const p = houseCutPct();
-    assert.ok(p > 0 && p < 0.5, `HOUSE_CUT_PCT=${p} makul araligin disinda`);
+  test("kurulum sınandı: üretim rotası bu hesabı kullanıyor", () => {
+    assert.ok(/require\("\.\.\/lib\/duello-kesinti\.cjs"\)/.test(SRC),
+      "duels.cjs kesinti modulunu kullanmiyor — test bir sey olcmuyor");
+    assert.ok(!/HOUSE_CUT_PCT\s*=/.test(SRC),
+      "duels.cjs hala kendi kesinti sabitini tasiyor — iki kural ayrisir");
   });
 
   test("ödül + kasa payı havuzu AŞMAZ (enflasyon yönü)", () => {
-    const pct = houseCutPct();
+    /* ⚠️ İzinli aralığın ÖTESİ de taranıyor: MAX_STAKE yükselirse kademe
+     * tablosunun hâlâ tutarlı olduğu burada görülür. */
     for (let s = 1; s <= 300; s++) {
-      const { pot, houseCut, winAmount } = hesapla(s, pct);
-      const toplam = Math.round((winAmount + houseCut) * 10) / 10;
-      assert.ok(toplam <= pot, `bahis=${s}: odul ${winAmount} + kasa ${houseCut} = ${toplam} > havuz ${pot}`);
+      const { pot, houseCut, winAmount } = duelloPaylari(s);
+      assert.ok(winAmount + houseCut <= pot,
+        `bahis=${s}: odul ${winAmount} + kasa ${houseCut} > havuz ${pot}`);
     }
   });
 
   test("kazanan bahsinden AZ almaz (oyun anlamını yitirmesin)", () => {
-    /* ⚠️ Kesinti bir gün %50'ye çıkarsa kazanan kendi yatırdığından az alır
-     * ve düello oynamak matematiksel olarak anlamsızlaşır. */
-    const pct = houseCutPct();
+    /* ⚠️ Kesinti bir gün havuzun yarısına çıkarsa kazanan kendi yatırdığından
+     * az alır ve düello oynamak matematiksel olarak anlamsızlaşır. */
     for (const s of [1, 5, 10, 25, 100]) {
-      const { winAmount } = hesapla(s, pct);
+      const { winAmount } = duelloPaylari(s);
       assert.ok(winAmount > s, `bahis=${s}: kazanan ${winAmount} aliyor — yatirdigindan fazla olmali`);
+    }
+  });
+
+  test("izinli aralıkta havuz TAM dağıtılıyor — yakma da yok", () => {
+    /**
+     * ⚠️ Eski iddia yalnızca "aşmaz" diyordu; eksik ödeme (LC yakma) serbestti.
+     * `lib/pay-dagitim.cjs` notu bu yönün de bir kusur olduğunu ölçüyor
+     * (turnuvada 1199 senaryoda 3 LC'ye kadar yakılmıştı).
+     */
+    for (let s = 1; s <= MAX_STAKE; s++) {
+      const { pot, houseCut, winAmount } = duelloPaylari(s);
+      assert.equal(houseCut + winAmount, pot,
+        `bahis=${s}: kasa ${houseCut} + odul ${winAmount} != havuz ${pot}`);
     }
   });
 

@@ -29,9 +29,14 @@ const PREDS_FILE = path.join(DATA_DIR, "preds.json");
 
 const { calcOdds } = require("../services/odds-engine.cjs");
 
-const MIN_STAKE = 1;
-const MAX_STAKE = 12;
-const HOUSE_CUT_PCT = 0.05;
+/* Bahis sınırları ve kasa payı ARTIK TEK KAYNAKTA — bkz. lib/duello-kesinti.cjs.
+ * Kesinti yüzde değil KADEMELİ TAM SAYI: yüzde, 12 bahsin 11'inde kesirli ödül
+ * (1 → 1.9) üretiyordu ve cüzdanın `$inc`i yuvarlamadığı için hata birikiyordu
+ * (1.9 × 20 → 37.999999999999986). Gerekçenin tamamı o dosyada. */
+const {
+  MIN_STAKE, MAX_STAKE,
+  duelloPaylari, odulTablosu, eskiIstemciKesintiOrani,
+} = require("../lib/duello-kesinti.cjs");
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -742,9 +747,7 @@ router.post("/duels/create", verifyToken, async (req, res) => {
 
     const nowISO = new Date().toISOString();
     const id = genId();
-    const pot = s * 2;
-    const houseCut = Math.round(pot * HOUSE_CUT_PCT * 10) / 10;
-    const winAmount = Math.round((pot - houseCut) * 10) / 10;
+    const { pot, houseCut, winAmount } = duelloPaylari(s);
     const duel = {
       id, fixtureId: fx, stake: s,
       creatorId, creatorName: String(creatorName || "").trim() || null,
@@ -980,14 +983,23 @@ router.get("/duels/open", async (req, res) => {
      * Mobil düello ekranı kazancı KENDİ hesaplıyordu:
      *     Math.round(selectedStake * 2 * 0.95 * 10) / 10       (üç yerde)
      * ve bahis seçeneklerini sabit tutuyordu: `STAKES = [1,2,3,5,8,10,12]`.
-     * Yani `HOUSE_CUT_PCT` ya da `MAX_STAKE` burada değişirse ekran kullanıcıya
+     * Yani kesinti kuralı ya da `MAX_STAKE` burada değişirse ekran kullanıcıya
      * YANLIŞ kazanç vaat eder — üstelik bu vaat, bahsi KOYMADAN ÖNCE
      * gösteriliyor (düello daha yok, `winAmount` da yok).
      *
-     * ÖLÇÜLDÜ: bugün değerler birebir uyuşuyor (1–12 aralığında 0 fark), yani
-     * canlı bir kusur YOK. Kapatılan şey sapma ihtimali. Aynı sınıf bu depoda
-     * bir kez pahalıya patlamıştı: `lib/ekonomi.cjs macOdulu` notu, ekranın
-     * 3009 LC vaat edip cüzdana ≤15 geçtiğini ölçüyor.
+     * Aynı sınıf bu depoda bir kez pahalıya patlamıştı: `lib/ekonomi.cjs
+     * macOdulu` notu, ekranın 3009 LC vaat edip cüzdana ≤15 geçtiğini ölçüyor.
+     *
+     * ⚠️ ARTIK ORAN DEĞİL TABLO GÖNDERİLİYOR (2026-08-05). Kesinti kademeli
+     * tam sayı olduğu için tek bir yüzde onu ANLATAMAZ: bahis 5'te 1/10 = %10,
+     * bahis 12'de 1/24 = %4.2, bahis 1-4'te %0. Oranı gönderip istemciye
+     * çarptırmak, ekranın ödemeyle ayrışması demekti — kapatılmak istenen
+     * kusurun ta kendisi. `odulTablosu` her bahsin ödülünü HESAPLANMIŞ veriyor;
+     * istemcinin çarpacak bir şeyi kalmıyor.
+     *
+     * `houseCutPct` yalnızca ESKİ sürümler için duruyor (bkz.
+     * eskiIstemciKesintiOrani: en yüksek efektif oran, yani eski ekran ödülü
+     * olduğundan az gösterir — asla fazla).
      *
      * Yukarıdaki `duelloyaUygun` da aynı gerekçeyle gönderiliyor: kuralı
      * sunucu bilir, istemci tahmin etmesin. */
@@ -995,7 +1007,8 @@ router.get("/duels/open", async (req, res) => {
       ok: true, count: open.length, items: open,
       duelloyaUygun: denge.uygun,
       dengeOlasilik: denge.olasilik,
-      houseCutPct: HOUSE_CUT_PCT,
+      odulTablosu: odulTablosu(),
+      houseCutPct: eskiIstemciKesintiOrani(),
       minStake: MIN_STAKE,
       maxStake: MAX_STAKE,
     });

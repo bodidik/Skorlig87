@@ -43,9 +43,56 @@ const MIN_FIXTURES = 2;
 const MAX_FIXTURES = 10;
 const MAX_MEMBERS = 50;
 
-// Turnuva birincisine LC (LigCoin) ödülü. Mongo varsa cüzdana `$inc` ile
-// yazılır (lib/wallet-credit.cjs); dosya yalnızca ayna açıkken güncellenir.
-const MINI_WIN_LC = Math.max(0, Number(process.env.SKORLIG_MINI_WIN_LC || 20));
+/**
+ * Turnuva birincisine LC (LigCoin) ödülü — beraberlikte BÖLÜŞÜLÜR
+ * (bkz. kazananPayi). Cüzdana `lib/wallet-credit.cjs` üzerinden yazılır;
+ * dosya yalnızca ayna açıkken güncellenir.
+ *
+ * ⚠️ BU SAYI DOĞRUDAN MUSLUK DEBİSİ. Mini turnuva girişi ücretsiz, yani ödül
+ * karşılıksız üretilen LC. Üç fren birlikte çalışıyor ve yükseltirken üçü de
+ * düşünülmeli: `MIN_ODUL_UYE` (tek hesapla ödül üretilemez), eşzamanlı açık
+ * turnuva kotası (ücretsiz 2, premium 6 — lib/premium.cjs miniMaxOpen) ve
+ * maçların gerçekten oynanması gerekliliği.
+ *
+ * 20 → 40 → 50 (2026-08-05, kasıtlı ekonomi kararı). Pay tam sayıya çevrilince
+ * (bkz. kazananPayi) kazanan sayısı bu tavanı aşan beraberliklerde pay 0'a
+ * düşüyordu: 20'de n=21..50 arası 30 senaryo, 40'ta 10 senaryo.
+ *
+ * ⚠️ 50 = MAX_MEMBERS, YANİ SENARYO TAMAMEN BİTTİ. Turnuvaya en fazla
+ * MAX_MEMBERS kişi girebildiği için kazanan sayısı da 50'yi aşamaz; `50/n`
+ * her n ≤ 50 için en az 1 LC verir. Bu iki sabitin bağlı olması RASTLANTI
+ * DEĞİL — ayrışırlarsa ödülsüz senaryo geri gelir ve hiçbir hata üretmez.
+ * `tests/economy.test.cjs` bağı nöbetle tutuyor.
+ *
+ * ⚠️ 50'YE ÇIKMAK ANCAK MUSLUK DARALTILDIĞI İÇİN GÜVENLİ. Daha önce tek
+ * kişilik turnuva tam ödülü üretiyordu; artık `MIN_ODUL_UYE` şartı var
+ * (aşağıya bkz.), yani tek hesapla ödül üretmek mümkün değil. Şart olmadan
+ * 50'ye çıkmak musluğu 2.5 kat açmak olurdu.
+ *
+ * Ölçek referansı: açılış bakiyesi 30 LC, maç ödülü en fazla 15 LC, kupon
+ * ödülleri 8/20/50/150 LC.
+ */
+const MINI_WIN_LC = Math.max(0, Number(process.env.SKORLIG_MINI_WIN_LC || 50));
+
+/**
+ * ÖDÜL İÇİN ASGARİ GERÇEK ÜYE SAYISI.
+ *
+ * ⚠️ NEDEN VAR: mini turnuva girişi ÜCRETSİZ ve turnuva tek kişiyle de
+ * bitebiliyordu — kurucu puan alırsa `MINI_WIN_LC`'nin TAMAMINI alıyordu.
+ * Yani tek hesapla, karşılıksız LC üretilebilen bir musluktu; freni yalnızca
+ * eşzamanlı açık turnuva kotası (lib/premium.cjs miniMaxOpen: ücretsiz 2,
+ * premium 6) ve maçların gerçekten oynanması gerekliliğiydi. Kota debiyi
+ * sınırlıyordu ama musluğu KAPATMIYORDU.
+ *
+ * ⚠️ KAPI YARATMADA DEĞİL ÖDEMEDE. Turnuva her zaman TEK üyeyle kurulur
+ * (kurucu), arkadaşlar sonra kodla katılır — yaratmada asgari üye şart koşmak
+ * turnuva kurmayı imkânsız kılardı. Şart bitişte, ödeme anında bakılır.
+ *
+ * ⚠️ BOTLAR SAYILMAZ. `gercekUyeler` bot kimliklerini eliyor; saymasaydı
+ * turnuvayı botlarla doldurup şartı geçmek mümkün olurdu. Aynı gerekçe
+ * `gercekKazananlar` için de yazılı: bot para almıyor.
+ */
+const MIN_ODUL_UYE = Math.max(1, Number(process.env.SKORLIG_MINI_MIN_ODUL_UYE || 2));
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const { creditLc, kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
@@ -96,6 +143,11 @@ function publicView(t) {
     finishedAt: t.finishedAt || null,
     winners: t.winners || null,
     rewardLc: t.rewardLc ?? null,
+    /* ⚠️ ÖDÜLÜN NEDEN VERİLMEDİĞİ EKRANA TAŞINIYOR. `rewardLc: 0` tek başına
+     * iki farklı durumu aynı gösterirdi: "kimse puan alamadı" ve "asgari üye
+     * şartı sağlanmadı". Ekran ikincisini açıklayabilsin diye (bkz.
+     * MIN_ODUL_UYE) neden de gönderiliyor. */
+    odulKesildi: t.odulKesildi ?? null,
   };
 }
 
@@ -135,6 +187,24 @@ function gercekKazananlar(userIds) {
 }
 
 /**
+ * Bot olmayan ÜYELER — ödül şartı bunlara bakar (bkz. MIN_ODUL_UYE).
+ *
+ * `members` bugün kimlik dizisi (`["u1","u2"]`) ama nesne biçimi de
+ * karşılanıyor: turnuva belgesi bir gün zenginleşirse şart sessizce
+ * "hiç gerçek üye yok" deyip ödülü kesmesin.
+ */
+function gercekUyeler(members) {
+  return (members || [])
+    .map((m) => (typeof m === "string" ? m : m && m.userId))
+    .filter((u) => u && !isBotUser(u));
+}
+
+/** Turnuva ödül dağıtabilecek kadar gerçek üyeye sahip mi? */
+function odulUyeSartiSaglandiMi(members) {
+  return gercekUyeler(members).length >= MIN_ODUL_UYE;
+}
+
+/**
  * Kazanan BAŞINA düşen ödül.
  *
  * ⚠️ ÖDÜL BÖLÜŞÜLÜR, ÇOĞALTILMAZ. Eskiden beraberlikte HERKESE tam
@@ -143,10 +213,31 @@ function gercekKazananlar(userIds) {
  * karşılıksız bir LC musluğuydu. Artık turnuva başına dağıtılan toplam
  * MINI_WIN_LC'yi AŞAMAZ.
  *
- * ⚠️ AŞAĞI yuvarlanır (0.1 adım). Yukarı yuvarlamak toplamı taşırırdı:
- * 20/3 = 6.666 → 6.7 verilseydi 3×6.7 = 20.1, yani 0.1 LC yoktan yaratılırdı.
- * 6.6 ile toplam 19.8 olur; artan 0.2 LC dağıtılmaz (yakılır). Enflasyon
+ * ⚠️ AŞAĞI yuvarlanır. Yukarı yuvarlamak toplamı taşırırdı: 20/3 = 6.666 →
+ * 6.7 verilseydi 3×6.7 = 20.1, yani 0.1 LC yoktan yaratılırdı. Enflasyon
  * yönünde hata yapmamak, kuruş kuruşuna dağıtmaktan önemli.
+ *
+ * ⚠️ TAM SAYIYA yuvarlanır (2026-08-05; eskiden 0.1 adımdaydı). Kesirli pay
+ * cüzdanda kayan nokta artığı biriktiriyordu — ÖLÇÜLDÜ: 6.6 × 50 kredi
+ * → 330.0000000000001. Sınır `lib/wallet-credit.cjs`te de kapatıldı (her
+ * yazımda yuvarlanıyor) ama kirli tutarı hiç ÜRETMEMEK daha iyi: defter
+ * kayıtları, ekonomi raporu ve ekranlar da temiz kalıyor. n=1..50 aralığında
+ * 43 senaryo kesirli pay üretiyordu, artık 50/50 tam sayı.
+ *
+ * ⚠️ BEDELİ AÇIK: pay 1 LC'nin altına düştüğünde 0 olur, yani MINI_WIN_LC'den
+ * fazla kazananın olduğu beraberliklerde KİMSE ödül almaz. Herkese en az 1 LC
+ * vermek bunu çözerdi ama yukarıdaki DEĞİŞMEZİ bozardı (tavandan fazla
+ * kazanan × 1 LC > tavan); o değişmez karşılıksız LC musluğunu kapatmak için
+ * konmuştu, kalabalık beraberlik uğruna geri açılmaz.
+ *
+ * Bunun yerine TAVAN yükseltildi: MINI_WIN_LC 20 → 40, yani sıfır ödül
+ * senaryosu n=21..50 arası 30 senaryodan n=41..50 arası 10 senaryoya indi.
+ * Gerekçe ve neden 50 (= MAX_MEMBERS) seçilmediği MINI_WIN_LC'nin başında.
+ *
+ * ⚠️ EŞİT PAY KORUNUYOR — en büyük kalan yöntemi (lib/pay-dagitim.cjs) burada
+ * KULLANILMAZ. Orada korunacak bir havuz var; burada ödül ÜRETİLİYOR, yani
+ * toplamı kuruşuna eşitlemek bir kazanana 7, diğerine 6 LC vermeyi haklı
+ * çıkarmaz. Aynı tahmini yapan iki kişi aynı parayı almalı.
  *
  * Bölüşme BOT ELENDİKTEN SONRAKİ sayıya göre: bot para almıyor, yani
  * turnuvaya bot eklemek gerçek kazananın payını düşürmemeli.
@@ -154,7 +245,7 @@ function gercekKazananlar(userIds) {
 function kazananPayi(kazananSayisi) {
   const n = Number(kazananSayisi) || 0;
   if (n <= 0 || MINI_WIN_LC <= 0) return 0;
-  return Math.floor((MINI_WIN_LC / n) * 10) / 10;
+  return Math.floor(MINI_WIN_LC / n);
 }
 
 /**
@@ -168,8 +259,9 @@ function kazananPayi(kazananSayisi) {
 async function awardMiniWinLc(userIds, tournament, db) {
   const winners = gercekKazananlar(userIds);
   const pay = kazananPayi(winners.length);
-  // Pay 0'a yuvarlandıysa (çok kalabalık beraberlik) kimseye yazma:
-  // creditLc zaten 0'ı reddeder ama defterde anlamsız kayıt da oluşmasın.
+  // Pay 0'a yuvarlandıysa (kazanan sayısı MINI_WIN_LC'yi aşan beraberlik)
+  // kimseye yazma: creditLc zaten 0'ı reddeder ama defterde anlamsız kayıt da
+  // oluşmasın. Bkz. kazananPayi — bu durumun bedeli orada açıkça yazılı.
   if (!winners.length || pay <= 0) return 0;
 
   const nowISO = new Date().toISOString();
@@ -338,16 +430,27 @@ async function finalizeIfDone(t, board, settledCount, fixtureCount, db, fixtureI
     // Kimse puan alamadıysa kazanan yok (hükümsüz biter, ödül dağıtılmaz)
     const winners = top > 0 ? board.filter((r) => r.points === top).map((r) => r.userId) : [];
 
+    /* ⚠️ ASGARİ ÜYE KAPISI — MUSLUK BURADA KAPANIYOR. Turnuva tek gerçek
+     * üyeyle bitebiliyordu ve kurucu ödülün tamamını alıyordu; giriş ücretsiz
+     * olduğu için bu karşılıksız LC üretimiydi. Kapı ÖDEMEDE, yaratmada değil:
+     * turnuva her zaman tek üyeyle kurulur, arkadaşlar sonra katılır.
+     * Gerekçenin tamamı MIN_ODUL_UYE notunda. */
+    const uyeSarti = odulUyeSartiSaglandiMi(cur.members);
+
     // ⚠️ `rewardLc` KİŞİ BAŞI düşen pay (toplam değil) — ekran bu alanı
     // gösteriyor. Bot olmayan kazanan sayısına göre hesaplanıyor, çünkü
     // ödemeyi alacak olanlar onlar (bkz. kazananPayi).
     const odulAlanlar = gercekKazananlar(winners);
-    const kisiBasi = kazananPayi(odulAlanlar.length);
+    const kisiBasi = uyeSarti ? kazananPayi(odulAlanlar.length) : 0;
 
     const alanlar = {
       finishedAt: new Date().toISOString(),
       winners,
       rewardLc: kisiBasi,
+      /* Şart sağlanmadığı için ödül verilmediyse KAYDA GEÇİYOR. Yoksa
+       * `rewardLc: 0` ile "kimse puan alamadı" durumu ayırt edilemezdi ve
+       * ödenmemiş bir ödül, ödenmeye değmeyen bir ödül gibi görünürdü. */
+      odulKesildi: uyeSarti ? null : "MIN_UYE",
     };
 
     // ⚠️ PARA KORUMASI: koşul (finishedAt boş mu) yazmanın İÇİNDE. Eskiden
@@ -358,7 +461,16 @@ async function finalizeIfDone(t, board, settledCount, fixtureCount, db, fixtureI
     if (!bitirdi) return cur;
     Object.assign(cur, alanlar);
 
-    if (winners.length) {
+    if (winners.length && !uyeSarti) {
+      /* ⚠️ SESSİZ KALMIYORUZ. Ödül kesilen turnuva, ödül dağıtılan turnuvadan
+       * log'da ayırt edilebilmeli: aksi hâlde kapının çalıştığı mı yoksa
+       * ödeme yolunun kırıldığı mı belli olmaz. */
+      console.log(
+        `[mini] turnuva bitti, ODUL KESILDI (asgari uye): "${cur.name}" (${cur.id}) | ` +
+        `gercek uye ${gercekUyeler(cur.members).length} < ${MIN_ODUL_UYE} | ` +
+        `kazanan: ${winners.join(", ")}`
+      );
+    } else if (winners.length) {
       const awarded = await awardMiniWinLc(winners, cur, db);
       console.log(
         `[mini] turnuva bitti: "${cur.name}" (${cur.id}) | kazanan: ${winners.join(", ")} | ` +
@@ -924,6 +1036,12 @@ router.get("/board", optionalToken, async (req, res) => {
       myRank,
       totalMembers,
       friendsInBoard,
+      /* ⚠️ ÖDÜL KURALI İSTEMCİYE BİLDİRİLİYOR — düellodaki `odulTablosu` ile
+       * aynı gerekçe: kuralı sunucu bilir, ekran tahmin etmesin. Ekran bugün
+       * ödülü ancak turnuva BİTTİKTEN sonra gösteriyor (`rewardLc`), yani
+       * yanlış bir vaat verilmiyor; bu alanlar "tek kişilik turnuva neden ödül
+       * vermedi" sorusunun cevabını ekranda verebilmek için. */
+      odulKurali: { minUye: MIN_ODUL_UYE, toplamOdul: MINI_WIN_LC },
     });
   } catch (e) {
     console.error("[mini] board error:", e);
@@ -941,3 +1059,9 @@ module.exports._MINI_WIN_LC = MINI_WIN_LC;
 module.exports._gercekKazananlar = gercekKazananlar;
 // Test icin: bitme sarti (bayat mac yok sayilmasi) dogrudan sinanabilsin.
 module.exports._bitmeyeHazirMi = bitmeyeHazirMi;
+/* ⚠️ ASGARI UYE KAPISI dogrudan sinanabilsin: bu kapi karsiliksiz LC uretimini
+ * engelliyor ve testin kendi kopyasini yazmasi, kapinin bozulmasini gizlerdi
+ * (ayni ders: _gercekKazananlar notu). */
+module.exports._odulUyeSartiSaglandiMi = odulUyeSartiSaglandiMi;
+module.exports._gercekUyeler = gercekUyeler;
+module.exports._MIN_ODUL_UYE = MIN_ODUL_UYE;

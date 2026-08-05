@@ -210,11 +210,23 @@ describe("ekonomi raporu", () => {
 
 test("NÖBETÇİ: bakiyeyi değiştiren her yerin yakınında defter yazımı var", () => {
   /**
-   * ⚠️ İKİ BİÇİM DE TARANIYOR. İlk sürüm yalnızca satır içi `$inc: { balance`
+   * ⚠️ ÜÇ BİÇİM DE TARANIYOR. İlk sürüm yalnızca satır içi `$inc: { balance`
    * arıyordu ve kusurlu olan tek yeri KAÇIRDI — orada güncelleme nesnesi
    * ayrı kuruluyor (`guncelleme.$inc = { balance: ... }`). Bir taramanın
    * bulduğu dokuz temiz yer, kaçırdığı onuncuyu telafi etmiyor.
+   *
+   * ⚠️ ÜÇÜNCÜ BİÇİM 2026-08-05'te EKLENDİ ve eklenmesi ŞARTTI: `wallet-credit`
+   * kayan nokta artığını kesmek için `$inc`ten TOPLU İŞ HATTI güncellemesine
+   * geçti (`balance: artir("balance", tutar)` → `$round($add(...))`). Tarama
+   * eski kalsaydı, bu nöbetçi ana para primitifini artık HİÇ görmeyecekti —
+   * yeşil kalarak. Kapsamı daraltan bir değişiklik, kusuru olan bir
+   * değişiklikten daha sinsidir: kimse kırılmadığı için bakmaz.
    */
+  const BAKIYE_YAZIMI = [
+    /\$inc\s*[:=]\s*\{[^}]*balance/,          // $inc: { balance ... }  ·  x.$inc = { balance ... }
+    /balance\s*:\s*artir\(/,                  // iş hattı: balance: artir("balance", ...)
+    /balance\s*:\s*\{\s*\$(round|add|subtract)/, // iş hattı, satır içi hâli
+  ];
   const KOK = nodePath.join(__dirname, "..");
   const bulunan = [];
   const kusurlu = [];
@@ -228,8 +240,7 @@ test("NÖBETÇİ: bakiyeyi değiştiren her yerin yakınında defter yazımı va
       satirlar.forEach((l, i) => {
         const t = l.trim();
         if (t.startsWith("*") || t.startsWith("//") || t.startsWith("/*")) return;
-        // Hem `$inc: { balance ... }` hem `X.$inc = { balance ... }`
-        if (!/\$inc\s*[:=]\s*\{[^}]*balance/.test(l)) return;
+        if (!BAKIYE_YAZIMI.some((re) => re.test(l))) return;
         const yer = `${alt}/${dosya}:${i + 1}`;
         bulunan.push(yer);
         const pencere = satirlar.slice(Math.max(0, i - 25), i + 45).join("\n");
@@ -242,6 +253,11 @@ test("NÖBETÇİ: bakiyeyi değiştiren her yerin yakınında defter yazımı va
   assert.ok(
     bulunan.some((y) => y.startsWith("routes/lc-wallet.cjs")),
     "atama bicimi (`guncelleme.$inc = ...`) taramaya takilmiyor — kusurlu olan yer o biçimdeydi"
+  );
+  assert.ok(
+    bulunan.some((y) => y.startsWith("lib/wallet-credit.cjs")),
+    "ANA PARA PRIMITIFI taramaya takilmiyor — is hatti bicimi goruluyor mu? " +
+    "(creditLc/spendLc `$inc` yerine $round($add(...)) kullaniyor)"
   );
   assert.deepStrictEqual(
     kusurlu,
