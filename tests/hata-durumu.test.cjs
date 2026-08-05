@@ -107,7 +107,7 @@ test("istemci tarafındaki loglama HTTP durumuna dayanıyor (varsayımın kayna�
    * alanına da bakmaya başlarsa kural gevşetilebilir — ama o zamana kadar
    * bağımlılık yazılı kalsın.
    */
-  const istemci = path.join(__dirname, "..", "..", "mobile", "lib", "apiFetch.ts");
+  const istemci = require("./_mobil-dizin.cjs").mobilYol("lib", "apiFetch.ts");
   if (!fs.existsSync(istemci)) return;      // mobil depo yoksa atla
 
   const src = fs.readFileSync(istemci, "utf8");

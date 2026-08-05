@@ -174,7 +174,7 @@ describe("kilit kuralı tek kaynaktan", () => {
   });
 
   test("predict ekranı sabit 10 kullanmıyor", (t) => {
-    const MOB = path.join(KOK, "..", "mobile", "app", "(tabs)", "predict.tsx");
+    const MOB = require("./_mobil-dizin.cjs").mobilYol("app", "(tabs)", "predict.tsx");
     if (!fs.existsSync(MOB)) return t.skip("mobil depo yok");
     const m = fs.readFileSync(MOB, "utf8")
       .split("\n")

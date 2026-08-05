@@ -141,7 +141,7 @@ describe("sıralama yanıt sınırı", () => {
      * üç kez gördüm (Mongo dalı vs dosya yedeği, depo vs rota, ekran çizimi
      * vs ağ). Bu iddia bağlantının kurulu kaldığını tutuyor.
      */
-    const MOBIL = path.join(KOK, "..", "mobile");
+    const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
     const ekran = path.join(MOBIL, "app", "(tabs)", "stats.tsx");
     if (!fs.existsSync(ekran)) return; // mobil depo yaninda degil
     const src = fs.readFileSync(ekran, "utf8");

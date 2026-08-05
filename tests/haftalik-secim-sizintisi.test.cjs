@@ -150,7 +150,7 @@ test("NÖBETÇİ: kimlik JETONDAN alınıyor, sorgudan değil", () => {
 });
 
 test("NÖBETÇİ: istemci jeton gönderiyor (apiFetch)", (t) => {
-  const MOB = path.join(KOK, "..", "mobile", "components");
+  const MOB = require("./_mobil-dizin.cjs").mobilYol("components");
   if (!fs.existsSync(MOB)) return t.skip("mobil depo yok");
   for (const dosya of ["Picks1987.tsx", "BigFourPicks.tsx"]) {
     const s = fs.readFileSync(path.join(MOB, dosya), "utf8");

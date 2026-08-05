@@ -44,7 +44,7 @@ const KOK = path.join(__dirname, "..");
  * nöbetçi, olmayan nöbetçiden kötüdür. Override ile worktree'den de
  * çalıştırılabiliyor.
  */
-const MOBIL = process.env.SKORLIG_MOBILE_DIR || path.join(KOK, "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 
 /* ── Sunucu rotaları ─────────────────────────────────────────────────────── */
 

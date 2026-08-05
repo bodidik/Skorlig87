@@ -139,9 +139,7 @@ test("NÖBETÇİ: stats/me ekranı ARTIK var olmayan alanları okumuyor", () => 
    * `istemci-uc-eslesme.test.cjs` yalnızca yolu eşliyor — bu oturumda dört
    * ölü ekranın dördü de yolu doğru, şekli yanlıştı.
    */
-  const ekran = nodePath.join(
-    __dirname, "..", "..", "mobile", "app", "stats", "me.tsx"
-  );
+  const ekran = require("./_mobil-dizin.cjs").mobilYol("app", "stats", "me.tsx");
   if (!fs.existsSync(ekran)) return; // başka checkout — iddia atlanır
 
   /* ⚠️ YORUMLAR ELENMELİ — İLK HÂLİ HAM METİNDE ARIYORDU.

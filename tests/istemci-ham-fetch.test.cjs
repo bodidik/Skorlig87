@@ -26,7 +26,7 @@ const fs = require("fs");
 const path = require("path");
 
 const KOK = path.join(__dirname, "..");
-const MOBIL = path.join(KOK, "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 
 /* Tabani kendisi cozen dosyalar; apiFetch'e bagimli olamazlar. */
 const MUAF = new Set(["lib/apiBase.ts", "lib/runtimeConfig.ts", "lib/serverTime.ts", "lib/apiFetch.ts"]);

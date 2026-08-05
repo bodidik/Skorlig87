@@ -122,7 +122,7 @@ describe("uç gerçekten korumalı", () => {
  * biçimindeydi ve iki tarafa ayrı ayrı bakan hiçbir test bunu göremezdi.
  */
 test("NÖBETÇİ: mobil taraf korumalı uca yönetici başlığı gönderiyor", (t) => {
-  const mobil = path.join(KOK, "..", "mobile");
+  const mobil = require("./_mobil-dizin.cjs").MOBIL;
   if (!fs.existsSync(mobil)) return t.skip("mobil deposu yok");
 
   const ARANAN = "/api/rt/admin-live-gs";

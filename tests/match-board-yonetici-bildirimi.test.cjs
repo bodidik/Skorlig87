@@ -150,8 +150,7 @@ describe("yönetici bildiriminin ihtiyaç duyduğu veri ULAŞILABİLİR", () => 
 test("NÖBETÇİ: live.tsx yönetici bildirimi ARTIK var olmayan alan okumuyor", () => {
   /* Worktree'de `../../mobile` YOK; override olmadan bu nöbetçi sessizce
    * atlanıyor ve "geçti" gibi görünüyordu. bkz. istemci-uc-eslesme.test.cjs */
-  const mobilKok = process.env.SKORLIG_MOBILE_DIR ||
-    nodePath.join(__dirname, "..", "..", "mobile");
+  const mobilKok = require("./_mobil-dizin.cjs").MOBIL;
   const ekran = nodePath.join(mobilKok, "app", "(tabs)", "live.tsx");
   if (!fs.existsSync(ekran)) return; // başka checkout — iddia atlanır
 

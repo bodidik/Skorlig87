@@ -28,7 +28,7 @@ const os = require("os");
 const path = require("path");
 
 const KOK = path.join(__dirname, "..");
-const MOBIL = path.join(KOK, "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 
 const VERI_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "skorlig-duello-lig-"));
 process.env.SKORLIG_DATA_DIR = VERI_DIR;

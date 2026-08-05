@@ -228,11 +228,11 @@ test("NÖBETÇİ: mobilde etiket var — ham durum metni gösterilmiyor", () => 
    * `statusLabel` bilinmeyen durumu OLDUĞU GİBİ döndürüyor; etiket
    * eklenmezse kullanıcı "OVERDUE_NO_RESULT" ham metnini görürdü.
    */
-  const mob = path.join(KOK, "..", "mobile", "app", "(tabs)", "live.tsx");
+  const mob = require("./_mobil-dizin.cjs").mobilYol("app", "(tabs)", "live.tsx");
   if (!fs.existsSync(mob)) return; // mobil depo yoksa atla
   const src = fs.readFileSync(mob, "utf8");
   assert.ok(/OVERDUE_NO_RESULT/.test(src), "mobilde yeni durum icin etiket yok");
-  const i18n = path.join(KOK, "..", "mobile", "lib", "i18n.ts");
+  const i18n = require("./_mobil-dizin.cjs").mobilYol("lib", "i18n.ts");
   if (fs.existsSync(i18n)) {
     const t = fs.readFileSync(i18n, "utf8");
     const dil = (t.match(/notStarted:/g) || []).length;

@@ -145,7 +145,7 @@ test("NÖBETÇİ: tr-league sıra kuralı TEK kopyada", () => {
 });
 
 test("NÖBETÇİ: istemci sırayı sunucudan alıyor", () => {
-  const ekran = nodePath.join(KOK, "..", "mobile", "app", "tr-league.tsx");
+  const ekran = require("./_mobil-dizin.cjs").mobilYol("app", "tr-league.tsx");
   if (!fs.existsSync(ekran)) return; // başka checkout
 
   const src = fs.readFileSync(ekran, "utf8")

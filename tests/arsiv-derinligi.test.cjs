@@ -86,7 +86,7 @@ describe("arşiv derinliği", () => {
   test("İSTEMCİ kısıtlamayı okuyor (yarım düzeltme olmasın)", () => {
     /* Sunucu bildirse de ekran okumazsa kullanıcı yine sessizce yanlış
      * tabloyu görür — bugün üç kez bu yarım-düzeltme biçimi çıktı. */
-    const MOBIL = path.join(KOK, "..", "mobile");
+    const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
     const ekran = path.join(MOBIL, "app", "(tabs)", "stats.tsx");
     if (!fs.existsSync(ekran)) return;
     const src = fs.readFileSync(ekran, "utf8");

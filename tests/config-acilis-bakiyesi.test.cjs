@@ -102,7 +102,7 @@ describe("config açılış bakiyesi", () => {
     /* ⚠️ Sunucuyu düzeltip istemci varsayılanını bırakmak, sunucu yanıtı
      * gelmediğinde yine yanlış rakam gösterirdi. Bugün üç kez bu
      * yarım-düzeltme biçimi çıktı. */
-    const MOBIL = path.join(KOK, "..", "mobile");
+    const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
     const p = path.join(MOBIL, "lib", "runtimeConfig.ts");
     if (!fs.existsSync(p)) return;
     const src = fs.readFileSync(p, "utf8");

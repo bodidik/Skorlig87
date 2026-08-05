@@ -180,9 +180,7 @@ test("NÖBETÇİ: board2.tsx'in okuduğu HER alanı uç üretiyor", async () => 
    * karşılaştırır. `istemci-uc-eslesme.test.cjs` yalnızca YOLU eşliyor; bu
    * nöbetçi ALANLARI eşliyor — kusurun asıl sınıfı buydu.
    */
-  const ekran = nodePath.join(
-    __dirname, "..", "..", "mobile", "app", "stats", "board2.tsx"
-  );
+  const ekran = require("./_mobil-dizin.cjs").mobilYol("app", "stats", "board2.tsx");
   if (!fs.existsSync(ekran)) return; // başka checkout — iddia atlanır
 
   const src = fs.readFileSync(ekran, "utf8");

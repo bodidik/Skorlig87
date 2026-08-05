@@ -29,7 +29,7 @@ const fs = require("fs");
 const path = require("path");
 
 const KOK = path.join(__dirname, "..");
-const MOBIL = path.join(KOK, "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 const SOZLUK_DOSYA = path.join(MOBIL, "lib", "hataMesaji.ts");
 
 /** Yorumları boşaltır — sözlükteki örnek kodlar sayıma girmesin. */
@@ -73,10 +73,17 @@ function sunucuKodlari() {
  * Karşılıksız kalması KABUL EDİLEN kodlar — hepsi iç/altyapı yolları.
  * Liste yalnızca KÜÇÜLEBİLİR (aşağıdaki test bunu zorluyor).
  */
+/* ⚠️ `BAD_SID` ve `SERVER` ÇIKARILDI: ikisi de artık hiçbir yerden dönmüyor
+ * (routes/lib/services/middleware taramasında sıfır eşleşme) ve sözlükte de
+ * yok. Aşağıdaki bayatlık testi tam bunu söylüyordu — ama mobil depo
+ * worktree'den çözülemediği için ATLANIYORDU ve kimse göremedi. Yol tek
+ * kaynağa bağlanınca (bkz. tests/_mobil-dizin.cjs) iddia ilk kez koştu ve
+ * ikisini de bildirdi. Bayat muafiyet, aynı kodun sessizce geri gelmesinin
+ * önünü açar. */
 const KABUL = new Set([
-  "BAD_SID", "BAD_WEEK_KEY", "INVALID_SCORE", "MISSING_FIELDS", "NOT_FINISHED", "NOT_FOUND",
+  "BAD_WEEK_KEY", "INVALID_SCORE", "MISSING_FIELDS", "NOT_FINISHED", "NOT_FOUND",
   "NOT_FOUND_OR_ALREADY_DELETED", "NOT_FOUND_OR_NOT_DELETED", "NO_BOT_PROFILES",
-  "SERVER", "SKORLIG_EVENTS_ERROR", "SKORLIG_SUMMARY_ERROR", "UNKNOWN",
+  "SKORLIG_EVENTS_ERROR", "SKORLIG_SUMMARY_ERROR", "UNKNOWN",
 ]);
 
 /* ── Kurulum sağlam mı ───────────────────────────────────────────────────── */

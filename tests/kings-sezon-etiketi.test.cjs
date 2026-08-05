@@ -30,7 +30,7 @@ const path = require("path");
 const express = require("express");
 
 const KOK = path.join(__dirname, "..");
-const MOBIL = path.join(KOK, "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 const Season = require(path.join(KOK, "lib", "season.cjs"));
 
 let srv = null, port = 0;

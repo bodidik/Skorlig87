@@ -37,7 +37,7 @@ const fs = require("fs");
 const path = require("path");
 
 const KOK = path.join(__dirname, "..");
-const MOBIL = path.join(KOK, "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 const EKRAN = path.join(MOBIL, "app", "duel", "[fixtureId].tsx");
 
 /** Sunucu sabitlerini KAYNAKTAN oku — testin kendi kopyası olmasın. */

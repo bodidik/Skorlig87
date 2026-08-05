@@ -31,7 +31,7 @@ const fs = require("fs");
 const nodePath = require("path");
 
 const KOK = nodePath.join(__dirname, "..");
-const MOBIL = nodePath.join(KOK, "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 
 function sunucuSabitleri() {
   const src = fs.readFileSync(nodePath.join(KOK, "routes", "duels.cjs"), "utf8");

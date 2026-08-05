@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 
-const MOBIL = path.join(__dirname, "..", "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 
 describe("board2 + friends/board i18n nobetci", () => {
   test("board2.tsx sabit Turkce icerik KALMADI", () => {

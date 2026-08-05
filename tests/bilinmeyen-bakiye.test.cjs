@@ -27,7 +27,7 @@ const fs = require("fs");
 const path = require("path");
 
 const KOK = path.join(__dirname, "..");
-const MOBIL = path.join(KOK, "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 const varMi = fs.existsSync(MOBIL);
 const sebep = "mobile deposu yaninda degil";
 

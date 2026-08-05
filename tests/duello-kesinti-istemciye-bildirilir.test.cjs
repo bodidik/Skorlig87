@@ -82,7 +82,7 @@ describe("kurallar yanıtta bildiriliyor", () => {
 /* ── İstemci artık tahmin etmiyor ────────────────────────────────────────── */
 
 describe("mobil ekran sunucu değerini kullanıyor", () => {
-  const MOB = path.join(KOK, "..", "mobile", "app", "duel", "[fixtureId].tsx");
+  const MOB = require("./_mobil-dizin.cjs").mobilYol("app", "duel", "[fixtureId].tsx");
 
   test("hiçbir yerde sabit 0.95 hesabı kalmadı", (t) => {
     if (!fs.existsSync(MOB)) return t.skip("mobil depo yan klasorde yok");

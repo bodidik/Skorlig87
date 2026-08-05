@@ -26,7 +26,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 
-const MOBIL = path.join(__dirname, "..", "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 const TR = /[çğıöşüÇĞİÖŞÜ]/;
 
 /**

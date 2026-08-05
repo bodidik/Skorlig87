@@ -32,7 +32,7 @@ const fs = require("fs");
 const path = require("path");
 
 const KOK = path.join(__dirname, "..");
-const MOBIL = path.join(KOK, "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 const I18N = path.join(MOBIL, "lib", "i18n.ts");
 const varMi = fs.existsSync(I18N);
 const sebep = "mobile deposu yaninda degil";

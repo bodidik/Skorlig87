@@ -27,7 +27,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 
-const MOBIL = path.join(__dirname, "..", "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 const ULKELER = path.join(MOBIL, "lib", "ulkeler.ts");
 const I18N = path.join(MOBIL, "lib", "i18n.ts");
 const LIVESCORES = path.join(MOBIL, "app", "livescores.tsx");

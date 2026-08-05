@@ -32,7 +32,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const nodePath = require("path");
 
-const MOBIL = nodePath.join(__dirname, "..", "..", "mobile");
+const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 const varMi = fs.existsSync(MOBIL);
 
 /* ── Ölçümün dayanağı: ödül gerçekten kesirli mi? ────────────────────────── */
