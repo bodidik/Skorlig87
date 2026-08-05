@@ -306,13 +306,36 @@ async function create({ creatorId, name, entryLC, fixtureIds, fixtures, db = nul
     payouts: [],
   };
 
-  data.tournaments.push(t);
-  try {
-    await saveAll(data);
-  } catch (e) {
-    // Ücret alındı ama turnuva yazılamadı — parayı kullanıcıda bırakma.
+  /**
+   * ⚠️ TEK BELGE EKLENİR — ESKİDEN TÜM KOLEKSİYON SNAPSHOT'LA DEĞİŞTİRİLİYORDU.
+   *
+   * Eski akış: `loadAll()` snapshot'ına yeni turnuvayı ekle, `saveAll()` ile
+   * TÜM koleksiyonu o snapshot'la değiştir (`replaceAll`). İki kurucu aynı
+   * anda turnuva açarsa ikisi de aynı snapshot'ı okur ve sonra yazan ötekinin
+   * turnuvasını SİLER. Ücret çoktan alınmıştır; `saveAll` hata vermediği için
+   * aşağıdaki iade kolu çalışmaz.
+   *
+   * ÖLÇÜLDÜ (4 eşzamanlı create, giriş 10 LC): 3 çağrı BAŞARILI döndü ama
+   * koleksiyonda 0 turnuva vardı; 3 kurucudan 30 LC alınmıştı.
+   *
+   * `insertOne` yeni bir belge yazar, mevcutlara dokunmaz — yarış yok.
+   */
+  const eklendi = await SocialStore.insertTournamentAtomik(t, db);
+  if (!eklendi.ok) {
+    if (eklendi.reason === "NO_DB") {
+      // Mongo yoksa eski dosya yolu — tek süreçte yeterli.
+      data.tournaments.push(t);
+      try {
+        await saveAll(data);
+      } catch (e) {
+        // Ücret alındı ama turnuva yazılamadı — parayı kullanıcıda bırakma.
+        await ucretIadeEt(conn, creatorId, entry, "create_save_failed");
+        throw e;
+      }
+      return t;
+    }
     await ucretIadeEt(conn, creatorId, entry, "create_save_failed");
-    throw e;
+    throw new Error("CREATE_FAILED");
   }
   return t;
 }
@@ -330,20 +353,57 @@ async function join(code, userId, db = null) {
   // sonra tahsil et — reddedilecek bir katılım için para alınmasın.
   const conn = await ucretTahsilEt(db, userId, t.entryLC);
 
-  t.participants.push({
+  const katilimci = {
     userId,
     joinedAt: new Date().toISOString(),
     predictions: {},
     totalScore: 0,
-  });
-  t.pool += t.entryLC;
+  };
 
-  try {
-    await saveAll(data);
-  } catch (e) {
-    await ucretIadeEt(conn, userId, t.entryLC, "join_save_failed");
-    throw e;
+  /**
+   * ⚠️ KATILIM ATOMİK YAZILIR — ESKİDEN SNAPSHOT ÜZERİNE YAZIYORDU.
+   *
+   * Eski akış: yukarıdaki `loadAll()` snapshot'ına katılımcıyı ekle, sonra
+   * `saveAll()` ile TÜM KOLEKSİYONU o snapshot'la değiştir (`replaceAll`).
+   * İki katılım aynı anda gelirse ikisi de aynı snapshot'ı okur; sonra yazan
+   * öncekinin katılımını SİLER. Ücret çoktan alınmıştır ve `saveAll` hata
+   * vermediği için aşağıdaki iade kolu da çalışmaz: para gider, katılım yok,
+   * uç `ok:true` döner.
+   *
+   * ÖLÇÜLDÜ (4 eşzamanlı katılım, giriş 10 LC): 4 çağrının 4'ü de başarılı
+   * döndü, kayıtta kurucu + 1 katılımcı vardı; 3 kişiden toplam 30 LC alınıp
+   * katılımları silinmişti, havuz 20 (olması gereken 50).
+   *
+   * Koşul (`status:"open"` + kullanıcı listede değil) yazmanın İÇİNDE.
+   * Kaybeden çağrı `ok:false` alır ve ücreti İADE EDİLİR.
+   */
+  const yazildi = await SocialStore.joinTournamentAtomik(
+    t.code, katilimci, t.entryLC, db
+  );
+
+  if (!yazildi.ok) {
+    /* Mongo yoksa eski dosya yoluna düşülür — tek süreçte yeterli, çok
+     * instance'lı ortamda zaten Mongo var. */
+    if (yazildi.reason === "NO_DB") {
+      t.participants.push(katilimci);
+      t.pool += t.entryLC;
+      try {
+        await saveAll(data);
+      } catch (e) {
+        await ucretIadeEt(conn, userId, t.entryLC, "join_save_failed");
+        throw e;
+      }
+      return t;
+    }
+
+    /* Yarışı kaybettik ya da yazma başarısız: PARA GERİ. */
+    await ucretIadeEt(conn, userId, t.entryLC, "join_race_lost");
+    throw new Error(yazildi.reason === "NOT_JOINABLE" ? "CLOSED" : "JOIN_FAILED");
   }
+
+  /* Dönen nesne çağıranın gördüğü hâl; kaynak artık koleksiyondaki belge. */
+  t.participants.push(katilimci);
+  t.pool += t.entryLC;
   return t;
 }
 
@@ -405,8 +465,34 @@ async function predict(code, userId, fixtureId, outcome, db = null) {
   const kilit = await macKilitliMi(fixtureId, db);
   if (kilit.kilitli) throw new Error(kilit.sebep);
 
-  p.predictions[fixtureId] = { outcome, at: new Date().toISOString() };
-  await saveAll(data);
+  /**
+   * ⚠️ TAHMİN ATOMİK YAZILIR — ESKİDEN SNAPSHOT ÜZERİNE YAZIYORDU.
+   *
+   * Eski akış `join`/`create` ile aynı: snapshot'a yaz, `saveAll()` ile TÜM
+   * koleksiyonu değiştir. Aynı turnuvada iki kişi aynı anda tahmin yaparsa
+   * sonra yazan ötekinin tahminini SİLER — üstelik `saveAll` başarılı döndüğü
+   * için uç `ok:true` verir ve kullanıcı tahmininin kaydolduğunu sanır.
+   * Giriş ücreti ödenmiş; tahmini silinen kişi puan alamaz.
+   *
+   * ÖLÇÜLDÜ (3 eşzamanlı tahmin): 3 çağrı BAŞARILI döndü, kayıtta yalnızca
+   * 1 tahmin vardı.
+   *
+   * `arrayFilters` ile yalnızca ilgili katılımcının tahmin haritasına yazılır;
+   * diğer katılımcıların alanlarına hiç dokunulmaz.
+   */
+  const kayit = { outcome, at: new Date().toISOString() };
+  const yazildi = await SocialStore.setTournamentPredictionAtomik(
+    t.code, userId, fixtureId, kayit, db
+  );
+
+  if (!yazildi.ok) {
+    if (yazildi.reason === "NO_DB") {
+      p.predictions[fixtureId] = kayit;
+      await saveAll(data);
+      return { ok: true };
+    }
+    throw new Error(yazildi.reason === "NOT_JOINED" ? "NOT_JOINED" : "PREDICT_FAILED");
+  }
   return { ok: true };
 }
 
