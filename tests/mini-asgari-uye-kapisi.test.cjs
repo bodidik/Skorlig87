@@ -190,6 +190,53 @@ describe("ödülsüz bitişin açıklaması", () => {
     assert.deepEqual(eksik, [], "yer tutucusu dusen ceviriler: " + eksik.join(" | "));
   });
 
+  test("sayı uyumu zorlu dillerde {n} SAYDIĞI ADDAN AYRI duruyor", (t) => {
+    /**
+     * ⚠️ SESSİZ ÇEVİRİ HATASI SINIFI. Slav dillerinde ve Arapçada sayılan ad,
+     * SAYIYA göre çekimlenir:
+     *     Lehçe   2 → "prawdziwi członkowie"  ·  5 → "prawdziwych członków"
+     *     Rusça   2 → "участника"             ·  5 → "участников"
+     *     Arapça  2 → ikil (عضوان)            ·  3-10 çoğul  ·  11+ tekil
+     *
+     * `{n}` değişken olduğu için TEK bir dizge hepsini doğru veremez.
+     * `MIN_ODUL_UYE` bugün 2 ama env ile değişebilir — 5 yapıldığında bu
+     * diller sessizce bozuk dilbilgisi gösterirdi ve hiçbir test kırılmazdı.
+     *
+     * Çözüm: bu dillerde sayı, saydığı addan AYRILDI — "az üye var
+     * (en az: {n})". Ad sabit çekimde kalıyor, sayı parantez içinde duruyor.
+     *
+     * Bu iddia, birinin metni "en az {n} üye" biçimine geri sadeleştirmesini
+     * yakalar. Sadeleştirme n=2'de doğru görünür, n=5'te bozulur.
+     */
+    if (!mobilVarMi()) return t.skip("mobil depo yok");
+    const src = fs.readFileSync(path.join(MOBIL, "lib", "i18n.ts"), "utf8");
+
+    const ZOR = ["pl", "ru", "uk", "hr", "sr", "cs", "sk", "ar"];
+    const satirlar = src.split("\n");
+    const basliklar = new Map();
+    satirlar.forEach((l, i) => {
+      const m = /^ {2}([a-z]{2}): \{\s*$/.exec(l);
+      if (m) basliklar.set(i, m[1]);
+    });
+
+    const bulunan = new Set();
+    const bozuk = [];
+    satirlar.forEach((l, i) => {
+      if (!l.includes(`${ANAHTAR}:`)) return;
+      let dil = null;
+      for (const [j, d] of [...basliklar].reverse()) if (j < i) { dil = d; break; }
+      if (!ZOR.includes(dil)) return;
+      bulunan.add(dil);
+      /* `{n}` hemen ardından bir SÖZCÜK geliyorsa sayı adı sayıyor demektir. */
+      if (/\{n\}\s+\S/.test(l)) bozuk.push(`${dil}: ${l.trim()}`);
+    });
+
+    assert.equal(bulunan.size, ZOR.length,
+      `zor dillerin hepsi taranamadi (${[...bulunan].join(",")}) — tarama bozuk`);
+    assert.deepEqual(bozuk, [],
+      "sayi dogrudan bir adi sayiyor; n degisince dilbilgisi bozulur:\n" + bozuk.join("\n"));
+  });
+
   test("ekran metni SUNUCU değeriyle basıyor", (t) => {
     /* Ekran asgari üye sayısını sabit yazsaydı sunucudaki MIN_ODUL_UYE
      * değişince yanlış sayı gösterirdi — bu depodaki tekrar eden kusur sınıfı
