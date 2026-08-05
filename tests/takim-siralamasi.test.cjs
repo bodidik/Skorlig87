@@ -272,6 +272,14 @@ describe("/api/stats/team-ranks", () => {
 /* ── Nöbetçi ─────────────────────────────────────────────────────────────── */
 
 const yalin = (p) => fs.readFileSync(path.join(KOK, p), "utf8")
+  /* ⚠️ SATIR SONLARI ÖNCE NORMALLEŞTIRİLİR — CRLF İKİ NÖBETÇİYİ SESSİZCE
+   * KÖRELTMİŞTİ. Depoda .gitattributes yok ve core.autocrlf=true, yani Windows
+   * checkout unda her satır CR+LF ile bitiyor. İçinde LF geçen bir kalıp — bir
+   * fonksiyon gövdesini yeni satır + kapanış parantezi ile kesmek, ya da iki
+   * satırlık bir dizgeyi indexOf ile aramak — o checkout ta HİÇBİR ZAMAN
+   * eşleşmiyordu: kod doğru olduğu hâlde iddia düşüyor, ya da daha kötüsü gövde
+   * çıkarımı -1 dönüp ölçüm YANLIŞ BÖLGEYE kayıyordu. */
+  .replace(/\r\n?/g, "\n")
   .split("\n")
   .map((l) => {
     const t = l.trim();

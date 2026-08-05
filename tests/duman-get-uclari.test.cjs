@@ -74,6 +74,27 @@ before(async () => {
       MONGODB_DB: "duman",
       SKORLIG_BG: "0",        // arka plan servisleri kapali (gercek veriye dokunmasin)
       SKORLIG_PUSH: "0",
+      /**
+       * ⚠️ YÖNETİCİ JETONU AÇIKÇA VERİLİYOR — YOKSA TEST ORTAMI ÖLÇÜYOR.
+       *
+       * `requireAdmin` jeton yapılandırılmamışsa `503
+       * ADMIN_TOKEN_NOT_CONFIGURED` döner (bilinçli fail-closed davranış,
+       * bkz. middleware/requireAdmin.cjs). Bu test 5xx'i "kod hatası" sayıyor,
+       * yani 11 yönetici ucu yapılandırma yüzünden kusur gibi görünüyordu.
+       *
+       * Değer `...process.env` üzerinden geliyordu: geliştiricinin
+       * checkout'unda `.env` dosyası olduğu için test GEÇİYOR, `.env`in
+       * bulunmadığı her yerde (git worktree, temiz kopya, CI) DÜŞÜYORDU. Yani
+       * sonuç depodaki koda değil, makinenin durumuna bağlıydı.
+       *
+       * Jeton kurulunca muhafız NORMAL yolunu çalıştırıyor ve başlıksız istek
+       * 401/403 alıyor — bu testin ölçmek istediği şey de tam olarak bu.
+       *
+       * ⚠️ Başlık BİLEREK GÖNDERİLMİYOR: gönderilseydi yönetici uçlarının
+       * gövdesi de taranırdı. Bu daha geniş bir kapsam ve ayrı bir iş; burada
+       * amaç yetkisiz isteğin temiz reddedilmesi.
+       */
+      SKORLIG_ADMIN_TOKEN: "duman-testi-yonetici-jetonu",
       PORT: String(PORT),
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -203,6 +224,18 @@ test("hiçbir GET ucu 500 dönmüyor", async () => {
   assert.deepStrictEqual(
     ulasilamayan, [],
     "Bu uclardan yanit alinamadi (zaman asimi/baglanti):\n" + ulasilamayan.join("\n")
+  );
+  /* ⚠️ YAPILANDIRMA KUSURUNU KOD KUSURUNDAN AYIR. `ADMIN_TOKEN_NOT_CONFIGURED`
+   * 503'leri, yönetici jetonunun kurulmadığı anlamına gelir; yukarıdaki
+   * `spawn` onu açıkça veriyor. Bu satır olmasaydı ortam bozulduğunda hata
+   * "11 uc 500 donuyor" diye görünür ve kod hatası sanılırdı — nitekim öyle
+   * sanıldı. */
+  const yapilandirma = besyuz.filter((x) => x.includes("ADMIN_TOKEN_NOT_CONFIGURED"));
+  assert.deepStrictEqual(
+    yapilandirma, [],
+    "Yonetici jetonu kurulmamis: bu 503'ler KOD hatasi degil, test ortami\n" +
+      "kusuru. spawn env icindeki SKORLIG_ADMIN_TOKEN kaybolmus olabilir.\n" +
+      yapilandirma.join("\n")
   );
   assert.deepStrictEqual(
     besyuz, [],
