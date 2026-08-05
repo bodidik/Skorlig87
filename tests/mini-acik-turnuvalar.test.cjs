@@ -39,7 +39,7 @@ require.cache[vt] = { id: vt, filename: vt, loaded: true, exports: {
   getFirebaseAuth: () => null, kimlikModu: () => "test",
 }};
 
-const express = require(path.join(KOK, "node_modules", "express"));
+const express = require("express");
 
 /** Turnuva deposunu denetim altına al. */
 const socialYol = require.resolve(path.join(KOK, "lib", "social-store.cjs"));

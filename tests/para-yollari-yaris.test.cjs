@@ -60,7 +60,7 @@ describe("para yolları — eşzamanlılık", () => {
 
   test("kur", { skip: atla() && sebep }, async () => {
     const { MongoClient } = require("mongodb");
-    const express = require(path.join(KOK, "node_modules", "express"));
+    const express = require("express");
     mongod = await MongoMemoryServer.create();
     cli = await MongoClient.connect(mongod.getUri());
     db = cli.db("t");

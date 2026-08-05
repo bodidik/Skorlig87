@@ -49,9 +49,9 @@ describe("profil ucu", () => {
   let mongod, cli, db, srv, port;
 
   test("kur", async () => {
-    const { MongoMemoryServer } = require(path.join(KOK, "node_modules", "mongodb-memory-server"));
-    const { MongoClient } = require(path.join(KOK, "node_modules", "mongodb"));
-    const express = require(path.join(KOK, "node_modules", "express"));
+    const { MongoMemoryServer } = require("mongodb-memory-server");
+    const { MongoClient } = require("mongodb");
+    const express = require("express");
     mongod = await MongoMemoryServer.create();
     cli = await MongoClient.connect(mongod.getUri());
     db = cli.db("t");

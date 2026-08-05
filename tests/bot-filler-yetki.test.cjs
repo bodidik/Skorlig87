@@ -63,7 +63,7 @@ describe("bot-filler → bots-generate yetki zinciri", () => {
       getFirebaseAuth: () => null, kimlikModu: () => "test",
     }};
 
-    const express = require(path.join(KOK, "node_modules", "express"));
+    const express = require("express");
     const app = express();
     /* ⚠️ x-forwarded-for EKLENMİYOR: isInternalCaller o başlığı görürse
      * isteği DIŞ sayıyor. Gerçek bot-filler de eklemez. */

@@ -86,7 +86,7 @@ describe("gerçek daily-claim ucu, ölü Mongo ile", () => {
       getFirebaseAuth: () => null, kimlikModu: () => "test",
     }};
 
-    const express = require(path.join(KOK, "node_modules", "express"));
+    const express = require("express");
     const app = express();
     app.use(hataTemizleyici);                       // server.cjs:183 ile aynı sıra
     app.use((q, _r, n) => { q.app.locals.db = db; n(); });

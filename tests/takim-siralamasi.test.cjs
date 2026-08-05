@@ -102,13 +102,13 @@ describe("/api/stats/team-ranks", () => {
       getFirebaseAuth: () => null, kimlikModu: () => "test",
     }};
 
-    const { MongoMemoryServer } = require(path.join(KOK, "node_modules", "mongodb-memory-server"));
-    const { MongoClient } = require(path.join(KOK, "node_modules", "mongodb"));
+    const { MongoMemoryServer } = require("mongodb-memory-server");
+    const { MongoClient } = require("mongodb");
     mongod = await MongoMemoryServer.create();
     client = await MongoClient.connect(mongod.getUri());
     db = client.db("t");
 
-    const express = require(path.join(KOK, "node_modules", "express"));
+    const express = require("express");
     app = express();
     app.use((q, _r, n) => { q.app.locals.db = db; n(); });
     app.use("/api/stats", require(path.join(KOK, "routes", "stats.cjs")));
