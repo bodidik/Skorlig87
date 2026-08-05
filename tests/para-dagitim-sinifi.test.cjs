@@ -156,8 +156,17 @@ describe("para dağıtım sınıfı", () => {
      * toplamı tanım gereği pot'a eşit. Sayı kopyalamıyorum — korunumun
      * YAPISAL olduğunu tutuyorum; biri iki payı ayrı hesaplarsa kırılır.
      */
-    const s = kod("routes/duels.cjs");
-    assert.ok(/winAmount = Math\.round\(\(pot - houseCut\)/.test(s),
+    /* ⚠️ HESAP 2026-08-05'te `lib/duello-kesinti.cjs`e taşındı (kesinti yüzde
+     * yerine kademeli TAM SAYI oldu — gerekçe o dosyada). Türetme aynı kaldı:
+     * `winAmount: pot - houseCut`. Yuvarlama artık gerekmiyor, çünkü iki taraf
+     * da tam sayı. */
+    const s = kod("lib/duello-kesinti.cjs");
+    assert.ok(/winAmount:\s*pot\s*-\s*houseCut/.test(s),
       "kazanan payi pot'tan turetilmiyor — kesinti ve pay ayrisabilir");
+    const rota = kod("routes/duels.cjs");
+    assert.ok(/require\("\.\.\/lib\/duello-kesinti\.cjs"\)/.test(rota),
+      "rota bu hesabi kullanmiyor — test yanlis kaynagi olcuyor");
+    assert.ok(!/houseCut\s*=\s*Math\./.test(rota),
+      "rota kendi kesinti hesabini yeniden yazmis — iki kural ayrisir");
   });
 });

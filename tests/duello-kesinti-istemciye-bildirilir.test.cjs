@@ -52,11 +52,19 @@ const src = yalin("routes/duels.cjs");
 
 /* ── Kurulum sağlam mı ───────────────────────────────────────────────────── */
 
+const KESINTI = require("../lib/duello-kesinti.cjs");
+
 describe("kurulum", () => {
-  test("sunucu sabitleri duruyor", () => {
-    assert.ok(/const HOUSE_CUT_PCT = 0\.\d+/.test(src), "kasa payi sabiti yok");
-    assert.ok(/const MIN_STAKE = \d+/.test(src) && /const MAX_STAKE = \d+/.test(src),
-      "bahis sinirlari yok");
+  test("sunucu kuralı TEK KAYNAKTAN geliyor", () => {
+    /* Sabitler 2026-08-05'te `lib/duello-kesinti.cjs`e taşındı; kesinti artık
+     * yüzde değil kademeli tam sayı. Rota kendi kopyasına dönerse bu dosyanın
+     * ölçtüğü şey kalmaz. */
+    assert.ok(/require\("\.\.\/lib\/duello-kesinti\.cjs"\)/.test(src),
+      "duels.cjs kesinti modulunu kullanmiyor");
+    assert.ok(!/const HOUSE_CUT_PCT\s*=/.test(src),
+      "duels.cjs hala kendi yuzde sabitini tasiyor");
+    assert.ok(Number.isFinite(KESINTI.MIN_STAKE) && Number.isFinite(KESINTI.MAX_STAKE),
+      "bahis sinirlari okunamadi");
   });
 });
 
@@ -67,15 +75,49 @@ describe("kurallar yanıtta bildiriliyor", () => {
     const i = src.indexOf('router.get("/duels/open"');
     assert.ok(i > 0, "uc bulunamadi");
     const govde = src.slice(i, src.indexOf("\n});", i));
-    for (const alan of ["houseCutPct: HOUSE_CUT_PCT", "minStake: MIN_STAKE", "maxStake: MAX_STAKE"]) {
+    for (const alan of ["odulTablosu: odulTablosu()", "minStake: MIN_STAKE", "maxStake: MAX_STAKE"]) {
       assert.ok(govde.includes(alan), `${alan} yanitta yok — istemci tahmin etmek zorunda kalir`);
     }
   });
 
-  test("SABİT SAYIYLA değil, sabitin KENDİSİYLE gönderiliyor", () => {
+  test("SABİT SAYIYLA değil, hesabın KENDİSİYLE gönderiliyor", () => {
     /* `houseCutPct: 0.05` yazmak sorunu çözmez — yeni bir kopya olurdu. */
     assert.ok(!/houseCutPct:\s*0\./.test(src),
       "kasa payi yanitta sayiyla yazilmis — yeni bir kopya");
+    assert.ok(!/odulTablosu:\s*\[/.test(src),
+      "odul tablosu yanitta elle yazilmis — hesapla ayrisir");
+  });
+
+  test("gönderilen tablo, kaydedilen ödülle AYNI", () => {
+    /**
+     * ⚠️ ASIL DEĞİŞMEZ. Tablo ekrana bahis KONMADAN ÖNCE gösteriliyor;
+     * `winAmount` ise düello kurulurken cüzdana yazılacak tutar. İkisi ayrı
+     * hesaplansaydı ekran yanlış vaat ederdi — kapatılan kusur sınıfı bu.
+     */
+    for (const satir of KESINTI.odulTablosu()) {
+      const kayit = KESINTI.duelloPaylari(satir.stake);
+      assert.deepEqual(
+        { pot: satir.pot, houseCut: satir.houseCut, winAmount: satir.winAmount },
+        kayit,
+        `bahis ${satir.stake}: gonderilen tablo ile kaydedilen odul ayristi`
+      );
+    }
+  });
+
+  test("ESKİ istemciler için gönderilen oran ödülü FAZLA göstermez", () => {
+    /**
+     * ⚠️ Sahadaki eski sürümler `houseCutPct`i okuyup kazancı kendi hesaplıyor
+     * (`pot * (1 - pct)`). Alan hiç gönderilmezse kendi varsayılanlarına (0.05)
+     * düşerler ve bahis 5'te 9.5 LC vaat ederler — gerçek ödül 9. FAZLA vaat.
+     * Bu yüzden aralıktaki EN YÜKSEK efektif oran gönderiliyor: eski ekran
+     * ödülü olduğundan AZ gösterir, asla fazla.
+     */
+    const pct = KESINTI.eskiIstemciKesintiOrani();
+    for (const { stake, pot, winAmount } of KESINTI.odulTablosu()) {
+      const eskiEkran = Math.round(pot * (1 - pct) * 10) / 10;
+      assert.ok(eskiEkran <= winAmount,
+        `bahis ${stake}: eski ekran ${eskiEkran} vaat ediyor, gercek odul ${winAmount} — FAZLA vaat`);
+    }
   });
 });
 
@@ -99,35 +141,26 @@ describe("mobil ekran sunucu değerini kullanıyor", () => {
     assert.ok(!/%5 kasa/.test(m), "sabit '%5 kasa' metni hala var");
   });
 
-  test("kasa payı sunucudan okunuyor ve varsayılanı var", (t) => {
+  test("ödül tablosu sunucudan okunuyor ve eski sunucuda yedeği var", (t) => {
     if (!fs.existsSync(MOB)) return t.skip("mobil depo yan klasorde yok");
-    const m = fs.readFileSync(MOB, "utf8");
-    assert.ok(/useState\(0\.05\)/.test(m),
-      "varsayilan yok — alani gondermeyen ESKI sunucuda ekran bozulur");
-    assert.ok(/typeof oj\.houseCutPct === "number"/.test(m),
-      "sunucu degeri okunmuyor");
-  });
-});
-
-/* ── Hesap doğruluğu ─────────────────────────────────────────────────────── */
-
-describe("iki taraf aynı sonucu veriyor", () => {
-  test("izinli bahis aralığının TAMAMINDA fark yok", () => {
-    /**
-     * ⚠️ Bu testin işi, birleştirmenin davranışı DEĞİŞTİRMEDİĞİNİ kanıtlamak.
-     * Sunucu iki adımda yuvarlıyor (önce kesinti, sonra kazanç); istemci tek
-     * adımda çarpıyor. Çift yuvarlama bazı değerlerde ayrışabilirdi.
-     */
-    const HOUSE_CUT_PCT = Number(src.match(/const HOUSE_CUT_PCT = ([\d.]+)/)[1]);
-    const MIN = Number(src.match(/const MIN_STAKE = (\d+)/)[1]);
-    const MAX = Number(src.match(/const MAX_STAKE = (\d+)/)[1]);
-
-    for (let s = MIN; s <= MAX; s++) {
-      const pot = s * 2;
-      const houseCut = Math.round(pot * HOUSE_CUT_PCT * 10) / 10;
-      const sunucu = Math.round((pot - houseCut) * 10) / 10;
-      const istemci = Math.round(pot * (1 - HOUSE_CUT_PCT) * 10) / 10;
-      assert.equal(istemci, sunucu, `bahis ${s}: istemci ${istemci} · sunucu ${sunucu}`);
-    }
+    /* ⚠️ YORUMLAR ÖNCE SİLİNİYOR: kaldırılan formül (`pot * (1 - houseCutPct)`)
+     * neden-notlarında ANILIYOR ve ham metinde arasak nöbetçi kendi
+     * belgelendirmesine takılırdı. */
+    const m = fs.readFileSync(MOB, "utf8")
+      .replace(/\r\n?/g, "\n")
+      .split("\n")
+      .map((l) => {
+        const x = l.trim();
+        return x.startsWith("*") || x.startsWith("//") || x.startsWith("/*") ? "" : l;
+      })
+      .join("\n");
+    assert.ok(/Array\.isArray\(oj\.odulTablosu\)/.test(m),
+      "sunucu tablosu okunmuyor");
+    assert.ok(/YEDEK_STAKES/.test(m),
+      "yedek bahis listesi yok — tabloyu gondermeyen ESKI sunucuda ekran bosalir");
+    /* ⚠️ Yedek YALNIZCA bahis listesi. Ödül için yedek hesap yazmak, tam da
+     * kaldırılan kusuru geri getirmek olurdu: eski sunucunun kuralı bilinmez. */
+    assert.ok(!/\(1\s*-\s*houseCutPct\)/.test(m),
+      "ekran yeniden kesinti orani ile carpiyor");
   });
 });

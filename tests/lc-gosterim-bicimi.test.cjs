@@ -38,30 +38,31 @@ const varMi = fs.existsSync(MOBIL);
 /* ── Ölçümün dayanağı: ödül gerçekten kesirli mi? ────────────────────────── */
 
 describe("kaynak: ödüller kesirli üretiliyor", () => {
-  test("düello ödülü tam sayı DEĞİL (gösterim korumasının gerekçesi)", () => {
+  test("düello ödülleri ARTIK TAM SAYI — gerekçe puanlara kaydı", () => {
     /**
-     * ⚠️ Bu iddia gösterim kuralının GEREKÇESİNİ tutuyor. Ödüller bir gün tam
-     * sayıya çevrilirse burası kırılır ve o zaman gösterim koruması gözden
-     * geçirilebilir — gerekçesi kalmamış bir kural sessizce taşınmasın.
+     * ⚠️ BU İDDİA 2026-08-05'te TERSİNE DÖNDÜ, kasıtlı.
+     *
+     * Eski hâli düello ödüllerinin KESİRLİ olduğunu şart koşuyordu ve şöyle
+     * yazıyordu: "ödüller bir gün tam sayıya çevrilirse burası kırılır ve o
+     * zaman gösterim koruması gözden geçirilebilir". O gün geldi — kesinti
+     * yüzdeden kademeli TAM SAYI LC'ye çevrildi, çünkü kesirli ödüller
+     * `lib/wallet-credit.cjs`in yuvarlamayan `$inc`iyle bakiyede birikiyordu
+     * (1.9 × 20 → 37.999999999999986). Gerekçe: `lib/duello-kesinti.cjs`.
+     *
+     * ⚠️ GÖSTERİM KORUMASI YİNE DE KALIYOR ve gerekçesi bu dosyanın alt
+     * yarısında ölçülü duruyor: LİDERLİK PUANLARI hâlâ kesirli ve depoda
+     * `5.717648576819556e-17` gibi artıklar var. Yani kural gerekçesiz
+     * kalmadı, gerekçesi yer değiştirdi — sessizce taşınmadığı görülsün diye
+     * iddia burada tutuluyor.
      */
-    const src = fs.readFileSync(
-      nodePath.join(__dirname, "..", "routes", "duels.cjs"), "utf8"
-    );
-    const pct = Number(src.match(/HOUSE_CUT_PCT\s*=\s*([\d.]+)/)?.[1]);
-    assert.ok(Number.isFinite(pct), "HOUSE_CUT_PCT okunamadi — tarama bozuk");
-
-    const max = Number(src.match(/MAX_STAKE\s*=\s*(\d+)/)?.[1] ?? 12);
-    let kesirli = 0;
-    for (let s = 1; s <= max; s++) {
-      const pot = s * 2;
-      const hc = Math.round(pot * pct * 10) / 10;
-      const wa = Math.round((pot - hc) * 10) / 10;
-      if (!Number.isInteger(wa)) kesirli++;
-    }
-    assert.ok(
-      kesirli > 0,
-      `hicbir odul kesirli degil — odul hesabi tam sayiya cevrilmis olabilir. ` +
-      `Oyleyse lib/lcBicim.ts'in gerekcesi degismistir, gozden gecir.`
+    const { odulTablosu } = require("../lib/duello-kesinti.cjs");
+    const satirlar = odulTablosu();
+    assert.ok(satirlar.length > 0, "odul tablosu bos — tarama bozuk");
+    const kesirli = satirlar.filter((x) => !Number.isInteger(x.winAmount));
+    assert.deepEqual(
+      kesirli, [],
+      "duello odulu yeniden kesirli uretiliyor — cuzdan $inc'i yuvarlamadigi " +
+      "icin bakiyede kayan nokta hatasi birikir (bkz. lib/duello-kesinti.cjs)"
     );
   });
 

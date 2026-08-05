@@ -33,32 +33,28 @@ const nodePath = require("path");
 const KOK = nodePath.join(__dirname, "..");
 const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 
+/* Sabitler artık `lib/duello-kesinti.cjs`te — regex yerine MODÜL okunuyor. */
+const KESINTI = require("../lib/duello-kesinti.cjs");
+
 function sunucuSabitleri() {
-  const src = fs.readFileSync(nodePath.join(KOK, "routes", "duels.cjs"), "utf8");
-  const sayi = (re) => {
-    const m = src.match(re);
-    return m ? Number(m[1]) : null;
-  };
-  return {
-    min: sayi(/MIN_STAKE\s*=\s*([\d.]+)/),
-    max: sayi(/MAX_STAKE\s*=\s*([\d.]+)/),
-    kesinti: sayi(/HOUSE_CUT_PCT\s*=\s*([\d.]+)/),
-  };
+  return { min: KESINTI.MIN_STAKE, max: KESINTI.MAX_STAKE };
 }
 
 describe("kurulum", () => {
   test("sunucu sabitleri GERÇEKTEN okunuyor", () => {
-    /* ⚠️ Sıfır sonuç kanıt değil: regex tutmazsa `null` gelir ve aşağıdaki
-     * karşılaştırmalar sessizce anlamsızlaşırdı. */
     const s = sunucuSabitleri();
     for (const [ad, deger] of Object.entries(s)) {
-      assert.ok(
-        Number.isFinite(deger),
-        `${ad} okunamadi (${deger}) — duels.cjs bicimi degisti mi? tarama bozuk`
-      );
+      assert.ok(Number.isFinite(deger), `${ad} okunamadi (${deger}) — tarama bozuk`);
     }
     assert.ok(s.min < s.max, `MIN_STAKE ${s.min} >= MAX_STAKE ${s.max}`);
-    assert.ok(s.kesinti > 0 && s.kesinti < 1, `HOUSE_CUT_PCT mantiksiz: ${s.kesinti}`);
+  });
+
+  test("rota sabitleri bu modülden alıyor", () => {
+    /* Rota kendi kopyasına dönerse aşağıdaki karşılaştırmalar yanlış kaynağı
+     * sınamaya başlar ve sapmayı göremez. */
+    const src = fs.readFileSync(nodePath.join(KOK, "routes", "duels.cjs"), "utf8");
+    assert.ok(/require\("\.\.\/lib\/duello-kesinti\.cjs"\)/.test(src),
+      "duels.cjs kesinti modulunu kullanmiyor");
   });
 });
 
@@ -68,8 +64,10 @@ describe("istemci sabitleri sunucuyla uyumlu", () => {
     if (!fs.existsSync(ekran)) return; // başka checkout
 
     const src = fs.readFileSync(ekran, "utf8");
-    const m = src.match(/const STAKES\s*=\s*\[([^\]]+)\]/);
-    if (!m) return; // sabit liste kaldırılmış (sunucudan alınıyor) → sorun yok
+    /* `YEDEK_STAKES` de aranıyor: liste artık sunucudan geliyor ama eski
+     * sunucular için bir yedek duruyor ve o da aralık dışına taşabilir. */
+    const m = src.match(/const (?:YEDEK_)?STAKES\s*=\s*\[([^\]]+)\]/);
+    if (!m) return; // hiç sabit liste yok (tamamen sunucudan) → sorun yok
 
     const stakes = m[1].split(",").map((x) => Number(x.trim())).filter(Number.isFinite);
     assert.ok(stakes.length > 0, "STAKES listesi cozulemedi — tarama bozuk");
@@ -92,7 +90,18 @@ describe("istemci sabitleri sunucuyla uyumlu", () => {
     );
   });
 
-  test("arena kazanç çarpanı kesinti oranıyla tutuyor", () => {
+  test("arena kazancı SABİT ÇARPANLA hesaplamıyor", () => {
+    /**
+     * ⚠️ İDDİA TERSİNE DÖNDÜ (2026-08-05). Eskiden çarpanın sunucudaki
+     * `HOUSE_CUT_PCT` ile eşit KALMASI sınanıyordu. Kesinti artık kademeli
+     * TAM SAYI LC (bkz. lib/duello-kesinti.cjs) ve tek bir çarpanla ifade
+     * EDİLEMEZ: bahis 5'te %10, bahis 12'de %4.2, bahis 1-4'te %0. Eşitliği
+     * sınamak yerine çarpanın hiç bulunmamasını sınıyoruz — ekran ödülü
+     * sunucudan alıyor (`duel.winAmount`).
+     *
+     * Ayrışmanın bedeli değişmedi: aynı sınıf bir kez 3009 LC vaat edip
+     * cüzdana 15 LC geçirmişti (bkz. lib/ekonomi.cjs macOdulu notu).
+     */
     const ekran = nodePath.join(MOBIL, "app", "(tabs)", "arena.tsx");
     if (!fs.existsSync(ekran)) return;
 
@@ -104,18 +113,11 @@ describe("istemci sabitleri sunucuyla uyumlu", () => {
       })
       .join("\n");
 
-    /* `pot * <sayı>` biçiminde sabit bir çarpan kalmış mı? */
     const m = src.match(/\bpot\s*\*\s*([\d.]+)/);
-    if (!m) return; // sabit çarpan yok — sunucudan geliyor, sorun yok
-
-    const carpan = Number(m[1]);
-    const s = sunucuSabitleri();
     assert.equal(
-      carpan, 1 - s.kesinti,
-      `arena kazanci ${carpan} carpaniyla hesapliyor ama sunucu kesintisi ` +
-      `${s.kesinti} (yani ${1 - s.kesinti} olmali). Ekran bahis KONMADAN ONCE ` +
-      `yanlis kazanc vaat eder; ayni sinif bir kez 3009 LC vaat edip cuzdana ` +
-      `15 LC gecirmisti (bkz. lib/ekonomi.cjs macOdulu notu).`
+      m, null,
+      `arena kazanci hala sabit ${m && m[1]} carpaniyla hesapliyor — kesinti ` +
+      `kademeli tam sayi, tek carpan yanlis odul vaat eder`
     );
   });
 });
@@ -129,7 +131,7 @@ test("NÖBETÇİ: sunucu sabitleri istemciye GÖNDERİLMEYE devam ediyor", () =>
    * kaldırılırsa istemci tahmin etmeye geri döner.
    */
   const src = fs.readFileSync(nodePath.join(KOK, "routes", "duels.cjs"), "utf8");
-  for (const alan of ["houseCutPct", "minStake", "maxStake"]) {
+  for (const alan of ["odulTablosu", "houseCutPct", "minStake", "maxStake"]) {
     assert.ok(
       new RegExp(`${alan}\\s*:`).test(src),
       `duels yaniti ${alan} gondermiyor — istemci kurali tahmin etmek zorunda kalir`

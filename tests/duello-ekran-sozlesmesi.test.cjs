@@ -40,27 +40,19 @@ const KOK = path.join(__dirname, "..");
 const MOBIL = require("./_mobil-dizin.cjs").MOBIL;
 const EKRAN = path.join(MOBIL, "app", "duel", "[fixtureId].tsx");
 
-/** Sunucu sabitlerini KAYNAKTAN oku — testin kendi kopyası olmasın. */
+/* ⚠️ SABİTLER VE HESAP ARTIK TEK KAYNAKTAN — regex'le okunup burada yeniden
+ * yazılmıyor. Kesinti 2026-08-05'te kademeli tam sayıya çevrildi
+ * (bkz. lib/duello-kesinti.cjs); kopya formül o gün sessizce yanlış hesabı
+ * sınamaya devam ederdi. */
+const KESINTI = require("../lib/duello-kesinti.cjs");
+
 function sunucuSabitleri() {
-  const s = fs.readFileSync(path.join(KOK, "routes", "duels.cjs"), "utf8");
-  const say = (ad) => {
-    const m = new RegExp(`const ${ad}\\s*=\\s*([0-9.]+)\\s*;`).exec(s);
-    assert.ok(m, `${ad} kaynaktan okunamadi`);
-    return Number(m[1]);
-  };
-  return { MIN: say("MIN_STAKE"), MAX: say("MAX_STAKE"), CUT: say("HOUSE_CUT_PCT") };
+  return { MIN: KESINTI.MIN_STAKE, MAX: KESINTI.MAX_STAKE };
 }
 
-/** Sunucunun ödül hesabı — duels.cjs ile AYNI iki adım. */
-function sunucuOdulu(stake, cut) {
-  const pot = stake * 2;
-  const houseCut = Math.round(pot * cut * 10) / 10;
-  return Math.round((pot - houseCut) * 10) / 10;
-}
-
-/** Ekranın ödül hesabı — [fixtureId].tsx satır ~577 ile AYNI tek adım. */
-function ekranOdulu(stake, cut) {
-  return Math.round(stake * 2 * (1 - cut) * 10) / 10;
+/** Sunucunun ödül hesabı — duels.cjs ile AYNI fonksiyon. */
+function sunucuOdulu(stake) {
+  return KESINTI.duelloPaylari(stake).winAmount;
 }
 
 function ekranKaynagi() {
@@ -71,9 +63,15 @@ function ekranKaynagi() {
 
 describe("kurulum", () => {
   test("sunucu sabitleri okunabiliyor ve makul", () => {
-    const { MIN, MAX, CUT } = sunucuSabitleri();
+    const { MIN, MAX } = sunucuSabitleri();
     assert.ok(MIN >= 1 && MAX > MIN, `bahis araligi beklenmedik: ${MIN}..${MAX}`);
-    assert.ok(CUT > 0 && CUT < 0.5, `kesinti orani beklenmedik: ${CUT}`);
+  });
+
+  test("üretim rotası bu hesabı kullanıyor", () => {
+    /* Rota kendi kopyasını tutmaya dönerse bu dosya yanlış kaynağı sınar. */
+    const s = fs.readFileSync(path.join(KOK, "routes", "duels.cjs"), "utf8");
+    assert.ok(/require\("\.\.\/lib\/duello-kesinti\.cjs"\)/.test(s),
+      "duels.cjs kesinti modulunu kullanmiyor — test bir sey olcmuyor");
   });
 });
 
@@ -82,8 +80,10 @@ describe("kurulum", () => {
 describe("ekran ile sunucu sözleşmesi", () => {
   test("ekranın sunduğu HER bahis sunucuda geçerli", (t) => {
     if (!fs.existsSync(EKRAN)) return t.skip("mobil deposu yok");
-    const m = /const STAKES\s*=\s*\[([^\]]+)\]/.exec(ekranKaynagi());
-    assert.ok(m, "STAKES listesi ekranda bulunamadi — ad degismis olabilir");
+    /* Liste artık sunucudan geliyor; `YEDEK_STAKES` eski sunucular için duran
+     * yedek ve o da aralık dışına taşabilir — asıl sınanan o. */
+    const m = /const (?:YEDEK_)?STAKES\s*=\s*\[([^\]]+)\]/.exec(ekranKaynagi());
+    assert.ok(m, "bahis listesi ekranda bulunamadi — ad degismis olabilir");
     const stakes = m[1].split(",").map((x) => Number(x.trim())).filter(Number.isFinite);
     assert.ok(stakes.length >= 3, `yalnizca ${stakes.length} secenek okundu — ayristirma bozuk`);
 
@@ -96,57 +96,54 @@ describe("ekran ile sunucu sözleşmesi", () => {
     );
   });
 
-  test("ekranda gösterilen ödül, sunucunun yazacağı ödüle EŞİT", (t) => {
+  test("sunucunun gönderdiği ödül tablosu, yazacağı ödülle AYNI", () => {
     /**
-     * ⚠️ DÜRÜST SINIR: negatif kontrolde kesintiyi 0.05 → 0.07 yaptım ve bu
-     * test KIRILMADI. Sebebi öğretici — `pot = 2*stake` her zaman çift olduğu
-     * için iki formül matematiksel olarak çakışıyor, kesinti oranı ne olursa
-     * olsun. Yani buradaki koruma "formüller aynı sonucu veriyor" iddiasından
-     * ibaret; oran ayrışmasını YAKALAYAN, bir alttaki testtir.
-     * Asimetrik bahis ya da tek sayılı pot gelirse bu test canlanır.
+     * ⚠️ ARTIK SUNUCUNUN İKİ YOLU KARŞILAŞTIRILIYOR: `/duels/open`in ekrana
+     * gönderdiği tablo (`odulTablosu`) ile düello kurulurken cüzdana yazılan
+     * `winAmount` (`duelloPaylari`). Ekran hesap yapmadığı için sapma ancak
+     * bu iki sunucu yolu ayrışırsa doğar.
      */
-    if (!fs.existsSync(EKRAN)) return t.skip("mobil deposu yok");
-    const { MIN, MAX, CUT } = sunucuSabitleri();
-    const farkli = [];
-    for (let s = MIN; s <= MAX; s++) {
-      const sunucu = sunucuOdulu(s, CUT);
-      const ekran = ekranOdulu(s, CUT);
-      if (sunucu !== ekran) farkli.push(`${s} LC → ekran ${ekran}, sunucu ${sunucu}`);
+    for (const satir of KESINTI.odulTablosu()) {
+      assert.equal(satir.winAmount, sunucuOdulu(satir.stake),
+        `bahis ${satir.stake}: tabloda ${satir.winAmount}, kayitta ${sunucuOdulu(satir.stake)}`);
     }
-    assert.deepEqual(
-      farkli, [],
-      "ekran parayi yatirmadan ONCE yanlis odul gosteriyor: " + farkli.join(" | ")
-    );
   });
 
-  test("ekran kesinti oranını SUNUCUDAN alıyor (sabit çarpan YOK)", (t) => {
+  test("ekran ödülü HİÇ hesaplamıyor (sabit çarpan YOK)", (t) => {
     /**
-     * ⚠️ BU TESTİN İDDİASI TERSİNE DÖNDÜ — VE BU BİR İYİLEŞME.
+     * ⚠️ BU TESTİN İDDİASI İKİ KEZ SIKILAŞTI.
      *
-     * Eski hâli, ekranda `* 0.95` çarpanının BULUNMASINI şart koşuyordu:
-     * o gün elde tek koruma, iki sabitin eşit kaldığını doğrulamaktı. Ama
-     * eşitliği doğrulamak sapmayı ÖNLEMİYOR, yalnızca fark edilmesini
-     * sağlıyordu — üstelik sunucudaki oran env ile değiştirilirse
-     * (`SKORLIG_*`) test yeşil kalırken ekran yanlış kazanç vaat ederdi.
+     * 1) İlk hâli ekranda `* 0.95` çarpanının BULUNMASINI şart koşuyordu —
+     *    eşitliği doğrulamak sapmayı ÖNLEMİYOR, yalnızca fark ettiriyordu.
+     * 2) 2026-08-03: oran sunucudan alınmaya başlandı, ama ÇARPMA hâlâ
+     *    ekrandaydı (`pot * (1 - houseCutPct)`).
+     * 3) 2026-08-05: kesinti kademeli TAM SAYI LC oldu (bkz.
+     *    lib/duello-kesinti.cjs) ve tek bir oranla ifade edilemez hâle geldi —
+     *    bahis 5'te %10, bahis 12'de %4.2, bahis 1-4'te %0. Sunucu artık her
+     *    bahsin ödülünü HESAPLANMIŞ gönderiyor; ekranın çarpacak bir şeyi yok.
      *
-     * 2026-08-03: `/duels/open` artık `houseCutPct`, `minStake`, `maxStake`
-     * gönderiyor ve ekran onu kullanıyor. Sapma STRUKTUREL olarak imkânsız;
-     * dolayısıyla artık sabit çarpanın YOKLUĞUNU doğruluyoruz.
-     *
-     * Ekranın hesabının sunucuyla aynı sonucu verdiği testi (yukarıdaki
-     * "ekran parayi yatirmadan ONCE...") yerinde duruyor — asıl güvence o.
+     * Yani sapma artık yapısal olarak imkânsız ve bu iddia onu tutuyor.
      */
     if (!fs.existsSync(EKRAN)) return t.skip("mobil deposu yok");
-    const { CUT } = sunucuSabitleri();
-    const src = ekranKaynagi();
-    const eskiCarpan = String(1 - CUT);          // 0.05 → "0.95"
+    const src = ekranKaynagi()
+      .split("\n")
+      .map((l) => {
+        const x = l.trim();
+        return x.startsWith("*") || x.startsWith("//") || x.startsWith("/*") ? "" : l;
+      })
+      .join("\n");
+
     assert.ok(
-      !src.includes(`* ${eskiCarpan} *`) && !src.includes(`* ${eskiCarpan})`),
-      `ekran hala sabit ${eskiCarpan} carpani kullaniyor — sunucudaki kesinti degisirse yanlis odul gosterir`
+      !/\(1\s*-\s*houseCutPct\)/.test(src),
+      "ekran hala kesinti oraniyla carpiyor — kademeli kesinti tek oranla ifade edilemez"
     );
     assert.ok(
-      /houseCutPct/.test(src),
-      "ekran kesinti oranini sunucudan okumuyor"
+      !/\bpot\s*\*\s*[\d.]/.test(src) && !/stake\s*\*\s*2\s*\*/.test(src),
+      "ekranda hala sabit carpanli odul hesabi var"
+    );
+    assert.ok(
+      /odulTablosu/.test(src),
+      "ekran odul tablosunu sunucudan okumuyor"
     );
   });
 });
