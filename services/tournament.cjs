@@ -575,12 +575,27 @@ async function settle(code, results, db = null) {
   // ⚠️ MÜHÜR ÖDEMEDEN ÖNCE, ATOMİK. Koşul (`status:"open"`) yazmanın içinde;
   // yalnızca tek çağrı true alır. settle2 de aynı mührü kullanıyor.
   const conn = await dbAl(db);
-  const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, conn);
+  /**
+   * ⚠️ `payouts` MÜHÜRLE AYNI İŞLEMDE YAZILIR — ESKİDEN `saveAll` İLE.
+   *
+   * Eski satır `await saveAll(data)` idi ve TÜM koleksiyonu bu fonksiyonun
+   * BAŞINDA alınmış snapshot'la değiştiriyordu (`replaceAll`). Aradaki sürede
+   * BAŞKA turnuvalara yapılan atomik yazmalar (katılım, tahmin) siliniyordu —
+   * ücret alınmış, katılım yok, kimse hata görmüyor.
+   *
+   * ÖLÇÜLDÜ: A turnuvası sonuçlanırken B turnuvasına katılım yapıldı; `join`
+   * BAŞARILI döndü ama B'nin katılımcı listesinde yoktu ve 10 LC gitmişti.
+   *
+   * Mühür zaten `status`/`settledAt` yazıyordu; tek eksik `payouts`tı. Artık
+   * o da aynı `updateOne` içinde — hem atomik hem de başka belgelere dokunmuyor.
+   */
+  const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, conn, {
+    payouts: t.payouts,
+  });
   if (!bizimki) throw new Error("ALREADY_SETTLED");
 
   t.status = "settled";
   t.settledAt = nowISO;
-  await saveAll(data);
 
   // Mühür alındı → ödemeyi BİZ yapmalıyız; settle2 artık bu turnuvayı görmez.
   const odenemeyen = [];
