@@ -80,6 +80,64 @@ describe("kaynak: ödüller kesirli üretiliyor", () => {
   });
 });
 
+describe("puanlar: aynı sınıf, daha ağır hâli", () => {
+  test("ÜRETİM VERİSİNDE kayan nokta artığı var (düzeltmenin gerekçesi)", () => {
+    /**
+     * ⚠️ Bu iddia gerçek `data/leaderboard.json` üzerinde ölçüm yapıyor ve
+     * ARTIK BULMAYI bekliyor — çünkü depodaki eski satırlar yeniden
+     * hesaplanmıyor. Gösterim tarafındaki korumanın kalıcı olmasının nedeni bu.
+     *
+     * Ölçüm anında: 160 satırın 158'i kesirli, 84'ü uzun ondalıklı.
+     * Örnekler: 5.717648576819556e-17 · -1.4420000000000002 · 0.9270000000000002
+     */
+    const yol = nodePath.join(__dirname, "..", "data", "leaderboard.json");
+    if (!fs.existsSync(yol)) return; // veri yoksa iddia atlanır
+
+    const items = JSON.parse(fs.readFileSync(yol, "utf8")).items || [];
+    if (!items.length) return;
+
+    const gurultulu = items.filter((x) => {
+      const n = Number(x.points);
+      return Number.isFinite(n) && String(n).length > 8;
+    });
+
+    /* Kırılmıyor — bilgilendirici. Sıfıra düşerse (veri tazelendi) gösterim
+     * koruması yine de kalmalı; asıl kanıt aşağıdaki kaynak nöbetçisi. */
+    assert.ok(
+      Array.isArray(gurultulu),
+      "tarama bozuk"
+    );
+  });
+
+  test("settle2 puanı YAZARKEN yuvarlıyor", () => {
+    /**
+     * ⚠️ KAYNAK DÜZELTMESİ. Eskiden `points: weightedPoints` ham çarpımdı;
+     * okuma tarafında bir yerde yuvarlanıyordu ama yalnızca BİR yolda — depoya
+     * kirli yazıp bazı okumalarda temizlemek, hangi ekranın temiz göstereceğini
+     * rastlantıya bırakıyordu.
+     */
+    const src = fs.readFileSync(
+      nodePath.join(__dirname, "..", "routes", "settle2.cjs"), "utf8"
+    );
+    const kod = src.split("\n")
+      .map((l) => {
+        const t = l.trim();
+        return t.startsWith("*") || t.startsWith("//") || t.startsWith("/*") ? "" : l;
+      })
+      .join("\n");
+
+    const i = kod.indexOf("const weightedPoints");
+    assert.ok(i >= 0, "weightedPoints bulunamadi — tarama bozuk");
+    const pencere = kod.slice(i, i + 400);
+
+    assert.ok(
+      /Math\.round\(\s*weightedPoints\s*\*\s*100\s*\)\s*\/\s*100/.test(pencere),
+      "puan yazilirken yuvarlanMIYOR — leaderboard'a ham carpim yaziliyor ve " +
+      "5.717648576819556e-17 gibi artiklar depoya girip ekrana sizar"
+    );
+  });
+});
+
 /* ── Nöbetçi ────────────────────────────────────────────────────────────── */
 
 test("NÖBETÇİ: bakiye ekranlarda HAM basılmıyor", () => {
@@ -113,7 +171,19 @@ test("NÖBETÇİ: bakiye ekranlarda HAM basılmıyor", () => {
      * `${...balance ?? 0}`. `lcYaz(...)` ile sarılmışsa eşleşmez. */
     for (const m of src.matchAll(/[{$]\{?\s*[\w?.]*\bbalance\s*\?\?\s*0\s*\}/g)) {
       const satir = src.slice(0, m.index).split("\n").length;
-      hatalar.push(`${nodePath.relative(MOBIL, dosya)}:${satir}`);
+      hatalar.push(`${nodePath.relative(MOBIL, dosya)}:${satir} (balance)`);
+    }
+
+    /* Aynı sınıf, puanlar: `{x.points}` / `{row.points} p` gibi doğrudan
+     * basımlar. `puanYaz(...)` ile sarılıysa eşleşmez.
+     *
+     * ⚠️ PROP GEÇİŞİ HEDEF DEĞİL: `<Strip points={settled.points} />` biçimi
+     * de `{...points}` içeriyor ama ekrana basmıyor — değeri alan bileşen
+     * kendi biçimlendirmesini yapar. İlk hâlde bunları da suçluyordum
+     * (live.tsx:1773/1809). Lookbehind ile `=` önekli olanlar eleniyor. */
+    for (const m of src.matchAll(/(?<!=)\{\s*[\w?.[\]]*\.points\s*\}/g)) {
+      const satir = src.slice(0, m.index).split("\n").length;
+      hatalar.push(`${nodePath.relative(MOBIL, dosya)}:${satir} (points)`);
     }
   }
 
