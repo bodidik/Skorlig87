@@ -148,6 +148,46 @@ describe("nöbetçi", () => {
   });
 });
 
+/* ── Dağıtım belgesi kodla aynı şeyi söylüyor ────────────────────────────── */
+
+describe(".env.example", () => {
+  /**
+   * ⚠️ BU BELGE SESSİZCE BAYATLADI (2026-08-05'te yakalandı). Ödül tavanı
+   * 20 → 50 yapıldığında `.env.example` hâlâ `SKORLIG_MINI_WIN_LC=20` ve
+   * "varsayılan 20" yazmaya devam ediyordu. Kimse kırılmadığı için fark
+   * etmezdi — ve bu dosya DAĞITIM sırasında okunan dosya: yanlış varsayılan,
+   * ekonomi ayarının yanlış kurulmasına yol açar.
+   *
+   * Bu depodaki tekrar eden kusur sınıfının belge hâli: aynı bilginin ikinci
+   * kopyası, sessizce ayrışıyor.
+   */
+  const yol = path.join(__dirname, "..", ".env.example");
+
+  /** `# SKORLIG_X=NN` satırından sayıyı çeker. */
+  function belgelenen(src, ad) {
+    const m = new RegExp(`^#\\s*${ad}=(\\d+)\\s*$`, "m").exec(src);
+    return m ? Number(m[1]) : null;
+  }
+
+  for (const [ad, kodDegeri] of [
+    ["SKORLIG_MINI_WIN_LC", mini._MINI_WIN_LC],
+    ["SKORLIG_MINI_MIN_ODUL_UYE", MIN_UYE],
+  ]) {
+    test(`${ad} belgelenen varsayılan KODLA aynı`, (t) => {
+      /* Ortamda gerçekten set edilmişse kod değeri varsayılan değildir —
+       * karşılaştırma anlamsız olurdu (negatif denetim koşuları böyle). */
+      if (process.env[ad]) return t.skip(`${ad} ortamda set edilmis`);
+
+      const src = fs.readFileSync(yol, "utf8");
+      const b = belgelenen(src, ad);
+      assert.notEqual(b, null, `${ad} .env.example'da hic gecmiyor — dagitimda gorunmez`);
+      assert.equal(b, kodDegeri,
+        `.env.example ${ad}=${b} diyor ama kod varsayilani ${kodDegeri} — ` +
+        `belge bayat, dagitimda yanlis deger kurulabilir`);
+    });
+  }
+});
+
 /* ── Açıklama metni: 21 dilin hepsinde ────────────────────────────────────── */
 
 describe("ödülsüz bitişin açıklaması", () => {
