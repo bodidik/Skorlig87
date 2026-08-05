@@ -46,6 +46,7 @@ function requireAdminToken(req, res, next) {
   return res.status(401).json({ ok: false, error: "ADMIN_TOKEN_REQUIRED" });
 }
 const UsersStore = require("../lib/users-store.cjs");
+const MatchResults = require("../lib/match-results.cjs");
 // 🔹 Atomik yazma + dosya kilidi (race önleme)
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { verifyToken } = require("../middleware/verifyToken.cjs");
@@ -2001,6 +2002,11 @@ router.get("/pred/match-board", async (req, res) => {
         };
       });
 
+    /* Kesin skor leaderboard.json'da YOK — tek kaynağı settle anındaki
+     * match_results snapshot'ı. Maç sonuçlanmadıysa null döner; yönetici
+     * bildirimi "-" gösterir. Uydurmaktansa yokluğu bildirmek doğru. */
+    const snap = await MatchResults.getSnapshot(fx, getDb(req)).catch(() => null);
+
     res.json({
       ok: true,
       fixtureId: fx,
@@ -2008,6 +2014,7 @@ router.get("/pred/match-board", async (req, res) => {
       segment: segment || "all",
       count: sorted.length,
       items: sorted,
+      finalScore: snap?.finalScore || null,
     });
   } catch (e) {
     console.error("MATCH_BOARD_FAILED", e);
