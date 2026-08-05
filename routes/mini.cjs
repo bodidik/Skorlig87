@@ -43,9 +43,28 @@ const MIN_FIXTURES = 2;
 const MAX_FIXTURES = 10;
 const MAX_MEMBERS = 50;
 
-// Turnuva birincisine LC (LigCoin) ödülü. Mongo varsa cüzdana `$inc` ile
-// yazılır (lib/wallet-credit.cjs); dosya yalnızca ayna açıkken güncellenir.
-const MINI_WIN_LC = Math.max(0, Number(process.env.SKORLIG_MINI_WIN_LC || 20));
+/**
+ * Turnuva birincisine LC (LigCoin) ödülü — beraberlikte BÖLÜŞÜLÜR
+ * (bkz. kazananPayi). Cüzdana `lib/wallet-credit.cjs` üzerinden yazılır;
+ * dosya yalnızca ayna açıkken güncellenir.
+ *
+ * ⚠️ BU SAYI DOĞRUDAN MUSLUK DEBİSİ. Mini turnuva girişi ücretsiz ve ASGARİ
+ * ÜYE SAYISI YOK: tek kişilik bir turnuvada kurucu puan alırsa bu tutarın
+ * TAMAMINI alır. Freni eşzamanlı açık turnuva kotası (ücretsiz 2, premium 6 —
+ * lib/premium.cjs miniMaxOpen) ve maçların gerçekten oynanması gerekliliği.
+ * Yükseltirken bu üçü birlikte düşünülmeli.
+ *
+ * 20 → 40 (2026-08-05, kasıtlı ekonomi kararı). Pay tam sayıya çevrilince
+ * (bkz. kazananPayi) kazanan sayısı bu tavanı aşan beraberliklerde pay 0'a
+ * düşüyor. 20'de bu n=21..50 arası 30 senaryoydu; 40'ta n=41..50 arası 10
+ * senaryoya indi. 50 (= MAX_MEMBERS) sorunu tamamen bitirirdi ama musluğu 2.5
+ * kat açardı; 40 ile artış 2 kat.
+ *
+ * Ölçek referansı: açılış bakiyesi 30 LC, maç ödülü en fazla 15 LC, kupon
+ * ödülleri 8/20/50/150 LC. 40, açılış bakiyesinin üstünde ama kupon 7/8
+ * ödülünün altında.
+ */
+const MINI_WIN_LC = Math.max(0, Number(process.env.SKORLIG_MINI_WIN_LC || 40));
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WALLET_FILE = path.join(DATA_DIR, "lc-wallet.json");
 const { creditLc, kayipOdulKaydet } = require("../lib/wallet-credit.cjs");
@@ -155,11 +174,14 @@ function gercekKazananlar(userIds) {
  * 43 senaryo kesirli pay üretiyordu, artık 50/50 tam sayı.
  *
  * ⚠️ BEDELİ AÇIK: pay 1 LC'nin altına düştüğünde 0 olur, yani MINI_WIN_LC'den
- * (20) fazla kazananın olduğu beraberliklerde KİMSE ödül almaz — n=21..50
- * arası 30 senaryo. Eskiden 0.4..0.9 LC alıyorlardı. Herkese en az 1 LC
- * vermek bunu çözerdi ama yukarıdaki DEĞİŞMEZİ bozardı: 30 kazanan × 1 LC =
- * 30 LC, tavan 20. O değişmez karşılıksız LC musluğunu kapatmak için
- * konmuştu; kalabalık beraberlik uğruna geri açılmaz.
+ * fazla kazananın olduğu beraberliklerde KİMSE ödül almaz. Herkese en az 1 LC
+ * vermek bunu çözerdi ama yukarıdaki DEĞİŞMEZİ bozardı (tavandan fazla
+ * kazanan × 1 LC > tavan); o değişmez karşılıksız LC musluğunu kapatmak için
+ * konmuştu, kalabalık beraberlik uğruna geri açılmaz.
+ *
+ * Bunun yerine TAVAN yükseltildi: MINI_WIN_LC 20 → 40, yani sıfır ödül
+ * senaryosu n=21..50 arası 30 senaryodan n=41..50 arası 10 senaryoya indi.
+ * Gerekçe ve neden 50 (= MAX_MEMBERS) seçilmediği MINI_WIN_LC'nin başında.
  *
  * ⚠️ EŞİT PAY KORUNUYOR — en büyük kalan yöntemi (lib/pay-dagitim.cjs) burada
  * KULLANILMAZ. Orada korunacak bir havuz var; burada ödül ÜRETİLİYOR, yani

@@ -311,6 +311,31 @@ describe("mini turnuva ödülü — beraberlikte bölüşülür", () => {
     assert.equal(pay(TOPLAM + 1), 0, "tavani asinca pay 0 olmali");
   });
 
+  test("ödülsüz kalan senaryo sayısı ölçülü ve sınırlı", () => {
+    /**
+     * ⚠️ SIFIR ÖDÜL SENARYOSU DOĞRUDAN TAVANA BAĞLI: kazanan sayısı
+     * MINI_WIN_LC'yi aşan her durum ödülsüz kalır, yani senaryo sayısı
+     * `MAX_MEMBERS - MINI_WIN_LC`.
+     *
+     * 2026-08-05: tavan 20 → 40 yükseltildi, senaryo 30'dan 10'a indi
+     * (kasıtlı ekonomi kararı; 50 = MAX_MEMBERS sorunu tamamen bitirirdi ama
+     * musluğu 2.5 kat açardı — gerekçe routes/mini.cjs MINI_WIN_LC notunda).
+     *
+     * Bu iddia tavanın sessizce DÜŞÜRÜLMESİNİ yakalar: düşürmek ödülsüz
+     * senaryoları geri getirir ve hiçbir hata üretmez.
+     */
+    const MAX_MEMBERS = 50;
+    const odulsuz = [];
+    for (let n = 1; n <= MAX_MEMBERS; n++) if (pay(n) === 0) odulsuz.push(n);
+
+    assert.equal(odulsuz.length, Math.max(0, MAX_MEMBERS - TOPLAM),
+      `odulsuz senaryo sayisi ${odulsuz.length}, tavan ${TOPLAM} ile beklenen ` +
+      `${Math.max(0, MAX_MEMBERS - TOPLAM)} — hesap degismis olabilir`);
+    assert.ok(odulsuz.length <= 10,
+      `${odulsuz.length} kazanan sayisinda hic odul dagitilmiyor (n=${odulsuz.join(",")}). ` +
+      `MINI_WIN_LC dusurulmus olabilir — dusurmek odulsuz senaryolari geri getirir.`);
+  });
+
   test("geçersiz kazanan sayısı 0 döner (para yazılmaz)", () => {
     assert.equal(pay(0), 0);
     assert.equal(pay(-3), 0);
