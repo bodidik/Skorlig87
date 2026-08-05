@@ -33,7 +33,7 @@ const { withFileLock } = require("../lib/fileLock.cjs");
 // geçmiyorsa ekle") kullanılmıştı, ama az önce eklenen rota tanımları o
 // metni zaten içerdiği için koşul yanlış çalıştı. Aynı hata settle2'de de
 // olmuştu. Ders: import eklemeyi metin varlığına bağlama.
-const { verifyToken } = require("../middleware/verifyToken.cjs");
+const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
 const { kimlikVeyaHata } = require("../lib/kimlik-kontrol.cjs");
 const premium = require("../lib/premium.cjs");
 const MatchResults = require("../lib/match-results.cjs");
@@ -784,8 +784,39 @@ router.get("/wins", async (req, res) => {
   }
 });
 
-// ---- GET /api/mini/board?id= (veya ?code=) ----
-router.get("/board", async (req, res) => {
+/**
+ * GET /api/mini/board?id= (veya ?code=)
+ *
+ * ⚠️ KİŞİSEL ALANLAR SORGUDAN GELEN KİMLİĞE GÖRE DÖNÜYORDU — SOSYAL GRAFİK
+ * SIZIYORDU.
+ *
+ * Uç hiçbir kimlik ara katmanı taşımıyordu ama `?userId=` okuyup o kişinin
+ * `myRow`, `myRank` ve `friendsInBoard` alanlarını döndürüyordu. Sonuncusu
+ * `SocialStore.loadFriends` ile o kullanıcının ARKADAŞ LİSTESİNİ okuyup panoyla
+ * kesiştiriyor. Yani isteyen herkes başkasının kimliğini yazıp o kişinin bu
+ * turnuvadaki arkadaşlarını öğrenebiliyordu — kullanıcı kimlikleri sıralama
+ * tablolarında zaten görünür.
+ *
+ * Kişisel alanlar bu uca sonradan eklendi (kişisel alanlar hiç dönmüyordu
+ * düzeltmesi); kimlik kapısı o sırada eklenmedi ve `kimlik-sinifi-nobeti`
+ * nöbetçisi o günden beri KIRMIZIYDI. Aynı sınıf bu depoda dokuz kez çıkmış;
+ * `friends/list` ve `friends/board` tam bunun için kapatılmıştı.
+ *
+ * ⚠️ KİMLİK ARTIK JETONDAN, SORGUDAN DEĞİL. `?userId=` yok sayılıyor:
+ * istemci onu derin bağlantının sorgu parametresinden alıyor
+ * (`app/mini/[id].tsx`, yoksa "demo1") — yani hem sızıntının taşıyıcısı hem de
+ * sessiz bir kusur kaynağıydı: parametresiz açılan ekran giriş yapmış
+ * kullanıcıya BAŞKASININ satırını ve arkadaşlarını gösteriyordu.
+ *
+ * ⚠️ `optionalToken`, `verifyToken` DEĞİL: pano herkese açık kalmalı (turnuva,
+ * fikstürler ve sıralama zaten kamuya açık veri; paylaşılan bağlantıyla
+ * girilebiliyor). Jeton yoksa yalnızca kişisel blok boş döner.
+ *
+ * ⚠️ Uyumsuz `?userId=` 403 ÜRETMİYOR: istemci hâlâ gönderiyor ve eski
+ * bağlantılarda yabancı bir değer taşıyabiliyor; reddetmek ekranı komple
+ * karartırdı. Yok saymak sızıntıyı aynı ölçüde kapatıyor.
+ */
+router.get("/board", optionalToken, async (req, res) => {
   try {
     const id = String(req.query.id || "").trim();
     const code = String(req.query.code || "").trim().toUpperCase();
@@ -846,7 +877,9 @@ router.get("/board", async (req, res) => {
 
     const totalMembers = board.length;
 
-    const rawUid = String(req.query.userId || "").trim().toLowerCase();
+    /* Kimlik YALNIZCA doğrulanmış jetondan. Sorgudaki `userId` okunmuyor —
+     * gerekçe yukarıdaki rota notunda. */
+    const rawUid = String(req.uid || "").trim().toLowerCase();
     let myRow = null;
     let myRank = null;
     let friendsInBoard = [];
