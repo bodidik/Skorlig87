@@ -19,6 +19,7 @@ const path = require("path");
 const { withFileLock, writeJsonAtomic } = require("../lib/fileLock.cjs");
 const { readJson } = require("./store.cjs");
 const push = require("./push.cjs");
+const Season = require("../lib/season.cjs");
 
 // ⚠️ SKORLIG_DATA_DIR: sabit yol testleri GERÇEK data/ dizinine yazdırır.
 const DATA_DIR     = process.env.SKORLIG_DATA_DIR || path.join(__dirname, "..", "data");
@@ -356,8 +357,19 @@ async function runResultNotices() {
 
 /* ===== 3) Günlük LC hatırlatması ===== */
 
+/**
+ * ⚠️ ARTIK UTC DEĞİL — Istanbul yerel günü.
+ *
+ * Eskiden `d.toISOString().slice(0, 10)` idi (UTC). Ama `lastDailyAt` damgası
+ * da UTC ISO ve `lc-wallet.cjs` günlük hak kontrolünü zaten `Season.dayKey()`
+ * ile Istanbul'a göre yapıyor. İki sistem farklı "gün"ü görünce hatırlatma
+ * gerçekten almış kullanıcıya da gidiyordu — tam olarak kaçınmak istenen şey.
+ *
+ * Aynı sınıf `routes/tr-league.cjs` hafta sınırında da var (UTC hafta anahtarı
+ * vs Istanbul fikstür koleksiyonu).
+ */
 function todayKey(d = new Date()) {
-  return d.toISOString().slice(0, 10);
+  return Season.dayKey(d);
 }
 
 /**
@@ -411,7 +423,10 @@ async function runDailyReminder(now = new Date()) {
   const targets = users
     .filter((u) => {
       // Bugün zaten almışsa hatırlatma anlamsız
-      const last = u.lastDailyAt ? String(u.lastDailyAt).slice(0, 10) : null;
+      // ⚠️ ISO dilimlemek UTC verir; Season.dayKey Istanbul'a göre çevirir.
+      // Bkz. lib/season.cjs dayKey notu ve lc-wallet.cjs gunAnahtari().
+      const lastDate = u.lastDailyAt ? new Date(u.lastDailyAt) : null;
+      const last = lastDate && !isNaN(lastDate.getTime()) ? Season.dayKey(lastDate) : null;
       if (last === today) return false;
 
       // Uzun süredir uğramayanı dürtmek spam olur
