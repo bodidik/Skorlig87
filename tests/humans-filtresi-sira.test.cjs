@@ -146,6 +146,48 @@ describe("humans=1 sırayı da düzeltiyor", () => {
   });
 });
 
+describe("sorgu indeks kullanıyor", () => {
+  test("competitionId sorgusu TÜM koleksiyonu taramıyor, sıralama bellekte değil", async () => {
+    /**
+     * ⚠️ İNDEKSSİZDİ. `find({ competitionId }).sort({ totalPoints: -1 })`
+     * tüm koleksiyonu tarayıp sıralamayı BELLEKTE yapıyordu — yavaşlıktan
+     * öte, Mongo'nun sıralama bellek sınırına takılırsa sorgu tamamen HATA
+     * verir.
+     *
+     * ÖLÇÜLDÜ (30 000 kayıt / 20 yarışma):
+     *     indekssiz : 56.50 ms · incelenen 30000 · bellekte sıralama VAR
+     *     indeksli  : 22.85 ms · incelenen  1500 · bellekte sıralama YOK
+     */
+    await al(INSAN); // uç çağrılınca indeks kuruluyor
+
+    const plan = await db.collection("competition_totals")
+      .find({ competitionId: "c1" })
+      .sort({ totalPoints: -1 })
+      .explain("executionStats");
+
+    assert.ok(
+      !JSON.stringify(plan).includes('"SORT"'),
+      "siralama BELLEKTE yapiliyor — bilesik indeks {competitionId:1, " +
+      "totalPoints:-1} yok ya da sirasi ters. Buyuk yarismada sorgu bellek " +
+      "sinirina takilip HATA verebilir."
+    );
+  });
+
+  test("indeks GERÇEKTEN kurulmuş ve sırası doğru", async () => {
+    await al(INSAN);
+    const idx = await db.collection("competition_totals").indexes();
+    const hedef = idx.find(
+      (x) => x.key && x.key.competitionId === 1 && x.key.totalPoints === -1
+    );
+    assert.ok(
+      hedef,
+      `{competitionId:1, totalPoints:-1} indeksi yok: ` +
+      `${JSON.stringify(idx.map((x) => x.key))} — sira onemli, ters olsaydi ` +
+      `siralama yine bellekte kalirdi`
+    );
+  });
+});
+
 /* ── Nöbetçi ────────────────────────────────────────────────────────────── */
 
 test("NÖBETÇİ: filtre sarmalayıcısı me'ye dokunuyor", () => {

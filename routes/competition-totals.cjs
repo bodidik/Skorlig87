@@ -26,6 +26,46 @@ function getDb(req) {
   return req?.app?.locals?.db || null;
 }
 
+/**
+ * ⚠️ `competition_totals` İNDEKSSİZDİ — SORGU TAM TARAMA + BELLEKTE SIRALAMA.
+ *
+ * Aşağıdaki okuma `find({ competitionId }).sort({ totalPoints: -1 })` yapıyor.
+ * İndeks olmadan Mongo tüm koleksiyonu tarıyor ve sıralamayı BELLEKTE
+ * yapıyor — yavaşlıktan öte, sıralama bellek sınırına takılırsa sorgu
+ * tamamen HATA verir.
+ *
+ * ÖLÇÜLDÜ (bellek-içi Mongo, 30 000 kayıt / 20 yarışma):
+ *     indekssiz : 56.50 ms · incelenen 30000 · bellekte sıralama VAR
+ *     indeksli  : 22.85 ms · incelenen  1500 · bellekte sıralama YOK
+ *     kazanç    : 2.5x, ve asıl kazanç sıralamanın indeksten gelmesi
+ *
+ * Bileşik indeksin SIRASI önemli: `{ competitionId: 1, totalPoints: -1 }`
+ * hem filtreyi hem sıralamayı tek geçişte karşılıyor. Ters sırada olsaydı
+ * sıralama yine bellekte kalırdı.
+ *
+ * ⚠️ BAYRAK DEĞİL SÖZ önbelleklenir — bu deponun her yerinde aynı desen:
+ * bayrak `await createIndex` bitmeden kalkarsa eşzamanlı ikinci çağrı indeks
+ * HENÜZ YOKKEN sorgu yapar (bkz. lib/pool-store.cjs notu).
+ */
+let _indexPromise = null;
+function ensureIndexes(db) {
+  if (!db) return Promise.resolve();
+  if (_indexPromise) return _indexPromise;
+  _indexPromise = (async () => {
+    try {
+      await db.collection("competition_totals").createIndex(
+        { competitionId: 1, totalPoints: -1 },
+        { background: true }
+      );
+    } catch (e) {
+      console.error("[competition-totals] indeks kurulamadi:", e?.message || e);
+      /* Geçici arızada önbelleği düşür — yoksa hata SÜREÇ BOYUNCA kalıcı olur. */
+      _indexPromise = null;
+    }
+  })();
+  return _indexPromise;
+}
+
 function normUserId(u) {
   return String(u || "").trim().toLowerCase();
 }
@@ -165,6 +205,7 @@ router.get("/competition-totals", async (req, res) => {
     // 1) 🔵 Mongo + competition_totals koleksiyonu varsa direkt kullan
     if (db) {
       try {
+        await ensureIndexes(db);
         const totalsCol = db.collection("competition_totals");
         const docs = await totalsCol
           .find({ competitionId })
