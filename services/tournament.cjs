@@ -489,12 +489,47 @@ async function settle(code, results, db = null) {
   // ⚠️ MÜHÜR ÖDEMEDEN ÖNCE, ATOMİK. Koşul (`status:"open"`) yazmanın içinde;
   // yalnızca tek çağrı true alır. settle2 de aynı mührü kullanıyor.
   const conn = await dbAl(db);
-  const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, conn);
+  /**
+   * ⚠️ `payouts` MÜHÜRLE AYNI İŞLEMDE YAZILIR — ESKİDEN `saveAll` İLE.
+   *
+   * Eski satır `await saveAll(data)` idi ve TÜM koleksiyonu bu fonksiyonun
+   * BAŞINDA alınmış snapshot'la değiştiriyordu (`SocialStore.saveTournaments`
+   * → `replaceAll`). Aradaki sürede BAŞKA turnuvalara düşen her yazma —
+   * katılım, tahmin, yeni turnuva, hatta settle2'nin mührü — snapshot'ta
+   * bulunmadığı için SİLİNİYORDU. Sessizce: `saveAll` hata vermiyor, uç
+   * `ok:true` dönüyor, giriş ücreti çoktan tahsil edilmiş oluyor.
+   *
+   * ÖLÇÜLDÜ (aynı sınıf, settle2 auto-settle): A turnuvası sonuçlanırken B'ye
+   * katılım geldi; katılım başarıyla yazıldı ama B'nin listesinde kalmadı ve
+   * 10 LC gitmişti. Aynı ölçüm burada da yapıldı (bkz. testler).
+   *
+   * Mühür zaten `status`/`settledAt` yazıyordu; tek eksik `payouts`tı ve o da
+   * artık aynı `updateOne` içinde — hem atomik hem başka belgelere dokunmuyor.
+   */
+  const bizimki = await SocialStore.claimTournamentSettle(t.id, nowISO, conn, {
+    payouts: t.payouts,
+  });
   if (!bizimki) throw new Error("ALREADY_SETTLED");
 
   t.status = "settled";
   t.settledAt = nowISO;
-  await saveAll(data);
+
+  /* ⚠️ KATILIMCI PUANLARI AYRI VE HEDEFLİ YAZILIR — `payouts` YERİNE GEÇMEZ.
+   *
+   * `puanlariHesapla` her katılımcının `totalScore` alanını dolduruyor ve bu
+   * değer `getByCode`/`listByUser` üzerinden istemciye dönüyor. Ödeme tablosu
+   * yalnızca ilk 3-4 sırayı kapsıyor (4 katılımcıda 3 kalem, n≥8'de 4); geri
+   * kalan katılımcılar puanlarını yalnızca bu alandan görüyor. `saveAll`
+   * kaldırılırken hedefli bir yazma konmasaydı sessizce 0'a düşerlerdi.
+   *
+   * `participants` dizisini toptan yazmak DÜZELTİLEN KUSURU belge ölçeğinde
+   * geri getirirdi; `setTournamentScoresAtomik` arrayFilters ile yalnızca adı
+   * geçen katılımcının tek alanına dokunuyor. */
+  await SocialStore.setTournamentScoresAtomik(
+    t.id,
+    sorted.map((p) => ({ userId: p.userId, totalScore: p.totalScore })),
+    conn
+  );
 
   // Mühür alındı → ödemeyi BİZ yapmalıyız; settle2 artık bu turnuvayı görmez.
   const odenemeyen = [];
