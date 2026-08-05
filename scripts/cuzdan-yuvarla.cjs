@@ -26,6 +26,12 @@ const { MongoClient } = require("mongodb");
 const {
   COLL_USERS, tutarNormalle,
 } = require("../lib/wallet-credit.cjs");
+/* ⚠️ VERİTABANI ADI UYGULAMANIN KAYNAĞINDAN. Burada çıplak `client.db()`
+ * vardı ve MONGODB_URI'de veritabanı adı OLMADIĞI için sürücünün varsayılanına
+ * ("test") düşüyordu — canlı veriye bakıyor sanıp BOŞ bir veritabanını
+ * tarıyordu. Kuru koşu "0 cüzdan, 0 kirli" diyordu; hata yok, yalnızca YANLIŞ
+ * ÖLÇÜM ve temiz sonuç gibi görünüyor. */
+const { DB_NAME } = require("../lib/mongo.cjs");
 
 const UYGULA = process.argv.includes("--uygula");
 const ALANLAR = ["balance", "totalEarned", "totalSpent"];
@@ -40,7 +46,8 @@ async function main() {
   const client = new MongoClient(uri);
   await client.connect();
   try {
-    const db = client.db();
+    const db = client.db(DB_NAME());
+    console.log(`veritabani    : ${db.databaseName}`);
     const users = db.collection(COLL_USERS);
 
     let taranan = 0, kirli = 0, yazilan = 0;
@@ -77,6 +84,19 @@ async function main() {
         await users.updateOne({ _id: d._id }, { $set: duzeltme });
         yazilan++;
       }
+    }
+
+    /* ⚠️ SIFIR KAYIT, TEMİZ SONUÇ DEĞİLDİR. Bu betik bir kez yanlış
+     * veritabanını tarayıp "0 cüzdan, 0 kirli" dedi ve sonuç "her şey yolunda"
+     * gibi göründü. Hiç cüzdan görmemek, ölçümün YAPILMADIĞI anlamına gelir —
+     * canlı bir uygulamada cüzdan koleksiyonu boş olamaz. */
+    if (!taranan) {
+      console.error(
+        `⛔ HIC CUZDAN BULUNAMADI (db=${db.databaseName}, koleksiyon=${COLL_USERS}). ` +
+        `Bu "temiz" demek DEGIL, "olculmedi" demek: yanlis veritabani ya da ` +
+        `yanlis baglanti adresi olabilir. MONGODB_DB degerini kontrol edin.`
+      );
+      process.exitCode = 3;
     }
 
     console.log(`taranan cuzdan : ${taranan}`);
