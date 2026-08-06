@@ -721,8 +721,11 @@ async function writeFxCache(isoDate, items) {
  * ──────────────────────────────────────────────────────────────────────── */
 const EN_FAZLA_BAYAT_MS = Number(process.env.SKORLIG_FX_MAX_STALE_H || 12) * 3600 * 1000;
 const _fxTazeleme = new Map(); // isoDate → Promise
+// Test/offline modunda dış çağrı yapma — önbellekten oku, yoksa boş dön.
+const FX_OFFLINE = String(process.env.SKORLIG_FX_OFFLINE || "") === "1";
 
 async function _fxTaze(isoDate) {
+  if (FX_OFFLINE) return [];
   const res = [];
   try {
     res.push(...(await tsdbByDate(isoDate)));

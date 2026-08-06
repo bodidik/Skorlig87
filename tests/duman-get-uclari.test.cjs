@@ -95,6 +95,7 @@ before(async () => {
        * amaç yetkisiz isteğin temiz reddedilmesi.
        */
       SKORLIG_ADMIN_TOKEN: "duman-testi-yonetici-jetonu",
+      SKORLIG_FX_OFFLINE: "1",
       PORT: String(PORT),
     },
     stdio: ["ignore", "pipe", "pipe"],
