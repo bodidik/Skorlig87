@@ -7,7 +7,7 @@ const fsp     = fs.promises;
 
 const InviteStore = require("../lib/invite-store.cjs");
 /* Üyelik yazması yalnızca doğrulanmış kimliğe — bkz. POST /verify notu. */
-const { optionalToken } = require("../middleware/verifyToken.cjs");
+const { verifyToken, optionalToken } = require("../middleware/verifyToken.cjs");
 
 function requireAdminToken(req, res, next) {
   const token = String(process.env.SKORLIG_ADMIN_TOKEN || "").trim();
@@ -87,7 +87,7 @@ async function markUser1987(userId, code, db) {
  *
  * ⚠️ KOD DOĞRULAMA KISMI KİMLİKSİZ KALIYOR. `optionalToken` seçildi çünkü
  * kodun geçerliliğini sormak (kotayı görmek) oturum gerektirmemeli; üyelik
- * YAZMASI ise yalnızca doğrulanmış kimliğe yapılıyor. `verifyToken` koymak
+ * YAZMASI ise yalnızca doğrulanmış kimliğe yapılıyor. `verifyToken` kopmak
  * kod girme ekranını oturumdan önce kullanılamaz hâle getirirdi.
  *
  * ⚠️ İSTEMCİ ZATEN JETON GÖNDERİYOR: `gs1987-verify.tsx` ve `mystatus.tsx`
@@ -204,7 +204,6 @@ router.get("/diag", requireAdminToken, async (req, res) => {
  * GET /api/auth1987gs/members
  *
  * 1987 üyesi kullanıcıların listesini döner.
- * Senin mobile tarafındaki Member tipiyle birebir uyumlu:
  *
  *   {
  *     ok: true,
@@ -214,7 +213,6 @@ router.get("/diag", requireAdminToken, async (req, res) => {
  *       {
  *         userId,
  *         label,
- *         lastCode,
  *         sinceAt,
  *         lastVerifiedAt,
  *         active
@@ -222,8 +220,16 @@ router.get("/diag", requireAdminToken, async (req, res) => {
  *     ]
  *   }
  */
-router.get("/members", requireAdminToken, async (req, res) => {
-  // İndeksli segment sorgusu — eskiden tüm kullanıcı dosyası okunuyordu.
+router.get("/members", verifyToken, async (req, res) => {
+  const uid = String(req.uid || "").trim().toLowerCase();
+  if (!uid) return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
+
+  const map = await UsersStore.getUsersByIdsLower([uid], req.app?.locals?.db || null);
+  const caller = map[uid];
+  if (!caller?.is1987) {
+    return res.status(403).json({ ok: false, error: "NOT_1987_MEMBER" });
+  }
+
   const users = await UsersStore.listSegment1987(req.app?.locals?.db || null);
 
   const members = users
@@ -231,7 +237,6 @@ router.get("/members", requireAdminToken, async (req, res) => {
     .map((u) => ({
       userId: u.id || u.userId,
       label: u.label || null,
-      lastCode: u.lastCode || null,
       sinceAt: u.since1987 || u.sinceAt || null,
       lastVerifiedAt: u.lastVerifiedAt || null,
       active: u.active !== false,
