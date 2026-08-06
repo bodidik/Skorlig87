@@ -21,6 +21,7 @@
 const fs = require("fs");
 const path = require("path");
 
+const Season = require("../lib/season.cjs");
 const NO_FETCH = process.argv.includes("--no-fetch");
 const PROBE = process.argv.includes("--probe");
 
@@ -170,7 +171,7 @@ let problems = 0;
   console.log("── 3) Fixture eşleştirme ──");
   const fxRaw = readJson(path.join(DATA_DIR, "fixtures.json"), null);
   const fixtures = Array.isArray(fxRaw) ? fxRaw : (fxRaw && (fxRaw.fixtures || fxRaw.items)) || [];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = Season.dayKey();
 
   const relevant = fixtures.filter((f) => {
     const d = String(f.kickoffISO || f.kickoffDate || "").slice(0, 10);

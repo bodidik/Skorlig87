@@ -26,6 +26,7 @@ const FDO_BASE = process.env.FDO_BASE || "https://api.football-data.org/v4";
 const FDO_KEY = process.env.FDO_TOKEN || process.env.FDO_KEY || "";
 const FDO_HDR = process.env.FDO_HEADER_KEY || "X-Auth-Token";
 
+const Season = require("../lib/season.cjs");
 const TZ = "Europe/Istanbul";
 
 // ⚠️ SKORLIG_DATA_DIR OKUNUYOR. Sabit yol testleri GERÇEK data/ dizinine
@@ -1027,7 +1028,7 @@ router.get("/fav-debug", async (req, res) => {
 // Kullanicinin ulkesinden 4 maç döndürür; eksik slot global elit takimlardan dolar.
 router.get("/daily-menu", async (req, res) => {
   const country = String(req.query.country || "").trim();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = Season.dayKey();
   const SLOTS = 4;
 
   async function fetchPlayable(leagueId) {

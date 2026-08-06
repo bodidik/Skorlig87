@@ -9,6 +9,7 @@ const path = require("path");
 const { guvenliYol } = require("../lib/guvenli-dosya.cjs");
 
 const { getRuntimeMode, setRuntimeMode } = require("../lib/runtime-mode.cjs");
+const Season = require("../lib/season.cjs");
 
 /* =========================================================
    Admin token (fail-closed koruma)
@@ -678,7 +679,7 @@ router.post("/fixtures/add", requireAdminToken, express.json(), async (req, res)
 
     let fixtureId = normId(b.fixtureId);
     if (!fixtureId) {
-      const day = new Date(ko).toISOString().slice(0, 10);
+      const day = Season.dayKey(new Date(ko));
       fixtureId = `${slugPart(home)}-${day}-${slugPart(away)}`;
     }
 
