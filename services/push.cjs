@@ -248,6 +248,52 @@ async function sendToUsers(userIds, payload) {
   return sendRaw(messages);
 }
 
+/**
+ * KİŞİYE ÖZEL TOPLU GÖNDERİM — token deposu BİR KEZ okunur.
+ *
+ * ⚠️ NEDEN VAR: sonuç bildiriminde her kullanıcı farklı sıralama ve puan
+ * alıyor. `sendToUsers` her biri için ayrı çağrılıyordu — N kullanıcılı maçta
+ * N ayrı `loadStore` (her biri Mongo'dan tam okuma) + N ayrı Expo HTTP'si.
+ * 200 kullanıcılı maçta bu 200 depo okuması ve yüzlerce HTTP isteği demekti.
+ *
+ * ⚠️ `entries` dizisi `[{ userId, payload }]` biçiminde. Her `payload`'da
+ * `type` varsa kullanıcının o türü KAPATIP KAPATMADIĞI kontrol ediliyor.
+ *
+ * @param {{userId: string, payload: {title:string, body:string, data?:object, type?:string}}[]} entries
+ */
+async function sendBulkPersonalized(entries) {
+  if (!ENABLED()) return { sent: 0, failed: 0, pruned: 0, skipped: "SKORLIG_PUSH=0" };
+  if (!entries.length) return { sent: 0, failed: 0, pruned: 0 };
+
+  const store = await loadStore();
+  const messages = [];
+
+  for (const { userId, payload } of entries) {
+    const uid = String(userId || "").trim().toLowerCase();
+    if (!uid) continue;
+    const rec = store.items[uid];
+    if (!rec?.tokens?.length) continue;
+
+    const prefs = sanitizePrefs(rec.prefs);
+    const type = payload.type;
+    if (type && PREF_KEYS.includes(type) && prefs[type] === false) continue;
+
+    for (const to of rec.tokens) {
+      messages.push({
+        to,
+        sound: "default",
+        title: payload.title,
+        body: payload.body,
+        data: { ...(payload.data || {}), type: type || "generic" },
+        channelId: "default",
+        priority: "high",
+      });
+    }
+  }
+
+  return sendRaw(messages);
+}
+
 /** Tüm kayıtlı kullanıcılara (duyuru). Tercih türü genelde "daily". */
 async function broadcast(payload) {
   const store = await loadStore();
@@ -260,6 +306,7 @@ module.exports = {
   getPrefs,
   setPrefs,
   sendToUsers,
+  sendBulkPersonalized,
   broadcast,
   sendRaw,
   loadStore,

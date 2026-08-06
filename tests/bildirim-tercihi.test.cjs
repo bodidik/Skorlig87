@@ -77,8 +77,10 @@ describe("gönderim çağrıları", () => {
         if (ad === "services/push.cjs") continue;          // tanımın kendisi
         const src = kodu(path.join(d, dosya));
 
-        // `sendToUsers(<hedef>, { ... })` — açılış süslüden sonraki ~200 karakter.
-        const re = /sendToUsers\(\s*[^,]+,\s*\{([\s\S]{0,220})/g;
+        // `sendToUsers(<hedef>, { ... })` VEYA
+        // `sendBulkPersonalized` girişlerindeki `payload: { ... }`.
+        // Her ikisi de `type` taşımalı — yoksa tercih süzgeci devre dışı kalır.
+        const re = /(?:sendToUsers\(\s*[^,]+,\s*\{|payload:\s*\{)([\s\S]{0,220})/g;
         let m;
         while ((m = re.exec(src))) {
           bakilan++;
@@ -90,7 +92,10 @@ describe("gönderim çağrıları", () => {
       }
     }
 
-    assert.ok(bakilan >= 4, `cok az cagri bulundu (${bakilan}) — tarama bozulmus olabilir`);
+    /* ⚠️ ÖNCESİ: 5 sendToUsers çağrısı. Sonuç bildirimi sendBulkPersonalized'a
+     * taşındı — artık `payload:` kalıbı yakalanıyor, sendToUsers sayısı düştü
+     * ama toplam gönderim noktası aynı kalmalı. */
+    assert.ok(bakilan >= 3, `cok az cagri bulundu (${bakilan}) — tarama bozulmus olabilir`);
     assert.deepStrictEqual(
       kusurlu, [],
       "Bu gonderimler `type` tasimiyor. Suzgec kosullu oldugu icin tercih HIC\n" +
@@ -104,7 +109,7 @@ describe("gönderim çağrıları", () => {
     const gereksiz = Object.keys(MUAF).filter((ad) => {
       const p = path.join(KOK, ad);
       if (!fs.existsSync(p)) return true;
-      return !/sendToUsers\(/.test(kodu(p));
+      return !/sendToUsers\(|sendBulkPersonalized\(/.test(kodu(p));
     });
     assert.deepStrictEqual(
       gereksiz, [],

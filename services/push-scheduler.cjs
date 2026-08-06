@@ -336,20 +336,34 @@ async function runResultNotices() {
     }
     const name = fmtMatch(meta);
 
-    for (let i = 0; i < ranked.length; i++) {
-      const row = ranked[i];
+    /**
+     * ⚠️ TEK DEPO OKUMASI, TEK EXPO İSTEĞİ.
+     *
+     * Eskiden her kullanıcı için ayrı `sendToUsers` çağrılıyordu: N kullanıcılı
+     * maçta N ayrı `loadStore` (her biri Mongo'dan tam okuma) + N ayrı Expo
+     * HTTP'si. 200 kullanıcılı maçta 200 depo okuması demekti.
+     *
+     * `sendBulkPersonalized` tüm mesajları önceden topluyor, depoyu BİR KEZ
+     * okuyor ve Expo'ya `sendRaw` ile (100'lük chunk'larla) gönderiyor.
+     *
+     * ÖLÇÜM YERİ: `npm test -- tests/push-sonuc-toplu.test.cjs`
+     */
+    const entries = ranked.map((row, i) => {
       const pts = Math.round(Number(row.points || 0) * 100) / 100;
       const rank = i + 1;
       const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "📊";
-
-      const r = await push.sendToUsers([row.userId], {
-        type:  "result",
-        title: `${medal} ${name} bitti ${score}`,
-        body:  `${pts} puan aldın — ${total} kişi arasında ${rank}. sıradasın.`,
-        data:  { screen: "match-race", fixtureId: String(s.fixtureId) },
-      });
-      sent += r.sent;
-    }
+      return {
+        userId: row.userId,
+        payload: {
+          type:  "result",
+          title: `${medal} ${name} bitti ${score}`,
+          body:  `${pts} puan aldın — ${total} kişi arasında ${rank}. sıradasın.`,
+          data:  { screen: "match-race", fixtureId: String(s.fixtureId) },
+        },
+      };
+    });
+    const r = await push.sendBulkPersonalized(entries);
+    sent += r.sent;
   }
   return { sent };
 }
