@@ -451,7 +451,11 @@ async function macKilitliMi(fixtureId, db) {
   return { kilitli: false, sebep: null };
 }
 
+const GECERLI_OUTCOME = new Set(["H", "D", "A"]);
+
 async function predict(code, userId, fixtureId, outcome, db = null) {
+  if (!GECERLI_OUTCOME.has(outcome)) throw new Error("INVALID_OUTCOME");
+
   const data = await loadAll();
   const t = data.tournaments.find(x => x.code === code.toUpperCase());
   if (!t) throw new Error("NOT_FOUND");
@@ -660,6 +664,7 @@ module.exports = {
   // Sınama için: saf dağıtım matematiği (bkz. odemeDagit notu).
   /* ⚠️ İADE YOLU DA SINANMALI: buradaki savunma bir kez ETKİSİZ yazılmıştı
    * (yanlış başarısızlık modunu bekliyordu) ve hiçbir test görmedi. */
+  GECERLI_OUTCOME,
   _ucretIadeEt: ucretIadeEt,
   _odemeDagit: odemeDagit, _PAYOUT_TABLE: PAYOUT_TABLE, _PAYOUT_8PLUS: PAYOUT_8PLUS,
   // İki ödeme yolunun (settle + settle2 auto-settle) ORTAK hesapları — her
@@ -667,3 +672,4 @@ module.exports = {
   // patlayıp ötekinin tolere etmesi (bkz. tanımları).
   odemePaylari, puanlariHesapla, PUAN_CARPANI,
 };
+
