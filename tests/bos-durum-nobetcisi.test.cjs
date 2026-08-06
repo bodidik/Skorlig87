@@ -109,3 +109,24 @@ test("fallback şeridi nextCountryMatchISO ile geri sayım gösteriyor", (t) => 
   assert.ok(src.includes('nextCountryMatchISO'),
     "live.tsx icinde nextCountryMatchISO durumu okunmali");
 });
+
+test("DailyMatchCard bugün olmayan maçta tarih ve gün farkı gösteriyor", (t) => {
+  if (!mobilVar) return t.skip("mobil depo yan klasorde yok");
+  const src = fs.readFileSync(mobilYol("components", "DailyMatchCard.tsx"), "utf8");
+
+  assert.ok(src.includes("ayniGun"),
+    "DailyMatchCard icinde ayniGun kontrolu olmali — mac bugunku mu degil mi");
+  assert.ok(src.includes("gunFarki"),
+    "DailyMatchCard icinde gunFarki hesabi olmali");
+  assert.ok(src.includes("inDays"),
+    "DailyMatchCard icinde inDays i18n anahtari kullanilmali");
+  assert.ok(/day.*month|month.*day/i.test(src) || /day.*short|numeric.*month/i.test(src),
+    "Bugün olmayan macta tarih (gun+ay) gosterilmeli");
+});
+
+test("inDays i18n anahtarı tr ve en dillerinde var", (t) => {
+  if (!mobilVar) return t.skip("mobil depo yan klasorde yok");
+  const src = fs.readFileSync(mobilYol("lib", "i18n.ts"), "utf8");
+  assert.ok(/inDays:\s*".*\{n\}/.test(src),
+    "inDays anahtari {n} yer tutucusu icermeli");
+});
