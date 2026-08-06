@@ -106,11 +106,75 @@ function isTrLeagueFixture(fx) {
   return !!(squadTeamOf(fx.home) || squadTeamOf(fx.away));
 }
 
-// ISO hafta anahtarı (Pzt-Paz), örn "2026-W34"
-function isoWeekKey(iso) {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return null;
-  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+/**
+ * ⚠️ HAFTA HESABI ISTANBUL'A GÖRE — ESKİDEN İKİ ZAMAN DİLİMİ KARIŞIYORDU.
+ *
+ * `collectFixtures` günleri en başından beri Europe/Istanbul'a göre sayıyor,
+ * ama `isoWeekKey`/`weekRange` haftayı SAF UTC ile hesaplıyordu. Türkiye yıl
+ * boyu UTC+3 olduğundan 21:00Z ve sonrasındaki her başlama saati Istanbul'da
+ * ZATEN ERTESİ GÜN. Aynı an, iki farklı cevap (ÖLÇÜLDÜ):
+ *
+ *   2026-08-02T21:00:00Z → Istanbul Pzt 00:00 → UTC 2026-W31, Istanbul 2026-W32
+ *   2026-08-09T21:15:00Z → Istanbul Pzt 00:15 → UTC 2026-W32, Istanbul 2026-W33
+ *
+ * Yani geç pazar maçı BİR ÖNCEKİ haftaya düşüyor: yanlış haftalık sıralamada
+ * sayılıyor ve yanlış haftanın ödülüne (`WEEKLY_REWARDS`) giriyordu. Ayrıca
+ * `weekRange` pazartesi 00:00Z döndürüyordu — Istanbul'da 03:00, hafta
+ * kullanıcıya üç saat geç dönüyordu.
+ *
+ * ⚠️ ANAHTAR GÖÇÜ: `tr_league_weeks` / `data/tr-league.json` haftaları
+ * ESKİ (UTC) anahtarla mühürlüyor ve bu mühür LC ödülünün idempotanlık
+ * koruması. Değişiklik öncesi bakıldı: depo dosyası hiç oluşmamış (sonuçlanmış
+ * hafta yok) ve haftalık LC ödülü zaten KAPALI — `SKORLIG_TR_LEAGUE_ODUL`
+ * varsayılanı "0" ve canlıda hiçbir SKORLIG_* değişkeni set değil. Bu yüzden
+ * anahtar kayması para tarafında bir şey yapamaz; göç/kesim tarihi eklenmedi.
+ * Ödül tekrar açılmadan önce bu depo yeniden kontrol edilmeli.
+ */
+const TZ = "Europe/Istanbul";
+
+/** Verilen anın TZ'deki yerel takvim parçaları (yıl/ay/gün ve saat/dk/sn). */
+function tzParcalar(ms) {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(ms));
+  const g = (t) => Number(p.find((x) => x.type === t)?.value);
+  return { y: g("year"), m: g("month"), d: g("day"), H: g("hour"), M: g("minute"), S: g("second") };
+}
+
+/** "YYYY-MM-DD" — TZ'ye göre gün anahtarı (sağlayıcı tarih sorgusu için). */
+function tzGunAnahtari(ms) {
+  const { y, m, d } = tzParcalar(ms);
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+/** TZ ofseti (yerel − UTC, ms). Sabit +3 varsaymıyoruz; dilimden okunuyor. */
+function tzOfsetMs(ms) {
+  const { y, m, d, H, M, S } = tzParcalar(ms);
+  return Date.UTC(y, m - 1, d, H, M, S) - Math.floor(ms / 1000) * 1000;
+}
+
+/** TZ'de `y-m-d 00:00`'a denk gelen UTC anı (ms). */
+function tzGeceYarisiMs(y, m, d) {
+  const tahmin = Date.UTC(y, m - 1, d);
+  let ms = tahmin - tzOfsetMs(tahmin);
+  ms = tahmin - tzOfsetMs(ms); // ofset sınırında bir kez düzelt
+  return ms;
+}
+
+/**
+ * Bir yerel takvim gününün (y-m-d) ISO hafta anahtarı, örn "2026-W34".
+ * Hesap saf takvim aritmetiği: Date.UTC burada zaman dilimi değil, takvim
+ * yerine geçiyor — girdi zaten yerelleştirilmiş y-m-d.
+ */
+function isoWeekKeyFromYmd(y, m, d) {
+  const t = new Date(Date.UTC(y, m - 1, d));
   const day = t.getUTCDay() || 7; // Pazar=7
   t.setUTCDate(t.getUTCDate() + 4 - day); // perşembeye çek
   const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
@@ -118,8 +182,16 @@ function isoWeekKey(iso) {
   return `${t.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
 }
 
+// ISO hafta anahtarı (Pzt-Paz, Europe/Istanbul), örn "2026-W34"
+function isoWeekKey(iso) {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return null;
+  const { y, m, d: gun } = tzParcalar(d.getTime());
+  return isoWeekKeyFromYmd(y, m, gun);
+}
+
 function weekRange(weekKey) {
-  // haftanın pazartesi 00:00Z ve pazar 23:59Z
+  // haftanın pazartesi 00:00 ve pazar 23:59:59.999 — Istanbul saatiyle
   const m = /^(\d{4})-W(\d{2})$/.exec(weekKey || "");
   if (!m) return { fromMs: 0, toMs: 0 };
   const year = Number(m[1]);
@@ -132,11 +204,18 @@ function weekRange(weekKey) {
   mon.setUTCDate(week1Mon.getUTCDate() + (week - 1) * 7);
   const sun = new Date(mon);
   sun.setUTCDate(mon.getUTCDate() + 6);
+  const nextMon = new Date(mon);
+  nextMon.setUTCDate(mon.getUTCDate() + 7);
+
+  // mon/sun burada YEREL takvim günleri; sınırları Istanbul gece yarısına çevir
+  const fromMs = tzGeceYarisiMs(mon.getUTCFullYear(), mon.getUTCMonth() + 1, mon.getUTCDate());
+  const toMs =
+    tzGeceYarisiMs(nextMon.getUTCFullYear(), nextMon.getUTCMonth() + 1, nextMon.getUTCDate()) - 1;
   return {
-    fromMs: mon.getTime(),
-    toMs: sun.getTime() + (24 * 3600 - 1) * 1000,
-    fromISO: Season.dayKey(mon),
-    toISO: Season.dayKey(sun),
+    fromMs,
+    toMs,
+    fromISO: mon.toISOString().slice(0, 10),
+    toISO: sun.toISOString().slice(0, 10),
   };
 }
 
@@ -173,17 +252,11 @@ async function collectFixtures(backDays, fwdDays) {
   const { fixturesByDate } = require("./live2.cjs");
   if (typeof fixturesByDate !== "function") return [];
 
-  const ymd = (ms) =>
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Istanbul",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date(ms));
-
+  // ⚠️ HAFTA HESABIYLA AYNI KAYNAK. Gün sayımı Istanbul'a göreydi ama hafta
+  // anahtarı UTC ile hesaplanıyordu; iki yer artık tek `tzParcalar`ı kullanıyor.
   const now = Date.now();
   const days = [];
-  for (let d = -backDays; d <= fwdDays; d++) days.push(ymd(now + d * 86400000));
+  for (let d = -backDays; d <= fwdDays; d++) days.push(tzGunAnahtari(now + d * 86400000));
 
   const seen = new Set();
   const out = [];
@@ -625,3 +698,9 @@ router.get("/week/:weekKey", async (req, res) => {
 });
 
 module.exports = router;
+
+// testler için: hafta hesabı ve gün sayımı aynı zaman dilimini kullanmalı
+module.exports._TZ = TZ;
+module.exports._isoWeekKey = isoWeekKey;
+module.exports._weekRange = weekRange;
+module.exports._tzGunAnahtari = tzGunAnahtari;

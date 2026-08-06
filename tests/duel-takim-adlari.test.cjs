@@ -99,7 +99,20 @@ after(async () => {
 });
 
 beforeEach(async () => {
-  await db.collection("duels").deleteMany({});
+  /* ⚠️ SİLME STORE'DAN GEÇMELİ.
+   *
+   * Ham `deleteMany` yalnızca Mongo'yu boşaltıyor; `data/duels.json` aynası
+   * dokunulmadan kalıyordu. Bir sonraki API çağrısında `duelsMongoYetkili`
+   * `estimatedDocumentCount() === 0` gördüğü için dosya aynasına düşüyor,
+   * `tohumla()` de dosyadaki eski düelloları Mongo'ya GERİ yazıyordu:
+   *
+   *   [social-store] TOHUMLAMA: duels bos, dosyadan 3 kayit yaziliyor
+   *
+   * Sonuç: `acikDuelloSayisi` üç açık düello görüyor, `TOO_MANY_OPEN_DUELS`
+   * dönüyor, "düello gerçekten kuruluyor" testi patlıyordu. Aynıyı çağırıp
+   * dosyayı da temizliyoruz — `saveDuels([])` iki tarafı da sıfırlar. */
+  const SocialStore = require("../lib/social-store.cjs");
+  await SocialStore.saveDuels([], db);
   await db.collection("lc_wallet_users").updateOne(
     { userIdLower: KULLANICI }, { $set: { balance: 500 } }
   );

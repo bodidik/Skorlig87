@@ -40,10 +40,32 @@ const os = require("os");
 const path = require("path");
 const fs = require("fs");
 
-const TMP = path.join(os.tmpdir(), "skorlig-kota-yarisi-test");
+/**
+ * ⚠️ DİZİN SÜREÇ BAŞINA AYRI + SİLME YENİDEN DENEMELİ.
+ *
+ * Eskiden sabit bir `%TEMP%` adı kullanılıyor ve her testten önce
+ * `rmSync` + `mkdirSync` ile siliniyordu. ÖLÇÜLDÜ: süit yükü olmadan bile
+ * 6 koşunun 2'si Windows dosya sistemi hatasıyla kırıldı — kota sayımıyla
+ * ilgili HİÇBİR iddia patlamadı, hep şunlar:
+ *
+ *     ENOTEMPTY: directory not empty, rmdir  ...\skorlig-kota-yarisi-test
+ *     ENOENT: rename ...providers.json.tmp-15120-...-155 -> providers.json
+ *
+ * Windows'ta özyinelemeli silme HEMEN bitmeyebilir: açık bir tanıtıcı varsa
+ * dizin "silinmeyi bekliyor" durumunda kalır. O aralıkta `rmdir` dizini boş
+ * görmez, hemen ardından oluşturulan geçici dosya da `rename`e yetişmeden
+ * kaybolabilir. Node'un kendi belgeleri Windows'ta `fs.rm` için `maxRetries`
+ * öneriyor; sebep tam olarak bu.
+ *
+ * ⚠️ İKİ AYRI ÖNLEM, İKİ AYRI İŞ: `maxRetries` süreç İÇİNDEKİ silme yarışını
+ * yumuşatıyor; pid'li ad ise önceki/paralel koşulardan artan dizinin bu koşuya
+ * karışmasını engelliyor. Sonda `after` ile temizleniyor ki pid'li dizinler
+ * `%TEMP%`te birikmesin.
+ */
+const TMP = path.join(os.tmpdir(), `skorlig-kota-yarisi-test-${process.pid}`);
 process.env.SKORLIG_DATA_DIR = TMP;
 
-const { test, describe, beforeEach } = require("node:test");
+const { test, describe, beforeEach, after } = require("node:test");
 const assert = require("node:assert/strict");
 
 const KOK = path.join(__dirname, "..");
@@ -53,10 +75,15 @@ const { writeJsonAtomic } = require("../lib/fileLock.cjs");
 const FILE = path.join(TMP, "providers.json");
 const oku = () => JSON.parse(fs.readFileSync(FILE, "utf8"));
 
+const dizniSil = () =>
+  fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+
 beforeEach(() => {
-  fs.rmSync(TMP, { recursive: true, force: true });
+  dizniSil();
   fs.mkdirSync(TMP, { recursive: true });
 });
+
+after(dizniSil);
 
 /* ── Kurulum sağlam mı ───────────────────────────────────────────────────── */
 

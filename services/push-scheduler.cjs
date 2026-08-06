@@ -28,6 +28,7 @@ const MatchResults = require("../lib/match-results.cjs");
 const WALLET       = path.join(DATA_DIR, "lc-wallet.json");
 const SENT_FILE    = path.join(DATA_DIR, "push-sent.json");
 const PushSent = require("../lib/push-sent-store.cjs");
+const { dayKey } = require("../lib/season.cjs");
 
 // Günlük LC hatırlatması bu saatte gider (sunucu saati, 0-23).
 // Gece yarısı bildirim atmak uygulamayı sildirir — akşam kullanım saati seçildi.
@@ -370,8 +371,28 @@ async function runResultNotices() {
 
 /* ===== 3) Günlük LC hatırlatması ===== */
 
+/**
+ * "Bugün" anahtarı — ISTANBUL takvim gününe göre.
+ *
+ * ⚠️ ESKİDEN UTC İDİ ve `lc-wallet.cjs` ile AYRIŞIYORDU. Günlük LC hakkı
+ * yazılırken idempotanlık `gunAnahtari` (lib/season.cjs, Europe/Istanbul) ile
+ * kontrol ediliyor; hatırlatma zamanlayıcısı da AYNI kullanıcının aynı gün
+ * hakkını almış olup olmadığına bakıyor. İki taraf farklı takvim gününe
+ * bakarsa bir kullanıcı hem "hakkını aldı" hem de "hatırlatma bekliyor"
+ * durumuna düşüyor.
+ *
+ * SOMUT SENARYO: Istanbul saatiyle 00:00–02:59 (UTC 21:00–23:59) arası hak
+ * alan kullanıcının `lastDailyAt` damgası UTC'de bir GÜN ÖNCEYE yazılıyor.
+ * `lc-wallet` Istanbul günüyle "aynı gün" diyor ve tekrar vermiyor; ama
+ * zamanlayıcı UTC gününe bakıp "bugün almadın" diyor ve akşam 19:00'da
+ * kilitli bir hak için "🪙 Günlük LC hakkın hazır" push'u atıyor.
+ *
+ * Aynı sınıfın tr-lig hafta hesabı, dayKey ve mevsim anahtarında görülen
+ * kesim; kaynak tek olan `dayKey`e geçildi. `lastDailyAt` UTC ISO damgası,
+ * `dayKey` onu Istanbul'a çevirdiği için karşılaştırma tutarlı.
+ */
 function todayKey(d = new Date()) {
-  return d.toISOString().slice(0, 10);
+  return dayKey(d);
 }
 
 /**
@@ -425,7 +446,9 @@ async function runDailyReminder(now = new Date()) {
   const targets = users
     .filter((u) => {
       // Bugün zaten almışsa hatırlatma anlamsız
-      const last = u.lastDailyAt ? String(u.lastDailyAt).slice(0, 10) : null;
+      // ⚠️ dayKey — .slice(0,10) UTC verirdi ve `todayKey` Istanbul'a geçince
+      // her damga bir gün geriden bakılıp filtre yalancı olurdu.
+      const last = u.lastDailyAt ? dayKey(new Date(u.lastDailyAt)) : null;
       if (last === today) return false;
 
       // Uzun süredir uğramayanı dürtmek spam olur

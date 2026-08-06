@@ -38,6 +38,7 @@ fs.rmSync(TMP, { recursive: true, force: true });
 fs.mkdirSync(TMP, { recursive: true });
 process.env.SKORLIG_WALLET_FILE_MIRROR = "0";   // üretimdeki hâl
 process.env.SKORLIG_PUSH = "0";                 // gerçek gönderim yok
+process.env.SKORLIG_TZ = "Europe/Istanbul";     // dayKey/todayKey icin sabit
 
 const { test, describe, before, after, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
@@ -130,14 +131,21 @@ describe("hatırlatma hedefi", () => {
   });
 
   test("bugün hakkını ALMIŞ kullanıcı hedeflenmiyor", async () => {
-    const bugun = new Date().toISOString();
+    /* ⚠️ 'bugun' zamanlayicinin BAKACAGI ana denk gelmeli — bagimsiz `new Date`
+     * degil. Eskiden `new Date().toISOString()` yaziliyor ve UTC gununden
+     * dilimleniyordu; zamanlayici `dayKey`e (Istanbul) gecince iki taraf
+     * Istanbul 00:00-02:59 penceresinde bir gun ayrisiyor ve `almis` kullanici
+     * hedeflenir olacakti. Damgayi tam `saatte()` aninda uret ki zamanlayicinin
+     * `today` hesabiyla ayni Istanbul gununu goruyoruz. */
+    const su = saatte();
+    const bugun = su.toISOString();
+    const dun = new Date(su.getTime() - 24 * 3600_000).toISOString();
     await db.collection("lc_wallet_users").insertMany([
       { userId: "almis", userIdLower: "almis", lastDailyAt: bugun, updatedAt: bugun, createdAt: bugun },
       { userId: "almamis", userIdLower: "almamis",
-        lastDailyAt: new Date(Date.now() - 24 * 3600_000).toISOString(),
-        updatedAt: bugun, createdAt: bugun },
+        lastDailyAt: dun, updatedAt: bugun, createdAt: bugun },
     ]);
-    const r = await Sch.runDailyReminder(saatte());
+    const r = await Sch.runDailyReminder(su);
     assert.equal(r.targets, 1, "bugun hakkini almis kullaniciya da hatirlatma gidiyor");
   });
 

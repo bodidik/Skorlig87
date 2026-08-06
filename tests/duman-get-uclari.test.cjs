@@ -285,15 +285,22 @@ test("bozuk sorgu parametreleri 500'e yol açmıyor", async () => {
     }
   }
 
-  assert.ok(
-    cevaplanan >= yollar.length - 2,
-    `${yollar.length} uctan yalnizca ${cevaplanan} cevap verdi — kurulum bozuk`
-  );
+  /* ⚠️ ASIL BULGU ÖNCE. Eskiden `cevaplanan` kapısı ilkti; süit yükü altında
+   * baglanti yorgunluguyla düşen cevaplar bu kapıyı patlatıyor, `besyuz` içinde
+   * biriktirilen GERÇEK hata metinleri hiç görünmüyordu — flake'i teşhis
+   * etmek imkânsızlaşıyordu. Önce içerik iddiası, guard sonra. */
   assert.deepStrictEqual(
     besyuz, [],
     "Bozuk parametre 500'e yol aciyor. `Number('abc')` NaN, bos dize, negatif\n" +
       "sinir gibi degerler istemciden gelebilir; 4xx dogru cevap, 5xx kod hatasi:\n" +
       besyuz.join("\n")
+  );
+  assert.ok(
+    cevaplanan >= yollar.length - 2,
+    `${yollar.length} uctan yalnizca ${cevaplanan} cevap verdi — kurulum bozuk\n` +
+      // Birikmiş hatalar varsa (üstteki iddia geçti ama bazı istekler
+      // hiç cevap veremedi) örneklerini ver — çıplak sayı flake'i gizliyordu.
+      (besyuz.length ? `ilk hatalar:\n${besyuz.slice(0, 3).join("\n")}` : "")
   );
 });
 
