@@ -1109,6 +1109,20 @@ async function effectiveStatusForFixture(it) {
   return (await effectiveStateForFixture(it)).status;
 }
 
+async function sonrakiUlkeMaciISO(userCountry) {
+  if (!userCountry) return null;
+  const all = await FixturesStore.loadAll();
+  const simdi = Date.now();
+  let en = null;
+  for (const f of all) {
+    if (!sameCountry(f.country, userCountry)) continue;
+    const k = Date.parse(f.kickoffISO || "");
+    if (!Number.isFinite(k) || k <= simdi) continue;
+    if (!en || k < en) en = k;
+  }
+  return en ? new Date(en).toISOString() : null;
+}
+
 async function loadManualFixtures() {
   // Fikstürler Mongo birincil — bkz. lib/fixtures-store.cjs
   const list = await FixturesStore.loadAll();
@@ -1503,6 +1517,10 @@ router.get("/schedule", async (req, res) => {
       });
     }
 
+    const nextCountryMatchISO = countryFallback
+      ? await sonrakiUlkeMaciISO(userCountry)
+      : null;
+
     res.json({
       ok: true,
       count: capped.length,
@@ -1510,9 +1528,8 @@ router.get("/schedule", async (req, res) => {
       runtimeMode,
       cap,
       windowDays: { backDays, fwdDays, fromISO, toISO },
-      // Kullanıcının ülkesinde maç bulunamadığı için dünya listesi döndü.
-      // Arayüz bunu belirtmeli, yoksa Brezilya maçı görmek hata gibi görünür.
       countryFallback,
+      nextCountryMatchISO,
     });
   } catch (e) {
     res.status(500).json({
@@ -1615,6 +1632,10 @@ router.get("/open", async (req, res) => {
       priorityGroup: priorityGroupOf(it, userCountry),
     }));
 
+    const nextCountryMatchISO = countryFallback
+      ? await sonrakiUlkeMaciISO(userCountry)
+      : null;
+
     res.json({
       ok: true,
       count: capped.length,
@@ -1624,6 +1645,7 @@ router.get("/open", async (req, res) => {
       runtimeMode,
       cap,
       countryFallback,
+      nextCountryMatchISO,
     });
   } catch (e) {
     res.status(500).json({
