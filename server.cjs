@@ -566,6 +566,19 @@ const server = app.listen(PORT, HOST, () => {
     );
   }
 
+  /* 🇹🇷 ESPN fikstür senkronu: İLERİ TARİHLİ, kapsam dışı ülkeler için.
+     NEDEN: Türkiye ne FDO'da (8 ülke) ne de ileri tarihli bir kaynakta vardı;
+     Maçkolik yalnızca bugün+yarın veriyor. Ölçüldü — Süper Lig maçı 0, haftalık
+     kupon (8 maç şart) Türk kullanıcı için HİÇBİR haftada kurulamıyordu.
+     ESPN lige özel ucu düz HTTP (Puppeteer yok) ve 30 gün ileri veriyor.
+     Varsayılan yalnızca tur.1; diğer ligler SKORLIG_ESPN_LIGLER ile açılır.
+     Kapatmak için: SKORLIG_ESPN_SYNC=0 */
+  if (process.env.SKORLIG_ESPN_SYNC !== "0") {
+    safeMount("espn-fixture-sync", () =>
+      require("./services/espn-fixture-sync.cjs").start(6 * 3600 * 1000)
+    );
+  }
+
   /* 🤖 Bot doluluk: yaklaşan maçlara otomatik bot doldurur.
      Sayı gerçek tahminciye göre belirlenir (bot = hedef − gerçek), bu yüzden
      her tur bot sayısı azalır ve hedef dolunca sıfırlanır. Önceden her maç
