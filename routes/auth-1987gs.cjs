@@ -87,7 +87,7 @@ async function markUser1987(userId, code, db) {
  *
  * ⚠️ KOD DOĞRULAMA KISMI KİMLİKSİZ KALIYOR. `optionalToken` seçildi çünkü
  * kodun geçerliliğini sormak (kotayı görmek) oturum gerektirmemeli; üyelik
- * YAZMASI ise yalnızca doğrulanmış kimliğe yapılıyor. `verifyToken` koymak
+ * YAZMASI ise yalnızca doğrulanmış kimliğe yapılıyor. `verifyToken` kopmak
  * kod girme ekranını oturumdan önce kullanılamaz hâle getirirdi.
  *
  * ⚠️ İSTEMCİ ZATEN JETON GÖNDERİYOR: `gs1987-verify.tsx` ve `mystatus.tsx`
@@ -204,7 +204,6 @@ router.get("/diag", requireAdminToken, async (req, res) => {
  * GET /api/auth1987gs/members
  *
  * 1987 üyesi kullanıcıların listesini döner.
- * Senin mobile tarafındaki Member tipiyle birebir uyumlu:
  *
  *   {
  *     ok: true,
@@ -231,7 +230,6 @@ router.get("/members", verifyToken, async (req, res) => {
     return res.status(403).json({ ok: false, error: "NOT_1987_MEMBER" });
   }
 
-  // İndeksli segment sorgusu — eskiden tüm kullanıcı dosyası okunuyordu.
   const users = await UsersStore.listSegment1987(req.app?.locals?.db || null);
 
   const members = users
