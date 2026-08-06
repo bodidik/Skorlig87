@@ -59,6 +59,7 @@ const DAILY_FLOOR_PREM = require("../lib/ekonomi.cjs").GUNLUK_TABAN_PREM;
 // 3-4 LC, süreklilik ödüllensin.
 const DAILY_FLOOR_3 = require("../lib/ekonomi.cjs").GUNLUK_TABAN_SERI3;
 const DAILY_FLOOR_7 = require("../lib/ekonomi.cjs").GUNLUK_TABAN_SERI7;
+const { AYLIK_ESIK_10, AYLIK_ESIK_20, AYLIK_ODUL_10, AYLIK_ODUL_20 } = require("../lib/ekonomi.cjs");
 
 /**
  * Bugün verilecek LC miktarı.
@@ -280,6 +281,10 @@ function gunAnahtari(iso) {
   if (!iso) return null;
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : Season.dayKey(d);
+}
+
+function ayAnahtari(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function addLedgerEntryFile(state, { userId, kind, amount, reason, fixtureId, meta }) {
@@ -610,6 +615,16 @@ router.get("/lc-wallet/summary", verifyToken, async (req, res) => {
         premium: isPrem,
         premiumMonthly: premium.monthlyInfo(user, isPrem),
         regen: regenInfo(user, Date.now(), regenOpts),
+        monthly: (() => {
+          const buAy = ayAnahtari();
+          const gun = (user.monthlyMonth === buAy) ? Number(user.monthlyDays || 0) : 0;
+          return {
+            month: buAy, daysThisMonth: gun,
+            next: gun < AYLIK_ESIK_10 ? { at: AYLIK_ESIK_10, amount: AYLIK_ODUL_10 }
+                : gun < AYLIK_ESIK_20 ? { at: AYLIK_ESIK_20, amount: AYLIK_ODUL_20 }
+                : null,
+          };
+        })(),
         updatedAt: user.updatedAt || null,
       });
     }
@@ -770,6 +785,11 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
         });
       }
 
+      const buAy = ayAnahtari();
+      const aylikGunler = (user.monthlyMonth === buAy)
+        ? Number(user.monthlyDays || 0) + 1
+        : 1;
+
       const updateResult = await col.updateOne(
         {
           userIdLower: uidLower,
@@ -783,6 +803,8 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
           $set: {
             lastDailyAt: nowISO,
             dailyStreak: yeniSeri,
+            monthlyMonth: buAy,
+            monthlyDays: aylikGunler,
             updatedAt: nowISO,
           },
         }
@@ -817,8 +839,6 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
 
       const updatedUser = await col.findOne({ userIdLower: uidLower });
 
-      // Defter kaydı GERÇEK verilen miktarı yazmalı; sabit DAILY_LC yazmak
-      // ekonomi raporunu (bkz. /api/admin/economy) yalan söyletirdi.
       if (verilecek > 0) {
         await addLedgerEntryMongo(db, {
           userId,
@@ -828,21 +848,51 @@ router.post("/lc-wallet/daily-claim", verifyToken, express.json(), async (req, r
         });
       }
 
+      let aylikBonus = 0;
+      const oncekiGun = aylikGunler - 1;
+      if (oncekiGun < AYLIK_ESIK_10 && aylikGunler >= AYLIK_ESIK_10) aylikBonus = AYLIK_ODUL_10;
+      if (oncekiGun < AYLIK_ESIK_20 && aylikGunler >= AYLIK_ESIK_20) aylikBonus = AYLIK_ODUL_20;
+
+      if (aylikBonus > 0) {
+        await col.updateOne(
+          { userIdLower: uidLower },
+          { $inc: { balance: aylikBonus, totalEarned: aylikBonus } }
+        );
+        await addLedgerEntryMongo(db, {
+          userId,
+          kind: "reward",
+          amount: aylikBonus,
+          reason: `aylik_${aylikGunler}`,
+        });
+      }
+
+      const finalUser = aylikBonus > 0
+        ? await col.findOne({ userIdLower: uidLower })
+        : updatedUser;
+
       return res.json({
         ok: true,
         user: {
-          userId: updatedUser.userId,
-          balance: updatedUser.balance,
-          lastDailyAt: updatedUser.lastDailyAt,
-          totalEarned: updatedUser.totalEarned || 0,
-          totalSpent: updatedUser.totalSpent || 0,
-          is1987: !!updatedUser.is1987,
+          userId: finalUser.userId,
+          balance: finalUser.balance,
+          lastDailyAt: finalUser.lastDailyAt,
+          totalEarned: finalUser.totalEarned || 0,
+          totalSpent: finalUser.totalSpent || 0,
+          is1987: !!finalUser.is1987,
         },
         daily: {
           today,
           amount: verilecek,
           floor: isPrem ? DAILY_FLOOR_PREM : DAILY_FLOOR,
           claimed: true,
+        },
+        monthly: {
+          month: buAy,
+          daysThisMonth: aylikGunler,
+          bonus: aylikBonus,
+          next: aylikGunler < AYLIK_ESIK_10 ? { at: AYLIK_ESIK_10, amount: AYLIK_ODUL_10 }
+              : aylikGunler < AYLIK_ESIK_20 ? { at: AYLIK_ESIK_20, amount: AYLIK_ODUL_20 }
+              : null,
         },
       });
     }
