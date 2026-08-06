@@ -816,6 +816,10 @@ router.post("/duels/accept", verifyToken, async (req, res) => {
         result = { err: "NOT_YOUR_CHALLENGE" }; return;
       }
 
+      if (await SocialStore.engelliMi(duel.creatorId, acceptorId, db)) {
+        result = { err: "BLOCKED" }; return;
+      }
+
       // 🔒 Maç başladıysa düello kabul edilemez
       const lock = await isFixtureLocked(duel.fixtureId, db);
       if (lock.locked) { result = { err: lock.reason }; return; }

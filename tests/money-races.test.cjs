@@ -178,7 +178,7 @@ describe("göreli yazma kuralı (regen)", () => {
 });
 
 describe("düello ödemesi mührü", () => {
-  const duello = (id, st = "accepted") => ({
+  const duello = (id, st = "active") => ({
     id, status: st, fixtureId: "fx", stake: 10, pot: 20,
     creatorId: "u1", acceptorId: "u2",
   });
