@@ -43,13 +43,45 @@ function baglantiHatasiMi(e) {
   return /fetch failed|ECONNREFUSED|ECONNRESET|EADDRNOTAVAIL|ETIMEDOUT|socket hang up/i.test(metin);
 }
 
+/**
+ * ⚠️ TEK DENEME + 60ms YETMİYORDU. Bugünkü tam-süit koşusu 14 fetch failed
+ * yakaladı (arkadas-listesi-sizintisi, baglanti-kesintisi-503,
+ * board2-veri-sozlesmesi altında yayılmış). Belge tek deneme ile "kırılma
+ * 8-10 kosuda 1" diyordu, üstelik sonrasında `mini-acik-turnuvalar` ve
+ * `e2e-cekirdek-dongu` gibi başka testlerde de belge dışına çıktı.
+ *
+ * Windows TIME_WAIT süresi ~2 dk. 60ms nefes ephemeral port baskısı için
+ * anlamlı bir zaman değil; ilk deneme başarısız olduğunda ikinci de aynı
+ * anda başarısız oluyor. Üstel geri çekilme (60, 250, 1000ms) baskının
+ * biraz azalmasına zaman tanıyor. 3 denemenin üzerine çıkmıyoruz: gerçek
+ * bir hatanın uçları toplanabilir olsun. */
+const GERI_CEKILME_MS = [60, 250, 1000];
+
+/** Bir sonraki deneme icin ne kadar bekleyecegimizi bildirir; teshis kolaylığı. */
+let _sonKod = null;
+function _sonBaglantiHatasi() { return _sonKod; }
+
 globalThis.fetch = async function (...args) {
-  try {
-    return await asilFetch.apply(this, args);
-  } catch (e) {
-    if (!baglantiHatasiMi(e)) throw e;
-    // Kısa nefes: soket/port baskısının geçmesi için.
-    await new Promise((r) => setTimeout(r, 60));
-    return asilFetch.apply(this, args);
+  let sonHata;
+  for (let i = 0; i <= GERI_CEKILME_MS.length; i++) {
+    try {
+      return await asilFetch.apply(this, args);
+    } catch (e) {
+      sonHata = e;
+      if (!baglantiHatasiMi(e)) throw e;
+      _sonKod = e?.cause?.code || e?.code || e?.message || "?";
+      if (i === GERI_CEKILME_MS.length) break;
+      await new Promise((r) => setTimeout(r, GERI_CEKILME_MS[i]));
+    }
   }
+  /* Son çare de başarısız — hatayı, gerçek `cause`u koruyarak fırlat.
+   * Test raporunda "fetch failed" tek başına ne olduğunu söylemiyordu;
+   * asıl `cause.code` (ECONNRESET / ECONNREFUSED / …) mesaja işlensin
+   * ki bir daha bakan daha az koşum yapmadan sorunu görsün. */
+  if (sonHata && sonHata.cause && !/ECONN|EADDR|ETIME|socket hang/i.test(sonHata.message)) {
+    sonHata.message = `${sonHata.message} (cause=${sonHata.cause.code || sonHata.cause.message || sonHata.cause})`;
+  }
+  throw sonHata;
 };
+
+module.exports = { _sonBaglantiHatasi };
