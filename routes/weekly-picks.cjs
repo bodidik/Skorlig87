@@ -34,7 +34,7 @@ const WINDOW_AFTER_MS  =  4 * 60 * 60 * 1000;  // bitimden 4 saat sonra kapanır
 // ⚠️ DÖRDÜNCÜ AD, AYNI DEĞER (LC_MATCH_COST / MATCH_ENTRY_COST /
 // LC_COST_NORMAL). Hepsi maç giriş bedeli; ayrı tanımlıyken biri
 // değişince diğerleri sessizce eski kalırdı.
-const { MAC_GIRIS_BEDELI: LC_COST_NORMAL } = require("../lib/ekonomi.cjs");
+const { macGirisBedeli } = require("../lib/ekonomi.cjs");
 const WEEK_MS          = 7 * 24 * 60 * 60 * 1000;
 
 async function readJson(file, fb = null) {
@@ -401,10 +401,11 @@ router.post("/predict", verifyToken, async (req, res) => {
     let lcCharged  = 0;
 
     if (!free && !existing) {
-      const spend = await spendLc(db, uid, LC_COST_NORMAL);
+      const bedel = macGirisBedeli();
+      const spend = await spendLc(db, uid, bedel);
       if (!spend.ok) return res.status(400).json({ ok: false, error: "LC_NOT_ENOUGH", lc: spend.lc, needed: spend.needed });
       lc        = spend.lc;
-      lcCharged = LC_COST_NORMAL;
+      lcCharged = bedel;
     }
 
     // ⚠️ ÖNCE MONGO: settle2 tahminleri `preds` koleksiyonundan okur. Yalnızca

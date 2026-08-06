@@ -74,7 +74,7 @@ before(async () => {
   await new Promise((r) => { server = app.listen(0, r); });
   taban = `http://127.0.0.1:${server.address().port}`;
 
-  MAC_BEDELI = require("../lib/ekonomi.cjs").MAC_GIRIS_BEDELI ?? 3;
+  MAC_BEDELI = require("../lib/ekonomi.cjs").macGirisBedeli();
 });
 
 after(async () => {

@@ -57,7 +57,7 @@ const { isInternalCaller } = require("../lib/internal-caller.cjs");
 // ⚠️ Tek kaynak: lib/ekonomi.cjs. Bu üç sabit dört dosyada, açılış bakiyesi
 // iki ayrı adla (LC_START / INITIAL_DEFAULT) tanımlıydı — elle senkron
 // gerektiren her sabit, sapmayı bekleyen bir hatadır.
-const { INITIAL_DEFAULT, INITIAL_1987, LC_MATCH_COST } = require("../lib/ekonomi.cjs");
+const { INITIAL_DEFAULT, INITIAL_1987, LC_MATCH_COST, macGirisBedeli } = require("../lib/ekonomi.cjs");
 
 // 🔹 Ölçeklenme: Mongo primary olduğunda preds.json'a yazmak 17MB'lık dosyayı
 // her submit'te baştan yazar — 500k kullanıcıda çöker. Bu bayrak açıkken
@@ -924,7 +924,7 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
     // Premium ayrıcalığı: maç girişi bedava. 1987 üyeleri de bedava.
     const isPrem  = await premium.isPremium(uid, getDb(req));
     const is1987  = await isUser1987Member(uid, getDb(req));
-    const effMatchCost = (isPrem || is1987) ? 0 : LC_MATCH_COST;
+    const effMatchCost = (isPrem || is1987) ? 0 : macGirisBedeli();
     const spendRes = db
       ? await spendLcMatchIfNeededMongo(
           db,

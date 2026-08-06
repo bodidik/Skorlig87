@@ -124,7 +124,7 @@ const { INITIAL_DEFAULT, INITIAL_1987 } = require("../lib/ekonomi.cjs");
 // (pricing.matchEntryCost), oysa TAHSILATI pred.cjs LC_MATCH_COST ile
 // yapıyor. İkisi ayrı tanımlıyken sapma, uygulamanın bir fiyat gösterip
 // BAŞKA fiyat kesmesi demekti. Artık ikisi de lib/ekonomi.cjs'ten.
-const { MAC_GIRIS_BEDELI: MATCH_ENTRY_COST } = require("../lib/ekonomi.cjs");
+const { MAC_GIRIS_BEDELI: MATCH_ENTRY_COST, macGirisBedeli, lansmanAktifMi, LANSMAN_BITIS } = require("../lib/ekonomi.cjs");
 
 // 🚀 Tanıtım dönemi: ilk N üyeye başlangıç LC bonusu (erken kuş ödülü).
 // Kapatmak için SKORLIG_EARLY_LIMIT=0. Cüzdanı ilk oluşan üyeler faydalanır.
@@ -585,6 +585,7 @@ router.get("/lc-wallet/summary", verifyToken, async (req, res) => {
         user: {
           userId: user.userId,
           balance: user.balance,
+          bonus1987: user.bonus1987 ?? null,
           lastDailyAt: user.lastDailyAt,
           totalEarned: user.totalEarned || 0,
           totalSpent: user.totalSpent || 0,
@@ -601,10 +602,11 @@ router.get("/lc-wallet/summary", verifyToken, async (req, res) => {
         },
         pricing: {
           daily: dailyAmount,
-          matchEntryCost: premium.matchCost(isPrem, MATCH_ENTRY_COST),
+          matchEntryCost: premium.matchCost(isPrem, macGirisBedeli()),
           initialDefault: INITIAL_DEFAULT,
           initial1987: INITIAL_1987,
         },
+        lansman: lansmanAktifMi() ? { aktif: true, bitis: LANSMAN_BITIS, bedel: macGirisBedeli() } : null,
         premium: isPrem,
         premiumMonthly: premium.monthlyInfo(user, isPrem),
         regen: regenInfo(user, Date.now(), regenOpts),

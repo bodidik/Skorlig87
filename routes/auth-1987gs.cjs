@@ -143,6 +143,12 @@ router.post("/verify", optionalToken, express.json(), async (req, res) => {
   // ✅ Kullanıcıyı 1987 üyesi olarak işaretle (userId verilmişse)
   if (userId) {
     await markUser1987(userId, codeNorm, req.app?.locals?.db || null);
+    // 1987 bonus bakiyesini kur (mevcut kullanıcıya da verilir)
+    const db = req.app?.locals?.db || null;
+    if (db) {
+      const { bonus1987Tamamla } = require("../lib/wallet-credit.cjs");
+      await bonus1987Tamamla(db, userId);
+    }
   }
 
   return res.json({

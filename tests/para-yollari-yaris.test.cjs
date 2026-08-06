@@ -148,8 +148,9 @@ describe("para yolları — eşzamanlılık", () => {
     const kayit = await db.collection("predictions").countDocuments({ fixtureId: "FX1", userIdLower: "tahmin" });
     assert.equal(kayit, 1, `${kayit} tahmin kaydi — mukerrer kayit`);
 
+    const { macGirisBedeli } = require("../lib/ekonomi.cjs");
     const dusen = 50 - (await bakiye("TAHMIN"));
-    assert.equal(dusen, 3, `${dusen} LC dusuldu — coklu tahsilat (giris bedeli 3)`);
+    assert.equal(dusen, macGirisBedeli(), `${dusen} LC dusuldu — coklu tahsilat (giris bedeli ${macGirisBedeli()})`);
   });
 
   test("kapat", { skip: atla() && sebep }, async () => {

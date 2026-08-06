@@ -1,5 +1,7 @@
 "use strict";
 
+require("dotenv").config();
+
 /**
  * users.json → MongoDB `users` koleksiyonu aktarımı.
  *
