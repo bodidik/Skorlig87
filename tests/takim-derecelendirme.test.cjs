@@ -148,9 +148,19 @@ describe("çarpışmalar tahmin edilmiyor", () => {
 
 test("gerçek fikstür verisinde kapsam gerilemedi", (t) => {
   /**
-   * ⚠️ Eşik ÖLÇÜLEN değerin biraz altında (%15) — veri değiştikçe oran da
+   * ⚠️ Eşik ÖLÇÜLEN değerin biraz altında (%15.5) — veri değiştikçe oran da
    * değişir, testin amacı tam sayıyı dondurmak değil GERİLEMEYİ yakalamak.
-   * Ölçüm anındaki değerler: önce %12.8, sonra %17.5.
+   *
+   * ⚠️ METRİK DÜZELTİLDİ (2026-08-07): eskiden `getRating(a) !== DEFAULT`
+   * ile ölçülüyordu. DEFAULT_RATING = 65 ve tabloda 65 puanlı GERÇEK
+   * girişler var (Kasımpaşa, Cardiff City, Jablonec — ölçüldü: 39 ad).
+   * Değer üzerinden üyelik çıkarılamaz: 65 puanlı takım eklemek metriğe
+   * görünmüyor, 65'e denk gelen her giriş "kapsanmıyor" sayılıyordu.
+   * Doğrusu üyelik sorgusu: `hasRating` (aynı çözümleme zinciri).
+   *
+   * Ölçüm geçmişi: %12.8 → %17.5 (değer metriği) → %15.9 gerçek üyelik
+   * (Maçkolik kapsam genişlemesi paydayı 2514'ten 3747'ye büyüttü) →
+   * %16.4 (TR eksikleri + resmî ad varyantları eklendi).
    */
   const dosya = require("./_gercek-veri.cjs").veriYolu("fixtures.json");
   if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
@@ -166,11 +176,36 @@ test("gerçek fikstür verisinde kapsam gerilemedi", (t) => {
   }
   assert.ok(adlar.size > 100, `cok az takim adi (${adlar.size}) — tarama bozuk`);
 
-  const kapsanan = [...adlar].filter((a) => OE.getRating(a) !== DEFAULT_RATING).length;
+  const kapsanan = [...adlar].filter((a) => OE.hasRating(a)).length;
   const oran = kapsanan / adlar.size;
   assert.ok(
-    oran >= 0.15,
-    `kapsam %${(100 * oran).toFixed(1)} — olcum aninda %17.5 idi, gerileme var`
+    oran >= 0.155,
+    `kapsam %${(100 * oran).toFixed(1)} — olcum aninda %16.4 idi, gerileme var`
+  );
+});
+
+test("ANA PAZAR: Türkiye fikstüründeki takımlar derecelendirilmiş", (t) => {
+  /**
+   * Genel oran Türkiye'yi maskeliyordu: %15.9 genel kapsamda bile
+   * Gençlerbirliği (Süper Lig!), Çorum FK ve Amedspor varsayılana
+   * düşüyordu — ana pazarın maçları düz oranla oynanıyordu. Türkiye
+   * için eşik genel orandan sert: en fazla 2 kaçak (yeni çıkan/3.lig).
+   */
+  const dosya = require("./_gercek-veri.cjs").veriYolu("fixtures.json");
+  if (!fs.existsSync(dosya)) return t.skip("fikstur verisi yok");
+  const raw = JSON.parse(fs.readFileSync(dosya, "utf8"));
+  const items = (raw.fixtures || raw.items || [])
+    .filter((x) => x?.country === "Turkey" || x?.country === "Türkiye");
+  if (items.length < 5) return t.skip("yeterli TR fiksturu yok");
+
+  const eksik = new Set();
+  for (const x of items) for (const ad of [x.home, x.away]) {
+    if (ad && !OE.hasRating(String(ad))) eksik.add(String(ad));
+  }
+  assert.ok(
+    eksik.size <= 2,
+    `TR fiksturunde ${eksik.size} derecesiz takim: ${[...eksik].join(", ")} — ` +
+    "ana pazarda duz oran kabul edilemez, tabloya ekle"
   );
 });
 

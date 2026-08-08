@@ -31,6 +31,7 @@ const TEAM_RATINGS = {
   "Swansea City": 67, "Hull City": 67, "Blackburn Rovers": 66,
   "Bristol City": 66, "Millwall": 65, "Preston North End": 65,
   "Queens Park Rangers": 64, "QPR": 64, "Cardiff City": 65,
+  "Wrexham": 63, "Wrexham AFC": 63,
   "Plymouth Argyle": 63, "Sheffield Wednesday": 65, "Rotherham United": 62,
 
   // ── SPAIN (La Liga + Segunda) ──────────────────────────────────
@@ -143,6 +144,10 @@ const TEAM_RATINGS = {
   "Hatayspor": 64, "Ankaragücü": 65, "Pendikspor": 62,
   "Rizespor": 64, "Çaykur Rizespor": 64,
   "Alanyaspor": 66, "Kasımpaşa": 65,
+  // 2026-08-07 kapsam taraması: TR fikstüründe varsayılana düşen takımlar
+  // (ana pazarda düz oran = dengesiz maç dengeli görünür, bkz. üst not).
+  "Gençlerbirliği": 64, "Çorum FK": 61, "Amedspor": 61,
+  "Elazığspor": 56, "Ayvalıkgücü Bld": 54,
   "Ümraniyespor": 58, "İstanbulspor": 57, "Giresunspor": 60,
   "Bodrum FK": 63, "Eyüpspor": 64, "Göztepe": 66,
   "MKE Ankaragücü": 65,
@@ -200,7 +205,7 @@ const TEAM_RATINGS = {
   "Atromitos": 64, "Giannina": 63, "Lamia": 62, "Ionikos": 62,
 
   // ── DENMARK (Superliga) ────────────────────────────────────────
-  "FC Copenhagen": 74, "København": 74,
+  "FC Copenhagen": 74, "København": 74, "FC Koebenhavn": 74,
   "FC Midtjylland": 73, "Midtjylland": 73,
   "Brøndby": 71, "Brondby": 71,
   "FC Nordsjælland": 69, "Nordsjælland": 69,
@@ -324,6 +329,13 @@ const TEAM_RATINGS = {
   "Vasco da Gama": 71, "Vasco": 71,
   "Bahia": 70, "EC Bahia": 70, "Atlético Mineiro": 74, "Atletico-MG": 74,
   "Red Bull Bragantino": 71, "Bragantino": 71,
+  // 2026-08-07: Maçkolik'in resmî ad biçimleri — kanonikle AYNI değer
+  // (normAd "Paulista/RB/CA" öneklerini çözemiyor, birebir giriş şart).
+  "SC Corinthians Paulista": 74, "CA Mineiro": 74,
+  "CA Paranaense": 75, "RB Bragantino": 71,
+  "Mirassol": 69, "Mirassol FC": 69,
+  "Clube do Remo": 64, "EC Vitória": 68,
+  "Chapecoense": 63, "Chapecoense AF": 63,
   "Cuiabá": 67, "Goiás": 67, "Coritiba": 67,
   "América Mineiro": 67, "América-MG": 67,
 
@@ -612,6 +624,25 @@ function getRating(teamName) {
   return DEFAULT_RATING;
 }
 
+/**
+ * Ad tabloda ÇÖZÜLÜYOR MU — getRating'in değeriyle DEĞİL, üyelikle ölçüm.
+ *
+ * ⚠️ NEDEN VAR (2026-08-07): kapsam ölçümü `getRating(a) !== DEFAULT_RATING`
+ * ile yapılıyordu. DEFAULT_RATING = 65 ve tabloda 65 puanlı GERÇEK girişler
+ * var (Kasımpaşa, Cardiff City, Jablonec...). Metrik bunları "kapsanmıyor"
+ * sayıyordu; 65 puanlı takım EKLEMEK metriğe görünmüyordu. Değer üzerinden
+ * üyelik çıkarılamaz — üyelik ayrı sorgudur.
+ */
+function hasRating(teamName) {
+  if (!teamName) return false;
+  if (TEAM_RATINGS[teamName] != null) return true;
+  _indeksler();
+  const kucuk = String(teamName).toLowerCase();
+  if (_kucukIdx.has(kucuk)) return true;
+  const n = normAd(teamName);
+  return !!(n && _normIdx.has(n));
+}
+
 function calcOdds(homeTeam, awayTeam) {
   const hr = getRating(homeTeam) + HOME_ADVANTAGE;
   const ar = getRating(awayTeam);
@@ -636,4 +667,4 @@ function lcReward(baseLC, odds) {
   return Math.round(baseLC * odds);
 }
 
-module.exports = { calcOdds, getRating, lcReward, TEAM_RATINGS };
+module.exports = { calcOdds, getRating, hasRating, lcReward, TEAM_RATINGS };
