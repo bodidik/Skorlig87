@@ -111,7 +111,15 @@ const Ekonomi = require("../lib/ekonomi.cjs");
  * `routes/weekly-picks.cjs` bu sabitin DÖRDÜNCÜ adını taşıdığını zaten
  * not etmiş; tek kaynağa bağlamak o zincirin son halkası.
  */
-const { MAC_GIRIS_BEDELI: LC_ENTRY_COST } = require("../lib/ekonomi.cjs");
+/* ⚠️ KUSUR SINIFININ İKİNCİ MUTASYONU (2026-08-07): "tek kaynak" YETMEDİ.
+ * Yukarıdaki not sabit kodu tek kaynağa bağlamıştı; lansman tahsilatı
+ * DİNAMİK yapınca (`macGirisBedeli()`: dönem içinde 1, sonrası 3) aynı
+ * kaynaktan iki farklı değer çıkar oldu — tahsilat 1, iade 3, her isabetli
+ * tahmin +2 LC net (1987 üyesine +3, çünkü hiç ödemiyor). Ölçüldü:
+ * tests/lansman-iade-uyumu.test.cjs. İade artık "o an geçerli bedel"den
+ * DEĞİL, tahmin belgesine yazılmış GERÇEK ödemeden (`lcCharged`) okunur;
+ * eski belgeler (alan yok) için yedek `macGirisBedeli()`. */
+const { macGirisBedeli: guncelGirisBedeli } = require("../lib/ekonomi.cjs");
 
 /**
  * Giriş bedelinin İADE eşiği (tahmin puanı `base` bunun altındaysa iade yok).
@@ -483,22 +491,22 @@ function computeLcRewardFromDetail(detail) {
  * dosyaları birlikte read-modify-write edildiği için ikisi de tüm işlem
  * boyunca tutulur. Sıra WALLET → USERS (global sırayla uyumlu).
  */
-async function awardLcForRows(rows, db) {
+async function awardLcForRows(rows, db, odenenler) {
   if (!rows || !rows.length) return;
 
   // Ayna kapalı + Mongo varken hiç dosya açılmaz; kilit tutmak yalnızca tüm
   // settle'ları gereksiz yere seri hale getirir. Mongo tarafında güvenlik
   // zaten `$inc` (atomik göreli artış) ile sağlanır, kilide ihtiyaç yoktur.
   if (db && !WALLET_FILE_MIRROR) {
-    return _awardLcForRowsUnlocked(rows, db);
+    return _awardLcForRowsUnlocked(rows, db, odenenler);
   }
 
   return withFileLock(WALLET_FILE, () =>
-    withFileLock(USERS_FILE, () => _awardLcForRowsUnlocked(rows, db))
+    withFileLock(USERS_FILE, () => _awardLcForRowsUnlocked(rows, db, odenenler))
   );
 }
 
-async function _awardLcForRowsUnlocked(rows, db) {
+async function _awardLcForRowsUnlocked(rows, db, odenenler) {
   const nowISO = new Date().toISOString();
 
   // Mongo yoksa dosya TEK kaynaktır — ayna bayrağına bakılmaksızın yazılır.
@@ -588,7 +596,12 @@ async function _awardLcForRowsUnlocked(rows, db) {
 
     const reward = computeLcRewardFromDetail(r.detail);
     const base = Number(r.detail && r.detail.base != null ? r.detail.base : 0);
-    const refund = base >= REFUND_MIN_BASE ? LC_ENTRY_COST : 0;
+    /* İade = tahminde GERÇEKTE ödenen (belgeye yazılı lcCharged). 0 ödeyen
+     * (1987/premium) 0 alır — ödenmemiş girişin "iadesi" iade değil emisyon
+     * olurdu. Alanı olmayan eski belgeler için yedek: güncel bedel. */
+    const odenenKayit = odenenler ? Number(odenenler.get(uidLower)) : NaN;
+    const odenen = Number.isFinite(odenenKayit) ? odenenKayit : guncelGirisBedeli();
+    const refund = base >= REFUND_MIN_BASE ? odenen : 0;
     const totalGain = reward + refund;
     if (totalGain <= 0) continue;
 
@@ -1346,11 +1359,21 @@ async function _scoreFixtureUnlocked(fixtureId, { updateTotals = true, db = null
     }
   }
 
+  /* Ödenen tutar haritası — iade bundan okunur (bkz. _awardLcForRowsUnlocked).
+   * rows'a KOYULMUYOR bilerek: rows leaderboard yanıtına ve snapshot'a
+   * aynen sızıyor; kimin kaç ödediği oraya ait değil. */
+  const odenenler = new Map();
+  for (const p of list) {
+    const pl = String(p.userId || p.user || "").trim().toLowerCase();
+    const v = Number(p.lcCharged);
+    if (pl && Number.isFinite(v)) odenenler.set(pl, v);
+  }
+
   /* Kapanışta yarıda kesilmesin: mühür (claimAward) yukarıda atıldı, bu
    * blok kesilirse ödül kaybolur ve mühür yüzünden tekrar denenmez.
    * HTTP yolu `server.close()` ile zaten korunuyor; bu sayaç arka plan
    * servislerinin doğrudan çağrılarını da kapsıyor. bkz. lib/kritik-is.cjs */
-  await kritikIs(`settle:${fid}`, () => awardLcForRows(rows, db));
+  await kritikIs(`settle:${fid}`, () => awardLcForRows(rows, db, odenenler));
 
   /* Haftalık kupon: bu maç bir kuponun parçasıysa ve kuponun TÜM maçları
    * bittiyse kupon da sonuçlanır. Kendi mührü var, tekrar ödemez.

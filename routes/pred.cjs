@@ -522,6 +522,12 @@ async function upsertPredictionMongo(db, rec, opts = {}) {
     source: opts.source || (rec.isBot ? "bot" : "user"),
   };
 
+  /* lcCharged yalnızca DEĞER VARSA $set'e girer. Beyaz-liste onu düşürseydi
+   * ödeme bilgisi hiç saklanmazdı; koşulsuz eklemek ise üzerine yazmada
+   * (rec'te alan yokken) saklanan ödemeyi null'a ezerdi — iki uçta da iade
+   * bozulur. bkz. tests/lansman-iade-uyumu.test.cjs */
+  if (Number.isFinite(Number(rec.lcCharged))) doc.lcCharged = Number(rec.lcCharged);
+
   await col.updateOne(
     { fixtureId: doc.fixtureId, userIdLower: uidLower },
     { $set: doc },
@@ -1024,6 +1030,16 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
       at: nowISO,
     };
 
+    /* İADE ÖDENENİN AYNASI (bkz. settle2 entry_refund + lansman-iade-uyumu
+     * testi). Ücret KESİLDİYSE gerçek tutar belgeye yazılır; ilk gönderim
+     * ücretsizse (1987/premium → effMatchCost 0) açıkça 0 yazılır ki settle
+     * "eski belge" sanıp güncel bedeli iade etmesin. Üzerine yazmada anahtar
+     * REC'E HİÇ KONMAZ — upsert $set eski değeri korur (dosya aynası aşağıda
+     * elle taşır). Bedel dönemsel (lansman 1 → sonrası 3); "o an geçerli
+     * bedel"le iade etmek sınır aşan maçlarda para basar ya da yakar. */
+    if (spendRes.charged) rec.lcCharged = spendRes.matchCost;
+    else if (!alreadyPredicted) rec.lcCharged = 0;
+
     // 🔵 Mongo primary yazma (varsa) — upsert, önceki kaydı ezer
     if (db) {
       await upsertPredictionMongo(db, rec, { source: "user" });
@@ -1032,6 +1048,16 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
     // 🟢 Dosya yazma — yalnızca dosya modunda veya geçiş mirror'ı açıkken.
     // (Mongo primary + mirror kapalı → 17MB dosyaya hiç dokunulmaz.)
     if (needFile) {
+      /* Dosya tarafı "filtrele + yeniden ekle" olduğundan Mongo'nun $set
+       * korumasi burada yok: üzerine yazmada ödenen tutar eski kayıttan
+       * elle taşınmalı, yoksa iade hakkı dosyada kaybolur. */
+      if (!("lcCharged" in rec)) {
+        const onceki = list.find((p) =>
+          String(p.fixtureId || "").trim() === fx &&
+          String(p.userId || p.user || "").trim().toLowerCase() === uidLower);
+        const eskiBedel = Number(onceki?.lcCharged);
+        if (Number.isFinite(eskiBedel)) rec.lcCharged = eskiBedel;
+      }
       const filtered = list.filter((p) => {
         const sameFx = String(p.fixtureId || "").trim() === fx;
         const pidLower = String(p.userId || p.user || "").trim().toLowerCase();

@@ -408,6 +408,16 @@ router.post("/predict", verifyToken, async (req, res) => {
       lcCharged = bedel;
     }
 
+    /* İADE ÖDENENİN AYNASI: belgeye yazılacak tutar. Bu tur ücret kesildiyse
+     * o; kesilmediyse (üzerine yazma) ESKİ kayıttaki tutar taşınır — burasi
+     * $set ile TÜM nesneyi bastığından taşımamak, ödenmiş girişi 0'a ezip
+     * iade hakkını silerdi. İlk gönderim ücretsizse (1987) açıkça 0.
+     * bkz. tests/lansman-iade-uyumu.test.cjs */
+    const eskiBedel   = Number(existing?.lcCharged);
+    const belgeBedeli = lcCharged > 0 ? lcCharged
+      : Number.isFinite(eskiBedel) ? eskiBedel
+      : 0;
+
     // ⚠️ ÖNCE MONGO: settle2 tahminleri `preds` koleksiyonundan okur. Yalnızca
     // dosyaya yazmak, oyuncunun 3 LC ödeyip tahmininin hiç sonuçlanmaması
     // demekti (ayna kapalıyken dosya zaten okunmuyor).
@@ -431,6 +441,7 @@ router.post("/predict", verifyToken, async (req, res) => {
               at: new Date().toISOString(),
               source: "weekly_pick_1987",
               is1987Free: free,
+              lcCharged: belgeBedeli,
             },
           },
           { upsert: true }
@@ -467,6 +478,7 @@ router.post("/predict", verifyToken, async (req, res) => {
         at:   new Date().toISOString(),
         source: "weekly_pick_1987",
         is1987Free: free,
+        lcCharged: belgeBedeli,
       });
 
       const toWrite = Array.isArray(predsRaw) ? filtered : { ...predsRaw, items: filtered };
