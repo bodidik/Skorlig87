@@ -58,12 +58,18 @@ test("premium bayrağı yoksa aktif değil", () => {
   assert.equal(isActivePremiumRecord({}), false);
 });
 
-test("1987 üyeliği DEĞİŞMEDİ — süre aranmaz", () => {
-  // Geriye uyum dalı `premiumUntil` kontrolünden ÖNCE dönüyor; düzeltme onu
-  // etkilememeli, yoksa mevcut 1987 üyeleri ayrıcalıklarını kaybederdi.
-  assert.equal(isActivePremiumRecord({ is1987: true }), true);
-  assert.equal(isActivePremiumRecord({ segment: "1987" }), true);
-  assert.equal(isActivePremiumRecord({ segment: "1987", premiumUntil: GECMIS }), true);
+test("1987 üyeliği premium DEĞİL (2026-08-08 ayrıştırma)", () => {
+  /* Eski sözleşme tam tersiydi ("süre aranmaz, üye süresiz premium").
+   * Kullanıcı kararıyla ayrıştırıldı: eşitlik 30+30 ekonomisini üç koldan
+   * deliyordu — aylık kasa bakiyeyi 60'a tamamlıyor, günlük taban 12'ye
+   * çıkıyor, maç bedeli muafiyeti geri geliyordu (ölçüldü:
+   * tests/yolculuk-1987.test.cjs). Üyelik ayrıcalığı artık bonus1987 ve
+   * kendine tanımlı oyunlar; premium YALNIZCA satın almayla. */
+  assert.equal(isActivePremiumRecord({ is1987: true }), false);
+  assert.equal(isActivePremiumRecord({ segment: "1987" }), false);
+  assert.equal(isActivePremiumRecord({ segment: "1987", premiumUntil: GECMIS }), false);
+  // Üye AYRICA premium satın aldıysa elbette premium.
+  assert.equal(isActivePremiumRecord({ is1987: true, premium: true, premiumUntil: GELECEK }), true);
 });
 
 /* ── Nöbetçi ────────────────────────────────────────────────────────────── */

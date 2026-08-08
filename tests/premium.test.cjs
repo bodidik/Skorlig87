@@ -87,11 +87,13 @@ describe("isPremium", () => {
     assert.equal(await premium.isPremium("ucretsiz", null), false);
   });
 
-  test("1987 segmenti premium sayilir (geriye uyum)", async () => {
+  test("1987 segmenti premium SAYILMAZ (2026-08-08 ayrıştırma)", async () => {
+    /* Geriye uyum dalı kaldırıldı — gerekçe: tests/premium-sure.test.cjs
+     * içindeki ayrıştırma notu. */
     await Store.updateUser("gs1", { is1987: true }, V, null);
     await Store.updateUser("gs2", { segment: "1987" }, V, null);
-    assert.equal(await premium.isPremium("gs1", null), true);
-    assert.equal(await premium.isPremium("gs2", null), true);
+    assert.equal(await premium.isPremium("gs1", null), false);
+    assert.equal(await premium.isPremium("gs2", null), false);
   });
 
   test("KARISIK HARFLI kimlik de cozulur", async () => {
@@ -127,11 +129,11 @@ describe("premiumStatus", () => {
     assert.ok(Array.isArray(s.plans) && s.plans.length, "paketler gelmeli");
   });
 
-  test("1987 uyesinde via=1987", async () => {
+  test("1987 uyesi premiumStatus'ta pasif, via null", async () => {
     await Store.updateUser("gs", { is1987: true }, V, null);
     const s = await premium.premiumStatus("gs", null);
-    assert.equal(s.active, true);
-    assert.equal(s.via, "1987");
+    assert.equal(s.active, false, "1987 uyeligi premium kanali degil artik");
+    assert.equal(s.via, null, "pasifken kanal bildirilmez — ekran premium rozeti cizerdi");
   });
 
   test("olmayan kullanicida active=false, patlamaz", async () => {
