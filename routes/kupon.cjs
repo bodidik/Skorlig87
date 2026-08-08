@@ -105,7 +105,8 @@ async function kuponKur({ tur, ulke, haftaKey }, db) {
       fixtureId: String(m.fixtureId), home: m.home, away: m.away,
       kickoffISO: m.kickoffISO || m.kickoffDate, league: m.league || null,
     })),
-    girisBedeli: Kupon.GIRIS_BEDELI[tur],
+    // Döneme göre bedel (lansman: 3/5, sonrası 10/15) — bkz. lib/kupon.cjs
+    girisBedeli: Kupon.girisBedeli(tur),
     ilkKickoffISO: ilkKickoff,
     kilitISO: new Date(kilitMs).toISOString(),
     durum: "open",
