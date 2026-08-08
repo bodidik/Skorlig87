@@ -43,10 +43,12 @@ fs.mkdirSync(path.join(TMP, "live"), { recursive: true });
 const FID = "IADE-FX-1";
 const BASLANGIC = 30;
 
-// Üç senaryo tek maçta: normal, 1987 (bedava), üzerine-yazan normal.
+// Dört senaryo tek maçta. (2026-08-08 30+30 kararıyla 1987 üyesi normal
+// maçta artık HERKES GİBİ öder — bkz. tests/1987-ekonomi-3030.test.cjs.)
 const ALI = "iade-ali";          // 1 öder → iade 1 olmalı
-const CAN = "iade-can1987";      // 0 öder → iade 0 olmalı
+const CAN = "iade-can1987";      // 1987 üyesi: normal maçta 1 öder → iade 1
 const UZE = "iade-uzeyir";       // 1 öder, sonra tahmini DEĞİŞTİRİR → iade yine 1
+const PRE = "iade-premium";      // 0 ödemiş (lcCharged:0 belge) → iade 0
 
 let mongod, client, db, server, taban;
 
@@ -136,7 +138,7 @@ describe("lansman iade uyumu: iade == gerçekte ödenen", () => {
     assert.equal(E.MAC_GIRIS_BEDELI_NORMAL, 3, "normal bedel 3 degil");
   });
 
-  test("tahsilat: normal 1 LC, 1987 üyesi 0 LC, değiştirme bedava", async () => {
+  test("tahsilat: normal 1 LC, 1987 üyesi de normal maçta 1 LC, değiştirme bedava", async () => {
     for (const [u, g] of [
       [ALI, { type: "score", outcome: "H", home: 2, away: 1 }],
       [CAN, { type: "score", outcome: "H", home: 2, away: 1 }],
@@ -149,8 +151,17 @@ describe("lansman iade uyumu: iade == gerçekte ödenen", () => {
     const { status } = await gonder(UZE, { type: "score", outcome: "H", home: 2, away: 1 });
     assert.equal(status, 200);
 
+    // PRE: 0 ödemiş sınıf (satın alınmış premium'un ürettiği belge) — akışı
+    // taklit etmek yerine belge düzeyinde kurulur; iade sözleşmesini sınar.
+    await db.collection("predictions").insertOne({
+      fixtureId: FID, userId: PRE, userIdLower: PRE,
+      outcome: "H", home: 2, away: 1, lcCharged: 0,
+      at: new Date().toISOString(), source: "user",
+    });
+
     assert.equal(await bakiye(ALI), BASLANGIC - 1, "normal oyuncudan lansman bedeli (1) dusmedi");
-    assert.equal(await bakiye(CAN), BASLANGIC,     "1987 uyesinden ucret kesildi — bedava olmaliydi");
+    assert.equal(await bakiye(CAN), BASLANGIC - 1,
+      "1987 uyesi normal macta odemedi — 30+30 karari: baska oyunda diger LC duser");
     assert.equal(await bakiye(UZE), BASLANGIC - 1, "degistirme ikinci kez ucretlendirdi");
   });
 
@@ -175,9 +186,13 @@ describe("lansman iade uyumu: iade == gerçekte ödenen", () => {
     );
 
     const canIade = await iadeKayitlari(CAN);
+    assert.equal(canIade.length, 1, "1987 uyesinin (1 odedi) iadesi tetiklenmedi");
+    assert.equal(canIade[0].amount, 1, "1987 uyesine odediginden farkli iade yazildi");
+
+    const preIade = await iadeKayitlari(PRE);
     assert.equal(
-      canIade.length, 0,
-      `BEDAVAYA IADE: 0 LC odeyen 1987 uyesine ${canIade[0]?.amount ?? "?"} LC ` +
+      preIade.length, 0,
+      `BEDAVAYA IADE: 0 LC odeyen (lcCharged:0) oyuncuya ${preIade[0]?.amount ?? "?"} LC ` +
       '"iade" yazildi. Odenmemis girisin iadesi olmaz — bu odul degil, emisyon.'
     );
 

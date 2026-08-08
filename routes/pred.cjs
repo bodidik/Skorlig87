@@ -927,10 +927,17 @@ router.post("/pred/submit", verifyToken, async (req, res) => {
 
 
     // 🔹 LC harcaması (maç başı cost, ikinci/üçüncü düzeltmede kesilmez)
-    // Premium ayrıcalığı: maç girişi bedava. 1987 üyeleri de bedava.
-    const isPrem  = await premium.isPremium(uid, getDb(req));
-    const is1987  = await isUser1987Member(uid, getDb(req));
-    const effMatchCost = (isPrem || is1987) ? 0 : macGirisBedeli();
+    // Premium ayrıcalığı: maç girişi bedava.
+    /* ⚠️ 1987 MUAFİYETİ KALDIRILDI (2026-08-08, kullanıcı kararı — 30+30):
+     * "bonus sadece kendilerine tanımlı oyunlarda geçerli; BAŞKA tip
+     * oyunlara girerlerse diğer LC düşsün." Muafiyet buradayken üye her
+     * maçı bedava oynuyordu ve bonus1987 hiç harcanmıyordu (ölü bakiye).
+     * Normal maç girişi artık üye için de normal bakiyeden düşer; bonus
+     * kanalı yalnızca weekly-picks'te (bkz. oradaki spendLc kanal:"1987"). */
+    /* isPaidPremium: `isPremium` 1987'yi süresiz premium sayar ve muafiyeti
+     * arka kapıdan geri getirirdi — testte yakalandı (uç dövülünce). */
+    const isPrem  = await premium.isPaidPremium(uid, getDb(req));
+    const effMatchCost = isPrem ? 0 : macGirisBedeli();
     const spendRes = db
       ? await spendLcMatchIfNeededMongo(
           db,

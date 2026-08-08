@@ -4,7 +4,8 @@
  * 1987 Modu — haftalık basit tahmin
  *
  * Tüm maçları gösterir, maçtan 24 saat önce açılır.
- * 1987 üyelerine LC girişi sıfır.
+ * Giriş bedeli herkes için macGirisBedeli(); 1987 üyesi ÖNCE bonus1987'den
+ * öder, bonus bitince normal bakiyeden (30+30 tasarımı, 2026-08-08).
  * Sıralama: 1987 segmenti kendi aralarında (match-results.json üzerinden).
  */
 
@@ -146,12 +147,15 @@ await ensurePredIndexes(db);
  * dosyaya yazılınca kullanıcı ÜCRETSİZ oynuyordu — mini/TR-Lig'de ödül
  * yönünde bulduğumuz hatanın harcama yönündeki eşi.
  */
-async function spendLc(db, userId, amount) {
+async function spendLc(db, userId, amount, opts = {}) {
   if (db) {
+    /* opts.kanal:"1987" → WalletCredit önce bonus1987'den düşer, yetmezse
+     * normal bakiyeye kendisi geçer (30+30 tasarımı). Dosya yedeğinde bonus
+     * kavramı yok — orada her zaman normal bakiyeden düşülür. */
     const r = await WalletCredit.spendLc(db, userId, amount, "weekly_pick_1987", {
       source: "weekly_picks",
-    });
-    if (r.ok) return { ok: true, lc: r.lc };
+    }, undefined, opts);
+    if (r.ok) return { ok: true, lc: r.lc, bonus1987: r.bonus1987 };
     if (r.reason === "INSUFFICIENT") return { ok: false, lc: r.lc, needed: amount };
     // NO_DB / ERROR → dosyaya düşmeyi dene (aşağısı)
   }
@@ -400,9 +404,19 @@ router.post("/predict", verifyToken, async (req, res) => {
     let lc         = 0;
     let lcCharged  = 0;
 
-    if (!free && !existing) {
+    /* ⚠️ 1987 MUAFİYETİ KALDIRILDI (2026-08-08, kullanıcı kararı — 30+30):
+     * eskiden `!free && !existing` idi; üye hiç ödemiyor ve bonus1987 hiç
+     * harcanmıyordu (cüzdanda görünen ama hiçbir oyunun düşüremediği ÖLÜ
+     * bakiye). Bu uç 1987'ye TANIMLI oyun: üye bedeli önce bonus1987'den
+     * öder (`kanal:"1987"` — bonus yetmezse spendLc kendisi normal
+     * bakiyeye düşer), üye olmayan normal bakiyeden. */
+    if (!existing) {
       const bedel = macGirisBedeli();
-      const spend = await spendLc(db, uid, bedel);
+      /* ⚠️ Buradaki spendLc YEREL sarmalayıcı (yukarıda) — WalletCredit'inki
+       * değil. İlk düzeltme 7 argümanlı gerçek imzayla çağırmıştı ve kanal
+       * seçeneği sarmalayıcıda SESSİZCE yutuluyordu — uç dövülmeden fark
+       * edilmezdi. Sarmalayıcı artık opts'u geçiriyor. */
+      const spend = await spendLc(db, uid, bedel, free ? { kanal: "1987" } : {});
       if (!spend.ok) return res.status(400).json({ ok: false, error: "LC_NOT_ENOUGH", lc: spend.lc, needed: spend.needed });
       lc        = spend.lc;
       lcCharged = bedel;
@@ -440,7 +454,7 @@ router.post("/predict", verifyToken, async (req, res) => {
               home: null, away: null,
               at: new Date().toISOString(),
               source: "weekly_pick_1987",
-              is1987Free: free,
+              is1987Free: false, // 2026-08-08: 1987 girisi artik ucretsiz DEGIL (30+30 tasarimi)
               lcCharged: belgeBedeli,
             },
           },
@@ -477,7 +491,7 @@ router.post("/predict", verifyToken, async (req, res) => {
         home: null, away: null,
         at:   new Date().toISOString(),
         source: "weekly_pick_1987",
-        is1987Free: free,
+        is1987Free: false, // 2026-08-08: 1987 girisi artik ucretsiz DEGIL (30+30 tasarimi)
         lcCharged: belgeBedeli,
       });
 

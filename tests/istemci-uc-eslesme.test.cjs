@@ -302,8 +302,10 @@ const BILINEN_OLU = new Set([
    * "bilinen eksikler" olmaktan çıkıp yalan söylemeye başlar. */
   "/api/rt/admin-fixture",     // live.tsx
   "/api/auth1987gs/status",    // mystatus.tsx (uçlar: verify/diag/members)
-  "/api/skorlig/next",         // predict.tsx (skorlig.cjs /api'ye monte)
-  "/api/users/get",            // profile/[userId].tsx — yalnızca yedek yol
+  /* "/api/skorlig/next" ve "/api/users/get" ÇIKARILDI — 2026-08-08.
+   * predict.tsx artık /api/team/fixtures kullanıyor (sıradaki maç seçimi
+   * istemcide); profildeki ölü yedek çağrı söküldü. İkisi de mobil depoda
+   * c0d0e85 ile düzeltildi. */
   /* "/api/leaderboard:p" ÇIKARILDI — 2026-08-03. Zaten "tarayıcı eseri"
    * diye işaretlenmiş bir YANLIŞ POZİTİFTİ: `/api/leaderboard${qs}` gibi
    * bir çağrıda değişken SORGU taşıyor, yol parçası değil. Tarayıcının
